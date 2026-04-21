@@ -32,6 +32,22 @@
                     </div>
 
                     <div class="form-group mb-4">
+                        <label for="orbitwa_device_id" class="form-label">ID Device</label>
+                        <input type="text" 
+                               name="orbitwa_device_id" 
+                               id="orbitwa_device_id" 
+                               class="form-control @error('orbitwa_device_id') is-invalid @enderror" 
+                               value="{{ old('orbitwa_device_id', $settings['device_id']) }}" 
+                               placeholder="Contoh: 1">
+                        @error('orbitwa_device_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <p class="form-text text-muted mt-1">
+                            Masukkan ID Device yang terdaftar di dashboard OrbitWA Anda.
+                        </p>
+                    </div>
+
+                    <div class="form-group mb-4">
                         <label for="orbitwa_base_url" class="form-label">Base URL API</label>
                         <input type="url" 
                                name="orbitwa_base_url" 

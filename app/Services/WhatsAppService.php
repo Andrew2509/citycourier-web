@@ -9,11 +9,13 @@ class WhatsAppService
 {
     protected $apiKey;
     protected $baseUrl;
+    protected $deviceId;
 
     public function __construct()
     {
         $this->apiKey = \App\Models\Setting::get('orbitwa_api_key', config('services.orbitwa.api_key') ?? env('ORBITWA_API_KEY'));
         $this->baseUrl = \App\Models\Setting::get('orbitwa_base_url', config('services.orbitwa.base_url') ?? env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1'));
+        $this->deviceId = \App\Models\Setting::get('orbitwa_device_id', env('ORBITWA_DEVICE_ID'));
     }
 
     /**
@@ -36,6 +38,7 @@ class WhatsAppService
         try {
             $response = Http::withToken($this->apiKey)
                 ->post($this->baseUrl . '/messages/send', [
+                    'device_id' => $this->deviceId,
                     'to' => $to,
                     'message' => $message,
                 ]);

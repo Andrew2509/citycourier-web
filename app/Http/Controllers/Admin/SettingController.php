@@ -16,6 +16,7 @@ class SettingController extends Controller
         $settings = [
             'api_key' => Setting::get('orbitwa_api_key', env('ORBITWA_API_KEY')),
             'base_url' => Setting::get('orbitwa_base_url', env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1')),
+            'device_id' => Setting::get('orbitwa_device_id', env('ORBITWA_DEVICE_ID')),
         ];
 
         return view('admin.settings.whatsapp', compact('settings'));
@@ -29,10 +30,12 @@ class SettingController extends Controller
         $request->validate([
             'orbitwa_api_key' => 'required|string',
             'orbitwa_base_url' => 'required|url',
+            'orbitwa_device_id' => 'nullable|string',
         ]);
 
         Setting::set('orbitwa_api_key', $request->orbitwa_api_key, 'whatsapp');
         Setting::set('orbitwa_base_url', $request->orbitwa_base_url, 'whatsapp');
+        Setting::set('orbitwa_device_id', $request->orbitwa_device_id, 'whatsapp');
 
         return redirect()->back()->with('success', 'Pengaturan WhatsApp berhasil diperbarui.');
     }
