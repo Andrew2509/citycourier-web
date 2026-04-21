@@ -75,6 +75,10 @@
                         <i class="fas fa-key"></i>
                         <span>Manajemen Permission</span>
                     </a>
+                    <a href="{{ route('admin.settings.whatsapp') }}" class="nav-link {{ request()->routeIs('admin.settings.whatsapp*') ? 'active' : '' }}">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>Provider WhatsApp</span>
+                    </a>
                 </div>
             </nav>
 

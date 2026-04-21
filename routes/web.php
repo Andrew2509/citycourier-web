@@ -32,6 +32,10 @@ Route::middleware('auth')->group(function () {
         // Orders
         Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
         Route::get('/orders/{order}', [AdminController::class, 'orderDetail'])->name('orders.detail');
+
+        // Settings / Provider
+        Route::get('/settings/whatsapp', [\App\Http\Controllers\Admin\SettingController::class, 'whatsapp'])->name('settings.whatsapp');
+        Route::post('/settings/whatsapp', [\App\Http\Controllers\Admin\SettingController::class, 'updateWhatsapp'])->name('settings.whatsapp.update');
     });
 });
 

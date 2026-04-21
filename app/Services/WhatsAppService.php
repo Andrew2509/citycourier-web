@@ -12,8 +12,8 @@ class WhatsAppService
 
     public function __construct()
     {
-        $this->apiKey = config('services.orbitwa.api_key') ?? env('ORBITWA_API_KEY');
-        $this->baseUrl = config('services.orbitwa.base_url') ?? env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1');
+        $this->apiKey = \App\Models\Setting::get('orbitwa_api_key', config('services.orbitwa.api_key') ?? env('ORBITWA_API_KEY'));
+        $this->baseUrl = \App\Models\Setting::get('orbitwa_base_url', config('services.orbitwa.base_url') ?? env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1'));
     }
 
     /**
