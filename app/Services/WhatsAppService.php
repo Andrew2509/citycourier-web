@@ -82,9 +82,12 @@ class WhatsAppService
                 'status' => $response->status()
             ]);
 
+            $json = $response->json();
+            $errorMessage = $json['error'] ?? $json['message'] ?? $json['msg'] ?? 'Server error (' . $response->status() . ')';
+
             return [
                 'success' => false,
-                'message' => 'Gagal mengirim pesan WhatsApp: ' . ($response->json()['error'] ?? $response->json()['message'] ?? 'Unknown Error'),
+                'message' => 'Gagal mengirim pesan WhatsApp: ' . $errorMessage,
                 'status' => $response->status(),
             ];
         } catch (\Exception $e) {

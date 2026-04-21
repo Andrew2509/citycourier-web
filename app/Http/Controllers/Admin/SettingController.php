@@ -51,7 +51,7 @@ class SettingController extends Controller
 
         $response = $wa->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi OrbitWA sudah benar.');
 
-        if (isset($response['status']) && $response['status'] == 'success') {
+        if ($response['success']) {
             return redirect()->back()->with('success', 'Pesan test berhasil dikirim ke ' . $request->phone);
         }
 
