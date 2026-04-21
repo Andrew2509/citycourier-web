@@ -15,7 +15,7 @@ class WhatsAppService
     {
         $this->apiKey = \App\Models\Setting::get('orbitwa_api_key', config('services.orbitwa.api_key') ?? env('ORBITWA_API_KEY'));
         $this->baseUrl = \App\Models\Setting::get('orbitwa_base_url', config('services.orbitwa.base_url') ?? env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1'));
-        $this->deviceId = \App\Models\Setting::get('orbitwa_device_id', env('ORBITWA_DEVICE_ID'));
+        $this->deviceId = (int) \App\Models\Setting::get('orbitwa_device_id', env('ORBITWA_DEVICE_ID', 0));
     }
 
     /**
@@ -58,13 +58,15 @@ class WhatsAppService
             ];
         }
 
+        $payload = [
+            'device_id' => $this->deviceId,
+            'to' => $to,
+            'message' => $message,
+        ];
+
         try {
             $response = Http::withToken($this->apiKey)
-                ->post($this->baseUrl . '/messages/send', [
-                    'device_id' => $this->deviceId,
-                    'to' => $to,
-                    'message' => $message,
-                ]);
+                ->post($this->baseUrl . '/messages/send', $payload);
 
             if ($response->successful()) {
                 return [
@@ -73,15 +75,20 @@ class WhatsAppService
                 ];
             }
 
-            Log::error('OrbitWA API Error: ' . $response->body());
+            Log::error('OrbitWA API Error: ' . $response->body(), [
+                'payload' => $payload,
+                'status' => $response->status()
+            ]);
 
             return [
                 'success' => false,
-                'message' => 'Gagal mengirim pesan WhatsApp: ' . ($response->json()['message'] ?? 'Unknown Error'),
+                'message' => 'Gagal mengirim pesan WhatsApp: ' . ($response->json()['error'] ?? $response->json()['message'] ?? 'Unknown Error'),
                 'status' => $response->status(),
             ];
         } catch (\Exception $e) {
-            Log::error('OrbitWA Exception: ' . $e->getMessage());
+            Log::error('OrbitWA Exception: ' . $e->getMessage(), [
+                'payload' => $payload
+            ]);
             return [
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat menghubungi API WhatsApp.',
