@@ -42,7 +42,7 @@ Route::middleware('auth')->group(function () {
 
 // Redirect root to safe location
 Route::get('/', function () {
-    if (auth()->check()) {
+    if (\Illuminate\Support\Facades\Auth::check()) {
         return redirect()->route('admin.dashboard');
     }
     return redirect()->route('login');
