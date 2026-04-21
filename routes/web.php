@@ -39,3 +39,13 @@ Route::middleware('auth')->group(function () {
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+// Temporary Route to fix Storage Link on Hostinger
+Route::get('/storage-link', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('storage:link');
+        return "Storage link created successfully!";
+    } catch (\Exception $e) {
+        return "Failed to create storage link: " . $e->getMessage();
+    }
+});
