@@ -18,6 +18,9 @@ Route::post('/test-wa', function (\Illuminate\Http\Request $request, \App\Servic
 Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
 Route::post('/auth/phone', [AuthController::class, 'loginWithPhone']);
 
+// Drop Points
+Route::get('/drop-points', [\App\Http\Controllers\Api\DropPointController::class, 'index']);
+
 // ─── Protected API Routes (Sanctum) ─────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
     // Auth

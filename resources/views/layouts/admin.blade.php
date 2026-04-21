@@ -59,6 +59,11 @@
                             <span class="nav-badge">{{ $pendingOrders }}</span>
                         @endif
                     </a>
+                    <a href="{{ route('admin.drop-points.index') }}"
+                       class="nav-link {{ request()->routeIs('admin.drop-points*') ? 'active' : '' }}">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Drop Point</span>
+                    </a>
                 </div>
 
                 <div class="nav-section">
