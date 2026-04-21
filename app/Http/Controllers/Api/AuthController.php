@@ -187,6 +187,8 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'phone' => $user->phone,
+                    'address' => $user->address,
+                    'photo_url' => $user->photo_url,
                     'role' => $user->role,
                 ],
                 'courier' => $user->courier,
@@ -287,6 +289,9 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'phone' => $user->phone,
+                    'email' => $user->email,
+                    'address' => $user->address,
+                    'photo_url' => $user->photo_url,
                     'role' => $user->role,
                 ],
                 'token' => $token,
@@ -357,7 +362,9 @@ class AuthController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'avatar' => $user->avatar,
+                        'phone' => $user->phone,
+                        'address' => $user->address,
+                        'photo_url' => $user->photo_url,
                         'role' => $user->role,
                     ],
                     'token' => $token,
@@ -438,6 +445,9 @@ class AuthController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'phone' => $user->phone,
+                        'email' => $user->email,
+                        'address' => $user->address,
+                        'photo_url' => $user->photo_url,
                         'role' => $user->role,
                     ],
                     'token' => $token,
@@ -464,6 +474,10 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string|max:20',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -474,10 +488,19 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user->update([
+        $data = [
             'name' => $request->name,
             'email' => $request->email,
-        ]);
+            'phone' => $request->phone,
+            'address' => $request->address,
+        ];
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('photos', 'public');
+            $data['avatar'] = $path;
+        }
+
+        $user->update($data);
 
         return response()->json([
             'success' => true,
@@ -488,6 +511,8 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'phone' => $user->phone,
+                    'address' => $user->address,
+                    'photo_url' => $user->photo_url,
                 ]
             ]
         ]);

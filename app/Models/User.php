@@ -41,6 +41,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the full URL for the user's avatar.
+     */
+    public function getPhotoUrlAttribute()
+    {
+        if (!$this->avatar) {
+            return null;
+        }
+
+        if (filter_var($this->avatar, FILTER_VALIDATE_URL)) {
+            return $this->avatar;
+        }
+
+        return url('storage/' . $this->avatar);
+    }
+
+    /**
      * Get the courier profile associated with this user.
      */
     public function courier()
