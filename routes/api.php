@@ -9,6 +9,12 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register-kurir', [AuthController::class, 'registerKurir']);
 Route::post('/request-otp', [AuthController::class, 'requestOtp']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+
+// WhatsApp Test Route
+Route::post('/test-wa', function (\Illuminate\Http\Request $request, \App\Services\WhatsAppService $wa) {
+    return $wa->sendMessage($request->phone, $request->message ?? 'Test message from City Courier');
+});
+
 Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
 Route::post('/auth/phone', [AuthController::class, 'loginWithPhone']);
 

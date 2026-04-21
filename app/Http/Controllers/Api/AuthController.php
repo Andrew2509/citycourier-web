@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Courier;
+use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -14,6 +15,13 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    protected $whatsappService;
+
+    public function __construct(WhatsAppService $whatsappService)
+    {
+        $this->whatsappService = $whatsappService;
+    }
+
     /**
      * Login and issue Sanctum token.
      * POST /api/login
@@ -216,21 +224,27 @@ class AuthController extends Controller
 
         $phone = $request->phone;
 
-        // Optionally, check if user exists or auto-register logic
-        // For now, we will create user if not exists during verify, or we can just send OTP anyway.
+        // Generate real random random 4-digit OTP
+        $otp = (string) random_int(1000, 9999);
 
-        // Generate mock OTP '1234'
-        $otp = '1234';
-
-        // Real implementation might random digit: random_int(1000, 9999)
         // Store in cache for 5 minutes
-        Cache::put('otp_' . $phone, $otp, now()->addMinutes(5));
+        Cache::put('otp_' . $phone, $otp, now()->addMinutes(10));
+
+        // Send OTP via WhatsApp
+        $waResult = $this->whatsappService->sendOtp($phone, $otp);
+
+        if (!$waResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim OTP via WhatsApp. ' . ($waResult['message'] ?? ''),
+                'otp' => $otp // Still return OTP for debugging if needed, remove in strict production
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'OTP berhasil dikirim.',
-            // Remove 'otp' from response in production
-            'otp' => $otp
+            'message' => 'OTP berhasil dikirim ke WhatsApp.',
+            // 'otp' => $otp // Hidden in production for security
         ]);
     }
 
