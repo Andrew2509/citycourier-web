@@ -59,7 +59,9 @@ class WhatsAppService
         }
 
         $payload = [
+            'api_key' => $this->apiKey, // Some versions prefer api_key in body
             'device_id' => $this->deviceId,
+            'device' => $this->deviceId, // Some versions use 'device' instead of 'device_id'
             'to' => $to,
             'message' => $message,
         ];
