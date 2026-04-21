@@ -41,7 +41,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group mb-4">
                                 <label for="phone" class="form-label">Nomor Telepon</label>
                                 <input type="text" name="phone" id="phone" class="form-control @error('phone') is-invalid @enderror" 
@@ -51,15 +51,34 @@
                                 @enderror
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group mb-4">
-                                <label for="is_active" class="form-label">Status</label>
-                                <select name="is_active" id="is_active" class="form-control">
-                                    <option value="1">Aktif</option>
-                                    <option value="0">Non-aktif</option>
-                                </select>
+                                <label for="schedule" class="form-label">Jam Operasional</label>
+                                <input type="text" name="schedule" id="schedule" class="form-control @error('schedule') is-invalid @enderror" 
+                                       value="{{ old('schedule', '08:00 - 21:00') }}" placeholder="08:00 - 21:00">
+                                @error('schedule')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-4">
+                                <label for="rating" class="form-label">Rating (0-5)</label>
+                                <input type="number" name="rating" id="rating" class="form-control @error('rating') is-invalid @enderror" 
+                                       value="{{ old('rating', '5.0') }}" step="0.1" min="0" max="5">
+                                @error('rating')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="is_active" class="form-label">Status</label>
+                        <select name="is_active" id="is_active" class="form-control">
+                            <option value="1">Aktif</option>
+                            <option value="0">Non-aktif</option>
+                        </select>
                     </div>
 
                     <div class="nav-section-title mb-3 mt-2">Koordinat Lokasi (Opsional)</div>

@@ -13,6 +13,8 @@ class DropPoint extends Model
         'name',
         'address',
         'phone',
+        'schedule',
+        'rating',
         'latitude',
         'longitude',
         'is_active',
@@ -22,5 +24,6 @@ class DropPoint extends Model
         'is_active' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'rating' => 'decimal:2',
     ];
 }
