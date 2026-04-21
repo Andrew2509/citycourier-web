@@ -39,4 +39,22 @@ class SettingController extends Controller
 
         return redirect()->back()->with('success', 'Pengaturan WhatsApp berhasil diperbarui.');
     }
+
+    /**
+     * Test the WhatsApp connection.
+     */
+    public function testWhatsapp(Request $request, \App\Services\WhatsAppService $wa)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+        ]);
+
+        $response = $wa->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi OrbitWA sudah benar.');
+
+        if (isset($response['status']) && $response['status'] == 'success') {
+            return redirect()->back()->with('success', 'Pesan test berhasil dikirim ke ' . $request->phone);
+        }
+
+        return redirect()->back()->with('error', 'Gagal mengirim pesan: ' . ($response['message'] ?? 'Kesalahan tidak diketahui'));
+    }
 }

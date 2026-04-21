@@ -88,6 +88,24 @@
                 </ul>
             </div>
         </div>
+
+        <div class="card border-0 mt-4" style="background: #fff8f5; border: 1px dashed #EC5B13 !important;">
+            <div class="card-body">
+                <h5 class="card-title text-orange">Test Koneksi</h5>
+                <p class="card-text small">
+                    Kirim pesan percobaan untuk memastikan API Key sudah benar.
+                </p>
+                <form action="{{ route('admin.settings.whatsapp.test') }}" method="POST">
+                    @csrf
+                    <div class="mb-3">
+                        <input type="text" name="phone" class="form-control form-control-sm" placeholder="Nomor HP (Contoh: 08123...)" required>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                        <i class="fab fa-whatsapp me-1"></i> Kirim Pesan Test
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -142,6 +160,19 @@
     }
     .btn-primary:hover {
         background: #d44d0d;
+    }
+    .btn-outline-primary {
+        background: transparent;
+        border: 1px solid #EC5B13;
+        color: #EC5B13;
+        transition: all 0.2s;
+    }
+    .btn-outline-primary:hover {
+        background: #EC5B13;
+        color: #fff;
+    }
+    .text-orange {
+        color: #EC5B13 !important;
     }
     .text-muted {
         color: #777;
