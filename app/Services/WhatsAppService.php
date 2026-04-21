@@ -25,8 +25,31 @@ class WhatsAppService
      * @param string $message The message content
      * @return array
      */
+    /**
+     * Format phone number to international format (62...)
+     */
+    protected function formatPhoneNumber(string $phone): string
+    {
+        // Remove all non-numeric characters (including +)
+        $cleaned = preg_replace('/[^0-9]/', '', $phone);
+
+        // Convert leading 0 to 62
+        if (str_starts_with($cleaned, '0')) {
+            $cleaned = '62' . substr($cleaned, 1);
+        }
+
+        // If it doesn't start with 62, prepend it (handling cases where user types 812...)
+        if (!str_starts_with($cleaned, '62')) {
+            $cleaned = '62' . $cleaned;
+        }
+
+        return $cleaned;
+    }
+
     public function sendMessage(string $to, string $message)
     {
+        $to = $this->formatPhoneNumber($to);
+
         if (!$this->apiKey) {
             Log::error('OrbitWA API Key is not set.');
             return [
@@ -77,29 +100,6 @@ class WhatsAppService
     {
         $message = "Kode OTP City Courier Anda adalah: *{$otp}*\n\nJangan sebarkan kode ini kepada siapapun.\n\n_Pesan ini dikirim otomatis oleh sistem City Courier._";
         
-        // Ensure phone number format is correct (starting with 62 instead of 0 or +)
-        $formattedPhone = $this->formatPhoneNumber($phone);
-        
-        return $this->sendMessage($formattedPhone, $message);
-    }
-
-    /**
-     * Format phone number to international format without + (e.g., 62812...)
-     *
-     * @param string $phone
-     * @return string
-     */
-    protected function formatPhoneNumber(string $phone)
-    {
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        
-        if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
-        } elseif (!str_starts_with($phone, '62')) {
-            // Defaulting to 62 if no prefix is found, assuming Indonesian numbers
-            $phone = '62' . $phone;
-        }
-        
-        return $phone;
+        return $this->sendMessage($phone, $message);
     }
 }
