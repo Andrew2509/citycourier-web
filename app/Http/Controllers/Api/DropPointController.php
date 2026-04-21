@@ -16,7 +16,7 @@ class DropPointController extends Controller
         $dropPoints = DropPoint::where('is_active', true)->get();
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'data' => $dropPoints
         ]);
     }
