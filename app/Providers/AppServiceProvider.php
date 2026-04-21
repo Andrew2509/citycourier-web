@@ -23,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.env') === 'production') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // Share sidebar badge counts with all admin views
         View::composer('layouts.admin', function ($view) {
             if (Auth::check()) {
