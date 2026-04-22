@@ -112,10 +112,16 @@ class OrderController extends Controller
 
         if ($request->status === 'picking_up') {
             $updateData['picked_up_at'] = now();
+            if ($request->hasFile('photo')) {
+                $updateData['pickup_photo'] = $request->file('photo')->store('orders/pickup', 'public');
+            }
         }
 
         if ($request->status === 'delivered') {
             $updateData['delivered_at'] = now();
+            if ($request->hasFile('photo')) {
+                $updateData['delivery_photo'] = $request->file('photo')->store('orders/delivery', 'public');
+            }
         }
 
         $order->update($updateData);

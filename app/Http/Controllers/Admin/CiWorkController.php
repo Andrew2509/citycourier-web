@@ -78,6 +78,36 @@ class CiWorkController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view('admin.ci-work.finance', compact('earnings'));
+        $withdrawals = \App\Models\Withdrawal::with('courier.user')
+            ->latest()
+            ->paginate(10, ['*'], 'withdrawals_page');
+
+        return view('admin.ci-work.finance', compact('earnings', 'withdrawals'));
+    }
+
+    /**
+     * Update withdrawal status.
+     */
+    public function updateWithdrawalStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:approved,rejected,completed',
+            'admin_notes' => 'nullable|string',
+        ]);
+
+        $withdrawal = \App\Models\Withdrawal::findOrFail($id);
+        
+        $updateData = [
+            'status' => $request->status,
+            'admin_notes' => $request->admin_notes,
+        ];
+
+        if ($request->status !== 'pending') {
+            $updateData['processed_at'] = now();
+        }
+
+        $withdrawal->update($updateData);
+
+        return back()->with('success', 'Status penarikan berhasil diperbarui.');
     }
 }

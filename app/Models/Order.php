@@ -25,6 +25,8 @@ class Order extends Model
         'price',
         'status',
         'notes',
+        'pickup_photo',
+        'delivery_photo',
         'picked_up_at',
         'delivered_at',
     ];

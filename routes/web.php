@@ -48,6 +48,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/attendance', [\App\Http\Controllers\Admin\CiWorkController::class, 'attendance'])->name('attendance');
             Route::get('/tasks', [\App\Http\Controllers\Admin\CiWorkController::class, 'tasks'])->name('tasks');
             Route::get('/finance', [\App\Http\Controllers\Admin\CiWorkController::class, 'finance'])->name('finance');
+            Route::post('/finance/withdrawal/{id}', [\App\Http\Controllers\Admin\CiWorkController::class, 'updateWithdrawalStatus'])->name('finance.withdrawal.update');
         });
     });
 });

@@ -2,7 +2,7 @@
 
 @section('title', 'Manajemen Tugas')
 @section('page-title', 'Manajemen Tugas')
-@section('page-subtitle', 'Daftar tugas pengiriman yang sedang berjalan')
+@section('page-subtitle', 'Daftar tugas pengiriman yang sedang berjalan dengan bukti foto')
 
 @section('content')
 <div class="glass-card">
@@ -18,9 +18,9 @@
                 <tr>
                     <th>Order #</th>
                     <th>Kurir</th>
-                    <th>Pickup</th>
                     <th>Tujuan</th>
                     <th>Status</th>
+                    <th>Bukti Foto</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -29,11 +29,6 @@
                     <tr>
                         <td><span style="font-weight:600;">{{ $task->order_number }}</span></td>
                         <td>{{ $task->courier->user->name ?? 'Unassigned' }}</td>
-                        <td>
-                            <div style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $task->pickup_address }}">
-                                {{ $task->pickup_address }}
-                            </div>
-                        </td>
                         <td>
                             <div style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $task->delivery_address }}">
                                 {{ $task->delivery_address }}
@@ -45,8 +40,25 @@
                             </span>
                         </td>
                         <td>
+                            <div style="display: flex; gap: 8px;">
+                                @if($task->pickup_photo)
+                                    <a href="{{ asset('storage/' . $task->pickup_photo) }}" target="_blank" class="photo-thumb" title="Foto Pickup">
+                                        <i class="fas fa-camera"></i> P
+                                    </a>
+                                @endif
+                                @if($task->delivery_photo)
+                                    <a href="{{ asset('storage/' . $task->delivery_photo) }}" target="_blank" class="photo-thumb" title="Foto Delivery" style="background: var(--accent-success);">
+                                        <i class="fas fa-camera"></i> D
+                                    </a>
+                                @endif
+                                @if(!$task->pickup_photo && !$task->delivery_photo)
+                                    <span style="color: var(--text-muted); font-size: 11px;">Belum ada</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td>
                             <a href="{{ route('admin.orders.detail', $task) }}" class="btn btn-ghost btn-sm">
-                                <i class="fas fa-eye"></i> Pantau
+                                <i class="fas fa-eye"></i> Detail
                             </a>
                         </td>
                     </tr>
@@ -66,4 +78,25 @@
         </div>
     @endif
 </div>
+
+<style>
+    .photo-thumb {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--accent-primary);
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 10px;
+        font-weight: 800;
+        transition: transform 0.2s;
+    }
+    .photo-thumb:hover {
+        transform: scale(1.1);
+        color: white;
+    }
+</style>
 @endsection

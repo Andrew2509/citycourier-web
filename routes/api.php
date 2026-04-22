@@ -39,4 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/status', [\App\Http\Controllers\Api\CourierController::class, 'updateStatus']);
         Route::put('/location', [\App\Http\Controllers\Api\CourierController::class, 'updateLocation']);
     });
+
+    // Withdrawals
+    Route::get('/withdrawals', [\App\Http\Controllers\Api\WithdrawalController::class, 'index']);
+    Route::post('/withdrawals', [\App\Http\Controllers\Api\WithdrawalController::class, 'store']);
 });
