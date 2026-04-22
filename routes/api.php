@@ -32,4 +32,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/available', [OrderController::class, 'available']);
     Route::patch('/update-status-order', [OrderController::class, 'updateStatus']);
+
+    // Courier Operations
+    Route::prefix('courier')->group(function () {
+        Route::get('/details', [\App\Http\Controllers\Api\CourierController::class, 'details']);
+        Route::put('/status', [\App\Http\Controllers\Api\CourierController::class, 'updateStatus']);
+        Route::put('/location', [\App\Http\Controllers\Api\CourierController::class, 'updateLocation']);
+    });
 });

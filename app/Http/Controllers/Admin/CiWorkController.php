@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Courier;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CiWorkController extends Controller
 {
@@ -14,7 +15,24 @@ class CiWorkController extends Controller
      */
     public function index()
     {
-        return view('admin.ci-work.index');
+        $stats = [
+            'online_couriers' => Courier::where('is_active', true)->count(),
+            'active_tasks' => Order::whereIn('status', ['picking_up', 'delivering'])->count(),
+            'completed_today' => Order::where('status', 'delivered')
+                ->whereDate('delivered_at', today())
+                ->count(),
+            'total_earnings_today' => Order::where('status', 'delivered')
+                ->whereDate('delivered_at', today())
+                ->sum('price'),
+        ];
+
+        $recentTasks = Order::with('courier.user')
+            ->whereIn('status', ['picking_up', 'delivering'])
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return view('admin.ci-work.index', compact('stats', 'recentTasks'));
     }
 
     /**
@@ -22,8 +40,12 @@ class CiWorkController extends Controller
      */
     public function attendance()
     {
-        // Placeholder for attendance logic
-        return view('admin.ci-work.attendance');
+        $couriers = Courier::with('user')
+            ->where('is_verified', true)
+            ->latest()
+            ->paginate(10);
+
+        return view('admin.ci-work.attendance', compact('couriers'));
     }
 
     /**
@@ -31,8 +53,12 @@ class CiWorkController extends Controller
      */
     public function tasks()
     {
-        // Placeholder for tasks logic
-        return view('admin.ci-work.tasks');
+        $tasks = Order::with('courier.user')
+            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+            ->latest()
+            ->paginate(10);
+
+        return view('admin.ci-work.tasks', compact('tasks'));
     }
 
     /**
@@ -40,7 +66,18 @@ class CiWorkController extends Controller
      */
     public function finance()
     {
-        // Placeholder for finance logic
-        return view('admin.ci-work.finance');
+        // Calculate earnings per courier
+        $earnings = Courier::with('user')
+            ->withCount(['orders as completed_orders' => function($query) {
+                $query->where('status', 'delivered');
+            }])
+            ->withSum(['orders as total_earnings' => function($query) {
+                $query->where('status', 'delivered');
+            }], 'price')
+            ->where('is_verified', true)
+            ->latest()
+            ->paginate(10);
+
+        return view('admin.ci-work.finance', compact('earnings'));
     }
 }
