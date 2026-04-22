@@ -56,6 +56,31 @@ class OrderController extends Controller
     }
 
     /**
+     * Get active (in-progress) order for the courier.
+     * GET /api/orders/active
+     */
+    public function active(Request $request)
+    {
+        $courier = $request->user()->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        $order = Order::where('courier_id', $courier->id)
+            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => $order,
+        ]);
+    }
+
+    /**
      * Update order status.
      * PATCH /api/update-status-order
      */

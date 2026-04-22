@@ -31,6 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Orders
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/available', [OrderController::class, 'available']);
+    Route::get('/orders/active', [OrderController::class, 'active']);
     Route::patch('/update-status-order', [OrderController::class, 'updateStatus']);
 
     // Courier Operations
