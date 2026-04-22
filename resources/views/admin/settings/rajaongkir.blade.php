@@ -60,6 +60,14 @@
                         </p>
                     </div>
 
+                    <div class="mb-4" id="sandbox_mode_group">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="rajaongkir_sandbox" id="rajaongkir_sandbox" value="1" {{ \App\Models\Setting::get('rajaongkir_sandbox') ? 'checked' : '' }}>
+                            <label class="form-check-label fw-bold" for="rajaongkir_sandbox">Sandbox Mode (Khusus Komerce)</label>
+                        </div>
+                        <p class="text-muted small">Aktifkan jika Anda menggunakan API Key dari lingkungan Testing/Sandbox Komerce.</p>
+                    </div>
+
                     <div class="d-flex justify-content-end">
                         <button type="button" id="btn-test-connection" class="btn btn-outline-secondary me-2">
                             <i class="fas fa-plug me-1"></i> Cek Koneksi
@@ -190,6 +198,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const providerSelect = document.getElementById('rajaongkir_provider');
         const accountTypeGroup = document.getElementById('account_type_group');
+        const sandboxModeGroup = document.getElementById('sandbox_mode_group');
         const btnTest = document.getElementById('btn-test-connection');
         const testResult = document.getElementById('test-result');
         const testAlert = document.getElementById('test-alert');
@@ -200,8 +209,10 @@
         function toggleAccountType() {
             if (providerSelect.value === 'komerce') {
                 accountTypeGroup.style.display = 'none';
+                sandboxModeGroup.style.display = 'block';
             } else {
                 accountTypeGroup.style.display = 'block';
+                sandboxModeGroup.style.display = 'none';
             }
         }
         

@@ -10,16 +10,19 @@ class RajaOngkirService
     protected $baseUrl;
     protected $accountType;
     protected $provider;
+    protected $isSandbox;
 
     public function __construct()
     {
         $this->apiKey = \App\Models\Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY', ''));
         $this->accountType = \App\Models\Setting::get('rajaongkir_account_type', env('RAJAONGKIR_ACCOUNT_TYPE', 'starter'));
         $this->provider = \App\Models\Setting::get('rajaongkir_provider', 'rajaongkir');
+        $this->isSandbox = \App\Models\Setting::get('rajaongkir_sandbox', false);
         
         // Base URL based on provider and account type
         if ($this->provider === 'komerce') {
-            $this->baseUrl = 'https://rajaongkir.komerce.id/api/v1';
+            $subdomain = $this->isSandbox ? 'api-sandbox' : 'api';
+            $this->baseUrl = "https://{$subdomain}.collaborator.komerce.id/tariff/api/v1";
         } else {
             if ($this->accountType === 'starter') {
                 $this->baseUrl = 'https://api.rajaongkir.com/starter';
@@ -32,10 +35,17 @@ class RajaOngkirService
     }
 
     /**
-     * Get headers for request.
+     * Get headers for the request.
      */
     protected function getHeaders()
     {
+        if ($this->provider === 'komerce') {
+            return [
+                'x-api-key' => $this->apiKey,
+                'Accept' => 'application/json',
+            ];
+        }
+
         return [
             'key' => $this->apiKey,
             'Accept' => 'application/json',
@@ -47,12 +57,8 @@ class RajaOngkirService
      */
     public function getProvinces()
     {
-        $url = $this->provider === 'komerce' 
-            ? $this->baseUrl . '/destination/province' 
-            : $this->baseUrl . '/province';
-
+        $url = $this->baseUrl . '/province';
         $response = Http::withHeaders($this->getHeaders())->get($url);
-
         return $response->json();
     }
 
@@ -62,7 +68,10 @@ class RajaOngkirService
     public function getCities($provinceId = null)
     {
         if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/destination/city/' . $provinceId;
+            $url = $this->baseUrl . '/city';
+            if ($provinceId) {
+                $url .= '?province=' . $provinceId;
+            }
         } else {
             $url = $this->baseUrl . '/city';
             if ($provinceId) {
@@ -86,20 +95,16 @@ class RajaOngkirService
     public function calculateCost($origin, $destination, $weight, $courier)
     {
         if ($this->provider === 'komerce') {
-            // Komerce uses multiple couriers separated by colon
-            // jne:sicepat:ide:sap:jnt:ninja:tiki:lion:anteraja:pos:ncs:rex:rpx:sentral:star:wahana:dse
-            $url = $this->baseUrl . '/calculate/district/domestic-cost';
+            $url = $this->baseUrl . '/calculate';
             $data = [
                 'origin' => $origin,
                 'destination' => $destination,
                 'weight' => $weight,
-                'courier' => $courier,
-                'price' => 'lowest'
+                'courier' => $courier
             ];
             
             $response = Http::withHeaders($this->getHeaders())
-                ->asForm()
-                ->post($url, $data);
+                ->get($url, $data); // The new platform uses GET for tariff calculate according to some docs
         } else {
             $response = Http::withHeaders($this->getHeaders())->post($this->baseUrl . '/cost', [
                 'origin' => $origin,
@@ -118,7 +123,7 @@ class RajaOngkirService
     public function getDistricts($cityId)
     {
         if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/destination/district/' . $cityId;
+            $url = $this->baseUrl . '/district?city=' . $cityId;
         } else {
             $url = $this->baseUrl . '/subdistrict?city=' . $cityId;
         }
@@ -134,13 +139,12 @@ class RajaOngkirService
      */
     public function getSubdistricts($districtId)
     {
-        if ($this->provider !== 'komerce') {
-            return ['success' => false, 'message' => 'Hanya tersedia untuk provider Komerce'];
+        if ($this->provider === 'komerce') {
+            $url = $this->baseUrl . '/sub-district?district=' . $districtId;
+            $response = Http::withHeaders($this->getHeaders())->get($url);
+            return $response->json();
         }
 
-        $url = $this->baseUrl . '/destination/sub-district/' . $districtId;
-        $response = Http::withHeaders($this->getHeaders())->get($url);
-
-        return $response->json();
+        return ['status' => false, 'message' => 'Not supported by this provider'];
     }
 }

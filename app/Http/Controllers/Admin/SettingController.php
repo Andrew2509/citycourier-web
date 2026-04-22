@@ -86,6 +86,7 @@ class SettingController extends Controller
         Setting::set('rajaongkir_api_key', $request->rajaongkir_api_key, 'rajaongkir');
         Setting::set('rajaongkir_account_type', $request->rajaongkir_account_type, 'rajaongkir');
         Setting::set('rajaongkir_provider', $request->rajaongkir_provider, 'rajaongkir');
+        Setting::set('rajaongkir_sandbox', $request->has('rajaongkir_sandbox') ? 1 : 0, 'rajaongkir');
 
         return redirect()->back()->with('success', 'Pengaturan RajaOngkir berhasil diperbarui.');
     }
