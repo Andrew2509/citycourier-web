@@ -57,4 +57,33 @@ class SettingController extends Controller
 
         return redirect()->back()->with('error', 'Gagal mengirim pesan: ' . ($response['message'] ?? 'Kesalahan tidak diketahui'));
     }
+
+    /**
+     * Show the RajaOngkir settings form.
+     */
+    public function rajaongkir()
+    {
+        $settings = [
+            'api_key' => Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY')),
+            'account_type' => Setting::get('rajaongkir_account_type', env('RAJAONGKIR_ACCOUNT_TYPE', 'starter')),
+        ];
+
+        return view('admin.settings.rajaongkir', compact('settings'));
+    }
+
+    /**
+     * Update the RajaOngkir settings.
+     */
+    public function updateRajaongkir(Request $request)
+    {
+        $request->validate([
+            'rajaongkir_api_key' => 'required|string',
+            'rajaongkir_account_type' => 'required|in:starter,basic,pro',
+        ]);
+
+        Setting::set('rajaongkir_api_key', $request->rajaongkir_api_key, 'rajaongkir');
+        Setting::set('rajaongkir_account_type', $request->rajaongkir_account_type, 'rajaongkir');
+
+        return redirect()->back()->with('success', 'Pengaturan RajaOngkir berhasil diperbarui.');
+    }
 }

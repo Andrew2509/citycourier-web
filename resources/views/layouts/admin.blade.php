@@ -108,6 +108,10 @@
                         <i class="fab fa-whatsapp"></i>
                         <span>Provider WhatsApp</span>
                     </a>
+                    <a href="{{ route('admin.settings.rajaongkir') }}" class="nav-link {{ request()->routeIs('admin.settings.rajaongkir*') ? 'active' : '' }}">
+                        <i class="fas fa-truck-loading"></i>
+                        <span>Provider RajaOngkir</span>
+                    </a>
                 </div>
             </nav>
 

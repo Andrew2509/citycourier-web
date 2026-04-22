@@ -123,6 +123,7 @@ class AuthController extends Controller
                 'role' => 'courier',
             ]);
         } else {
+            /** @var \App\Models\User $user */
             // Update existing user role
             $user->update(['role' => 'courier']);
             if ($request->password) {
@@ -457,9 +458,12 @@ class AuthController extends Controller
                     'email' => $phone . '@citycourier.local',
                     'phone' => $phone,
                     'firebase_uid' => $firebaseUid,
-                    'password' => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
                     'role' => 'customer',
                 ]);
+                if (!$user->password) {
+                    $user->password = Hash::make(Str::random(16));
+                    $user->save();
+                }
             }
 
             $token = $user->createToken('phone-auth')->plainTextToken;
@@ -503,7 +507,6 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
-            'phone' => 'nullable|string|max:20',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 

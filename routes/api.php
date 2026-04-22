@@ -46,4 +46,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Withdrawals
     Route::get('/withdrawals', [\App\Http\Controllers\Api\WithdrawalController::class, 'index']);
     Route::post('/withdrawals', [\App\Http\Controllers\Api\WithdrawalController::class, 'store']);
+
+    // Shipping (RajaOngkir)
+    Route::prefix('shipping')->group(function () {
+        Route::get('/provinces', [\App\Http\Controllers\Api\ShippingController::class, 'provinces']);
+        Route::get('/cities', [\App\Http\Controllers\Api\ShippingController::class, 'cities']);
+        Route::post('/cost', [\App\Http\Controllers\Api\ShippingController::class, 'calculateCost']);
+    });
 });

@@ -38,6 +38,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/whatsapp', [\App\Http\Controllers\Admin\SettingController::class, 'updateWhatsapp'])->name('settings.whatsapp.update');
         Route::post('/settings/whatsapp/test', [\App\Http\Controllers\Admin\SettingController::class, 'testWhatsapp'])->name('settings.whatsapp.test');
 
+        Route::get('/settings/rajaongkir', [\App\Http\Controllers\Admin\SettingController::class, 'rajaongkir'])->name('settings.rajaongkir');
+        Route::post('/settings/rajaongkir', [\App\Http\Controllers\Admin\SettingController::class, 'updateRajaongkir'])->name('settings.rajaongkir.update');
+
         // Drop Points
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);
         Route::patch('drop-points/{drop_point}/toggle-active', [\App\Http\Controllers\Admin\DropPointController::class, 'toggleActive'])->name('drop-points.toggle-active');
