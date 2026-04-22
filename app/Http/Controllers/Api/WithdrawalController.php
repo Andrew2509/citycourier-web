@@ -76,7 +76,24 @@ class WithdrawalController extends Controller
             ], 400);
         }
 
-        // In a real app, you'd check the courier's balance here
+        // Check if balance is sufficient
+        $totalEarnings = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('status', 'completed')
+            ->sum('price') * 0.9; // 90% commission
+
+        $processedWithdrawals = Withdrawal::where('courier_id', $courier->id)
+            ->whereIn('status', ['completed', 'pending'])
+            ->sum('amount');
+
+        $availableBalance = $totalEarnings - $processedWithdrawals;
+
+        if ($request->amount > $availableBalance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Saldo tidak mencukupi.',
+                'available_balance' => $availableBalance,
+            ], 400);
+        }
         
         $withdrawal = Withdrawal::create([
             'courier_id' => $courier->id,

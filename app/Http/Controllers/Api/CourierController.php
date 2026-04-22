@@ -123,5 +123,59 @@ class CourierController extends Controller
             'success' => true,
             'message' => 'Lokasi berhasil diperbarui.',
         ]);
+    /**
+     * Get courier statistics (earnings, balance, tasks).
+     * GET /api/courier/stats
+     */
+    public function stats(Request $request)
+    {
+        $courier = $request->user()->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        // Calculate total earnings (90% of order price)
+        $totalEarnings = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('status', 'delivered')
+            ->sum('price');
+        
+        $netEarnings = $totalEarnings * 0.9;
+
+        // Calculate total withdrawals (completed)
+        $totalWithdrawals = \App\Models\Withdrawal::where('courier_id', $courier->id)
+            ->where('status', 'completed')
+            ->sum('amount');
+        
+        $pendingWithdrawals = \App\Models\Withdrawal::where('courier_id', $courier->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->sum('amount');
+
+        $currentBalance = $netEarnings - $totalWithdrawals - $pendingWithdrawals;
+
+        // Today's stats
+        $todayEarnings = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('status', 'delivered')
+            ->whereDate('delivered_at', today())
+            ->sum('price') * 0.9;
+
+        $todayOrders = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('status', 'delivered')
+            ->whereDate('delivered_at', today())
+            ->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_balance' => $currentBalance,
+                'today_earnings' => $todayEarnings,
+                'today_orders' => $todayOrders,
+                'total_earnings' => $netEarnings,
+                'total_withdrawals' => $totalWithdrawals,
+            ],
+        ]);
     }
 }
