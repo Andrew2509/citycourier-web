@@ -21,8 +21,11 @@ class RajaOngkirService
         
         // Base URL based on provider and account type
         if ($this->provider === 'komerce') {
-            $subdomain = $this->isSandbox ? 'rajaongkir-sandbox' : 'rajaongkir';
-            $this->baseUrl = "https://{$subdomain}.komerce.id/api/v1";
+            if ($this->isSandbox) {
+                $this->baseUrl = "https://api-sandbox.collaborator.komerce.id/tariff/api/v1";
+            } else {
+                $this->baseUrl = "https://rajaongkir.komerce.id/api/v1";
+            }
         } else {
             if ($this->accountType === 'starter') {
                 $this->baseUrl = 'https://api.rajaongkir.com/starter';
