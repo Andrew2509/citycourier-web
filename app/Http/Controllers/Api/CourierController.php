@@ -180,4 +180,57 @@ class CourierController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get courier profile details and stats for mobile app.
+     * GET /api/courier/profile
+     */
+    public function profile(Request $request)
+    {
+        $user = $request->user();
+        $courier = $user->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        // Calculate total shipments (delivered)
+        $totalShipments = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('status', 'delivered')
+            ->count();
+
+        // Account age in months
+        $createdAt = $courier->created_at;
+        $months = $createdAt ? $createdAt->diffInMonths(now()) : 0;
+        $accountAge = $months > 0 ? "$months Bulan" : "Baru";
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $courier->phone ?? $user->phone,
+                    'photo' => $courier->photo,
+                ],
+                'courier_details' => [
+                    'id' => $courier->id,
+                    'nik' => $courier->nik,
+                    'vehicle_type' => $courier->vehicle_type,
+                    'vehicle_plate' => $courier->vehicle_plate,
+                    'is_verified' => $courier->is_verified,
+                    'is_active' => $courier->is_active,
+                ],
+                'stats' => [
+                    'total_shipments' => $totalShipments,
+                    'account_age' => $accountAge,
+                    'rating' => '4.8', // Static for now, can add rating system later
+                ]
+            ],
+        ]);
+    }
 }
