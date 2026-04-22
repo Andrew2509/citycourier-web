@@ -62,27 +62,27 @@ class Shipment extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
-            'pending'    => 'Menunggu',
-            'confirmed'  => 'Dikonfirmasi',
-            'picked_up'  => 'Diambil',
-            'in_transit' => 'Dalam Perjalanan',
-            'delivered'  => 'Terkirim',
-            'cancelled'  => 'Dibatalkan',
-            default      => ucfirst($this->status),
-        };
+        switch ($this->status) {
+            case 'pending':    return 'Menunggu';
+            case 'confirmed':  return 'Dikonfirmasi';
+            case 'picked_up':  return 'Diambil';
+            case 'in_transit': return 'Dalam Perjalanan';
+            case 'delivered':  return 'Terkirim';
+            case 'cancelled':  return 'Dibatalkan';
+            default:           return ucfirst($this->status);
+        }
     }
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
-            'pending'    => 'warning',
-            'confirmed'  => 'info',
-            'picked_up'  => 'primary',
-            'in_transit' => 'primary',
-            'delivered'  => 'success',
-            'cancelled'  => 'danger',
-            default      => 'secondary',
-        ];
+        switch ($this->status) {
+            case 'pending':    return 'warning';
+            case 'confirmed':  return 'info';
+            case 'picked_up':  return 'primary';
+            case 'in_transit': return 'primary';
+            case 'delivered':  return 'success';
+            case 'cancelled':  return 'danger';
+            default:           return 'secondary';
+        }
     }
 }
