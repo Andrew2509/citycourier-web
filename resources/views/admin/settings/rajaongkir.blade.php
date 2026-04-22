@@ -32,6 +32,20 @@
                     </div>
 
                     <div class="form-group mb-4">
+                        <label for="rajaongkir_provider" class="form-label">Service Provider</label>
+                        <select name="rajaongkir_provider" id="rajaongkir_provider" class="form-control @error('rajaongkir_provider') is-invalid @enderror">
+                            <option value="rajaongkir" {{ old('rajaongkir_provider', $settings['provider'] ?? 'rajaongkir') == 'rajaongkir' ? 'selected' : '' }}>RajaOngkir (Official)</option>
+                            <option value="komerce" {{ old('rajaongkir_provider', $settings['provider'] ?? 'rajaongkir') == 'komerce' ? 'selected' : '' }}>Komerce (RajaOngkir v2)</option>
+                        </select>
+                        @error('rajaongkir_provider')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <p class="form-text text-muted mt-1">
+                            Pilih provider yang akan digunakan. <strong>Komerce</strong> mendukung pencarian hingga tingkat Kelurahan/Desa.
+                        </p>
+                    </div>
+
+                    <div class="form-group mb-4" id="account_type_group">
                         <label for="rajaongkir_account_type" class="form-label">Tipe Akun</label>
                         <select name="rajaongkir_account_type" id="rajaongkir_account_type" class="form-control @error('rajaongkir_account_type') is-invalid @enderror">
                             <option value="starter" {{ old('rajaongkir_account_type', $settings['account_type']) == 'starter' ? 'selected' : '' }}>Starter (Gratis)</option>
@@ -42,7 +56,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                         <p class="form-text text-muted mt-1">
-                            Pilih tipe akun RajaOngkir yang Anda gunakan. Perbedaan tipe akun berpengaruh pada fitur dan jangkauan kurir.
+                            Pilih tipe akun RajaOngkir yang Anda gunakan. (Hanya berlaku untuk provider RajaOngkir Official)
                         </p>
                     </div>
 
@@ -135,4 +149,22 @@
     }
     .me-1 { margin-right: 0.25rem; }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const providerSelect = document.getElementById('rajaongkir_provider');
+        const accountTypeGroup = document.getElementById('account_type_group');
+        
+        function toggleAccountType() {
+            if (providerSelect.value === 'komerce') {
+                accountTypeGroup.style.display = 'none';
+            } else {
+                accountTypeGroup.style.display = 'block';
+            }
+        }
+        
+        providerSelect.addEventListener('change', toggleAccountType);
+        toggleAccountType();
+    });
+</script>
 @endsection

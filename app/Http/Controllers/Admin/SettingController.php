@@ -66,6 +66,7 @@ class SettingController extends Controller
         $settings = [
             'api_key' => Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY')),
             'account_type' => Setting::get('rajaongkir_account_type', env('RAJAONGKIR_ACCOUNT_TYPE', 'starter')),
+            'provider' => Setting::get('rajaongkir_provider', 'rajaongkir'),
         ];
 
         return view('admin.settings.rajaongkir', compact('settings'));
@@ -79,10 +80,12 @@ class SettingController extends Controller
         $request->validate([
             'rajaongkir_api_key' => 'required|string',
             'rajaongkir_account_type' => 'required|in:starter,basic,pro',
+            'rajaongkir_provider' => 'required|in:rajaongkir,komerce',
         ]);
 
         Setting::set('rajaongkir_api_key', $request->rajaongkir_api_key, 'rajaongkir');
         Setting::set('rajaongkir_account_type', $request->rajaongkir_account_type, 'rajaongkir');
+        Setting::set('rajaongkir_provider', $request->rajaongkir_provider, 'rajaongkir');
 
         return redirect()->back()->with('success', 'Pengaturan RajaOngkir berhasil diperbarui.');
     }

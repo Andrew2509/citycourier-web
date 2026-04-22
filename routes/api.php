@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ShippingController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public API Routes ───────────────────────────────────────
@@ -49,8 +50,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Shipping (RajaOngkir)
     Route::prefix('shipping')->group(function () {
-        Route::get('/provinces', [\App\Http\Controllers\Api\ShippingController::class, 'provinces']);
-        Route::get('/cities', [\App\Http\Controllers\Api\ShippingController::class, 'cities']);
-        Route::post('/cost', [\App\Http\Controllers\Api\ShippingController::class, 'calculateCost']);
+        Route::get('/provinces', [ShippingController::class, 'provinces']);
+        Route::get('/cities', [ShippingController::class, 'cities']);
+        Route::get('/districts', [ShippingController::class, 'districts']);
+        Route::get('/subdistricts', [ShippingController::class, 'subdistricts']);
+        Route::post('/cost', [ShippingController::class, 'calculateCost']);
     });
 });
