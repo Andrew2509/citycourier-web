@@ -42,6 +42,7 @@ class RajaOngkirService
         if ($this->provider === 'komerce') {
             return [
                 'x-api-key' => $this->apiKey,
+                'key' => $this->apiKey, // Some Komerce endpoints still use 'key'
                 'Accept' => 'application/json',
             ];
         }
@@ -57,7 +58,10 @@ class RajaOngkirService
      */
     public function getProvinces()
     {
-        $url = $this->baseUrl . '/province';
+        $url = $this->provider === 'komerce' 
+            ? $this->baseUrl . '/destination/province' 
+            : $this->baseUrl . '/province';
+            
         $response = Http::withHeaders($this->getHeaders())->get($url);
         return $response->json();
     }
@@ -68,7 +72,7 @@ class RajaOngkirService
     public function getCities($provinceId = null)
     {
         if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/city';
+            $url = $this->baseUrl . '/destination/city';
             if ($provinceId) {
                 $url .= '?province=' . $provinceId;
             }
@@ -95,7 +99,7 @@ class RajaOngkirService
     public function calculateCost($origin, $destination, $weight, $courier)
     {
         if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/calculate';
+            $url = $this->baseUrl . '/calculate/domestic-cost';
             $data = [
                 'origin' => $origin,
                 'destination' => $destination,
@@ -104,7 +108,8 @@ class RajaOngkirService
             ];
             
             $response = Http::withHeaders($this->getHeaders())
-                ->get($url, $data); // The new platform uses GET for tariff calculate according to some docs
+                ->asForm()
+                ->post($url, $data);
         } else {
             $response = Http::withHeaders($this->getHeaders())->post($this->baseUrl . '/cost', [
                 'origin' => $origin,
@@ -123,7 +128,7 @@ class RajaOngkirService
     public function getDistricts($cityId)
     {
         if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/district?city=' . $cityId;
+            $url = $this->baseUrl . '/destination/district?city=' . $cityId;
         } else {
             $url = $this->baseUrl . '/subdistrict?city=' . $cityId;
         }
@@ -140,7 +145,7 @@ class RajaOngkirService
     public function getSubdistricts($districtId)
     {
         if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/sub-district?district=' . $districtId;
+            $url = $this->baseUrl . '/destination/sub-district?district=' . $districtId;
             $response = Http::withHeaders($this->getHeaders())->get($url);
             return $response->json();
         }

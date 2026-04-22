@@ -96,32 +96,59 @@ class SettingController extends Controller
      */
     public function testRajaongkir(\App\Services\RajaOngkirService $service)
     {
-        $response = $service->getProvinces();
+        try {
+            $response = $service->getProvinces();
+            
+            // Standard RajaOngkir logic
+            if (isset($response['rajaongkir']['status']['code']) && $response['rajaongkir']['status']['code'] == 200) {
+                $count = count($response['rajaongkir']['results']);
+                return response()->json([
+                    'success' => true,
+                    'message' => "Koneksi Berhasil! Terdeteksi $count provinsi.",
+                    'data' => array_slice($response['rajaongkir']['results'], 0, 5)
+                ]);
+            }
 
-        // Standard RajaOngkir
-        if (isset($response['rajaongkir']['status']['code']) && $response['rajaongkir']['status']['code'] == 200) {
-            $count = count($response['rajaongkir']['results']);
+            // Komerce logic
+            if (isset($response['status']) && $response['status'] == true) {
+                $count = count($response['data']);
+                return response()->json([
+                    'success' => true,
+                    'message' => "Koneksi Berhasil (Komerce)! Terdeteksi $count provinsi.",
+                    'data' => array_slice($response['data'], 0, 5)
+                ]);
+            }
+
+            // Handle Failures
+            $errorMessage = 'Kesalahan tidak diketahui';
+            $statusCode = 400;
+
+            if (isset($response['message'])) {
+                $errorMessage = $response['message'];
+            } elseif (isset($response['rajaongkir']['status']['description'])) {
+                $errorMessage = $response['rajaongkir']['status']['description'];
+            } elseif (is_string($response)) {
+                $errorMessage = $response;
+            } else {
+                $errorMessage = json_encode($response);
+            }
+
+            // If empty response or unexpected structure
+            if (!$response || (isset($response['status']) && $response['status'] == false)) {
+                $errorMessage = $response['message'] ?? ($response['error'] ?? 'Response Kosong atau Tidak Valid');
+            }
+
             return response()->json([
-                'success' => true,
-                'message' => "Koneksi Berhasil! Terdeteksi $count provinsi.",
-                'data' => array_slice($response['rajaongkir']['results'], 0, 5) // Show first 5
-            ]);
-        }
+                'success' => false,
+                'message' => "Koneksi Gagal: " . $errorMessage,
+                'raw' => $response // For debugging
+            ], 400);
 
-        // Komerce
-        if (isset($response['status']) && $response['status'] == true) {
-            $count = count($response['data']);
+        } catch (\Exception $e) {
             return response()->json([
-                'success' => true,
-                'message' => "Koneksi Berhasil (Komerce)! Terdeteksi $count provinsi.",
-                'data' => array_slice($response['data'], 0, 5)
-            ]);
+                'success' => false,
+                'message' => "Koneksi Gagal (Exception): " . $e->getMessage()
+            ], 500);
         }
-
-        $error = $response['rajaongkir']['status']['description'] ?? ($response['message'] ?? 'Kesalahan tidak diketahui');
-        return response()->json([
-            'success' => false,
-            'message' => "Koneksi Gagal: $error"
-        ], 400);
     }
 }
