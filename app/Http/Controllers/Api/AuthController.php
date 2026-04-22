@@ -85,7 +85,8 @@ class AuthController extends Controller
      */
     public function registerKurir(Request $request)
     {
-        $user = $request->user();
+        // Try to get user from token if provided
+        $user = Auth::guard('sanctum')->user();
         
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
