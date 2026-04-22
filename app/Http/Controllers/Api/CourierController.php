@@ -123,6 +123,8 @@ class CourierController extends Controller
             'success' => true,
             'message' => 'Lokasi berhasil diperbarui.',
         ]);
+    }
+
     /**
      * Get courier statistics (earnings, balance, tasks).
      * GET /api/courier/stats
