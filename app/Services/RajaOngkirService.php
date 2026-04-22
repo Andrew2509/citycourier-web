@@ -21,11 +21,8 @@ class RajaOngkirService
         
         // Base URL based on provider and account type
         if ($this->provider === 'komerce') {
-            if ($this->isSandbox) {
-                $this->baseUrl = "https://api-sandbox.collaborator.komerce.id/tariff/api/v1";
-            } else {
-                $this->baseUrl = "https://rajaongkir.komerce.id/api/v1";
-            }
+            $subdomain = $this->isSandbox ? 'api-sandbox' : 'api';
+            $this->baseUrl = "https://{$subdomain}.collaborator.komerce.id/tariff/api/v1";
         } else {
             if ($this->accountType === 'starter') {
                 $this->baseUrl = 'https://api.rajaongkir.com/starter';
@@ -40,7 +37,12 @@ class RajaOngkirService
     /**
      * Get headers for the request.
      */
-    protected function getHeaders()
+    public function getProvider()
+    {
+        return $this->provider;
+    }
+
+    private function getHeaders()
     {
         if ($this->provider === 'komerce') {
             return [

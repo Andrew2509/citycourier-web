@@ -97,7 +97,11 @@ class SettingController extends Controller
     public function testRajaongkir(\App\Services\RajaOngkirService $service)
     {
         try {
-            $response = $service->getProvinces();
+            if ($service->getProvider() === 'komerce') {
+                $response = $service->searchDestination('Jakarta');
+            } else {
+                $response = $service->getProvinces();
+            }
             
             // Standard RajaOngkir logic
             if (isset($response['rajaongkir']['status']['code']) && $response['rajaongkir']['status']['code'] == 200) {
