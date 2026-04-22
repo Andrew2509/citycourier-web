@@ -36,9 +36,17 @@ class ShippingController extends Controller
                            (isset($result['meta']['status']) && $result['meta']['status'] == 'success');
 
         if ($isKomerceSuccess) {
+            // Normalize Komerce province keys
+            $normalized = array_map(function($item) {
+                return [
+                    'province_id' => (string)($item['province_id'] ?? ($item['id'] ?? '')),
+                    'province' => $item['province_name'] ?? ($item['name'] ?? ($item['province'] ?? '')),
+                ];
+            }, $result['data']);
+
             return response()->json([
                 'success' => true,
-                'data' => $result['data']
+                'data' => $normalized
             ]);
         }
 
@@ -72,9 +80,21 @@ class ShippingController extends Controller
                            (isset($result['meta']['status']) && $result['meta']['status'] == 'success');
 
         if ($isKomerceSuccess) {
+            // Normalize Komerce city keys
+            $normalized = array_map(function($item) {
+                return [
+                    'city_id' => (string)($item['city_id'] ?? ($item['id'] ?? '')),
+                    'city_name' => $item['city_name'] ?? ($item['name'] ?? ''),
+                    'province_id' => (string)($item['province_id'] ?? ''),
+                    'province' => $item['province_name'] ?? '',
+                    'type' => $item['type'] ?? '',
+                    'postal_code' => $item['postal_code'] ?? '',
+                ];
+            }, $result['data']);
+
             return response()->json([
                 'success' => true,
-                'data' => $result['data']
+                'data' => $normalized
             ]);
         }
 
