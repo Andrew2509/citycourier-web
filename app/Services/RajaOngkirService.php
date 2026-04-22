@@ -14,10 +14,10 @@ class RajaOngkirService
 
     public function __construct()
     {
-        $this->apiKey = \App\Models\Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY', ''));
+        $this->apiKey = trim(\App\Models\Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY', '')));
         $this->accountType = \App\Models\Setting::get('rajaongkir_account_type', env('RAJAONGKIR_ACCOUNT_TYPE', 'starter'));
         $this->provider = \App\Models\Setting::get('rajaongkir_provider', 'rajaongkir');
-        $this->isSandbox = \App\Models\Setting::get('rajaongkir_sandbox', false);
+        $this->isSandbox = (bool) \App\Models\Setting::get('rajaongkir_sandbox', false);
         
         // Base URL based on provider and account type
         if ($this->provider === 'komerce') {

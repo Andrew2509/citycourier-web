@@ -109,8 +109,11 @@ class SettingController extends Controller
                 ]);
             }
 
-            // Komerce logic
-            if (isset($response['status']) && $response['status'] == true) {
+            // Komerce logic (New platform structure)
+            $isKomerceSuccess = (isset($response['status']) && $response['status'] == true) || 
+                               (isset($response['meta']['status']) && $response['meta']['status'] == 'success');
+
+            if ($isKomerceSuccess) {
                 $count = count($response['data']);
                 return response()->json([
                     'success' => true,
@@ -123,7 +126,9 @@ class SettingController extends Controller
             $errorMessage = 'Kesalahan tidak diketahui';
             $statusCode = 400;
 
-            if (isset($response['message'])) {
+            if (isset($response['meta']['message'])) {
+                $errorMessage = $response['meta']['message'];
+            } elseif (isset($response['message'])) {
                 $errorMessage = $response['message'];
             } elseif (isset($response['rajaongkir']['status']['description'])) {
                 $errorMessage = $response['rajaongkir']['status']['description'];
@@ -134,8 +139,8 @@ class SettingController extends Controller
             }
 
             // If empty response or unexpected structure
-            if (!$response || (isset($response['status']) && $response['status'] == false)) {
-                $errorMessage = $response['message'] ?? ($response['error'] ?? 'Response Kosong atau Tidak Valid');
+            if (!$response || (isset($response['status']) && $response['status'] == false) || (isset($response['meta']['status']) && $response['meta']['status'] == 'failed')) {
+                $errorMessage = $response['meta']['message'] ?? ($response['message'] ?? ($response['error'] ?? 'Response Kosong atau Tidak Valid'));
             }
 
             return response()->json([
