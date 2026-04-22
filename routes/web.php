@@ -41,6 +41,14 @@ Route::middleware('auth')->group(function () {
         // Drop Points
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);
         Route::patch('drop-points/{drop_point}/toggle-active', [\App\Http\Controllers\Admin\DropPointController::class, 'toggleActive'])->name('drop-points.toggle-active');
+
+        // Ci-Work Operational
+        Route::prefix('ci-work')->name('ci-work.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\CiWorkController::class, 'index'])->name('index');
+            Route::get('/attendance', [\App\Http\Controllers\Admin\CiWorkController::class, 'attendance'])->name('attendance');
+            Route::get('/tasks', [\App\Http\Controllers\Admin\CiWorkController::class, 'tasks'])->name('tasks');
+            Route::get('/finance', [\App\Http\Controllers\Admin\CiWorkController::class, 'finance'])->name('finance');
+        });
     });
 });
 

@@ -67,6 +67,30 @@
                 </div>
 
                 <div class="nav-section">
+                    <div class="nav-section-title">Ci-Work Operasional</div>
+                    <a href="{{ route('admin.ci-work.index') }}"
+                       class="nav-link {{ request()->routeIs('admin.ci-work.index*') ? 'active' : '' }}">
+                        <i class="fas fa-desktop"></i>
+                        <span>Dashboard Kerja</span>
+                    </a>
+                    <a href="{{ route('admin.ci-work.attendance') }}"
+                       class="nav-link {{ request()->routeIs('admin.ci-work.attendance*') ? 'active' : '' }}">
+                        <i class="fas fa-fingerprint"></i>
+                        <span>Presensi Kurir</span>
+                    </a>
+                    <a href="{{ route('admin.ci-work.tasks') }}"
+                       class="nav-link {{ request()->routeIs('admin.ci-work.tasks*') ? 'active' : '' }}">
+                        <i class="fas fa-tasks"></i>
+                        <span>Manajemen Tugas</span>
+                    </a>
+                    <a href="{{ route('admin.ci-work.finance') }}"
+                       class="nav-link {{ request()->routeIs('admin.ci-work.finance*') ? 'active' : '' }}">
+                        <i class="fas fa-wallet"></i>
+                        <span>Keuangan & Setoran</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-title">Sistem & Keamanan</div>
                     <a href="{{ route('admin.users.index') }}" class="nav-link {{ request()->routeIs('admin.users*') ? 'active' : '' }}">
                         <i class="fas fa-users"></i>
