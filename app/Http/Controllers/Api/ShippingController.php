@@ -140,8 +140,11 @@ class ShippingController extends Controller
         }
 
         // Komerce
-        if (isset($result['status']) && $result['status'] == true) {
-            // Normalize Komerce cost structure to match RajaOngkir results
+        $isKomerceSuccess = (isset($result['status']) && $result['status'] == true) || 
+                           (isset($result['meta']['status']) && $result['meta']['status'] == 'success');
+
+        if ($isKomerceSuccess) {
+            // Normalize Komerce cost structure
             // Komerce returns a flat list of services, we need to group them by courier or just wrap them
             $normalized = [];
             foreach ($result['data'] as $item) {
@@ -199,8 +202,11 @@ class ShippingController extends Controller
         }
 
         // Komerce
-        if (isset($result['status']) && $result['status'] == true) {
-            // Normalize Komerce district keys to match RajaOngkir subdistrict keys
+        $isKomerceSuccess = (isset($result['status']) && $result['status'] == true) || 
+                           (isset($result['meta']['status']) && $result['meta']['status'] == 'success');
+
+        if ($isKomerceSuccess) {
+            // Normalize Komerce district keys
             $normalized = array_map(function($item) {
                 return [
                     'subdistrict_id' => $item['kecamatan_id'] ?? null,
@@ -241,8 +247,11 @@ class ShippingController extends Controller
         }
 
         // Komerce
-        if (isset($result['status']) && $result['status'] == true) {
-            // Normalize Komerce subdistrict keys to match Flutter UI (SelectSubDistrictScreen)
+        $isKomerceSuccess = (isset($result['status']) && $result['status'] == true) || 
+                           (isset($result['meta']['status']) && $result['meta']['status'] == 'success');
+
+        if ($isKomerceSuccess) {
+            // Normalize Komerce subdistrict keys
             $normalized = array_map(function($item) {
                 return [
                     'id' => $item['village_id'] ?? null,
