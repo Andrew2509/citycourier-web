@@ -40,6 +40,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/settings/rajaongkir', [\App\Http\Controllers\Admin\SettingController::class, 'rajaongkir'])->name('settings.rajaongkir');
         Route::post('/settings/rajaongkir', [\App\Http\Controllers\Admin\SettingController::class, 'updateRajaongkir'])->name('settings.rajaongkir.update');
+        Route::post('/settings/rajaongkir/test', [\App\Http\Controllers\Admin\SettingController::class, 'testRajaongkir'])->name('settings.rajaongkir.test');
 
         // Drop Points
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);
