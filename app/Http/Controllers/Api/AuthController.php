@@ -85,10 +85,12 @@ class AuthController extends Controller
      */
     public function registerKurir(Request $request)
     {
+        $user = $request->user();
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'email' => 'required|email' . ($user ? '|unique:users,email,' . $user->id : '|unique:users,email'),
+            'password' => $user ? 'nullable|string|min:8|confirmed' : 'required|string|min:8|confirmed',
             'nik' => 'required|string|size:16',
             'phone' => 'required|string|max:20',
             'address' => 'required|string',
@@ -111,13 +113,21 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Create user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'courier',
-        ]);
+        if (!$user) {
+            // Create new user if guest
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'courier',
+            ]);
+        } else {
+            // Update existing user role
+            $user->update(['role' => 'courier']);
+            if ($request->password) {
+                $user->update(['password' => Hash::make($request->password)]);
+            }
+        }
 
         // Handle file uploads
         $photoPath = $request->file('photo')->store('couriers/photos', 'public');
@@ -127,24 +137,26 @@ class AuthController extends Controller
             ? $request->file('skck_photo')->store('couriers/documents', 'public')
             : null;
 
-        // Create courier profile
-        $courier = Courier::create([
-            'user_id' => $user->id,
-            'nik' => $request->nik,
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'city' => $request->city,
-            'photo' => $photoPath,
-            'vehicle_type' => $request->vehicle_type,
-            'vehicle_brand' => $request->vehicle_brand,
-            'vehicle_year' => $request->vehicle_year,
-            'vehicle_plate' => $request->vehicle_plate,
-            'id_card_photo' => $idCardPath,
-            'driving_license_photo' => $licensePath,
-            'skck_photo' => $skckPath,
-            'is_verified' => false,
-            'is_active' => false,
-        ]);
+        // Create or update courier profile
+        $courier = Courier::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'nik' => $request->nik,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'city' => $request->city,
+                'photo' => $photoPath,
+                'vehicle_type' => $request->vehicle_type,
+                'vehicle_brand' => $request->vehicle_brand,
+                'vehicle_year' => $request->vehicle_year,
+                'vehicle_plate' => $request->vehicle_plate,
+                'id_card_photo' => $idCardPath,
+                'driving_license_photo' => $licensePath,
+                'skck_photo' => $skckPath,
+                'is_verified' => false,
+                'is_active' => false,
+            ]
+        );
 
         $token = $user->createToken('courier-app')->plainTextToken;
 
