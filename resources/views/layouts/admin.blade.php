@@ -59,6 +59,14 @@
                             <span class="nav-badge">{{ $pendingOrders }}</span>
                         @endif
                     </a>
+                    <a href="{{ route('admin.shipments.index') }}"
+                       class="nav-link {{ request()->routeIs('admin.shipments*') ? 'active' : '' }}">
+                        <i class="fas fa-shipping-fast"></i>
+                        <span>Pengiriman</span>
+                        @if(($pendingShipments ?? 0) > 0)
+                            <span class="nav-badge warning">{{ $pendingShipments }}</span>
+                        @endif
+                    </a>
                     <a href="{{ route('admin.drop-points.index') }}"
                        class="nav-link {{ request()->routeIs('admin.drop-points*') ? 'active' : '' }}">
                         <i class="fas fa-map-marker-alt"></i>

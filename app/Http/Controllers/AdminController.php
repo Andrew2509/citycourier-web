@@ -4,10 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Courier;
 use App\Models\Order;
+use App\Models\Shipment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 
 class AdminController extends Controller
 {
+    public function __construct()
+    {
+        // Share pending counts to all admin views for sidebar badges
+        View::share('pendingShipments', Shipment::where('status', 'pending')->count());
+    }
+
     /**
      * Dashboard with statistics.
      */

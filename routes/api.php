@@ -56,4 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/subdistricts', [ShippingController::class, 'subdistricts']);
         Route::post('/cost', [ShippingController::class, 'calculateCost']);
     });
+
+    // Shipments (Request Pickup dari Flutter)
+    Route::get('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'index']);
+    Route::post('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'store']);
+    Route::get('/shipments/{shipment}', [\App\Http\Controllers\Api\ShipmentController::class, 'show']);
 });
