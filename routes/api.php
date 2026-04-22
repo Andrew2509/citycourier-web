@@ -61,4 +61,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'index']);
     Route::post('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'store']);
     Route::get('/shipments/{shipment}', [\App\Http\Controllers\Api\ShipmentController::class, 'show']);
+
+    // Saved Addresses (Alamat Favorit)
+    Route::get('/addresses', [\App\Http\Controllers\Api\SavedAddressController::class, 'index']);
+    Route::post('/addresses', [\App\Http\Controllers\Api\SavedAddressController::class, 'store']);
+    Route::put('/addresses/{address}', [\App\Http\Controllers\Api\SavedAddressController::class, 'update']);
+    Route::delete('/addresses/{address}', [\App\Http\Controllers\Api\SavedAddressController::class, 'destroy']);
+    Route::patch('/addresses/{address}/favorite', [\App\Http\Controllers\Api\SavedAddressController::class, 'toggleFavorite']);
 });
