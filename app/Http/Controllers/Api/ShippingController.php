@@ -209,9 +209,9 @@ class ShippingController extends Controller
             // Normalize Komerce district keys
             $normalized = array_map(function($item) {
                 return [
-                    'subdistrict_id' => $item['kecamatan_id'] ?? null,
-                    'subdistrict_name' => $item['kecamatan_name'] ?? null,
-                    'city_id' => $item['city_id'] ?? null,
+                    'subdistrict_id' => (string)($item['kecamatan_id'] ?? ($item['district_id'] ?? ($item['id'] ?? ''))),
+                    'subdistrict_name' => $item['kecamatan_name'] ?? ($item['district_name'] ?? ($item['name'] ?? '')),
+                    'city_id' => (string)($item['city_id'] ?? ''),
                 ];
             }, $result['data']);
 
@@ -254,10 +254,10 @@ class ShippingController extends Controller
             // Normalize Komerce subdistrict keys
             $normalized = array_map(function($item) {
                 return [
-                    'id' => $item['village_id'] ?? null,
-                    'name' => $item['village_name'] ?? null,
-                    'kecamatan_id' => $item['kecamatan_id'] ?? null,
-                    'zip_code' => $item['zip_code'] ?? null,
+                    'id' => (string)($item['village_id'] ?? ($item['id'] ?? '')),
+                    'name' => $item['village_name'] ?? ($item['name'] ?? ''),
+                    'kecamatan_id' => (string)($item['kecamatan_id'] ?? ($item['district_id'] ?? '')),
+                    'zip_code' => $item['zip_code'] ?? '',
                 ];
             }, $result['data']);
 
