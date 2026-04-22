@@ -32,7 +32,10 @@ class ShippingController extends Controller
         }
 
         // Komerce
-        if (isset($result['status']) && $result['status'] == true) {
+        $isKomerceSuccess = (isset($result['status']) && $result['status'] == true) || 
+                           (isset($result['meta']['status']) && $result['meta']['status'] == 'success');
+
+        if ($isKomerceSuccess) {
             return response()->json([
                 'success' => true,
                 'data' => $result['data']
@@ -65,7 +68,10 @@ class ShippingController extends Controller
         }
 
         // Komerce
-        if (isset($result['status']) && $result['status'] == true) {
+        $isKomerceSuccess = (isset($result['status']) && $result['status'] == true) || 
+                           (isset($result['meta']['status']) && $result['meta']['status'] == 'success');
+
+        if ($isKomerceSuccess) {
             return response()->json([
                 'success' => true,
                 'data' => $result['data']
