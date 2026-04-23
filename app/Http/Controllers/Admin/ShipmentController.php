@@ -72,4 +72,11 @@ class ShipmentController extends Controller
         return redirect()->route('admin.shipments.index')
             ->with('success', 'Data pengiriman berhasil dihapus.');
     }
+
+    public function destroyAll()
+    {
+        Shipment::query()->delete();
+        return redirect()->route('admin.shipments.index')
+            ->with('success', 'Semua data pengiriman berhasil dihapus.');
+    }
 }

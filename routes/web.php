@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
 
         // Shipments (Request Pickup dari Flutter)
         Route::get('/shipments', [\App\Http\Controllers\Admin\ShipmentController::class, 'index'])->name('shipments.index');
+        Route::delete('/shipments/delete-all', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroyAll'])->name('shipments.destroy-all');
         Route::get('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'show'])->name('shipments.show');
         Route::patch('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'update'])->name('shipments.update');
         Route::delete('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroy'])->name('shipments.destroy');

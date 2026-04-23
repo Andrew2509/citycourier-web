@@ -64,14 +64,20 @@
 
     {{-- Shipments Table --}}
     <div class="glass-card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="card-title">
                 <i class="fas fa-shipping-fast"></i>
                 Daftar Pengiriman
             </div>
-            <span style="font-size: 13px; color: var(--text-muted);">
-                Total: {{ $shipments->total() }} pengiriman
-            </span>
+            @if($shipments->total() > 0)
+                <form action="{{ route('admin.shipments.destroy-all') }}" method="POST" onsubmit="return confirm('PERINGATAN: Apakah Anda yakin ingin menghapus SEMUA data pengiriman? Semua data pembayaran terkait juga akan terhapus. Tindakan ini tidak dapat dibatalkan!');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-sm" style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-trash-alt" style="margin-right: 5px;"></i> Hapus Semua Data
+                    </button>
+                </form>
+            @endif
         </div>
         <div class="table-responsive">
             <table class="data-table">
