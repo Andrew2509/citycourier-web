@@ -92,6 +92,12 @@ class ShipmentController extends Controller
             });
         }
 
+        // Filter by status if provided (can be comma-separated)
+        if ($request->has('status') && $request->status) {
+            $statuses = explode(',', $request->status);
+            $query->whereIn('status', $statuses);
+        }
+
         $shipments = $query->paginate(15);
 
         return response()->json([
@@ -134,6 +140,7 @@ class ShipmentController extends Controller
             'confirmed'   => (clone $query)->where('status', 'confirmed')->count(),
             'assigned'    => (clone $query)->where('status', 'assigned')->count(),
             'picking_up'  => (clone $query)->where('status', 'picking_up')->count(),
+            'picked_up'   => (clone $query)->where('status', 'picked_up')->count(),
             'delivering'  => (clone $query)->where('status', 'delivering')->count(),
             'delivered'   => (clone $query)->where('status', 'delivered')->count(),
             'cancelled'   => (clone $query)->where('status', 'cancelled')->count(),

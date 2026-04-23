@@ -39,6 +39,8 @@ class Shipment extends Model
         'notes',
     ];
 
+    protected $appends = ['status_label', 'status_color'];
+
     protected function casts(): array
     {
         return [
@@ -63,10 +65,12 @@ class Shipment extends Model
     public function getStatusLabelAttribute(): string
     {
         switch ($this->status) {
-            case 'pending':    return 'Menunggu';
+            case 'pending':    return 'Menunggu Pembayaran';
             case 'confirmed':  return 'Dikonfirmasi';
-            case 'picked_up':  return 'Diambil';
-            case 'in_transit': return 'Dalam Perjalanan';
+            case 'assigned':   return 'Kurir Ditugaskan';
+            case 'picking_up': return 'Proses Pickup';
+            case 'picked_up':  return 'Paket Diambil';
+            case 'delivering': return 'Dalam Perjalanan';
             case 'delivered':  return 'Terkirim';
             case 'cancelled':  return 'Dibatalkan';
             default:           return ucfirst($this->status);
@@ -78,8 +82,10 @@ class Shipment extends Model
         switch ($this->status) {
             case 'pending':    return 'warning';
             case 'confirmed':  return 'info';
+            case 'assigned':   return 'info';
+            case 'picking_up': return 'primary';
             case 'picked_up':  return 'primary';
-            case 'in_transit': return 'primary';
+            case 'delivering': return 'primary';
             case 'delivered':  return 'success';
             case 'cancelled':  return 'danger';
             default:           return 'secondary';
