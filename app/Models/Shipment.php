@@ -82,9 +82,28 @@ class Shipment extends Model
         return $this->hasMany(ShipmentLog::class)->latest();
     }
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($shipment) {
+            if (empty($shipment->shipment_number)) {
+                $shipment->shipment_number = self::generateShipmentNumber();
+            }
+            if (empty($shipment->tracking_number)) {
+                $shipment->tracking_number = self::generateTrackingNumber();
+            }
+        });
+    }
+
     public static function generateShipmentNumber(): string
     {
         return 'SHP-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
+    }
+
+    public static function generateTrackingNumber(): string
+    {
+        return 'CC' . date('ymd') . strtoupper(substr(uniqid(), -4));
     }
 
     public function getStatusLabelAttribute(): string
