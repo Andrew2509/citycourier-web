@@ -51,13 +51,13 @@ class PaymentController extends Controller
         $validator = Validator::make($request->all(), [
             'order_id'          => 'nullable',
             'shipment_id'       => 'nullable|exists:shipments,id',
-            'payment_type'      => 'required|in:bank_transfer,qris',
+            'payment_type'      => 'required|string',
             'channel_code'      => 'required_if:payment_type,bank_transfer|nullable|string|max:20',
             'amount'            => 'required|integer|min:10000',
-            'customer'          => 'required|array',
-            'customer.name'     => 'required|string|max:100',
-            'customer.email'    => 'required|email',
-            'customer.phone'    => 'required|string|max:20',
+            'customer'          => 'nullable|array',
+            'customer.name'     => 'required_with:customer|string|max:100',
+            'customer.email'    => 'required_with:customer|email',
+            'customer.phone'    => 'required_with:customer|string|max:20',
             'items'             => 'nullable|array',
             'items.*.name'      => 'required_with:items|string',
             'items.*.quantity'  => 'required_with:items|integer|min:1',
@@ -66,12 +66,23 @@ class PaymentController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::warning('PaymentController: Validation failed', [
+                'request' => $request->all(),
+                'errors' => $validator->errors()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal',
                 'errors'  => $validator->errors(),
             ], 422);
         }
+
+        // Ambil data customer dari request atau fallback ke user yang login
+        $customer = $request->customer ?? [
+            'name'  => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone ?? '08123456789', // Fallback phone jika kosong
+        ];
 
         // Jika items tidak dikirim, buat otomatis dari amount
         $items = $request->items ?? [[
@@ -84,11 +95,18 @@ class PaymentController extends Controller
         $refId = $request->shipment_id ?? $request->order_id ?? 'REQ';
         $orderId = 'CC-' . $refId . '-' . now()->format('YmdHis');
 
+        // Map payment_type to Komerce types if needed
+        $komercePaymentType = match ($request->payment_type) {
+            'virtual_account' => 'bank_transfer',
+            'ewallet', 'e_wallet', 'qris' => 'qris',
+            default => $request->payment_type,
+        };
+
         $payload = [
             'order_id'     => $orderId,
-            'payment_type' => $request->payment_type,
+            'payment_type' => $komercePaymentType,
             'amount'       => $request->amount,
-            'customer'     => $request->customer,
+            'customer'     => $customer,
             'items'        => $items,
         ];
 
