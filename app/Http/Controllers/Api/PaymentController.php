@@ -188,7 +188,7 @@ class PaymentController extends Controller
                 'va_number'    => $payment->va_number,
                 'qr_string'    => $payment->qr_string,
                 'payment_url'  => $payment->payment_url,
-                'expired_at'   => $payment->expired_at?->toISOString(),
+                'expired_at'   => $payment->expired_at?->toIso8601String(),
                 'instructions' => $this->getInstructions($payment),
             ],
         ], 201);
