@@ -52,7 +52,7 @@ class PaymentController extends Controller
             'order_id'          => 'nullable',
             'shipment_id'       => 'nullable|string',
             'payment_type'      => 'required|string',
-            'channel_code'      => 'required_if:payment_type,bank_transfer,virtual_account|nullable|string|max:20',
+            'channel_code'      => 'required_if:payment_type,bank_transfer,virtual_account|nullable|string|max:255',
             'amount'            => 'required|integer|min:10000',
             'customer'          => 'nullable|array',
             'customer.name'     => 'required_with:customer|string|max:100',
