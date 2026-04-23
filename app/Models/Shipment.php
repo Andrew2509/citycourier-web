@@ -39,7 +39,27 @@ class Shipment extends Model
         'notes',
     ];
 
-    protected $appends = ['status_label', 'status_color'];
+    protected $appends = ['status_label', 'status_color', 'payment_info'];
+
+    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function getPaymentInfoAttribute()
+    {
+        $payment = $this->payments()->where('status', 'pending')->latest()->first();
+        if (!$payment) return null;
+
+        return [
+            'va_number'    => $payment->va_number,
+            'bank_name'    => $payment->channel_code,
+            'amount'       => $payment->amount,
+            'expired_at'   => $payment->expired_at?->toIso8601String(),
+            'payment_url'  => $payment->payment_url,
+            'qr_string'    => $payment->qr_string,
+        ];
+    }
 
     protected function casts(): array
     {
