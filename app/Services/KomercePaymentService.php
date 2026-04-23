@@ -24,8 +24,8 @@ class KomercePaymentService
 
         // Tentukan base URL berdasarkan environment
         $this->baseUrl = $env === 'production'
-            ? 'https://api.komerce.id'
-            : 'https://api-sandbox.komerce.id';
+            ? 'https://api.collaborator.komerce.id/user'
+            : 'https://api-sandbox.collaborator.komerce.id/user';
     }
 
     /**
@@ -43,6 +43,7 @@ class KomercePaymentService
     /**
      * 1. Ambil daftar metode pembayaran (VA & QRIS).
      * GET /api/v1/user/methods
+     * Full URL: {baseUrl}/api/v1/user/methods
      */
     public function getPaymentMethods(): array
     {
