@@ -83,13 +83,12 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>No. Pengiriman</th>
+                        <th>Nomor Resi</th>
                         <th>Customer</th>
-                        <th>Pengirim</th>
-                        <th>Penerima</th>
-                        <th>Kurir</th>
+                        <th>Pengirim (Pickup)</th>
+                        <th>Penerima (Tujuan)</th>
+                        <th>Ekspedisi</th>
                         <th>Total</th>
-                        <th>No. Resi</th>
                         <th>Status</th>
                         <th>Tanggal</th>
                     </tr>
@@ -99,7 +98,7 @@
                         <tr data-href="{{ route('admin.shipments.show', $shipment) }}" style="cursor:pointer;">
                             <td>
                                 <span style="font-weight:700; color: var(--accent-primary-light); font-size: 13px;">
-                                    {{ $shipment->shipment_number }}
+                                    {{ $shipment->tracking_number ?? $shipment->shipment_number }}
                                 </span>
                             </td>
                             <td>
@@ -108,20 +107,14 @@
                                     <div class="user-email">{{ $shipment->customer_phone }}</div>
                                 </div>
                             </td>
-                            <td style="max-width:180px;">
-                                <div>
-                                    <div class="user-name" style="font-size:13px;">{{ $shipment->sender_name }}</div>
-                                    <div class="user-email" style="font-size:11px;">
-                                        {{ $shipment->origin_name ?? $shipment->sender_address }}
-                                    </div>
+                            <td>
+                                <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 250px;">
+                                    {{ $shipment->sender_address }}
                                 </div>
                             </td>
-                            <td style="max-width:180px;">
-                                <div>
-                                    <div class="user-name" style="font-size:13px;">{{ $shipment->receiver_name }}</div>
-                                    <div class="user-email" style="font-size:11px;">
-                                        {{ $shipment->destination_name ?? $shipment->receiver_address }}
-                                    </div>
+                            <td>
+                                <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 250px;">
+                                    {{ $shipment->receiver_address }}
                                 </div>
                             </td>
                             <td>
@@ -132,15 +125,8 @@
                                     {{ $shipment->courier_service ?? '' }} · {{ $shipment->package_weight }} kg
                                 </div>
                             </td>
-                            <td class="currency">Rp {{ number_format($shipment->total_cost, 0, ',', '.') }}</td>
-                            <td>
-                                @if($shipment->tracking_number)
-                                    <span style="font-size:12px; font-weight:600; background: var(--bg-card); padding: 4px 8px; border-radius: 6px; font-family: monospace;">
-                                        {{ $shipment->tracking_number }}
-                                    </span>
-                                @else
-                                    <span style="color: var(--text-muted); font-size:12px;">—</span>
-                                @endif
+                            <td class="currency" style="font-weight: 600; color: var(--accent-success);">
+                                Rp {{ number_format($shipment->total_cost, 0, ',', '.') }}
                             </td>
                             <td>
                                 <span class="badge badge-{{ $shipment->status_color }}">
@@ -155,7 +141,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9">
+                            <td colspan="8">
                                 <div class="empty-state">
                                     <i class="fas fa-shipping-fast"></i>
                                     <h3>Belum ada pengiriman</h3>

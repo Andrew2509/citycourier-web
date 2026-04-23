@@ -16,7 +16,7 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Order #</th>
+                    <th>Nomor Resi</th>
                     <th>Kurir</th>
                     <th>Pengirim (Pickup)</th>
                     <th>Penerima (Tujuan)</th>

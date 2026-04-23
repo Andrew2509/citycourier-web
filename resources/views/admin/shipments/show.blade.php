@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
-@section('title', 'Detail Pengiriman #' . $shipment->shipment_number)
+@section('title', 'Detail Pengiriman #' . ($shipment->tracking_number ?? $shipment->shipment_number))
 @section('page-title', 'Detail Pengiriman')
-@section('page-subtitle', $shipment->shipment_number)
+@section('page-subtitle', $shipment->tracking_number ?? $shipment->shipment_number)
 
 @section('content')
     @if(session('success'))
@@ -189,15 +189,13 @@
                     <span class="badge badge-{{ $shipment->status_color }}" style="font-size:14px; padding: 8px 20px;">
                         {{ $shipment->status_label }}
                     </span>
-                    <div style="margin-top:12px; font-size:12px; color: var(--text-muted);">
-                        No. Pengiriman: <strong>{{ $shipment->shipment_number }}</strong>
+                    <div style="margin-top:12px; font-size:13px; font-weight:700; font-family:monospace; background: var(--bg-card); padding: 8px 12px; border-radius:8px; border: 1px solid var(--border-color);">
+                        {{ $shipment->tracking_number ?? 'BELUM ADA RESI' }}
                     </div>
-                    @if($shipment->tracking_number)
-                        <div style="margin-top:8px; font-size:13px; font-weight:700; font-family:monospace; background: var(--bg-card); padding: 8px 12px; border-radius:8px; border: 1px solid var(--border-color);">
-                            {{ $shipment->tracking_number }}
-                        </div>
-                        <div style="font-size:11px; color: var(--text-muted); margin-top:4px;">Nomor Resi</div>
-                    @endif
+                    <div style="font-size:11px; color: var(--text-muted); margin-top:4px;">Nomor Resi</div>
+                    <div style="margin-top:12px; font-size:12px; color: var(--text-muted);">
+                        ID Pengiriman Internal: <strong>{{ $shipment->shipment_number }}</strong>
+                    </div>
                     <div style="margin-top:12px; font-size:12px; color: var(--text-muted);">
                         Dibuat: {{ $shipment->created_at->format('d M Y H:i') }}
                     </div>
@@ -227,10 +225,10 @@
                         </div>
 
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:6px;">NOMOR RESI EKSPEDISI</label>
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:6px;">NOMOR RESI</label>
                             <input type="text" name="tracking_number"
                                    value="{{ $shipment->tracking_number }}"
-                                   placeholder="Masukkan nomor resi..."
+                                   placeholder="Nomor resi otomatis..."
                                    style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); font-size:14px; font-family:monospace; box-sizing:border-box;">
                         </div>
 
