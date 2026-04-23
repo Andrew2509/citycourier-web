@@ -18,19 +18,27 @@
                 <tr>
                     <th>Order #</th>
                     <th>Kurir</th>
-                    <th>Tujuan</th>
+                    <th>Pengirim (Pickup)</th>
+                    <th>Penerima (Tujuan)</th>
                     <th>Status</th>
                     <th>Bukti Foto</th>
-                    <th>Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($tasks as $task)
-                    <tr>
+                    <tr onclick="window.location='{{ route('admin.orders.detail', $task) }}'" style="cursor:pointer;">
                         <td><span style="font-weight:600;">{{ $task->order_number }}</span></td>
-                        <td>{{ $task->courier->user->name ?? 'Unassigned' }}</td>
                         <td>
-                            <div style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $task->delivery_address }}">
+                            <div class="user-name">{{ $task->courier->user->name ?? 'Unassigned' }}</div>
+                            <div class="user-email">{{ $task->courier->courier_id ?? '-' }}</div>
+                        </td>
+                        <td>
+                            <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 200px;">
+                                {{ $task->pickup_address }}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 200px;">
                                 {{ $task->delivery_address }}
                             </div>
                         </td>
@@ -55,11 +63,6 @@
                                     <span style="color: var(--text-muted); font-size: 11px;">Belum ada</span>
                                 @endif
                             </div>
-                        </td>
-                        <td>
-                            <a href="{{ route('admin.orders.detail', $task) }}" class="btn btn-ghost btn-sm">
-                                <i class="fas fa-eye"></i> Detail
-                            </a>
                         </td>
                     </tr>
                 @empty

@@ -68,11 +68,10 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>No. Order</th>
+                        <th>Order #</th>
                         <th>Customer</th>
-                        <th>Pickup</th>
-                        <th>Tujuan</th>
-                        <th>Kurir</th>
+                        <th>Pengirim (Pickup)</th>
+                        <th>Penerima (Tujuan)</th>
                         <th>Harga</th>
                         <th>Status</th>
                         <th>Tanggal</th>
@@ -80,7 +79,7 @@
                 </thead>
                 <tbody>
                     @forelse($orders as $order)
-                        <tr data-href="{{ route('admin.orders.detail', $order) }}">
+                        <tr onclick="window.location='{{ route('admin.orders.detail', $order) }}'" style="cursor:pointer;">
                             <td>
                                 <span style="font-weight:700; color: var(--accent-primary-light); font-size: 13px;">
                                     {{ $order->order_number }}
@@ -92,29 +91,19 @@
                                     <div class="user-email">{{ $order->customer_phone }}</div>
                                 </div>
                             </td>
-                            <td style="max-width:180px;">
-                                <span style="font-size:13px;" title="{{ $order->pickup_address }}">
-                                    {{ Str::limit($order->pickup_address, 30) }}
-                                </span>
-                            </td>
-                            <td style="max-width:180px;">
-                                <span style="font-size:13px;" title="{{ $order->delivery_address }}">
-                                    {{ Str::limit($order->delivery_address, 30) }}
-                                </span>
+                            <td>
+                                <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 250px;">
+                                    {{ $order->pickup_address }}
+                                </div>
                             </td>
                             <td>
-                                @if($order->courier && $order->courier->user)
-                                    <div class="user-info">
-                                        <div class="user-avatar" style="width:28px; height:28px; font-size:11px;">
-                                            {{ strtoupper(substr($order->courier->user->name, 0, 1)) }}
-                                        </div>
-                                        <span style="font-size:13px;">{{ $order->courier->user->name }}</span>
-                                    </div>
-                                @else
-                                    <span style="color: var(--text-muted); font-size:13px;">Belum ada</span>
-                                @endif
+                                <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 250px;">
+                                    {{ $order->delivery_address }}
+                                </div>
                             </td>
-                            <td class="currency">Rp {{ number_format($order->price, 0, ',', '.') }}</td>
+                            <td class="currency" style="font-weight: 600; color: var(--accent-success);">
+                                Rp {{ number_format($order->price, 0, ',', '.') }}
+                            </td>
                             <td>
                                 <span class="badge badge-{{ $order->status }}">
                                     {{ ucfirst(str_replace('_', ' ', $order->status)) }}
@@ -128,7 +117,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8">
+                            <td colspan="7">
                                 <div class="empty-state">
                                     <i class="fas fa-box-open"></i>
                                     <h3>Belum ada pesanan</h3>
