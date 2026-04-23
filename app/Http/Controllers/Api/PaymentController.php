@@ -112,7 +112,18 @@ class PaymentController extends Controller
 
         // Include channel_code for bank_transfer (VA)
         if ($komercePaymentType === 'bank_transfer' || $request->payment_type === 'virtual_account' || $request->payment_type === 'va') {
-            $payload['channel_code'] = strtoupper($request->channel_code);
+            $rawChannel = strtolower($request->channel_code);
+            $mappedChannel = match ($rawChannel) {
+                'bank_negara_indonesia', 'bni_va', 'bni' => 'BNI',
+                'bank_central_asia', 'bca_va', 'bca'     => 'BCA',
+                'bank_rakyat_indonesia', 'bri_va', 'bri' => 'BRI',
+                'bank_mandiri', 'mandiri_va', 'mandiri'  => 'MANDIRI',
+                'bank_permata', 'permata_va', 'permata'  => 'PERMATA',
+                'bank_danamon', 'danamon_va', 'danamon'  => 'DANAMON',
+                'bank_cimb_niaga', 'cimb_va', 'cimb'     => 'CIMB',
+                default => strtoupper($request->channel_code),
+            };
+            $payload['channel_code'] = $mappedChannel;
         }
 
         if ($request->expiry_duration) {
