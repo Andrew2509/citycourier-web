@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Shipments (Request Pickup dari Flutter)
+    Route::get('/shipments/stats', [\App\Http\Controllers\Api\ShipmentController::class, 'stats']);
     Route::get('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'index']);
     Route::post('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'store']);
     Route::get('/shipments/{shipment}', [\App\Http\Controllers\Api\ShipmentController::class, 'show']);

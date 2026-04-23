@@ -1,0 +1,366 @@
+{
+	"info": {
+		"_postman_id": "df1e194b-2651-4dee-a962-786629702b11",
+		"name": "City Courier - Pickup to Payment Flow",
+		"description": "Workflow lengkap dari pembuatan pickup hingga simulasi pembayaran berhasil.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Auth",
+			"item": [
+				{
+					"name": "Request OTP (WA)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"081234567890\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/request-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"request-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify OTP (Get Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.data.token);",
+									"} else if (jsonData.token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"081234567890\",\n    \"otp\": \"1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/verify-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"verify-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login (Email)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.data.token);",
+									"} else if (jsonData.token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Shipment",
+			"item": [
+				{
+					"name": "Create Shipment (Pickup)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.id) {",
+									"    pm.collectionVariables.set(\"shipment_id\", jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customer_name\": \"Budi Santoso\",\n    \"customer_phone\": \"081234567890\",\n    \"sender_name\": \"Andrew\",\n    \"sender_phone\": \"081122334455\",\n    \"sender_address\": \"Jl. Merdeka No. 10, Jakarta\",\n    \"origin_name\": \"Jakarta Pusat\",\n    \"origin_id\": \"151\",\n    \"receiver_name\": \"Siti Aminah\",\n    \"receiver_phone\": \"089988776655\",\n    \"receiver_address\": \"Jl. Asia Afrika No. 5, Bandung\",\n    \"destination_name\": \"Bandung\",\n    \"destination_id\": \"23\",\n    \"package_description\": \"Dokumen Penting\",\n    \"package_weight\": 1.5,\n    \"courier_code\": \"jne\",\n    \"courier_name\": \"JNE Express\",\n    \"courier_service\": \"REG\",\n    \"shipping_cost\": 15000,\n    \"total_cost\": 15000,\n    \"notes\": \"Tolong pickup jam 2 siang\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/shipments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"shipments"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Payment",
+			"item": [
+				{
+					"name": "Create Payment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.payment_id) {",
+									"    pm.collectionVariables.set(\"payment_id\", jsonData.data.payment_id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"shipment_id\": \"{{shipment_id}}\",\n    \"payment_type\": \"va\",\n    \"channel_code\": \"bank_negara_indonesia\",\n    \"amount\": 15000,\n    \"customer\": {\n        \"name\": \"Budi Santoso\",\n        \"email\": \"budi@example.com\",\n        \"phone\": \"081234567890\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payment/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"payment",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check Payment Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payment/status?payment_id={{payment_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"payment",
+								"status"
+							],
+							"query": [
+								{
+									"key": "payment_id",
+									"value": "{{payment_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Simulate Payment Success (Callback)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "callback_api_key",
+								"value": "ISI_DENGAN_KEY_DI_ENV",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_id\": \"{{payment_id}}\",\n    \"status\": \"paid\",\n    \"amount\": 15000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payment/callback",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"payment",
+								"callback"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Payment",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_id\": \"{{payment_id}}\",\n    \"reason\": \"Salah pilih bank\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payment/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"payment",
+								"cancel"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000"
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "shipment_id",
+			"value": ""
+		},
+		{
+			"key": "payment_id",
+			"value": ""
+		}
+	]
+}

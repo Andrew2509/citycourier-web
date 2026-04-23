@@ -111,4 +111,37 @@ class ShipmentController extends Controller
             'data'    => $shipment,
         ]);
     }
+
+    /**
+     * Get shipment counts by status for the authenticated user.
+     * GET /api/shipments/stats
+     */
+    public function stats(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $query = Shipment::where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->orWhere('customer_phone', $user->phone);
+        });
+
+        // Get counts by status
+        $stats = [
+            'pending'     => (clone $query)->where('status', 'pending')->count(),
+            'confirmed'   => (clone $query)->where('status', 'confirmed')->count(),
+            'assigned'    => (clone $query)->where('status', 'assigned')->count(),
+            'picking_up'  => (clone $query)->where('status', 'picking_up')->count(),
+            'delivering'  => (clone $query)->where('status', 'delivering')->count(),
+            'delivered'   => (clone $query)->where('status', 'delivered')->count(),
+            'cancelled'   => (clone $query)->where('status', 'cancelled')->count(),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data'    => $stats,
+        ]);
+    }
 }
