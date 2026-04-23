@@ -108,6 +108,73 @@
                 </div>
             </div>
 
+            {{-- Tracking History --}}
+            <div class="glass-card">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="card-title"><i class="fas fa-history"></i> Riwayat Pelacakan</div>
+                    <button type="button" onclick="document.getElementById('addLogModal').style.display='flex'" style="background: var(--accent-primary-light); color:white; border:none; padding:4px 12px; border-radius:6px; font-size:12px; cursor:pointer;">
+                        <i class="fas fa-plus"></i> Tambah Log
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if($shipment->logs->count() > 0)
+                        <div style="display: flex; flex-direction: column; gap: 0; padding-left: 10px;">
+                            @foreach($shipment->logs as $log)
+                                <div style="display: flex; gap: 16px; position: relative; padding-bottom: 24px;">
+                                    {{-- Line and Dot --}}
+                                    @if(!$loop->last)
+                                        <div style="position: absolute; left: 6px; top: 20px; bottom: 0; width: 2px; background: var(--border-color);"></div>
+                                    @endif
+                                    <div style="width: 14px; height: 14px; border-radius: 50%; background: {{ $log->status === 'delivered' ? '#10b981' : 'var(--accent-primary-light)' }}; z-index: 1; margin-top: 4px; border: 3px solid var(--bg-card);"></div>
+                                    
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                            <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{{ $log->location }}</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">{{ $log->created_at->format('d M, H:i') }}</div>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ $log->description }}</div>
+                                        <div style="font-size: 10px; font-weight: 700; color: var(--accent-primary-light); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;">{{ str_replace('_', ' ', $log->status) }}</div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px;">
+                            <i class="fas fa-ghost" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
+                            Belum ada riwayat pelacakan.
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Add Log Modal (Simple Implementation) --}}
+            <div id="addLogModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+                <div class="glass-card" style="width: 400px; max-width: 90%; background: var(--bg-card);">
+                    <div class="card-header">
+                        <div class="card-title">Tambah Riwayat Baru</div>
+                        <button onclick="document.getElementById('addLogModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('admin.shipments.logs.store', $shipment) }}" method="POST">
+                            @csrf
+                            <div style="margin-bottom:12px;">
+                                <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">STATUS</label>
+                                <input type="text" name="status" placeholder="Contoh: transit, delivery" required style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-primary); box-sizing:border-box;">
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">LOKASI</label>
+                                <input type="text" name="location" placeholder="Contoh: Jakarta Hub" required style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-primary); box-sizing:border-box;">
+                            </div>
+                            <div style="margin-bottom:16px;">
+                                <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">DESKRIPSI</label>
+                                <textarea name="description" rows="2" placeholder="Detail kejadian..." required style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-primary); resize:none; box-sizing:border-box;"></textarea>
+                            </div>
+                            <button type="submit" style="width:100%; padding:10px; border-radius:8px; background:var(--accent-primary-light); color:white; border:none; font-weight:700; cursor:pointer;">Simpan Log</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         {{-- Right: Status Update --}}

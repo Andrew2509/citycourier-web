@@ -119,6 +119,32 @@ class ShipmentController extends Controller
     }
 
     /**
+     * Track a shipment by its number.
+     * GET /api/shipments/track/{number}
+     */
+    public function track(Request $request, $number)
+    {
+        $shipment = Shipment::where('shipment_number', $number)
+            ->orWhere('tracking_number', $number)
+            ->with(['logs' => function ($query) {
+                $query->latest();
+            }])
+            ->first();
+
+        if (!$shipment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nomor resi tidak ditemukan.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $shipment,
+        ]);
+    }
+
+    /**
      * Get shipment counts by status for the authenticated user.
      * GET /api/shipments/stats
      */

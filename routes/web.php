@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/shipments/delete-all', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroyAll'])->name('shipments.destroy-all');
         Route::get('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'show'])->name('shipments.show');
         Route::patch('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'update'])->name('shipments.update');
+        Route::post('/shipments/{shipment}/logs', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.logs.store');
         Route::delete('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroy'])->name('shipments.destroy');
 
         // Settings / Provider

@@ -23,6 +23,9 @@ Route::post('/auth/phone', [AuthController::class, 'loginWithPhone']);
 // Drop Points
 Route::get('/drop-points', [\App\Http\Controllers\Api\DropPointController::class, 'index']);
 
+// Tracking (Public)
+Route::get('/shipments/track/{number}', [\App\Http\Controllers\Api\ShipmentController::class, 'track']);
+
 // Komerce Payment Callback (PUBLIC - tidak butuh auth, dipanggil Komerce)
 Route::post('/payment/callback', [PaymentController::class, 'callback']);
 

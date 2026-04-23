@@ -54,16 +54,51 @@ class ShipmentController extends Controller
             'status'          => 'required|in:pending,confirmed,picked_up,in_transit,delivered,cancelled',
             'tracking_number' => 'nullable|string|max:100',
             'notes'           => 'nullable|string',
+            'location'        => 'nullable|string|max:255',
+            'log_description' => 'nullable|string|max:255',
         ]);
 
+        $oldStatus = $shipment->status;
+        
         $shipment->update([
             'status'          => $request->status,
             'tracking_number' => $request->tracking_number,
             'notes'           => $request->notes,
         ]);
 
+        // Auto log status change
+        if ($oldStatus !== $request->status) {
+            $statusLabels = [
+                'pending'    => 'Menunggu',
+                'confirmed'  => 'Dikonfirmasi',
+                'picked_up'  => 'Paket Diambil',
+                'in_transit' => 'Dalam Perjalanan',
+                'delivered'  => 'Terkirim',
+                'cancelled'  => 'Dibatalkan',
+            ];
+
+            $shipment->logs()->create([
+                'status'      => $request->status,
+                'location'    => $request->location ?? 'Gudang Pusat',
+                'description' => $request->log_description ?? "Status diperbarui menjadi " . ($statusLabels[$request->status] ?? $request->status),
+            ]);
+        }
+
         return redirect()->route('admin.shipments.show', $shipment)
             ->with('success', 'Status pengiriman berhasil diperbarui.');
+    }
+
+    public function addLog(Request $request, Shipment $shipment)
+    {
+        $request->validate([
+            'status'      => 'required|string',
+            'location'    => 'required|string',
+            'description' => 'required|string',
+        ]);
+
+        $shipment->logs()->create($request->all());
+
+        return redirect()->back()->with('success', 'Riwayat pelacakan berhasil ditambahkan.');
     }
 
     public function destroy(Shipment $shipment)

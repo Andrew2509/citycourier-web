@@ -77,6 +77,11 @@ class Shipment extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function logs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ShipmentLog::class)->latest();
+    }
+
     public static function generateShipmentNumber(): string
     {
         return 'SHP-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
