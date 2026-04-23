@@ -112,7 +112,7 @@
                                 <div>
                                     <div class="user-name" style="font-size:13px;">{{ $shipment->sender_name }}</div>
                                     <div class="user-email" style="font-size:11px;">
-                                        {{ Str::limit($shipment->origin_name ?? $shipment->sender_address, 30) }}
+                                        {{ $shipment->origin_name ?? $shipment->sender_address }}
                                     </div>
                                 </div>
                             </td>
@@ -120,7 +120,7 @@
                                 <div>
                                     <div class="user-name" style="font-size:13px;">{{ $shipment->receiver_name }}</div>
                                     <div class="user-email" style="font-size:11px;">
-                                        {{ Str::limit($shipment->destination_name ?? $shipment->receiver_address, 30) }}
+                                        {{ $shipment->destination_name ?? $shipment->receiver_address }}
                                     </div>
                                 </div>
                             </td>
