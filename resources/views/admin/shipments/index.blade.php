@@ -46,7 +46,7 @@
                 <div class="search-input-wrapper">
                     <i class="fas fa-search"></i>
                     <input type="text" name="search" class="search-input"
-                           placeholder="Cari no. pengiriman, nama, resi..."
+                           placeholder="Cari pengiriman, nama, resi..."
                            value="{{ request('search') }}">
                 </div>
             </form>
@@ -85,13 +85,13 @@
                     <tr>
                         <th>No. Pengiriman</th>
                         <th>Customer</th>
-                        <th>Rute</th>
+                        <th>Pengirim</th>
+                        <th>Penerima</th>
                         <th>Kurir</th>
                         <th>Total</th>
                         <th>No. Resi</th>
                         <th>Status</th>
                         <th>Tanggal</th>
-                        <th style="text-align:center;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -108,15 +108,19 @@
                                     <div class="user-email">{{ $shipment->customer_phone }}</div>
                                 </div>
                             </td>
-                            <td style="max-width:200px;">
-                                <div style="font-size:13px;">
-                                    <div style="color: var(--text-primary);">
-                                        <i class="fas fa-circle" style="font-size:6px; color:var(--accent-primary-light); margin-right:4px;"></i>
-                                        {{ Str::limit($shipment->origin_name ?? $shipment->sender_address, 25) }}
+                            <td style="max-width:180px;">
+                                <div>
+                                    <div class="user-name" style="font-size:13px;">{{ $shipment->sender_name }}</div>
+                                    <div class="user-email" style="font-size:11px;">
+                                        {{ Str::limit($shipment->origin_name ?? $shipment->sender_address, 30) }}
                                     </div>
-                                    <div style="color: var(--text-muted); margin-top:4px;">
-                                        <i class="fas fa-map-marker-alt" style="font-size:9px; color:#666; margin-right:4px;"></i>
-                                        {{ Str::limit($shipment->destination_name ?? $shipment->receiver_address, 25) }}
+                                </div>
+                            </td>
+                            <td style="max-width:180px;">
+                                <div>
+                                    <div class="user-name" style="font-size:13px;">{{ $shipment->receiver_name }}</div>
+                                    <div class="user-email" style="font-size:11px;">
+                                        {{ Str::limit($shipment->destination_name ?? $shipment->receiver_address, 30) }}
                                     </div>
                                 </div>
                             </td>
@@ -147,28 +151,6 @@
                                 {{ $shipment->created_at->format('d M Y') }}
                                 <br>
                                 <span style="font-size:11px;">{{ $shipment->created_at->format('H:i') }}</span>
-                            </td>
-                            <td style="text-align: center;">
-                                <div style="display: flex; gap: 10px; justify-content: center;">
-                                    <a href="{{ route('admin.shipments.show', $shipment) }}" 
-                                       title="Lihat Detail" 
-                                       style="color: var(--accent-primary-light); font-size: 16px;">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <form action="{{ route('admin.shipments.destroy', $shipment) }}" 
-                                          method="POST" 
-                                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" 
-                                          style="display: inline;">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" 
-                                                title="Hapus Data" 
-                                                style="background: none; border: none; padding: 0; color: #ff4d4d; cursor: pointer; font-size: 16px;"
-                                                onclick="event.stopPropagation();">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
-                                </div>
                             </td>
                         </tr>
                     @empty
