@@ -13,6 +13,7 @@ class Payment extends Model
     protected $fillable = [
         'user_id',
         'order_id',
+        'shipment_id',
         'payment_id',        // ID dari Komerce (KOMPAY-xxx)
         'payment_type',      // bank_transfer | qris
         'channel_code',      // BCA, BNI, dll (kosong untuk QRIS)
@@ -45,6 +46,11 @@ class Payment extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function shipment(): BelongsTo
+    {
+        return $this->belongsTo(Shipment::class);
     }
 
     // ─── Scopes ─────────────────────────────────────────────────

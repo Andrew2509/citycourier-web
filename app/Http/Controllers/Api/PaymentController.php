@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Shipment;
 use App\Services\KomercePaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
@@ -47,7 +49,8 @@ class PaymentController extends Controller
         $user = $request->user();
 
         $validator = Validator::make($request->all(), [
-            'order_id'          => 'nullable|exists:orders,id',
+            'order_id'          => 'nullable',
+            'shipment_id'       => 'nullable|exists:shipments,id',
             'payment_type'      => 'required|in:bank_transfer,qris',
             'channel_code'      => 'required_if:payment_type,bank_transfer|nullable|string|max:20',
             'amount'            => 'required|integer|min:10000',
@@ -77,8 +80,9 @@ class PaymentController extends Controller
             'price'    => $request->amount,
         ]];
 
-        // Generate order_id unik untuk Komerce (bisa berbeda dari order->id)
-        $orderId = 'CC-' . ($request->order_id ?? 'REQ') . '-' . now()->format('YmdHis');
+        // Generate order_id unik untuk Komerce (bisa berasal dari order atau shipment)
+        $refId = $request->shipment_id ?? $request->order_id ?? 'REQ';
+        $orderId = 'CC-' . $refId . '-' . now()->format('YmdHis');
 
         $payload = [
             'order_id'     => $orderId,
@@ -112,11 +116,7 @@ class PaymentController extends Controller
         $apiData = $result['data'] ?? [];
 
         // Simpan ke database lokal
-        $expiryDuration = $request->payment_type === 'qris'
-            ? 300  // QRIS: 5 menit
-            : ($request->expiry_duration ?? 86400); // VA: default 24 jam
-
-        $payment = Payment::create([
+        $paymentData = [
             'user_id'      => $user->id,
             'order_id'     => $request->order_id,
             'payment_id'   => $apiData['payment_id'] ?? null,
@@ -130,13 +130,20 @@ class PaymentController extends Controller
             'payment_url'  => isset($apiData['payment_id'])
                 ? $this->getPaymentPageUrl($apiData['payment_id'])
                 : null,
-            'expired_at'   => now()->addSeconds($expiryDuration),
+            'expired_at'   => now()->addSeconds($request->payment_type === 'qris' ? 300 : ($request->expiry_duration ?? 86400)),
             'metadata'     => [
                 'komerce_order_id' => $orderId,
                 'customer'         => $request->customer,
                 'items'            => $items,
             ],
-        ]);
+        ];
+
+        // Only add shipment_id if column exists (handles cases where migration is not yet run)
+        if ($request->shipment_id && Schema::hasColumn('payments', 'shipment_id')) {
+            $paymentData['shipment_id'] = $request->shipment_id;
+        }
+
+        $payment = Payment::create($paymentData);
 
         return response()->json([
             'success' => true,
@@ -192,6 +199,9 @@ class PaymentController extends Controller
                 // Update order status ke paid jika ada relasi
                 if ($payment->order_id) {
                     Order::where('id', $payment->order_id)->update(['payment_status' => 'paid']);
+                }
+                if ($payment->shipment_id) {
+                    Shipment::where('id', $payment->shipment_id)->update(['status' => 'confirmed']);
                 }
             }
             $payment->update($updateData);
@@ -289,6 +299,9 @@ class PaymentController extends Controller
                     // Sync ke order jika ada
                     if ($payment->order_id) {
                         Order::where('id', $payment->order_id)->update(['payment_status' => 'paid']);
+                    }
+                    if ($payment->shipment_id) {
+                        Shipment::where('id', $payment->shipment_id)->update(['status' => 'confirmed']);
                     }
                 }
 
