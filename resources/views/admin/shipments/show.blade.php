@@ -193,6 +193,17 @@
                         {{ $shipment->tracking_number ?? 'BELUM ADA RESI' }}
                     </div>
                     <div style="font-size:11px; color: var(--text-muted); margin-top:4px;">Nomor Resi</div>
+
+                    {{-- Barcode --}}
+                    @if($shipment->tracking_number)
+                        <div style="margin-top:20px; padding:15px; background: white; border-radius:12px; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color);">
+                            {!! DNS1D::getBarcodeHTML($shipment->tracking_number, 'C128', 2, 45, 'black', false) !!}
+                            <div style="margin-top:8px; font-weight:700; font-family:monospace; letter-spacing:1px; font-size:11px; color: black;">
+                                {{ $shipment->tracking_number }}
+                            </div>
+                        </div>
+                    @endif
+
                     <div style="margin-top:12px; font-size:12px; color: var(--text-muted);">
                         ID Pengiriman Internal: <strong>{{ $shipment->shipment_number }}</strong>
                     </div>

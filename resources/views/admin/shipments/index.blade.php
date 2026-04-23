@@ -100,6 +100,11 @@
                                 <span style="font-weight:700; color: var(--accent-primary-light); font-size: 13px;">
                                     {{ $shipment->tracking_number ?? $shipment->shipment_number }}
                                 </span>
+                                @if($shipment->tracking_number)
+                                    <div style="margin-top:4px; opacity: 0.8;">
+                                        {!! DNS1D::getBarcodeHTML($shipment->tracking_number, 'C128', 1, 20, 'black', false) !!}
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 <div>
