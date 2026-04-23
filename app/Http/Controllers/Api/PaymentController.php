@@ -50,9 +50,9 @@ class PaymentController extends Controller
 
         $validator = Validator::make($request->all(), [
             'order_id'          => 'nullable',
-            'shipment_id'       => 'nullable|exists:shipments,id',
+            'shipment_id'       => 'nullable|string',
             'payment_type'      => 'required|string',
-            'channel_code'      => 'required_if:payment_type,bank_transfer|nullable|string|max:20',
+            'channel_code'      => 'required_if:payment_type,bank_transfer,virtual_account|nullable|string|max:20',
             'amount'            => 'required|integer|min:10000',
             'customer'          => 'nullable|array',
             'customer.name'     => 'required_with:customer|string|max:100',
@@ -79,8 +79,8 @@ class PaymentController extends Controller
 
         // Ambil data customer dari request atau fallback ke user yang login
         $customer = $request->customer ?? [
-            'name'  => $user->name,
-            'email' => $user->email,
+            'name'  => $user->name ?? 'Customer',
+            'email' => $user->email ?? 'customer@example.com',
             'phone' => $user->phone ?? '08123456789', // Fallback phone jika kosong
         ];
 
