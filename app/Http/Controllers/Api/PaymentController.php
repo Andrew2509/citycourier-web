@@ -102,6 +102,7 @@ class PaymentController extends Controller
             default => $request->payment_type,
         };
 
+        $mappedChannel = null;
         $payload = [
             'order_id'     => $orderId,
             'payment_type' => $komercePaymentType,
@@ -150,9 +151,8 @@ class PaymentController extends Controller
             'user_id'      => $user->id,
             'order_id'     => $request->order_id,
             'payment_id'   => $apiData['payment_id'] ?? null,
-            'payment_type' => $request->payment_type,
-            'channel_code' => $request->payment_type === 'bank_transfer'
-                ? strtoupper($request->channel_code) : null,
+            'payment_type' => $komercePaymentType,
+            'channel_code' => $mappedChannel,
             'amount'       => $request->amount,
             'status'       => 'pending',
             'va_number'    => $apiData['va_number'] ?? null,
