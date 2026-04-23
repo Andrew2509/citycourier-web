@@ -297,6 +297,11 @@ class PaymentController extends Controller
 
         $payment->update(['status' => 'canceled']);
 
+        // Update shipment status jika ada
+        if ($payment->shipment_id) {
+            Shipment::where('id', $payment->shipment_id)->update(['status' => 'cancelled']);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Pembayaran berhasil dibatalkan',
