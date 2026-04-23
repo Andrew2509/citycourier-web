@@ -102,7 +102,7 @@
                                 </span>
                                 @if($shipment->tracking_number)
                                     <div style="margin-top:4px; opacity: 0.8;">
-                                        {!! DNS1D::getBarcodeHTML($shipment->tracking_number, 'C128', 1, 20, 'black', false) !!}
+                                        {!! \Milon\Barcode\Facades\DNS1DFacade::getBarcodeHTML($shipment->tracking_number, 'C128', 1, 20, 'black', false) !!}
                                     </div>
                                 @endif
                             </td>
