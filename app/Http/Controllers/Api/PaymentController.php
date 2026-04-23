@@ -198,8 +198,14 @@ class PaymentController extends Controller
     /**
      * GET /api/payment/{paymentId}/status
      */
-    public function status(Request $request, string $paymentId): JsonResponse
+    public function status(Request $request, ?string $paymentId = null): JsonResponse
     {
+        $paymentId = $paymentId ?: $request->query('payment_id');
+
+        if (!$paymentId) {
+            return response()->json(['success' => false, 'message' => 'Payment ID required'], 400);
+        }
+
         $payment = Payment::where('payment_id', $paymentId)
             ->where('user_id', $request->user()->id)
             ->first();
@@ -257,8 +263,14 @@ class PaymentController extends Controller
     /**
      * POST /api/payment/{paymentId}/cancel
      */
-    public function cancel(Request $request, string $paymentId): JsonResponse
+    public function cancel(Request $request, ?string $paymentId = null): JsonResponse
     {
+        $paymentId = $paymentId ?: $request->payment_id;
+
+        if (!$paymentId) {
+            return response()->json(['success' => false, 'message' => 'Payment ID required'], 400);
+        }
+
         $payment = Payment::where('payment_id', $paymentId)
             ->where('user_id', $request->user()->id)
             ->first();

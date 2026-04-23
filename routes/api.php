@@ -77,7 +77,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('payment')->group(function () {
         Route::get('/methods', [PaymentController::class, 'methods']);
         Route::post('/create', [PaymentController::class, 'create']);
-        Route::get('/{paymentId}/status', [PaymentController::class, 'status']);
-        Route::post('/{paymentId}/cancel', [PaymentController::class, 'cancel']);
+        Route::get('/status', [PaymentController::class, 'status']);
+        Route::post('/cancel', [PaymentController::class, 'cancel']);
+        Route::get('/{paymentId}/status', [PaymentController::class, 'status'])->where('paymentId', '.*');
+        Route::post('/{paymentId}/cancel', [PaymentController::class, 'cancel'])->where('paymentId', '.*');
     });
 });
