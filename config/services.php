@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'komerce_payment' => [
+        'api_key'      => env('KOMERCE_PAYMENT_API_KEY'),
+        'env'          => env('KOMERCE_PAYMENT_ENV', 'sandbox'),
+        'callback_key' => env('KOMERCE_PAYMENT_CALLBACK_KEY'),
+        'base_url'     => env('KOMERCE_PAYMENT_ENV', 'sandbox') === 'production'
+            ? 'https://api.collaborator.komerce.id/user'
+            : 'https://api-sandbox.collaborator.komerce.id/user',
+    ],
+
 ];

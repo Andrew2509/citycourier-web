@@ -47,6 +47,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/rajaongkir', [\App\Http\Controllers\Admin\SettingController::class, 'updateRajaongkir'])->name('settings.rajaongkir.update');
         Route::post('/settings/rajaongkir/test', [\App\Http\Controllers\Admin\SettingController::class, 'testRajaongkir'])->name('settings.rajaongkir.test');
 
+        Route::get('/settings/payment', [\App\Http\Controllers\Admin\SettingController::class, 'payment'])->name('settings.payment');
+        Route::post('/settings/payment', [\App\Http\Controllers\Admin\SettingController::class, 'updatePayment'])->name('settings.payment.update');
+        Route::post('/settings/payment/test', [\App\Http\Controllers\Admin\SettingController::class, 'testPayment'])->name('settings.payment.test');
+
+
         // Drop Points
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);
         Route::patch('drop-points/{drop_point}/toggle-active', [\App\Http\Controllers\Admin\DropPointController::class, 'toggleActive'])->name('drop-points.toggle-active');

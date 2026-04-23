@@ -160,4 +160,74 @@ class SettingController extends Controller
             ], 500);
         }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Komerce Payment API Settings
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Tampilkan form pengaturan Komerce Payment API.
+     */
+    public function payment()
+    {
+        $settings = [
+            'api_key'      => Setting::get('komerce_payment_api_key', env('KOMERCE_PAYMENT_API_KEY', '')),
+            'env'          => Setting::get('komerce_payment_env', env('KOMERCE_PAYMENT_ENV', 'sandbox')),
+            'callback_key' => Setting::get('komerce_payment_callback_key', env('KOMERCE_PAYMENT_CALLBACK_KEY', '')),
+        ];
+
+        return view('admin.settings.payment', compact('settings'));
+    }
+
+    /**
+     * Simpan pengaturan Komerce Payment API.
+     */
+    public function updatePayment(Request $request)
+    {
+        $request->validate([
+            'komerce_payment_api_key'      => 'required|string|min:10',
+            'komerce_payment_env'          => 'required|in:sandbox,production',
+            'komerce_payment_callback_key' => 'nullable|string',
+        ]);
+
+        Setting::set('komerce_payment_api_key',      $request->komerce_payment_api_key,      'payment');
+        Setting::set('komerce_payment_env',          $request->komerce_payment_env,          'payment');
+        Setting::set('komerce_payment_callback_key', $request->komerce_payment_callback_key ?? '', 'payment');
+
+        return redirect()->back()->with('success', 'Pengaturan Komerce Payment berhasil diperbarui.');
+    }
+
+    /**
+     * Test koneksi ke Komerce Payment API.
+     */
+    public function testPayment(\App\Services\KomercePaymentService $paymentService)
+    {
+        try {
+            $result = $paymentService->getPaymentMethods();
+
+            $code    = $result['meta']['code'] ?? 0;
+            $message = $result['meta']['message'] ?? 'Tidak ada respons';
+
+            if ($code === 200) {
+                $count = count($result['data'] ?? []);
+                return response()->json([
+                    'success' => true,
+                    'message' => "Koneksi Berhasil! Terdeteksi {$count} metode pembayaran.",
+                    'data'    => $result['data'] ?? [],
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => "Koneksi Gagal: {$message}",
+                'raw'     => $result,
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

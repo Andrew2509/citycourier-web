@@ -120,6 +120,10 @@
                         <i class="fas fa-truck-loading"></i>
                         <span>Provider RajaOngkir</span>
                     </a>
+                    <a href="{{ route('admin.settings.payment') }}" class="nav-link {{ request()->routeIs('admin.settings.payment*') ? 'active' : '' }}">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Layanan Pembayaran</span>
+                    </a>
                 </div>
             </nav>
 

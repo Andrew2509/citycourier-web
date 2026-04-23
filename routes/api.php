@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ShippingController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,9 @@ Route::post('/auth/phone', [AuthController::class, 'loginWithPhone']);
 
 // Drop Points
 Route::get('/drop-points', [\App\Http\Controllers\Api\DropPointController::class, 'index']);
+
+// Komerce Payment Callback (PUBLIC - tidak butuh auth, dipanggil Komerce)
+Route::post('/payment/callback', [PaymentController::class, 'callback']);
 
 // ─── Protected API Routes (Sanctum) ─────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -68,4 +72,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/addresses/{address}', [\App\Http\Controllers\Api\SavedAddressController::class, 'update']);
     Route::delete('/addresses/{address}', [\App\Http\Controllers\Api\SavedAddressController::class, 'destroy']);
     Route::patch('/addresses/{address}/favorite', [\App\Http\Controllers\Api\SavedAddressController::class, 'toggleFavorite']);
+
+    // ─── Payment (Komerce Payment API) ──────────────────────────
+    Route::prefix('payment')->group(function () {
+        Route::get('/methods', [PaymentController::class, 'methods']);
+        Route::post('/create', [PaymentController::class, 'create']);
+        Route::get('/{paymentId}/status', [PaymentController::class, 'status']);
+        Route::post('/{paymentId}/cancel', [PaymentController::class, 'cancel']);
+    });
 });
