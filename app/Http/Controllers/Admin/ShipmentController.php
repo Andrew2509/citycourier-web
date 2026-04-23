@@ -65,4 +65,11 @@ class ShipmentController extends Controller
         return redirect()->route('admin.shipments.show', $shipment)
             ->with('success', 'Status pengiriman berhasil diperbarui.');
     }
+
+    public function destroy(Shipment $shipment)
+    {
+        $shipment->delete();
+        return redirect()->route('admin.shipments.index')
+            ->with('success', 'Data pengiriman berhasil dihapus.');
+    }
 }

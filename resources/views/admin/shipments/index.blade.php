@@ -52,6 +52,15 @@
             </form>
         </div>
     </div>
+    
+    @if(session('success'))
+        <div class="glass-card" style="margin-bottom: 20px; border-left: 4px solid #16a34a; background: rgba(34,197,94,0.1);">
+            <div class="card-body" style="padding: 12px 20px; color: #16a34a; font-weight: 500;">
+                <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+                {{ session('success') }}
+            </div>
+        </div>
+    @endif
 
     {{-- Shipments Table --}}
     <div class="glass-card">
@@ -76,6 +85,7 @@
                         <th>No. Resi</th>
                         <th>Status</th>
                         <th>Tanggal</th>
+                        <th style="text-align:center;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -132,10 +142,32 @@
                                 <br>
                                 <span style="font-size:11px;">{{ $shipment->created_at->format('H:i') }}</span>
                             </td>
+                            <td style="text-align: center;">
+                                <div style="display: flex; gap: 10px; justify-content: center;">
+                                    <a href="{{ route('admin.shipments.show', $shipment) }}" 
+                                       title="Lihat Detail" 
+                                       style="color: var(--accent-primary-light); font-size: 16px;">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <form action="{{ route('admin.shipments.destroy', $shipment) }}" 
+                                          method="POST" 
+                                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" 
+                                          style="display: inline;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" 
+                                                title="Hapus Data" 
+                                                style="background: none; border: none; padding: 0; color: #ff4d4d; cursor: pointer; font-size: 16px;"
+                                                onclick="event.stopPropagation();">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8">
+                            <td colspan="9">
                                 <div class="empty-state">
                                     <i class="fas fa-shipping-fast"></i>
                                     <h3>Belum ada pengiriman</h3>
