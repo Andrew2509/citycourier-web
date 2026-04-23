@@ -97,7 +97,7 @@ class PaymentController extends Controller
 
         // Map payment_type to Komerce types if needed
         $komercePaymentType = match ($request->payment_type) {
-            'virtual_account' => 'bank_transfer',
+            'virtual_account', 'va' => 'bank_transfer',
             'ewallet', 'e_wallet', 'qris' => 'qris',
             default => $request->payment_type,
         };
@@ -110,7 +110,8 @@ class PaymentController extends Controller
             'items'        => $items,
         ];
 
-        if ($request->payment_type === 'bank_transfer') {
+        // Include channel_code for bank_transfer (VA)
+        if ($komercePaymentType === 'bank_transfer' || $request->payment_type === 'virtual_account' || $request->payment_type === 'va') {
             $payload['channel_code'] = strtoupper($request->channel_code);
         }
 
