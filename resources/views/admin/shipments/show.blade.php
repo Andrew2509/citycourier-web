@@ -197,7 +197,7 @@
                     {{-- Barcode --}}
                     @if($shipment->tracking_number)
                         <div style="margin-top:20px; padding:15px; background: white; border-radius:12px; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color);">
-                            {!! \Milon\Barcode\Facades\DNS1DFacade::getBarcodeHTML($shipment->tracking_number, 'C128', 2, 45, 'black', false) !!}
+                            {!! \Milon\Barcode\Facades\DNS2DFacade::getBarcodeHTML($shipment->tracking_number, 'QRCODE', 5, 5) !!}
                             <div style="margin-top:8px; font-weight:700; font-family:monospace; letter-spacing:1px; font-size:11px; color: black;">
                                 {{ $shipment->tracking_number }}
                             </div>
