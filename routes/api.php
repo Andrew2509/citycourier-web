@@ -62,6 +62,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/districts', [ShippingController::class, 'districts']);
         Route::get('/subdistricts', [ShippingController::class, 'subdistricts']);
         Route::post('/cost', [ShippingController::class, 'calculateCost']);
+        
+        // Map Proxy / Gatekeeper API
+        Route::post('/map/routing', [\App\Http\Controllers\Api\MapApiController::class, 'routing']);
+        Route::get('/map/autocomplete', [\App\Http\Controllers\Api\MapApiController::class, 'autocomplete']);
+        Route::post('/map/matrix', [\App\Http\Controllers\Api\MapApiController::class, 'matrix']);
     });
 
     // Shipments (Request Pickup dari Flutter)

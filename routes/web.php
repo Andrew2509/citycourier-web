@@ -54,6 +54,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/payment', [\App\Http\Controllers\Admin\SettingController::class, 'updatePayment'])->name('settings.payment.update');
         Route::post('/settings/payment/test', [\App\Http\Controllers\Admin\SettingController::class, 'testPayment'])->name('settings.payment.test');
 
+        Route::get('/settings/map', [\App\Http\Controllers\Admin\SettingController::class, 'map'])->name('settings.map');
+        Route::post('/settings/map', [\App\Http\Controllers\Admin\SettingController::class, 'updateMap'])->name('settings.map.update');
+        Route::post('/settings/map/test', [\App\Http\Controllers\Admin\SettingController::class, 'testMap'])->name('settings.map.test');
+
 
         // Drop Points
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);

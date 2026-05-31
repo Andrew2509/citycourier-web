@@ -230,4 +230,73 @@ class SettingController extends Controller
             ], 500);
         }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Map Settings (Mapbox/Maplibre Proxy Settings)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Show map settings form.
+     */
+    public function map()
+    {
+        $settings = [
+            'provider' => Setting::get('map_provider', env('MAP_PROVIDER', 'mapbox')),
+            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', 'https://api.mapbox.com')),
+            'api_key' => Setting::get('map_api_key', env('MAP_API_KEY', '')),
+        ];
+
+        return view('admin.settings.map', compact('settings'));
+    }
+
+    /**
+     * Update map settings.
+     */
+    public function updateMap(Request $request)
+    {
+        $request->validate([
+            'map_provider' => 'required|in:mapbox,maplibre,google',
+            'map_base_url' => 'required|url',
+            'map_api_key' => 'required|string|min:5',
+        ]);
+
+        Setting::set('map_provider', $request->map_provider, 'map');
+        Setting::set('map_base_url', $request->map_base_url, 'map');
+        Setting::set('map_api_key', $request->map_api_key, 'map');
+
+        return redirect()->back()->with('success', 'Pengaturan Map Server berhasil diperbarui.');
+    }
+
+    /**
+     * Test map connection with a simple search.
+     */
+    public function testMap(\App\Services\MapService $mapService)
+    {
+        try {
+            // Test call to searchPOI with Surabaya coordinates
+            $result = $mapService->searchPOI('Surabaya');
+
+            if ($result['success']) {
+                $features = $result['data']['features'] ?? [];
+                $count = count($features);
+                return response()->json([
+                    'success' => true,
+                    'message' => "Koneksi Berhasil! Ditemukan {$count} lokasi untuk pencarian 'Surabaya'.",
+                    'data' => array_slice($features, 0, 5),
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => "Koneksi Gagal: " . ($result['message'] ?? 'Kesalahan tidak diketahui'),
+                'raw' => $result,
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

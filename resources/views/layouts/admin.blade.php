@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
 </head>
-<body>
+<body>z
     <div class="admin-layout">
         {{-- Sidebar --}}
         <aside class="sidebar" id="sidebar">
@@ -123,6 +123,10 @@
                     <a href="{{ route('admin.settings.payment') }}" class="nav-link {{ request()->routeIs('admin.settings.payment*') ? 'active' : '' }}">
                         <i class="fas fa-credit-card"></i>
                         <span>Layanan Pembayaran</span>
+                    </a>
+                    <a href="{{ route('admin.settings.map') }}" class="nav-link {{ request()->routeIs('admin.settings.map*') ? 'active' : '' }}">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span>Konfigurasi Peta</span>
                     </a>
                 </div>
             </nav>
