@@ -120,4 +120,45 @@ class MapApiController extends Controller
             'error' => $result['error'] ?? null
         ], 400);
     }
+
+    /**
+     * Get Style JSON and proxy external tile resources securely.
+     */
+    public function getStyle($name)
+    {
+        $cacheKey = "map_style_" . $name;
+
+        $styleJson = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($name) {
+            // Pemanggilan service untuk mengambil file style
+            $result = $this->mapService->getStyleContent($name);
+            if (!$result['success']) {
+                return null;
+            }
+
+            $data = $result['data'];
+
+            // Mengubah URL sumber Vector Tiles agar diproxy via Laravel
+            // Ini menyembunyikan API key penyedia peta dari client
+            if (isset($data['sources']['openmaptiles']['tiles'])) {
+                $data['sources']['openmaptiles']['tiles'] = [
+                    url("/api/shipping/map/tiles/{z}/{x}/{y}.pbf")
+                ];
+            }
+            
+            // Proxying assets lainnya jika diset
+            $data['sprite'] = url("/api/shipping/map/sprites/sprite");
+            $data['glyphs'] = url("/api/shipping/map/fonts/{fontstack}/{range}.pbf");
+
+            return $data;
+        });
+
+        if (!$styleJson) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Style peta tidak ditemukan atau gagal diambil.'
+            ], 404);
+        }
+
+        return response()->json($styleJson);
+    }
 }

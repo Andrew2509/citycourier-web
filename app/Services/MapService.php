@@ -163,4 +163,45 @@ class MapService
             ];
         }
     }
+
+    /**
+     * Get Style Content from provider.
+     *
+     * @param string $name
+     * @return array
+     */
+    public function getStyleContent($name)
+    {
+        try {
+            if ($this->provider === 'maplibre') {
+                $url = "{$this->baseUrl}/style.json";
+            } else {
+                $url = "{$this->baseUrl}/maps/{$name}/style.json";
+            }
+
+            $response = Http::get($url, [
+                'key' => $this->apiKey,
+                'access_token' => $this->apiKey
+            ]);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            Log::error("MapService getStyleContent Error: " . $response->body());
+            return [
+                'success' => false,
+                'message' => 'Gagal mengambil konfigurasi style dari server peta.'
+            ];
+        } catch (\Exception $e) {
+            Log::error("MapService getStyleContent Exception: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Terjadi kesalahan eksternal: ' . $e->getMessage()
+            ];
+        }
+    }
 }

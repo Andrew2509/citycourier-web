@@ -67,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/map/routing', [\App\Http\Controllers\Api\MapApiController::class, 'routing']);
         Route::get('/map/autocomplete', [\App\Http\Controllers\Api\MapApiController::class, 'autocomplete']);
         Route::post('/map/matrix', [\App\Http\Controllers\Api\MapApiController::class, 'matrix']);
+        Route::get('/map/styles/{name}.json', [\App\Http\Controllers\Api\MapApiController::class, 'getStyle']);
     });
 
     // Shipments (Request Pickup dari Flutter)
