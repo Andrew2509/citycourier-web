@@ -15,8 +15,8 @@ class MapService
     public function __construct()
     {
         // Ambil konfigurasi dari Database Settings (Admin Panel) atau fallback ke .env/config
-        $this->provider = Setting::get('map_provider', env('MAP_PROVIDER', 'mapbox'));
-        $this->baseUrl = Setting::get('map_base_url', env('MAP_BASE_URL', 'https://api.mapbox.com'));
+        $this->provider = Setting::get('map_provider', env('MAP_PROVIDER', 'maplibre'));
+        $this->baseUrl = Setting::get('map_base_url', env('MAP_BASE_URL', 'https://demotiles.maplibre.org'));
         $this->apiKey = Setting::get('map_api_key', env('MAP_API_KEY', ''));
     }
 

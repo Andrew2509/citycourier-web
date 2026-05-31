@@ -18,9 +18,9 @@
                     <div class="form-group mb-4">
                         <label for="map_provider" class="form-label fw-semibold text-muted small uppercase">Penyedia Peta (Map Provider)</label>
                         <select name="map_provider" id="map_provider" class="form-control rounded-3 border-light-subtle @error('map_provider') is-invalid @enderror">
-                            <option value="mapbox" {{ old('map_provider', $settings['provider'] ?? 'mapbox') == 'mapbox' ? 'selected' : '' }}>Mapbox (Recommended)</option>
-                            <option value="maplibre" {{ old('map_provider', $settings['provider'] ?? 'mapbox') == 'maplibre' ? 'selected' : '' }}>Maplibre GL</option>
-                            <option value="google" {{ old('map_provider', $settings['provider'] ?? 'mapbox') == 'google' ? 'selected' : '' }}>Google Maps API</option>
+                            <option value="maplibre" {{ old('map_provider', $settings['provider'] ?? 'maplibre') == 'maplibre' ? 'selected' : '' }}>Maplibre GL (Recommended - Open Source)</option>
+                            <option value="mapbox" {{ old('map_provider', $settings['provider'] ?? 'maplibre') == 'mapbox' ? 'selected' : '' }}>Mapbox</option>
+                            <option value="google" {{ old('map_provider', $settings['provider'] ?? 'maplibre') == 'google' ? 'selected' : '' }}>Google Maps API</option>
                         </select>
                         @error('map_provider')
                             <div class="invalid-feedback">{{ $message }}</div>

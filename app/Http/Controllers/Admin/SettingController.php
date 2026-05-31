@@ -241,8 +241,8 @@ class SettingController extends Controller
     public function map()
     {
         $settings = [
-            'provider' => Setting::get('map_provider', env('MAP_PROVIDER', 'mapbox')),
-            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', 'https://api.mapbox.com')),
+            'provider' => Setting::get('map_provider', env('MAP_PROVIDER', 'maplibre')),
+            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', 'https://demotiles.maplibre.org')),
             'api_key' => Setting::get('map_api_key', env('MAP_API_KEY', '')),
         ];
 
