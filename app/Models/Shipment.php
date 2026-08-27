@@ -82,7 +82,7 @@ class Shipment extends Model
         return $this->hasMany(ShipmentLog::class)->latest();
     }
 
-    protected static function boot()
+        protected static function boot()
     {
         parent::boot();
 
@@ -94,7 +94,31 @@ class Shipment extends Model
                 $shipment->tracking_number = self::generateTrackingNumber();
             }
         });
+
+        static::updated(function ($shipment) {
+            if ($shipment->isDirty('status') && $shipment->status === 'confirmed') {
+                \App\Models\Order::firstOrCreate(
+                    ['order_number' => $shipment->shipment_number],
+                    [
+                        'customer_name' => $shipment->customer_name,
+                        'customer_phone' => $shipment->customer_phone,
+                        'pickup_address' => $shipment->sender_address,
+                        'delivery_address' => $shipment->receiver_address,
+                        'package_description' => $shipment->package_description,
+                        'package_weight' => $shipment->package_weight,
+                        'price' => $shipment->total_cost,
+                        'status' => 'pending',
+                        'notes' => $shipment->notes ?? '-',
+                    ]
+                );
+            }
+            
+            // Sync status from Order back to Shipment when Order updates?
+            // For now, let's just make sure the Order is created.
+        });
     }
+
+    
 
     public static function generateShipmentNumber(): string
     {
@@ -136,3 +160,5 @@ class Shipment extends Model
         }
     }
 }
+
+
