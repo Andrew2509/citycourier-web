@@ -240,9 +240,10 @@ class SettingController extends Controller
      */
     public function map()
     {
+        $provider = Setting::get('map_provider', env('MAP_PROVIDER', 'osrm'));
         $settings = [
-            'provider' => Setting::get('map_provider', env('MAP_PROVIDER', 'maplibre')),
-            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', 'https://demotiles.maplibre.org')),
+            'provider' => $provider,
+            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', \App\Services\MapService::defaultBaseUrl($provider))),
             'api_key' => Setting::get('map_api_key', env('MAP_API_KEY', '')),
         ];
 
@@ -255,14 +256,15 @@ class SettingController extends Controller
     public function updateMap(Request $request)
     {
         $request->validate([
-            'map_provider' => 'required|in:mapbox,maplibre,google',
+            'map_provider' => 'required|in:osrm,maplibre,mapbox,google',
             'map_base_url' => 'required|url',
-            'map_api_key' => 'required|string|min:5',
+            // OSRM publik tidak memerlukan API key.
+            'map_api_key' => $request->input('map_provider') === 'osrm' ? 'nullable|string' : 'required|string|min:5',
         ]);
 
         Setting::set('map_provider', $request->map_provider, 'map');
         Setting::set('map_base_url', $request->map_base_url, 'map');
-        Setting::set('map_api_key', $request->map_api_key, 'map');
+        Setting::set('map_api_key', $request->map_api_key ?? '', 'map');
 
         return redirect()->back()->with('success', 'Pengaturan Map Server berhasil diperbarui.');
     }

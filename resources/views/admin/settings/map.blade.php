@@ -2,7 +2,7 @@
 
 @section('title', 'Map Server Settings')
 @section('page-title', 'Pengaturan Map Server')
-@section('page-subtitle', 'Kelola konfigurasi API Mapbox, Maplibre, atau Google Maps untuk proxy ekosistem Flutter')
+@section('page-subtitle', 'Kelola konfigurasi peta (OSRM/OpenStreetMap, Mapbox, Maplibre, atau Google Maps) untuk proxy ekosistem Flutter')
 
 @section('content')
 <div class="row">
@@ -18,9 +18,10 @@
                     <div class="form-group mb-4">
                         <label for="map_provider" class="form-label fw-semibold text-muted small uppercase">Penyedia Peta (Map Provider)</label>
                         <select name="map_provider" id="map_provider" class="form-control rounded-3 border-light-subtle @error('map_provider') is-invalid @enderror">
-                            <option value="maplibre" {{ old('map_provider', $settings['provider'] ?? 'maplibre') == 'maplibre' ? 'selected' : '' }}>Maplibre GL (Recommended - Open Source)</option>
-                            <option value="mapbox" {{ old('map_provider', $settings['provider'] ?? 'maplibre') == 'mapbox' ? 'selected' : '' }}>Mapbox</option>
-                            <option value="google" {{ old('map_provider', $settings['provider'] ?? 'maplibre') == 'google' ? 'selected' : '' }}>Google Maps API</option>
+                            <option value="osrm" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'osrm' ? 'selected' : '' }}>OSRM / OpenStreetMap (Recommended - Gratis &amp; Open Source)</option>
+                            <option value="maplibre" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'maplibre' ? 'selected' : '' }}>Maplibre GL (Open Source)</option>
+                            <option value="mapbox" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'mapbox' ? 'selected' : '' }}>Mapbox</option>
+                            <option value="google" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'google' ? 'selected' : '' }}>Google Maps API</option>
                         </select>
                         @error('map_provider')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -34,7 +35,7 @@
                                id="map_base_url" 
                                class="form-control rounded-3 border-light-subtle @error('map_base_url') is-invalid @enderror" 
                                value="{{ old('map_base_url', $settings['base_url']) }}" 
-                               placeholder="Contoh: https://api.mapbox.com">
+                               placeholder="Contoh: https://router.project-osrm.org">
                         @error('map_base_url')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -47,11 +48,11 @@
                                id="map_api_key" 
                                class="form-control rounded-3 border-light-subtle @error('map_api_key') is-invalid @enderror" 
                                value="{{ old('map_api_key', $settings['api_key']) }}" 
-                               placeholder="Masukkan Access Token / Private Key">
+                               placeholder="Kosongkan bila memakai OSRM/OpenStreetMap publik">
                         @error('map_api_key')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        <div class="form-text text-muted mt-1 small">
+                        <div class="form-text text-muted mt-1 small" id="api-key-hint">
                             Semua request dari Flutter akan dijaga/diproxy melalui Laravel untuk melindungi token ini agar tidak bocor ke client.
                         </div>
                     </div>
@@ -115,13 +116,29 @@
         const testData = document.getElementById('test-data');
         const providerSelect = document.getElementById('map_provider');
         const baseUrlInput = document.getElementById('map_base_url');
+        const apiKeyInput = document.getElementById('map_api_key');
+        const apiKeyHint = document.getElementById('api-key-hint');
+
+        const PROVIDER_DEFAULTS = {
+            osrm: 'https://router.project-osrm.org',
+            mapbox: 'https://api.mapbox.com',
+            maplibre: 'https://demotiles.maplibre.org',
+            google: 'https://maps.googleapis.com',
+        };
 
         providerSelect.addEventListener('change', function() {
-            if (this.value === 'mapbox') {
-                baseUrlInput.value = 'https://api.mapbox.com';
-            } else if (this.value === 'maplibre') {
-                baseUrlInput.value = 'https://demotiles.maplibre.org';
+            const preset = PROVIDER_DEFAULTS[this.value];
+            if (preset) {
+                baseUrlInput.value = preset;
             }
+            const isOsrm = this.value === 'osrm';
+            apiKeyInput.placeholder = isOsrm
+                ? 'Kosongkan bila memakai OSRM/OpenStreetMap publik'
+                : 'Masukkan Access Token / Private Key';
+            apiKeyHint.innerText = isOsrm
+                ? 'OSRM/OpenStreetMap publik tidak memerlukan token. '
+                    + 'Kosongkan, atau isi bila memakai self-hosted OSRM dengan proteksi.'
+                : 'Semua request dari Flutter akan dijaga/diproxy melalui Laravel untuk melindungi token ini agar tidak bocor ke client.';
         });
 
         btnTest.addEventListener('click', function() {
