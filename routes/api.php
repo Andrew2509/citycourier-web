@@ -74,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/shipments/stats', [\App\Http\Controllers\Api\ShipmentController::class, 'stats']);
     Route::get('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'index']);
     Route::post('/shipments', [\App\Http\Controllers\Api\ShipmentController::class, 'store']);
+    Route::post('/shipments/{shipment}/confirm-payment', [\App\Http\Controllers\Api\ShipmentController::class, 'confirmPayment']);
     Route::get('/shipments/{shipment}', [\App\Http\Controllers\Api\ShipmentController::class, 'show']);
 
     // Saved Addresses (Alamat Favorit)

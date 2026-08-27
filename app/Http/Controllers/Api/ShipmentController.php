@@ -176,4 +176,40 @@ class ShipmentController extends Controller
             'data'    => $stats,
         ]);
     }
+    /**
+     * Confirm payment method (COD/TUNAI)
+     * POST /api/shipments/{shipment}/confirm-payment
+     */
+    public function confirmPayment(Request , Shipment $shipment)
+    {
+        $validator = Validator::make($request->all(), [
+            'payment_method' => 'required|in:COD,TUNAI',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        if ($shipment->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan ini sudah diproses.',
+            ], 400);
+        }
+
+        $shipment->update([
+            'status' => 'confirmed'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Metode pembayaran ' . $request->payment_method . ' berhasil dikonfirmasi.',
+            'data'    => $shipment->fresh(),
+        ]);
+    }
 }
+
