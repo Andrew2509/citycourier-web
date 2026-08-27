@@ -31,8 +31,6 @@ class Order extends Model
         'delivered_at',
     ];
 
-        protected $appends = ['sender_name', 'receiver_name', 'sender_phone', 'receiver_phone'];
-
     protected $appends = [
         'sender_name', 'receiver_name', 'sender_phone', 'receiver_phone', 
         'dropoff_address', 'dropoff_latitude', 'dropoff_longitude'
@@ -81,23 +79,13 @@ class Order extends Model
         ];
     }
 
-    /**
-     * Get the courier assigned to this order.
-     */
     public function courier()
     {
         return $this->belongsTo(Courier::class);
     }
 
-    /**
-     * Generate a unique order number.
-     */
     public static function generateOrderNumber(): string
     {
         return 'CC-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
     }
 }
-
-
-
-
