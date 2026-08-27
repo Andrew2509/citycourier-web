@@ -31,6 +31,33 @@ class Order extends Model
         'delivered_at',
     ];
 
+        protected $appends = ['sender_name', 'receiver_name', 'sender_phone', 'receiver_phone'];
+
+    public function shipment()
+    {
+        return $this->belongsTo(Shipment::class, 'order_number', 'shipment_number');
+    }
+
+    public function getSenderNameAttribute()
+    {
+        return $this->shipment ? $this->shipment->sender_name : $this->customer_name;
+    }
+
+    public function getReceiverNameAttribute()
+    {
+        return $this->shipment ? $this->shipment->receiver_name : $this->customer_name;
+    }
+
+    public function getSenderPhoneAttribute()
+    {
+        return $this->shipment ? $this->shipment->sender_phone : $this->customer_phone;
+    }
+
+    public function getReceiverPhoneAttribute()
+    {
+        return $this->shipment ? $this->shipment->receiver_phone : $this->customer_phone;
+    }
+
     protected function casts(): array
     {
         return [
@@ -61,3 +88,4 @@ class Order extends Model
         return 'CC-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
     }
 }
+
