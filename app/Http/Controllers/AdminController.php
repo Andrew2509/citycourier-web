@@ -167,4 +167,15 @@ class AdminController extends Controller
         $order->load('courier.user');
         return view('admin.order-detail', compact('order'));
     }
+
+    /**
+     * Remove an order from storage.
+     */
+    public function destroyOrder(Order $order)
+    {
+        $order->delete();
+
+        return redirect()->route('admin.orders')
+            ->with('success', 'Pesanan berhasil dihapus.');
+    }
 }

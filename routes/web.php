@@ -32,6 +32,7 @@ Route::middleware('auth')->group(function () {
         // Orders
         Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
         Route::get('/orders/{order}', [AdminController::class, 'orderDetail'])->name('orders.detail');
+        Route::delete('/orders/{order}', [AdminController::class, 'destroyOrder'])->name('orders.destroy');
 
         // Shipments (Request Pickup dari Flutter)
         Route::get('/shipments', [\App\Http\Controllers\Admin\ShipmentController::class, 'index'])->name('shipments.index');

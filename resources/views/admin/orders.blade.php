@@ -75,6 +75,7 @@
                         <th>Harga</th>
                         <th>Status</th>
                         <th>Tanggal</th>
+                        <th style="width:60px;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -114,10 +115,23 @@
                                 <br>
                                 <span style="font-size:11px;">{{ $order->created_at->format('H:i') }}</span>
                             </td>
+                            <td class="text-center">
+                                <div class="action-btns">
+                                    <form action="{{ route('admin.orders.destroy', $order) }}" method="POST" class="d-inline"
+                                          onclick="event.stopPropagation();"
+                                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus pesanan {{ addslashes($order->order_number) }}?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-action delete" title="Hapus">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7">
+                            <td colspan="8">
                                 <div class="empty-state">
                                     <i class="fas fa-box-open"></i>
                                     <h3>Belum ada pesanan</h3>
