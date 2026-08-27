@@ -33,6 +33,15 @@ class Order extends Model
 
         protected $appends = ['sender_name', 'receiver_name', 'sender_phone', 'receiver_phone'];
 
+    protected $appends = [
+        'sender_name', 'receiver_name', 'sender_phone', 'receiver_phone', 
+        'dropoff_address', 'dropoff_latitude', 'dropoff_longitude'
+    ];
+
+    public function getDropoffAddressAttribute() { return $this->delivery_address; }
+    public function getDropoffLatitudeAttribute() { return $this->delivery_latitude; }
+    public function getDropoffLongitudeAttribute() { return $this->delivery_longitude; }
+
     public function shipment()
     {
         return $this->belongsTo(Shipment::class, 'order_number', 'shipment_number');
