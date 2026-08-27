@@ -180,7 +180,7 @@ class ShipmentController extends Controller
      * Confirm payment method (COD/TUNAI)
      * POST /api/shipments/{shipment}/confirm-payment
      */
-    public function confirmPayment(Request , Shipment $shipment)
+    public function confirmPayment(Request $request, Shipment $shipment)
     {
         $validator = Validator::make($request->all(), [
             'payment_method' => 'required|in:COD,TUNAI',
