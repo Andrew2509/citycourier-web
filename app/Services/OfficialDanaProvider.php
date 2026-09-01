@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  *  - Balance Inquiry:  POST {base}/v1.0/balance-inquiry.htm
  *  - Unbinding:        POST {base}/v1.0/registration-account-unbinding.htm
  *
- * Credentials sourced from config('services.dana') which reads Setting/env.
+ * Credentials sourced from Setting (DB) via DanaService::providerConfig().
  */
 class OfficialDanaProvider implements DanaProvider
 {

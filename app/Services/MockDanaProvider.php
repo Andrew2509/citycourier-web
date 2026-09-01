@@ -22,10 +22,10 @@ class MockDanaProvider implements DanaProvider
         $ott = 'OTT-' . strtoupper(Str::random(16));
 
         // Build mock redirect URL (sandbox)
-        $redirectUrl = config('services.dana.redirect_url', 'https://sandbox.dana.id');
+        $redirectUrl = 'https://sandbox.dana.id';
         $redirectUrl .= '/v1.0/widget/binding?' . http_build_query([
             'ott'       => $ott,
-            'callback'  => config('services.dana.callback_url', url('/api/courier/dana/callback')),
+            'callback'  => \App\Models\Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
         ]);
 
         return [

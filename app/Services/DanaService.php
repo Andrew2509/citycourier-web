@@ -33,10 +33,10 @@ class DanaService
 
     private function resolveProvider(): DanaProvider
     {
-        // Baca kredensial dari Database Settings (Admin Panel) atau fallback env/config.
-        $mode = Setting::get('dana_mode', env('DANA_MODE', config('services.dana.mode', 'mock')));
-        $clientId = Setting::get('dana_client_id', env('DANA_CLIENT_ID', config('services.dana.client_id', '')));
-        $privateKey = Setting::get('dana_private_key', env('DANA_PRIVATE_KEY', config('services.dana.private_key', '')));
+        // Baca kredensial dari Database Settings (Admin Panel) — tidak dari env.
+        $mode = Setting::get('dana_mode', 'mock');
+        $clientId = Setting::get('dana_client_id', '');
+        $privateKey = Setting::get('dana_private_key', '');
 
         if (in_array($mode, ['sandbox', 'production'], true) && $clientId && $privateKey) {
             return new OfficialDanaProvider($this->providerConfig());
@@ -45,22 +45,22 @@ class DanaService
     }
 
     /**
-     * Kumpulkan konfigurasi provider DANA dari Settings/env/config.
+     * Kumpulkan konfigurasi provider DANA dari Settings (DB).
      * Dipakai oleh resolveProvider() dan halaman admin utk tes koneksi.
      */
     public function providerConfig(): array
     {
-        $mode = Setting::get('dana_mode', env('DANA_MODE', config('services.dana.mode', 'mock')));
+        $mode = Setting::get('dana_mode', 'mock');
         return [
             'mode'          => $mode,
             'env'           => $mode,
-            'client_id'     => Setting::get('dana_client_id', env('DANA_CLIENT_ID', config('services.dana.client_id', ''))),
-            'client_secret' => Setting::get('dana_client_secret', env('DANA_CLIENT_SECRET', config('services.dana.client_secret', ''))),
-            'merchant_id'   => Setting::get('dana_merchant_id', env('DANA_MERCHANT_ID', config('services.dana.merchant_id', ''))),
-            'public_key'    => Setting::get('dana_public_key', env('DANA_PUBLIC_KEY', config('services.dana.public_key', ''))),
-            'private_key'   => Setting::get('dana_private_key', env('DANA_PRIVATE_KEY', config('services.dana.private_key', ''))),
-            'api_base_url'  => Setting::get('dana_api_base_url', env('DANA_API_URL', env('DANA_API_BASE_URL', config('services.dana.api_base_url', 'https://api.sandbox.dana.id')))),
-            'callback_url'  => Setting::get('dana_callback_url', env('DANA_CALLBACK_URL', config('services.dana.callback_url', ''))),
+            'client_id'     => Setting::get('dana_client_id', ''),
+            'client_secret' => Setting::get('dana_client_secret', ''),
+            'merchant_id'   => Setting::get('dana_merchant_id', ''),
+            'public_key'    => Setting::get('dana_public_key', ''),
+            'private_key'   => Setting::get('dana_private_key', ''),
+            'api_base_url'  => Setting::get('dana_api_base_url', 'https://api.sandbox.dana.id'),
+            'callback_url'  => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
         ];
     }
 

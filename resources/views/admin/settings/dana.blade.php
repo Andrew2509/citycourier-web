@@ -2,7 +2,7 @@
 
 @section('title', 'DANA Provider Settings')
 @section('page-title', 'Pengaturan Provider DANA')
-@section('page-subtitle', 'Kelola kredensial & mode integrasi DANA Widget Binding (mock, sandbox, atau production)')
+@section('page-subtitle', 'Kelola kredensial & mode integrasi DANA Widget Binding. Semua kredensial disimpan di database — tidak perlu mengatur file .env.')
 
 @section('content')
 <div class="row">
@@ -57,6 +57,15 @@
                         @error('dana_merchant_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="dana_public_key" class="form-label fw-semibold text-muted small uppercase">Public Key (RSA)</label>
+                        <textarea name="dana_public_key" id="dana_public_key" rows="4" class="form-control rounded-3 border-light-subtle font-monospace small @error('dana_public_key') is-invalid @enderror" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----">{{ old('dana_public_key', $settings['public_key']) }}</textarea>
+                        @error('dana_public_key')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <div class="form-text text-muted mt-1 small">Public key dari merchant DANA Anda (opsional). Disimpan aman di server.</div>
                     </div>
 
                     <div class="form-group mb-4">
