@@ -169,6 +169,16 @@ class CourierController extends Controller
             ->whereDate('delivered_at', today())
             ->count();
 
+        // Active orders (in progress for this courier)
+        $activeOrders = \App\Models\Order::where('courier_id', $courier->id)
+            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+            ->count();
+
+        // Total delivered shipments for this courier
+        $totalShipments = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('status', 'delivered')
+            ->count();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -177,8 +187,134 @@ class CourierController extends Controller
                 'today_orders' => $todayOrders,
                 'total_earnings' => $netEarnings,
                 'total_withdrawals' => $totalWithdrawals,
+                'active_orders' => $activeOrders,
+                'total_shipments' => $totalShipments,
             ],
         ]);
+    }
+
+    /**
+     * Get courier earnings summary for the Dompet/Pendapatan screen.
+     * GET /api/courier/earnings
+     */
+    public function earnings(Request $request)
+    {
+        $courier = $request->user()->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        // Pendapatan bersih kurir = 90% dari harga order yang selesai diantar.
+        $delivered = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('status', 'delivered');
+
+        $totalEarnings = (clone $delivered)->sum('price') * 0.9;
+        $todayEarnings = (clone $delivered)->whereDate('delivered_at', today())->sum('price') * 0.9;
+        $weekEarnings = (clone $delivered)
+            ->whereBetween('delivered_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->sum('price') * 0.9;
+        $monthEarnings = (clone $delivered)
+            ->whereBetween('delivered_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->sum('price') * 0.9;
+
+        $todayOrders = (clone $delivered)->whereDate('delivered_at', today())->count();
+
+        // Withdrawals
+        $totalWithdrawals = \App\Models\Withdrawal::where('courier_id', $courier->id)
+            ->where('status', 'completed')
+            ->sum('amount');
+        $pendingWithdrawals = \App\Models\Withdrawal::where('courier_id', $courier->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->sum('amount');
+
+        // Saldo: gunakan wallet bila sudah punya saldo, jika tidak hitung dari pendapatan - penarikan.
+        $wallet = \App\Models\Wallet::where('courier_id', $courier->id)->first();
+        $computedBalance = $totalEarnings - $totalWithdrawals - $pendingWithdrawals;
+        $balance = ($wallet && (float) $wallet->available_balance > 0)
+            ? (float) $wallet->available_balance
+            : max($computedBalance, 0);
+
+        // Aktivitas terbaru (pendapatan order + penarikan dana), digabung dan diurutkan terbaru dulu.
+        $recentOrders = (clone $delivered)->latest('delivered_at')->limit(50)->get();
+        $recentWithdrawals = \App\Models\Withdrawal::where('courier_id', $courier->id)
+            ->latest('created_at')
+            ->limit(50)
+            ->get();
+
+        $activities = [];
+
+        foreach ($recentOrders as $order) {
+            $activities[] = [
+                'at' => $order->delivered_at ? $order->delivered_at->format('Y-m-d H:i:s') : null,
+                'type' => 'income',
+                'title' => 'Pengantaran #' . $order->order_number,
+                'amount' => round($order->price * 0.9, 2),
+                'time' => $order->delivered_at ? $order->delivered_at->format('H:i') : '-',
+                'date_label' => $this->dateLabel($order->delivered_at),
+                'status' => 'Pesanan selesai',
+            ];
+        }
+
+        foreach ($recentWithdrawals as $withdrawal) {
+            $activities[] = [
+                'at' => $withdrawal->created_at->format('Y-m-d H:i:s'),
+                'type' => 'withdrawal',
+                'title' => 'Penarikan Dana',
+                'amount' => -1 * (float) $withdrawal->amount,
+                'time' => $withdrawal->created_at->format('H:i'),
+                'date_label' => $this->dateLabel($withdrawal->created_at),
+                'status' => $this->withdrawalStatusLabel($withdrawal->status),
+            ];
+        }
+
+        usort($activities, function ($a, $b) {
+            return strcmp($b['at'] ?? '', $a['at'] ?? '');
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'today' => round($todayEarnings),
+                'week' => round($weekEarnings),
+                'month' => round($monthEarnings),
+                'total' => round($totalEarnings),
+                'balance' => round($balance),
+                'pending_balance' => round((float) ($wallet->pending_balance ?? 0)),
+                'today_orders' => $todayOrders,
+                'total_withdrawals' => round($totalWithdrawals),
+                'recent_activity' => array_slice($activities, 0, 20),
+            ],
+        ]);
+    }
+
+    /**
+     * Short human label for an activity date.
+     */
+    private function dateLabel($dt)
+    {
+        if (!$dt) return '-';
+        if ($dt->isToday()) return 'HARI INI';
+        if ($dt->isYesterday()) return 'KEMARIN';
+        return $dt->format('d M');
+    }
+
+    /**
+     * Indonesian label for withdrawal status.
+     */
+    private function withdrawalStatusLabel($status)
+    {
+        return match ($status) {
+            'completed' => 'Berhasil',
+            'approved' => 'Disetujui',
+            'pending' => 'Menunggu',
+            'rejected' => 'Ditolak',
+            'cancelled' => 'Dibatalkan',
+            default => ucfirst((string) $status),
+        };
     }
 
     /**

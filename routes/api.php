@@ -6,6 +6,10 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ShippingController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\Api\DanaController;
+use App\Http\Controllers\Api\WithdrawalController;
+
 
 // ─── Public API Routes ───────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
@@ -57,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/status', [\App\Http\Controllers\Api\CourierController::class, 'updateStatus']);
         Route::put('/location', [\App\Http\Controllers\Api\CourierController::class, 'updateLocation']);
         Route::get('/stats', [\App\Http\Controllers\Api\CourierController::class, 'stats']);
+        Route::get('/earnings', [\App\Http\Controllers\Api\CourierController::class, 'earnings']);
         Route::get('/profile', [\App\Http\Controllers\Api\CourierController::class, 'profile']);
     });
 
@@ -101,5 +106,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/cancel', [PaymentController::class, 'cancel']);
         Route::get('/{paymentId}/status', [PaymentController::class, 'status'])->where('paymentId', '.*');
         Route::post('/{paymentId}/cancel', [PaymentController::class, 'cancel'])->where('paymentId', '.*');
+
+    // ─── Wallet & DANA Routes ───────────────────────────────────
+    Route::get('/courier/wallet', [WalletController::class, 'index']);
+    Route::get('/courier/wallet/transactions', [WalletController::class, 'transactions']);
+
+    Route::get('/courier/dana/status', [DanaController::class, 'status']);
+    Route::post('/courier/dana/connect', [DanaController::class, 'connect']);
+    Route::post('/courier/dana/callback', [DanaController::class, 'callback']);
+    Route::post('/courier/dana/disconnect', [DanaController::class, 'disconnect']);
+
+    Route::post('/courier/withdrawals', [WithdrawalController::class, 'store']);
+    Route::get('/courier/withdrawals', [WithdrawalController::class, 'index']);
+    Route::get('/courier/withdrawals/{id}', [WithdrawalController::class, 'show']);
+
     });
 });
