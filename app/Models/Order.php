@@ -34,7 +34,8 @@ class Order extends Model
 
     protected $appends = [
         'tracking_number', 'sender_name', 'receiver_name', 'sender_phone', 'receiver_phone', 
-        'dropoff_address', 'dropoff_latitude', 'dropoff_longitude'
+        'dropoff_address', 'dropoff_latitude', 'dropoff_longitude',
+        'pickup_photo_url', 'delivery_photo_url',
     ];
 
     public function getTrackingNumberAttribute()
@@ -47,6 +48,18 @@ class Order extends Model
     public function getDropoffAddressAttribute() { return $this->delivery_address; }
     public function getDropoffLatitudeAttribute() { return $this->delivery_latitude; }
     public function getDropoffLongitudeAttribute() { return $this->delivery_longitude; }
+
+    public function getPickupPhotoUrlAttribute()
+    {
+        if (!$this->pickup_photo) return null;
+        return url('storage/' . $this->pickup_photo);
+    }
+
+    public function getDeliveryPhotoUrlAttribute()
+    {
+        if (!$this->delivery_photo) return null;
+        return url('storage/' . $this->delivery_photo);
+    }
 
     public function shipment()
     {
