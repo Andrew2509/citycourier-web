@@ -26,7 +26,7 @@ class CiWorkController extends Controller
                 ->sum('price'),
         ];
 
-        $recentTasks = Order::with('courier.user')
+        $recentTasks = Order::with(['courier.user', 'shipment'])
             ->whereIn('status', ['picking_up', 'delivering'])
             ->latest()
             ->take(5)
@@ -53,7 +53,7 @@ class CiWorkController extends Controller
      */
     public function tasks()
     {
-        $tasks = Order::with('courier.user')
+        $tasks = Order::with(['courier.user', 'shipment'])
             ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
             ->latest()
             ->paginate(10);

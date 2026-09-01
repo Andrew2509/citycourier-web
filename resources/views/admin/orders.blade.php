@@ -83,7 +83,7 @@
                         <tr onclick="window.location='{{ route('admin.orders.detail', $order) }}'" style="cursor:pointer;">
                             <td>
                                 <span style="font-weight:700; color: var(--accent-primary-light); font-size: 13px;">
-                                    {{ $order->order_number }}
+                                    {{ $order->tracking_number ?? $order->order_number }}
                                 </span>
                             </td>
                             <td>

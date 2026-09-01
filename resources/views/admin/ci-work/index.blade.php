@@ -74,7 +74,7 @@
                     <tbody>
                         @forelse($recentTasks as $task)
                             <tr>
-                                <td><span style="font-weight:600;">{{ $task->order_number }}</span></td>
+                                <td><span style="font-weight:600;">{{ $task->tracking_number ?? $task->order_number }}</span></td>
                                 <td>{{ $task->courier->user->name ?? 'Unassigned' }}</td>
                                 <td>
                                     <span class="badge badge-{{ $task->status }}">

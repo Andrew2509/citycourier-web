@@ -127,7 +127,7 @@ class AdminController extends Controller
      */
     public function orders(Request $request)
     {
-        $query = Order::with('courier.user');
+        $query = Order::with(['courier.user', 'shipment']);
 
         // Filter by status
         if ($request->has('status') && $request->status) {
@@ -164,7 +164,7 @@ class AdminController extends Controller
      */
     public function orderDetail(Order $order)
     {
-        $order->load('courier.user');
+        $order->load(['courier.user', 'shipment']);
         return view('admin.order-detail', compact('order'));
     }
 

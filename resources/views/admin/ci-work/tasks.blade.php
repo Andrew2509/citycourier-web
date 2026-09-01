@@ -27,7 +27,7 @@
             <tbody>
                 @forelse($tasks as $task)
                     <tr onclick="window.location='{{ route('admin.orders.detail', $task) }}'" style="cursor:pointer;">
-                        <td><span style="font-weight:600;">{{ $task->order_number }}</span></td>
+                        <td><span style="font-weight:600;">{{ $task->tracking_number ?? $task->order_number }}</span></td>
                         <td>
                             <div class="user-name">{{ $task->courier->user->name ?? 'Unassigned' }}</div>
                             <div class="user-email">{{ $task->courier->courier_id ?? '-' }}</div>

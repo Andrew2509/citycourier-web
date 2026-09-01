@@ -2,7 +2,7 @@
 
 @section('title', 'Detail Pesanan')
 @section('page-title', 'Detail Pesanan')
-@section('page-subtitle', $order->order_number)
+@section('page-subtitle', $order->tracking_number ?? $order->order_number)
 
 @section('content')
     <div style="margin-bottom: 20px;">
@@ -25,8 +25,12 @@
             </div>
             <div class="card-body">
                 <div class="detail-row">
-                    <span class="detail-label">No. Order</span>
-                    <span class="detail-value" style="color: var(--accent-primary-light);">{{ $order->order_number }}</span>
+                    <span class="detail-label">Nomor Resi</span>
+                    <span class="detail-value" style="color: var(--accent-primary-light); font-weight: 700;">{{ $order->tracking_number ?? $order->order_number }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">No. Ref Internal</span>
+                    <span class="detail-value">{{ $order->order_number }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Deskripsi Paket</span>

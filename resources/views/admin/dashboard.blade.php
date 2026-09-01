@@ -116,7 +116,7 @@
                             <tr data-href="{{ route('admin.orders.detail', $order) }}">
                                 <td>
                                     <span style="font-weight:600; color: var(--text-primary);">
-                                        {{ $order->order_number }}
+                                        {{ $order->tracking_number ?? $order->order_number }}
                                     </span>
                                 </td>
                                 <td>{{ $order->customer_name }}</td>
