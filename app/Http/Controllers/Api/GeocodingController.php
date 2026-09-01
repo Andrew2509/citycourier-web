@@ -44,7 +44,7 @@ class GeocodingController extends Controller
             ]);
         }
 
-        // 1) Nominatim
+        // 1) Nominatim with full query
         $nominatimResults = $this->nominatimSearch($query, $limit);
 
         if (count($nominatimResults) >= 1) {
@@ -56,9 +56,29 @@ class GeocodingController extends Controller
             ]);
         }
 
+        // 1b) Nominatim with simplified query (first 2 parts + city)
+        $simplified = $this->simplifyQuery($query);
+        if ($simplified !== $query) {
+            $nominatimResults = $this->nominatimSearch($simplified, $limit);
+            if (count($nominatimResults) >= 1) {
+                Cache::put($cacheKey, $nominatimResults, self::SEARCH_CACHE_TTL);
+                return response()->json([
+                    'success' => true,
+                    'data'    => $nominatimResults,
+                    'source'  => 'nominatim_simplified',
+                ]);
+            }
+        }
+
         // 2) Photon fallback
         $photonResults = $this->photonSearch($query, $limit);
         $merged = $this->deduplicate(array_merge($nominatimResults, $photonResults));
+
+        // 2b) Photon with simplified query
+        if (empty($merged) && $simplified !== $query) {
+            $photonResults = $this->photonSearch($simplified, $limit);
+            $merged = $this->deduplicate(array_merge($nominatimResults, $photonResults));
+        }
 
         if (!empty($merged)) {
             Cache::put($cacheKey, $merged, self::SEARCH_CACHE_TTL);
@@ -290,5 +310,38 @@ class GeocodingController extends Controller
             }
         }
         return $unique;
+    }
+
+    /**
+     * Simplify long address query for geocoding.
+     * Take first 2 parts (name + street) + city name.
+     * E.g. "Reny Swalayan, No. 132, Jl. X, RW 07, Wonokromo, Surabaya, ..."
+     *    -> "Reny Swalayan, No. 132, Surabaya"
+     */
+    private function simplifyQuery(string $query): string
+    {
+        $parts = array_map('trim', explode(',', $query));
+        $parts = array_filter($parts, fn($p) => strlen($p) > 0);
+        $parts = array_values($parts);
+
+        if (count($parts) <= 2) return $query;
+
+        $result = $parts[0];
+        if (count($parts) > 1) {
+            $result .= ', ' . $parts[1];
+        }
+
+        // Find city name and append
+        $cities = ['Surabaya','Sidoarjo','Gresik','Mojokerto','Malang','Jakarta','Bandung','Semarang','Yogyakarta','Medan'];
+        foreach ($parts as $part) {
+            foreach ($cities as $city) {
+                if (stripos($part, $city) !== false && stripos($result, $city) === false) {
+                    $result .= ', ' . $city;
+                    return $result;
+                }
+            }
+        }
+
+        return $result;
     }
 }
