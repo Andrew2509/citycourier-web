@@ -24,7 +24,7 @@ class OrderController extends Controller
             ], 404);
         }
 
-        $query = Order::where('courier_id', $courier->id);
+        $query = Order::with('shipment')->where('courier_id', $courier->id);
 
         // Filter by status
         if ($request->has('status') && $request->status) {
@@ -45,7 +45,7 @@ class OrderController extends Controller
      */
     public function available()
     {
-        $orders = Order::where('status', 'pending')
+        $orders = Order::with('shipment')->where('status', 'pending')
             ->latest()
             ->paginate(15);
 
@@ -70,7 +70,7 @@ class OrderController extends Controller
             ], 404);
         }
 
-        $order = Order::where('courier_id', $courier->id)
+        $order = Order::with('shipment')->where('courier_id', $courier->id)
             ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
             ->first();
 

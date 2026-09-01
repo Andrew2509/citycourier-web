@@ -32,9 +32,16 @@ class Order extends Model
     ];
 
     protected $appends = [
-        'sender_name', 'receiver_name', 'sender_phone', 'receiver_phone', 
+        'tracking_number', 'sender_name', 'receiver_name', 'sender_phone', 'receiver_phone', 
         'dropoff_address', 'dropoff_latitude', 'dropoff_longitude'
     ];
+
+    public function getTrackingNumberAttribute()
+    {
+        return ($this->shipment && !empty($this->shipment->tracking_number))
+            ? $this->shipment->tracking_number
+            : $this->order_number;
+    }
 
     public function getDropoffAddressAttribute() { return $this->delivery_address; }
     public function getDropoffLatitudeAttribute() { return $this->delivery_latitude; }
