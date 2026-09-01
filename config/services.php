@@ -49,7 +49,7 @@ return [
         'authorization_url' => env('DANA_AUTHORIZATION_URL', 'https://sandbox.dana.id/authorization'),
         'client_id'         => env('DANA_CLIENT_ID', 'mock-client-id'),
         'client_secret'     => env('DANA_CLIENT_SECRET', ''),
-        'callback_url'      => env('DANA_CALLBACK_URL', url('/api/courier/dana/callback')),
+        'callback_url'      => env('DANA_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/api/courier/dana/callback'),
         'mode'              => env('DANA_MODE', 'mock'),
     ],
 
