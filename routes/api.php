@@ -114,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/courier/dana/status', [DanaController::class, 'status']);
     Route::post('/courier/dana/connect', [DanaController::class, 'connect']);
     Route::post('/courier/dana/callback', [DanaController::class, 'callback']);
+    Route::post('/courier/dana/mock-connect', [DanaController::class, 'mockConnect']);
     Route::post('/courier/dana/disconnect', [DanaController::class, 'disconnect']);
 
     Route::post('/courier/withdrawals', [WithdrawalController::class, 'store']);
