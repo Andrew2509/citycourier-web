@@ -117,6 +117,11 @@ class OrderController extends Controller
                 'status' => 'assigned',
             ]);
 
+            // Sync status ke Shipment
+            if ($order->shipment) {
+                $order->shipment->update(['status' => 'assigned']);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Order berhasil diambil.',
@@ -150,6 +155,21 @@ class OrderController extends Controller
         }
 
         $order->update($updateData);
+
+        // Sync status dari Order ke Shipment agar terlihat di admin panel
+        if ($order->shipment) {
+            $shipmentStatusMap = [
+                'assigned'   => 'assigned',
+                'picking_up' => 'picking_up',
+                'delivering' => 'delivering',
+                'delivered'  => 'delivered',
+                'cancelled'  => 'cancelled',
+            ];
+            $shipmentStatus = $shipmentStatusMap[$request->status] ?? null;
+            if ($shipmentStatus) {
+                $order->shipment->update(['status' => $shipmentStatus]);
+            }
+        }
 
         return response()->json([
             'success' => true,
