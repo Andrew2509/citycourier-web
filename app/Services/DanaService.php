@@ -39,17 +39,39 @@ class DanaService
         $privateKey = Setting::get('dana_private_key', env('DANA_PRIVATE_KEY', config('services.dana.private_key', '')));
 
         if (in_array($mode, ['sandbox', 'production'], true) && $clientId && $privateKey) {
-            $config = [
-                'mode'          => $mode,
-                'env'           => $mode,
-                'client_id'     => $clientId,
-                'client_secret' => Setting::get('dana_client_secret', env('DANA_CLIENT_SECRET', config('services.dana.client_secret', ''))),
-                'merchant_id'   => Setting::get('dana_merchant_id', env('DANA_MERCHANT_ID', config('services.dana.merchant_id', ''))),
-                'private_key'   => $privateKey,
-                'api_base_url'  => Setting::get('dana_api_base_url', env('DANA_API_BASE_URL', config('services.dana.api_base_url', 'https://api.sandbox.dana.id'))),
-                'callback_url'  => Setting::get('dana_callback_url', env('DANA_CALLBACK_URL', config('services.dana.callback_url', ''))),
-            ];
-            return new OfficialDanaProvider($config);
+            return new OfficialDanaProvider($this->providerConfig());
+        }
+        return new MockDanaProvider();
+    }
+
+    /**
+     * Kumpulkan konfigurasi provider DANA dari Settings/env/config.
+     * Dipakai oleh resolveProvider() dan halaman admin utk tes koneksi.
+     */
+    public function providerConfig(): array
+    {
+        $mode = Setting::get('dana_mode', env('DANA_MODE', config('services.dana.mode', 'mock')));
+        return [
+            'mode'          => $mode,
+            'env'           => $mode,
+            'client_id'     => Setting::get('dana_client_id', env('DANA_CLIENT_ID', config('services.dana.client_id', ''))),
+            'client_secret' => Setting::get('dana_client_secret', env('DANA_CLIENT_SECRET', config('services.dana.client_secret', ''))),
+            'merchant_id'   => Setting::get('dana_merchant_id', env('DANA_MERCHANT_ID', config('services.dana.merchant_id', ''))),
+            'private_key'   => Setting::get('dana_private_key', env('DANA_PRIVATE_KEY', config('services.dana.private_key', ''))),
+            'api_base_url'  => Setting::get('dana_api_base_url', env('DANA_API_BASE_URL', config('services.dana.api_base_url', 'https://api.sandbox.dana.id'))),
+            'callback_url'  => Setting::get('dana_callback_url', env('DANA_CALLBACK_URL', config('services.dana.callback_url', ''))),
+        ];
+    }
+
+    /**
+     * Provider yang aktif (Official bila mode sandbox/production & kredensial ada).
+     * Dipakai halaman admin utk tes koneksi tanpa menyimpan baris ke DB.
+     */
+    public function activeProvider(): DanaProvider
+    {
+        $cfg = $this->providerConfig();
+        if (in_array($cfg['mode'], ['sandbox', 'production'], true) && $cfg['client_id'] && $cfg['private_key']) {
+            return new OfficialDanaProvider($cfg);
         }
         return new MockDanaProvider();
     }
@@ -89,6 +111,7 @@ class DanaService
                 'ott'          => null,
                 'redirect_url' => null,
                 'error'        => 'Gagal memulai penghubungan DANA.',
+                'exception'    => $e->getMessage(),
             ];
         }
     }

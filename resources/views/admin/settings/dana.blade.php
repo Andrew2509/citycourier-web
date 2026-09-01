@@ -157,7 +157,10 @@
                 testTitle.innerText = data.success ? 'Koneksi Berhasil' : 'Koneksi Gagal';
                 testMessage.innerText = data.message;
 
-                if (data.data && data.data.redirect_url) {
+                if (data.detail) {
+                    testData.innerHTML = '<strong>Detail:</strong><br><code class="small">' + data.detail + '</code>';
+                    testData.style.display = 'block';
+                } else if (data.data && data.data.redirect_url) {
                     testData.innerHTML = '<strong>URL Binding:</strong><br><code class="small">' + data.data.redirect_url + '</code>';
                     testData.style.display = 'block';
                 } else {

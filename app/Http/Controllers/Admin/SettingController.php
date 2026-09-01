@@ -357,10 +357,11 @@ class SettingController extends Controller
     public function testDana()
     {
         try {
+            // activeProvider() tidak menyimpan baris DB — hanya validasi kredensial
+            // & membangun URL binding (khusus OfficialDanaProvider).
             $service = new \App\Services\DanaService();
-
-            // beginBinding memvalidasi kredensial & (untuk Official) membangun URL binding.
-            $result = $service->beginBinding(1, null);
+            $provider = $service->activeProvider();
+            $result = $provider->applyOTT(null);
 
             if ($result['success'] && !empty($result['redirect_url'])) {
                 return response()->json([
@@ -373,6 +374,7 @@ class SettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Koneksi Gagal: ' . ($result['error'] ?? 'Tidak dapat membuat URL binding.'),
+                'detail'  => $result['exception'] ?? null,
                 'data'    => $result,
             ], 400);
         } catch (\Exception $e) {
