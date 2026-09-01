@@ -28,6 +28,7 @@ class Order extends Model
         'pickup_photo',
         'delivery_photo',
         'picked_up_at',
+        'delivering_at',
         'delivered_at',
     ];
 
@@ -82,6 +83,7 @@ class Order extends Model
             'package_weight' => 'decimal:2',
             'price' => 'decimal:0',
             'picked_up_at' => 'datetime',
+            'delivering_at' => 'datetime',
             'delivered_at' => 'datetime',
         ];
     }

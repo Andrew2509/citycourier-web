@@ -147,6 +147,10 @@ class OrderController extends Controller
             }
         }
 
+        if ($request->status === 'delivering') {
+            $updateData['delivering_at'] = now();
+        }
+
         if ($request->status === 'delivered') {
             $updateData['delivered_at'] = now();
             if ($request->hasFile('photo')) {
