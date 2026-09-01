@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ShippingController;
+use App\Http\Controllers\Api\GeocodingController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public API Routes ───────────────────────────────────────
@@ -22,6 +23,13 @@ Route::post('/auth/phone', [AuthController::class, 'loginWithPhone']);
 
 // Drop Points
 Route::get('/drop-points', [\App\Http\Controllers\Api\DropPointController::class, 'index']);
+
+// ─── Geocoding (Public - Nominatim/Photon Proxy) ──────────
+Route::prefix('geocoding')->group(function () {
+    Route::get('/search', [GeocodingController::class, 'search']);
+    Route::get('/reverse', [GeocodingController::class, 'reverse']);
+});
+
 
 // Tracking (Public)
 Route::get('/shipments/track/{number}', [\App\Http\Controllers\Api\ShipmentController::class, 'track']);
