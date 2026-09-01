@@ -98,6 +98,108 @@ class DanaController extends Controller
     }
 
     /**
+     * POST /api/dana/bind/init
+     * Alias panduan integrasi: inisialisasi binding → return URL + state.
+     */
+    public function initBinding(Request $request)
+    {
+        $courier = $request->user()->courier;
+        if (!$courier) {
+            return response()->json(['error' => 'Profil kurir tidak ditemukan.'], 404);
+        }
+
+        $existing = DanaConnection::where('courier_id', $courier->id)
+            ->where('status', 'connected')
+            ->first();
+
+        if ($existing) {
+            return response()->json(['error' => 'Akun DANA sudah terhubung.', 'state' => null], 400);
+        }
+
+        $phone = $courier->phone ?? $request->input('phone_number');
+        $result = $this->danaService->beginBinding($courier->id, $phone);
+
+        if ($result['success']) {
+            return response()->json([
+                'binding_url' => $result['redirect_url'],
+                'state'       => $result['ott'],
+                'redirect_url'=> $result['redirect_url'],
+            ]);
+        }
+
+        return response()->json([
+            'error'  => $result['error'] ?? 'Gagal membuat sesi penghubungan.',
+        ], 500);
+    }
+
+    /**
+     * POST /api/dana/bind/status
+     * Alias panduan integrasi: cek status binding → JSON.
+     */
+    public function checkBindingStatus(Request $request)
+    {
+        $courier = $request->user()->courier;
+        if (!$courier) {
+            return response()->json(['error' => 'Profil kurir tidak ditemukan.'], 404);
+        }
+
+        $connection = DanaConnection::where('courier_id', $courier->id)->first();
+
+        return response()->json([
+            'status'       => $connection?->status ?? 'not_connected',
+            'masked_phone' => $connection?->masked_phone,
+            'connected_at' => $connection?->linked_at,
+        ]);
+    }
+
+    /**
+     * POST /api/dana/webhook
+     * Alias panduan integrasi: callback webhook DANA → exchange authCode, return JSON.
+     */
+    public function webhookCallback(Request $request)
+    {
+        $authCode = $request->input('auth_code')
+            ?? $request->input('authCode')
+            ?? $request->input('authorization_code');
+        $state    = $request->input('state');
+
+        if (!$authCode) {
+            return response()->json(['status' => 'failed', 'error' => 'Kode otorisasi tidak ditemukan.'], 400);
+        }
+
+        $courierId = null;
+        if ($state) {
+            $connection = DanaConnection::where('session_id', $state)->first();
+            if ($connection) {
+                $courierId = $connection->courier_id;
+            }
+        }
+
+        if (!$courierId) {
+            Log::warning('[DanaController] webhook session tidak ditemukan', ['state' => $state]);
+            return response()->json(['status' => 'failed', 'error' => 'Sesi penghubungan tidak ditemukan atau kedaluwarsa.'], 400);
+        }
+
+        $result = $this->danaService->completeBinding($courierId, $authCode);
+
+        if ($result['success']) {
+            Log::info('[DanaController] webhook success', [
+                'courier_id'   => $courierId,
+                'masked_phone' => $result['masked_phone'],
+            ]);
+            return response()->json([
+                'status'       => 'success',
+                'masked_phone' => $result['masked_phone'],
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'failed',
+            'error'  => $result['error'] ?? 'Penghubungan DANA gagal.',
+        ], 400);
+    }
+
+    /**
      * GET/POST /api/courier/dana/callback
      * Step 4: Handle DANA callback — exchange authCode for accessToken.
      * DANA me-redirect browser user ke endpoint ini (publik, tanpa bearer token).

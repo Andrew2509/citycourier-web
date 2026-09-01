@@ -21,6 +21,9 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 // Harus publik: DANA mengirim GET tanpa bearer token.
 Route::match(['get', 'post'], '/courier/dana/callback', [DanaController::class, 'callback']);
 
+// DANA webhook (alias publik, sesuai panduan integrasi).
+Route::post('/dana/webhook', [DanaController::class, 'webhookCallback']);
+
 // WhatsApp Test Route
 Route::post('/test-wa', function (\Illuminate\Http\Request $request, \App\Services\WhatsAppService $wa) {
     return $wa->sendMessage($request->phone, $request->message ?? 'Test message from City Courier');
@@ -110,6 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/cancel', [PaymentController::class, 'cancel']);
         Route::get('/{paymentId}/status', [PaymentController::class, 'status'])->where('paymentId', '.*');
         Route::post('/{paymentId}/cancel', [PaymentController::class, 'cancel'])->where('paymentId', '.*');
+    });
 
     // ─── Wallet & DANA Routes ───────────────────────────────────
     Route::get('/courier/wallet', [WalletController::class, 'index']);
@@ -120,9 +124,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/courier/dana/mock-connect', [DanaController::class, 'mockConnect']);
     Route::post('/courier/dana/disconnect', [DanaController::class, 'disconnect']);
 
+    // Alias endpoint panduan integrasi DANA.
+    Route::post('/dana/bind/init', [DanaController::class, 'initBinding']);
+    Route::post('/dana/bind/status', [DanaController::class, 'checkBindingStatus']);
+
     Route::post('/courier/withdrawals', [WithdrawalController::class, 'store']);
     Route::get('/courier/withdrawals', [WithdrawalController::class, 'index']);
     Route::get('/courier/withdrawals/{id}', [WithdrawalController::class, 'show']);
 
-    });
 });

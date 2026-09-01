@@ -50,10 +50,11 @@ return [
         'mode'              => env('DANA_MODE', 'mock'),   // mock | sandbox | production
         'env'               => env('DANA_MODE', 'mock'),
         'authorization_url' => env('DANA_AUTHORIZATION_URL', 'https://sandbox.dana.id/authorization'),
-        'api_base_url'      => env('DANA_API_BASE_URL', 'https://api.sandbox.dana.id'),
+        'api_base_url'      => env('DANA_API_URL', env('DANA_API_BASE_URL', 'https://api.sandbox.dana.id')),
         'client_id'         => env('DANA_CLIENT_ID', ''),
         'client_secret'     => env('DANA_CLIENT_SECRET', ''),
         'merchant_id'       => env('DANA_MERCHANT_ID', ''),
+        'public_key'        => env('DANA_PUBLIC_KEY', ''),
         'private_key'       => env('DANA_PRIVATE_KEY', ''),
         'callback_url'      => env('DANA_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/api/courier/dana/callback'),
     ],

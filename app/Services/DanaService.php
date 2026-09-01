@@ -57,8 +57,9 @@ class DanaService
             'client_id'     => Setting::get('dana_client_id', env('DANA_CLIENT_ID', config('services.dana.client_id', ''))),
             'client_secret' => Setting::get('dana_client_secret', env('DANA_CLIENT_SECRET', config('services.dana.client_secret', ''))),
             'merchant_id'   => Setting::get('dana_merchant_id', env('DANA_MERCHANT_ID', config('services.dana.merchant_id', ''))),
+            'public_key'    => Setting::get('dana_public_key', env('DANA_PUBLIC_KEY', config('services.dana.public_key', ''))),
             'private_key'   => Setting::get('dana_private_key', env('DANA_PRIVATE_KEY', config('services.dana.private_key', ''))),
-            'api_base_url'  => Setting::get('dana_api_base_url', env('DANA_API_BASE_URL', config('services.dana.api_base_url', 'https://api.sandbox.dana.id'))),
+            'api_base_url'  => Setting::get('dana_api_base_url', env('DANA_API_URL', env('DANA_API_BASE_URL', config('services.dana.api_base_url', 'https://api.sandbox.dana.id')))),
             'callback_url'  => Setting::get('dana_callback_url', env('DANA_CALLBACK_URL', config('services.dana.callback_url', ''))),
         ];
     }
