@@ -57,6 +57,8 @@ class SavedAddressController extends Controller
             'subdistrict_id'   => $request->subdistrict_id,
             'subdistrict_name' => $request->subdistrict_name,
             'is_favorite'      => $request->boolean('is_favorite'),
+            'latitude'         => $request->latitude,
+            'longitude'        => $request->longitude,
         ]);
 
         return response()->json([
@@ -87,6 +89,8 @@ class SavedAddressController extends Controller
             'subdistrict_id'   => $request->subdistrict_id ?? $address->subdistrict_id,
             'subdistrict_name' => $request->subdistrict_name ?? $address->subdistrict_name,
             'is_favorite'      => $request->has('is_favorite') ? $request->boolean('is_favorite') : $address->is_favorite,
+            'latitude'         => $request->latitude ?? $address->latitude,
+            'longitude'        => $request->longitude ?? $address->longitude,
         ]);
 
         return response()->json([
