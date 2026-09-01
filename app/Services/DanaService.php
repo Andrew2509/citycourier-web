@@ -5,14 +5,21 @@ namespace App\Services;
 use App\Models\DanaConnection;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * DANA Service Layer.
- * Wraps DanaProvider and handles business logic around DANA operations.
+ * Wraps DanaProvider and handles business logic for DANA Widget Binding.
  *
- * PRD §37: DanaService → checkDisbursementAccount, accountInquiry, customerTopUp, etc.
- * PRD §38: DanaProvider interface decouples DANA API from business logic.
+ * Official Flow (PRD §7, §55):
+ * 1. applyOTT() → OTT token
+ * 2. Redirect to DANA App → user authorizes
+ * 3. DANA returns authCode via callback
+ * 4. applyToken(authCode) → accessToken
+ * 5. Query user profile → masked phone
+ * 6. Store connection
+ *
+ * PRD §37: DanaService → business logic layer.
+ * PRD §38: DanaProvider interface → API layer.
  */
 class DanaService
 {
@@ -20,115 +27,216 @@ class DanaService
 
     public function __construct(?DanaProvider $provider = null)
     {
-        // Factory: use MockDanaProvider unless real credentials configured
         $this->provider = $provider ?? $this->resolveProvider();
     }
 
-    /**
-     * Resolve which DanaProvider to use based on environment.
-     */
     private function resolveProvider(): DanaProvider
     {
-        // When real DANA credentials are configured, switch to OfficialDanaProvider
         if (config('services.dana.env') === 'production' && config('services.dana.client_id')) {
             // TODO: return new OfficialDanaProvider(config('services.dana'));
         }
-
         return new MockDanaProvider();
     }
 
     /**
-     * Check merchant disbursement account balance.
-     * PRD §20: Must verify sufficient balance before payout.
+     * Step 1: Get OTT token for DANA Widget Binding.
+     * PRD §7: Hubungkan DANA
+     *
+     * @return array ['success' => bool, 'ott' => string|null, 'redirect_url' => string|null, 'error' => string|null]
      */
-    public function checkDisbursementAccount(): array
+    public function beginBinding(int $courierId, ?string $phoneNumber = null): array
     {
         try {
-            return $this->provider->checkDisbursementAccount();
+            $result = $this->provider->applyOTT($phoneNumber);
+
+            if ($result['success']) {
+                // Store OTT in connection record for later verification
+                $connection = DanaConnection::updateOrCreate(
+                    ['courier_id' => $courierId],
+                    [
+                        'status'     => 'pending',
+                        'session_id' => $result['ott'],
+                    ]
+                );
+
+                Log::info('[DanaService] Binding initiated', [
+                    'courier_id' => $courierId,
+                    'ott'        => $result['ott'],
+                ]);
+            }
+
+            return $result;
         } catch (\Exception $e) {
-            Log::error('[DanaService] checkDisbursementAccount failed', ['error' => $e->getMessage()]);
+            Log::error('[DanaService] beginBinding failed', ['error' => $e->getMessage()]);
             return [
-                'success' => false,
-                'error'   => 'DANA sedang tidak dapat memproses transaksi.',
+                'success'      => false,
+                'ott'          => null,
+                'redirect_url' => null,
+                'error'        => 'Gagal memulai penghubungan DANA.',
             ];
         }
     }
 
     /**
-     * Verify a DANA account via Account Inquiry.
-     * PRD §9: Account Inquiry to validate courier's DANA account.
+     * Step 4: Exchange authCode for accessToken.
+     * PRD §10: DANA valid → CONNECTED
      *
-     * @return array ['success' => bool, 'masked_account' => string|null, 'account_info' => array|null, 'error' => string|null]
+     * @param int    $courierId
+     * @param string $authCode From DANA callback
+     * @return array ['success' => bool, 'masked_phone' => string|null, 'error' => string|null]
      */
-    public function accountInquiry(string $accountIdentifier): array
+    public function completeBinding(int $courierId, string $authCode): array
     {
         try {
-            $result = $this->provider->accountInquiry($accountIdentifier);
+            // Exchange authCode for accessToken
+            $tokenResult = $this->provider->applyToken($authCode);
 
-            if ($result['success']) {
+            if (!$tokenResult['success']) {
                 return [
-                    'success'        => true,
-                    'masked_account' => $result['account_info']['masked_account'] ?? null,
-                    'account_info'   => $result['account_info'],
-                    'error'          => null,
+                    'success'      => false,
+                    'masked_phone' => null,
+                    'error'        => $tokenResult['error'] ?? 'Gagal verifikasi DANA.',
                 ];
             }
 
+            $accessToken = $tokenResult['access_token'];
+            $refreshToken = $tokenResult['refresh_token'];
+
+            // Query user profile to get masked phone
+            $profileResult = $this->provider->queryUserProfile($accessToken);
+            $maskedPhone = $profileResult['profile']['masked_phone'] ?? null;
+
+            // Update connection record
+            $connection = DanaConnection::where('courier_id', $courierId)->first();
+
+            if (!$connection) {
+                $connection = new DanaConnection(['courier_id' => $courierId]);
+            }
+
+            $connection->update([
+                'status'             => 'connected',
+                'masked_phone'       => $maskedPhone,
+                'provider_reference' => $authCode,
+                'access_token'       => $accessToken,
+                'refresh_token'      => $refreshToken,
+                'linked_at'          => now(),
+            ]);
+
+            // Activate wallet (PRD §10)
+            Wallet::updateOrCreate(
+                ['courier_id' => $courierId],
+                ['status'     => 'active']
+            );
+
+            Log::info('[DanaService] Binding completed', [
+                'courier_id'   => $courierId,
+                'masked_phone' => $maskedPhone,
+            ]);
+
             return [
-                'success'        => false,
-                'masked_account' => null,
-                'account_info'   => null,
-                'error'          => $result['error'] ?? 'Akun DANA tidak ditemukan.',
+                'success'      => true,
+                'masked_phone' => $maskedPhone,
+                'error'        => null,
             ];
         } catch (\Exception $e) {
-            Log::error('[DanaService] accountInquiry failed', ['error' => $e->getMessage()]);
+            Log::error('[DanaService] completeBinding failed', ['error' => $e->getMessage()]);
             return [
-                'success'        => false,
-                'masked_account' => null,
-                'account_info'   => null,
-                'error'          => 'Gagal memverifikasi akun DANA. Silakan coba lagi.',
+                'success'      => false,
+                'masked_phone' => null,
+                'error'        => 'Gagal menyelesaikan penghubungan DANA.',
             ];
         }
     }
 
     /**
-     * Process disbursement to DANA balance (Customer Top Up).
-     * PRD §21: Customer Top Up to send funds to courier's DANA.
-     *
-     * @param DanaConnection $connection Active DANA connection for the courier
-     * @param float          $amount     Amount to disburse
-     * @param string         $referenceNo Unique CityCourier reference (idempotency key)
-     * @return array ['success' => bool, 'transaction_id' => string|null, 'status' => string, 'error' => string|null]
+     * Step: Unbind DANA account.
+     * PRD §34: Putuskan DANA
+     */
+    public function unbindAccount(int $courierId): array
+    {
+        try {
+            $connection = DanaConnection::where('courier_id', $courierId)
+                ->where('status', 'connected')
+                ->first();
+
+            if (!$connection || !$connection->access_token) {
+                return ['success' => false, 'error' => 'Tidak ada koneksi DANA aktif.'];
+            }
+
+            // Call DANA unbind API
+            $result = $this->provider->accountUnbinding($connection->access_token);
+
+            $connection->update([
+                'status'       => 'revoked',
+                'revoked_at'   => now(),
+                'access_token'  => null,
+                'refresh_token' => null,
+            ]);
+
+            // Deactivate wallet
+            $wallet = Wallet::where('courier_id', $courierId)->first();
+            if ($wallet) {
+                $wallet->update(['status' => 'not_active']);
+            }
+
+            Log::info('[DanaService] Account unbound', ['courier_id' => $courierId]);
+
+            return ['success' => true, 'error' => null];
+        } catch (\Exception $e) {
+            Log::error('[DanaService] unbindAccount failed', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'Gagal memutuskan DANA.'];
+        }
+    }
+
+    /**
+     * Query user profile via DANA API.
+     */
+    public function getUserProfile(int $courierId): array
+    {
+        try {
+            $connection = DanaConnection::where('courier_id', $courierId)
+                ->where('status', 'connected')
+                ->first();
+
+            if (!$connection || !$connection->access_token) {
+                return ['success' => false, 'profile' => null, 'error' => 'DANA tidak terhubung.'];
+            }
+
+            return $this->provider->queryUserProfile($connection->access_token);
+        } catch (\Exception $e) {
+            return ['success' => false, 'profile' => null, 'error' => 'Gagal mengambil profil DANA.'];
+        }
+    }
+
+    /**
+     * Check DANA balance via API.
+     */
+    public function getBalance(int $courierId): array
+    {
+        try {
+            $connection = DanaConnection::where('courier_id', $courierId)
+                ->where('status', 'connected')
+                ->first();
+
+            if (!$connection || !$connection->access_token) {
+                return ['success' => false, 'balance' => null, 'error' => 'DANA tidak terhubung.'];
+            }
+
+            return $this->provider->balanceInquiry($connection->access_token);
+        } catch (\Exception $e) {
+            return ['success' => false, 'balance' => null, 'error' => 'Gagal mengecek saldo DANA.'];
+        }
+    }
+
+    /**
+     * Disburse funds to DANA user (Customer Top Up).
+     * PRD §21: Customer Top Up
      */
     public function disburseToDana(DanaConnection $connection, float $amount, string $referenceNo): array
     {
         try {
-            // PRD §20: Check disbursement account first
-            $balanceCheck = $this->checkDisbursementAccount();
-            if (!$balanceCheck['success']) {
-                return [
-                    'success'        => false,
-                    'transaction_id' => null,
-                    'status'         => 'failed',
-                    'error'          => 'Saldo pencairan CityCourier tidak mencukupi.',
-                ];
-            }
-
-            if (($balanceCheck['balance'] ?? 0) < $amount) {
-                return [
-                    'success'        => false,
-                    'transaction_id' => null,
-                    'status'         => 'failed',
-                    'error'          => 'Saldo pencairan CityCourier tidak mencukupi.',
-                ];
-            }
-
-            // PRD §9: Account Inquiry before disbursement
             $accountIdentifier = $connection->masked_phone ?? '';
-            // In production, use the actual DANA account identifier (not masked)
-            // stored securely in dana_connections.provider_reference or similar
 
-            // PRD §21: Customer Top Up
             $result = $this->provider->customerTopUp($accountIdentifier, $amount, $referenceNo);
 
             return [
@@ -138,21 +246,18 @@ class DanaService
                 'error'          => $result['error'] ?? null,
             ];
         } catch (\Exception $e) {
-            Log::error('[DanaService] disburseToDana failed', [
-                'error'     => $e->getMessage(),
-                'reference' => $referenceNo,
-            ]);
+            Log::error('[DanaService] disburseToDana failed', ['error' => $e->getMessage()]);
             return [
                 'success'        => false,
                 'transaction_id' => null,
                 'status'         => 'failed',
-                'error'          => 'DANA sedang tidak dapat memproses transaksi.',
+                'error'          => 'Gagal mengirim dana ke DANA.',
             ];
         }
     }
 
     /**
-     * Inquiry status of a disbursement transaction.
+     * Inquiry disbursement status.
      * PRD §23: Customer Top Up Inquiry Status
      */
     public function inquireTransactionStatus(string $transactionId): array
@@ -160,10 +265,6 @@ class DanaService
         try {
             return $this->provider->customerTopUpInquiry($transactionId);
         } catch (\Exception $e) {
-            Log::error('[DanaService] inquireTransactionStatus failed', [
-                'error'          => $e->getMessage(),
-                'transaction_id' => $transactionId,
-            ]);
             return [
                 'success' => false,
                 'status'  => 'unknown',
@@ -171,35 +272,5 @@ class DanaService
                 'error'   => 'Gagal memeriksa status transaksi.',
             ];
         }
-    }
-
-    /**
-     * Complete DANA connection after account inquiry succeeds.
-     * PRD §10: DANA verified → CONNECTED
-     */
-    public function completeConnection(DanaConnection $connection, array $accountInfo): DanaConnection
-    {
-        $maskedPhone = $accountInfo['masked_account'] ?? $connection->masked_phone;
-        $providerRef = $accountInfo['account_identifier'] ?? $connection->provider_reference;
-
-        $connection->update([
-            'status'             => 'connected',
-            'masked_phone'       => $maskedPhone,
-            'provider_reference' => $providerRef,
-            'linked_at'          => now(),
-        ]);
-
-        // PRD §10: Activate wallet when DANA connects
-        Wallet::updateOrCreate(
-            ['courier_id' => $connection->courier_id],
-            ['status'     => 'active']
-        );
-
-        Log::info('[DanaService] DANA connection completed', [
-            'courier_id'    => $connection->courier_id,
-            'masked_phone'  => $maskedPhone,
-        ]);
-
-        return $connection->fresh();
     }
 }

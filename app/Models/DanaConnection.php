@@ -15,19 +15,34 @@ class DanaConnection extends Model
         'masked_phone',
         'provider_reference',
         'session_id',
+        'access_token',
+        'refresh_token',
         'linked_at',
         'revoked_at',
         'session_expires_at',
     ];
 
     protected $casts = [
-        'linked_at' => 'datetime',
-        'revoked_at' => 'datetime',
+        'linked_at'         => 'datetime',
+        'revoked_at'        => 'datetime',
         'session_expires_at' => 'datetime',
+    ];
+
+    /**
+     * Hide sensitive tokens from JSON serialization.
+     */
+    protected $hidden = [
+        'access_token',
+        'refresh_token',
     ];
 
     public function courier()
     {
         return $this->belongsTo(Courier::class);
+    }
+
+    public function isConnected(): bool
+    {
+        return $this->status === 'connected';
     }
 }
