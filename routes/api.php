@@ -5,7 +5,6 @@ use App\Http\Controllers\Api\GeocodingController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ShippingController;
-use App\Http\Controllers\Api\GeocodingController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public API Routes ───────────────────────────────────────
@@ -38,13 +37,6 @@ Route::get('/shipments/track/{number}', [\App\Http\Controllers\Api\ShipmentContr
 // Komerce Payment Callback (PUBLIC - tidak butuh auth, dipanggil Komerce)
 Route::post('/payment/callback', [PaymentController::class, 'callback']);
 
-// ─── Geocoding (Public - Nominatim/Photon Proxy) ─────────────
-// Proxy geocoding requests through backend to protect upstream APIs.
-// Flutter calls these instead of hitting Nominatim/Photon directly.
-Route::prefix('geocoding')->group(function () {
-    Route::get('/search', [GeocodingController::class, 'search']);
-    Route::get('/reverse', [GeocodingController::class, 'reverse']);
-});
 
 // ─── Protected API Routes (Sanctum) ─────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
