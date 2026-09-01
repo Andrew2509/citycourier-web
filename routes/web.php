@@ -59,6 +59,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/map', [\App\Http\Controllers\Admin\SettingController::class, 'updateMap'])->name('settings.map.update');
         Route::post('/settings/map/test', [\App\Http\Controllers\Admin\SettingController::class, 'testMap'])->name('settings.map.test');
 
+        Route::get('/settings/dana', [\App\Http\Controllers\Admin\SettingController::class, 'dana'])->name('settings.dana');
+        Route::post('/settings/dana', [\App\Http\Controllers\Admin\SettingController::class, 'updateDana'])->name('settings.dana.update');
+        Route::post('/settings/dana/test', [\App\Http\Controllers\Admin\SettingController::class, 'testDana'])->name('settings.dana.test');
+
 
         // Drop Points
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);

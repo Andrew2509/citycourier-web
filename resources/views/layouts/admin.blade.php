@@ -128,6 +128,10 @@
                         <i class="fas fa-map-marked-alt"></i>
                         <span>Konfigurasi Peta</span>
                     </a>
+                    <a href="{{ route('admin.settings.dana') }}" class="nav-link {{ request()->routeIs('admin.settings.dana*') ? 'active' : '' }}">
+                        <i class="fas fa-wallet"></i>
+                        <span>Provider DANA</span>
+                    </a>
                 </div>
             </nav>
 

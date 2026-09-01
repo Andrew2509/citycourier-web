@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DanaConnection;
+use App\Models\Setting;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\Log;
 
@@ -32,8 +33,23 @@ class DanaService
 
     private function resolveProvider(): DanaProvider
     {
-        if (config('services.dana.env') === 'production' && config('services.dana.client_id')) {
-            // TODO: return new OfficialDanaProvider(config('services.dana'));
+        // Baca kredensial dari Database Settings (Admin Panel) atau fallback env/config.
+        $mode = Setting::get('dana_mode', env('DANA_MODE', config('services.dana.mode', 'mock')));
+        $clientId = Setting::get('dana_client_id', env('DANA_CLIENT_ID', config('services.dana.client_id', '')));
+        $privateKey = Setting::get('dana_private_key', env('DANA_PRIVATE_KEY', config('services.dana.private_key', '')));
+
+        if (in_array($mode, ['sandbox', 'production'], true) && $clientId && $privateKey) {
+            $config = [
+                'mode'          => $mode,
+                'env'           => $mode,
+                'client_id'     => $clientId,
+                'client_secret' => Setting::get('dana_client_secret', env('DANA_CLIENT_SECRET', config('services.dana.client_secret', ''))),
+                'merchant_id'   => Setting::get('dana_merchant_id', env('DANA_MERCHANT_ID', config('services.dana.merchant_id', ''))),
+                'private_key'   => $privateKey,
+                'api_base_url'  => Setting::get('dana_api_base_url', env('DANA_API_BASE_URL', config('services.dana.api_base_url', 'https://api.sandbox.dana.id'))),
+                'callback_url'  => Setting::get('dana_callback_url', env('DANA_CALLBACK_URL', config('services.dana.callback_url', ''))),
+            ];
+            return new OfficialDanaProvider($config);
         }
         return new MockDanaProvider();
     }
@@ -101,6 +117,7 @@ class DanaService
 
             $accessToken = $tokenResult['access_token'];
             $refreshToken = $tokenResult['refresh_token'];
+            $tokenExpiresAt = $tokenResult['expires_at'] ?? null;
 
             // Query user profile to get masked phone
             $profileResult = $this->provider->queryUserProfile($accessToken);
@@ -119,6 +136,7 @@ class DanaService
                 'provider_reference' => $authCode,
                 'access_token'       => $accessToken,
                 'refresh_token'      => $refreshToken,
+                'token_expires_at'   => $tokenExpiresAt,
                 'linked_at'          => now(),
             ]);
 

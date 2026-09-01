@@ -76,8 +76,9 @@ class DanaController extends Controller
             return response()->json(['success' => false, 'message' => 'Akun DANA sudah terhubung.'], 400);
         }
 
-        // Step 1: Apply OTT (One Time Token)
-        $result = $this->danaService->beginBinding($courier->id);
+        // Step 1: Apply OTT / Deeplink Binding (One Time Token)
+        $phone = $courier->phone ?? $request->input('phone_number');
+        $result = $this->danaService->beginBinding($courier->id, $phone);
 
         if ($result['success']) {
             return response()->json([
@@ -97,24 +98,25 @@ class DanaController extends Controller
     }
 
     /**
-     * POST /api/courier/dana/callback
+     * GET/POST /api/courier/dana/callback
      * Step 4: Handle DANA callback — exchange authCode for accessToken.
+     * DANA me-redirect browser user ke endpoint ini (publik, tanpa bearer token).
      * PRD §10: DANA valid → CONNECTED
      */
     public function callback(Request $request)
     {
-        $authCode = $request->input('authCode') ?? $request->input('authorization_code');
-        $state    = $request->input('state');
-        $status   = $request->input('status');
+        // DANA Deeplink Binding redirect: ?auth_code=xxx&state=yyy
+        $authCode = $request->query('auth_code')
+            ?? $request->input('auth_code')
+            ?? $request->input('authCode')
+            ?? $request->input('authorization_code');
+        $state    = $request->query('state') ?? $request->input('state');
 
         if (!$authCode) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid callback: missing authCode.',
-            ], 400);
+            return $this->renderCallbackResult(false, 'Kode otorisasi DANA tidak ditemukan.');
         }
 
-        // Find courier from state/OTT
+        // Cari kurir dari state (disimpan sebagai session_id saat beginBinding)
         $courierId = null;
         if ($state) {
             $connection = DanaConnection::where('session_id', $state)->first();
@@ -124,30 +126,41 @@ class DanaController extends Controller
         }
 
         if (!$courierId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sesi tidak ditemukan.',
-            ], 404);
+            Log::warning('[DanaController] callback session tidak ditemukan', ['state' => $state]);
+            return $this->renderCallbackResult(false, 'Sesi penghubungan tidak ditemukan atau kedaluwarsa.');
         }
 
         // Step 4: Apply Token — exchange authCode for accessToken
         $result = $this->danaService->completeBinding($courierId, $authCode);
 
         if ($result['success']) {
-            return response()->json([
-                'success' => true,
-                'message' => 'DANA berhasil terhubung.',
-                'data'    => [
-                    'status'       => 'connected',
-                    'masked_phone' => $result['masked_phone'],
-                ],
+            Log::info('[DanaController] callback success', [
+                'courier_id'   => $courierId,
+                'masked_phone' => $result['masked_phone'],
             ]);
+            return $this->renderCallbackResult(true, 'DANA berhasil terhubung.', $result['masked_phone']);
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => $result['error'] ?? 'Penghubungan DANA gagal.',
-        ], 400);
+        return $this->renderCallbackResult(false, $result['error'] ?? 'Penghubungan DANA gagal.');
+    }
+
+    /**
+     * Render simple HTML result page untuk browser user setelah callback DANA.
+     */
+    private function renderCallbackResult(bool $success, string $message, ?string $maskedPhone = null)
+    {
+        $appUrl = config('app.url', url('/'));
+        $html = '<!DOCTYPE html><html lang="id"><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><title>City Courier - DANA</title></head>'
+            . '<body style="font-family:sans-serif;background:#f5f5f5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px;">'
+            . '<div style="background:#fff;border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08);">'
+            . '<div style="font-size:48px;margin-bottom:12px;">' . ($success ? '&#9989;' : '&#10060;') . '</div>'
+            . '<h2 style="margin:0 0 8px;color:' . ($success ? '#22c55e' : '#ef4444') . ';">' . ($success ? 'DANA Terhubung' : 'Gagal') . '</h2>'
+            . '<p style="color:#555;margin:0 0 8px;word-break:break-word;">' . e($message) . '</p>'
+            . ($maskedPhone ? '<p style="color:#888;font-size:14px;margin:0 0 16px;">Akun: ' . e($maskedPhone) . '</p>' : '')
+            . '<p style="color:#999;font-size:13px;margin:16px 0 0;">Silakan kembali ke aplikasi City Courier.</p>'
+            . '</div></body></html>';
+
+        return response($html, $success ? 200 : 400)->header('Content-Type', 'text/html');
     }
 
     /**

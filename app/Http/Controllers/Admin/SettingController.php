@@ -301,4 +301,85 @@ class SettingController extends Controller
             ], 500);
         }
     }
+
+    // DANA Provider Settings
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Show DANA provider settings form.
+     */
+    public function dana()
+    {
+        $servicesDana = config('services.dana', []);
+
+        $settings = [
+            'mode'          => Setting::get('dana_mode', env('DANA_MODE', $servicesDana['mode'] ?? 'mock')),
+            'api_base_url'  => Setting::get('dana_api_base_url', env('DANA_API_BASE_URL', $servicesDana['api_base_url'] ?? 'https://api.sandbox.dana.id')),
+            'client_id'     => Setting::get('dana_client_id', env('DANA_CLIENT_ID', $servicesDana['client_id'] ?? '')),
+            'client_secret' => Setting::get('dana_client_secret', env('DANA_CLIENT_SECRET', $servicesDana['client_secret'] ?? '')),
+            'merchant_id'   => Setting::get('dana_merchant_id', env('DANA_MERCHANT_ID', $servicesDana['merchant_id'] ?? '')),
+            'private_key'   => Setting::get('dana_private_key', env('DANA_PRIVATE_KEY', $servicesDana['private_key'] ?? '')),
+            'callback_url'  => Setting::get('dana_callback_url', env('DANA_CALLBACK_URL', url('/api/courier/dana/callback'))),
+        ];
+
+        return view('admin.settings.dana', compact('settings'));
+    }
+
+    /**
+     * Update DANA provider settings.
+     */
+    public function updateDana(Request $request)
+    {
+        $request->validate([
+            'dana_mode'          => 'required|in:mock,sandbox,production',
+            'dana_api_base_url'  => 'required|url',
+            'dana_client_id'     => 'required|string|max:64',
+            'dana_client_secret' => 'nullable|string',
+            'dana_merchant_id'   => 'required|string|max:64',
+            'dana_private_key'   => 'nullable|string',
+            'dana_callback_url'  => 'required|url',
+        ]);
+
+        Setting::set('dana_mode', $request->dana_mode, 'dana');
+        Setting::set('dana_api_base_url', $request->dana_api_base_url, 'dana');
+        Setting::set('dana_client_id', $request->dana_client_id, 'dana');
+        Setting::set('dana_client_secret', $request->dana_client_secret ?? '', 'dana');
+        Setting::set('dana_merchant_id', $request->dana_merchant_id, 'dana');
+        Setting::set('dana_private_key', $request->dana_private_key ?? '', 'dana');
+        Setting::set('dana_callback_url', $request->dana_callback_url, 'dana');
+
+        return redirect()->back()->with('success', 'Pengaturan Provider DANA berhasil diperbarui.');
+    }
+
+    /**
+     * Test DANA provider connection (generate binding URL).
+     */
+    public function testDana()
+    {
+        try {
+            $service = new \App\Services\DanaService();
+
+            // beginBinding memvalidasi kredensial & (untuk Official) membangun URL binding.
+            $result = $service->beginBinding(1, null);
+
+            if ($result['success'] && !empty($result['redirect_url'])) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Koneksi DANA Berhasil! URL binding berhasil dibuat.',
+                    'data'    => ['redirect_url' => $result['redirect_url']],
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi Gagal: ' . ($result['error'] ?? 'Tidak dapat membuat URL binding.'),
+                'data'    => $result,
+            ], 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

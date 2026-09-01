@@ -17,6 +17,10 @@ Route::post('/register-kurir', [AuthController::class, 'registerKurir']);
 Route::post('/request-otp', [AuthController::class, 'requestOtp']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 
+// DANA callback (di-redirect oleh browser user setelah otorisasi di DANA App).
+// Harus publik: DANA mengirim GET tanpa bearer token.
+Route::match(['get', 'post'], '/courier/dana/callback', [DanaController::class, 'callback']);
+
 // WhatsApp Test Route
 Route::post('/test-wa', function (\Illuminate\Http\Request $request, \App\Services\WhatsAppService $wa) {
     return $wa->sendMessage($request->phone, $request->message ?? 'Test message from City Courier');
@@ -113,7 +117,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/courier/dana/status', [DanaController::class, 'status']);
     Route::post('/courier/dana/connect', [DanaController::class, 'connect']);
-    Route::post('/courier/dana/callback', [DanaController::class, 'callback']);
     Route::post('/courier/dana/mock-connect', [DanaController::class, 'mockConnect']);
     Route::post('/courier/dana/disconnect', [DanaController::class, 'disconnect']);
 

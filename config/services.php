@@ -44,13 +44,18 @@ return [
             : 'https://api-sandbox.collaborator.komerce.id/user',
     ],
 
-    // DANA integration. Saat ini memakai mode mock (tanpa kredensial resmi).
+    // DANA integration. Kredensial dikelola dari Admin > Provider DANA
+    // (disimpan di tabel settings) atau fallback ke env di bawah.
     'dana' => [
+        'mode'              => env('DANA_MODE', 'mock'),   // mock | sandbox | production
+        'env'               => env('DANA_MODE', 'mock'),
         'authorization_url' => env('DANA_AUTHORIZATION_URL', 'https://sandbox.dana.id/authorization'),
-        'client_id'         => env('DANA_CLIENT_ID', 'mock-client-id'),
+        'api_base_url'      => env('DANA_API_BASE_URL', 'https://api.sandbox.dana.id'),
+        'client_id'         => env('DANA_CLIENT_ID', ''),
         'client_secret'     => env('DANA_CLIENT_SECRET', ''),
+        'merchant_id'       => env('DANA_MERCHANT_ID', ''),
+        'private_key'       => env('DANA_PRIVATE_KEY', ''),
         'callback_url'      => env('DANA_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/api/courier/dana/callback'),
-        'mode'              => env('DANA_MODE', 'mock'),
     ],
 
 ];

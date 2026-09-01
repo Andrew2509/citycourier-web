@@ -17,6 +17,7 @@ class DanaConnection extends Model
         'session_id',
         'access_token',
         'refresh_token',
+        'token_expires_at',
         'linked_at',
         'revoked_at',
         'session_expires_at',
@@ -26,6 +27,7 @@ class DanaConnection extends Model
         'linked_at'         => 'datetime',
         'revoked_at'        => 'datetime',
         'session_expires_at' => 'datetime',
+        'token_expires_at'  => 'datetime',
     ];
 
     /**
