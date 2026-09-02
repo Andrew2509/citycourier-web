@@ -17,9 +17,9 @@ class TrackingService
         'pending'         => 'Pesanan Dibuat',
         'confirmed'       => 'Pesanan Dikonfirmasi',
         'assigned'        => 'Kurir Ditugaskan',
-        'picking_up'      => 'Kurir Menuju Lokasi Pickup',
-        'picked_up'       => 'Paket Telah Dijemput',
-        'delivering'      => 'Paket Dalam Perjalanan',
+        'picking_up'      => 'Kurir Sedang Menjemput',
+        'picked_up'       => 'Paket Dalam Perjalanan ke Penerima',
+        'delivering'      => 'Segera Tiba',
         'delivered'       => 'Paket Telah Diterima',
         'cancelled'       => 'Pesanan Dibatalkan',
     ];
@@ -31,9 +31,9 @@ class TrackingService
         'pending'         => 'Pesanan baru dibuat dan menunggu pembayaran.',
         'confirmed'       => 'Pembayaran telah dikonfirmasi.',
         'assigned'        => 'Kurir telah ditugaskan. Langsung menjemput paket di lokasi pengirim.',
-        'picking_up'      => 'Kurir sedang menuju lokasi pengambilan paket.',
-        'picked_up'       => 'Paket berhasil dijemput dari lokasi pengirim.',
-        'delivering'      => 'Paket sedang dalam perjalanan ke lokasi penerima.',
+        'picking_up'      => 'Kurir sedang dalam perjalanan menjemput paket.',
+        'picked_up'       => 'Paket telah dijemput dan sedang dalam perjalanan ke lokasi penerima.',
+        'delivering'      => 'Kurir hampir sampai di lokasi penerima.',
         'delivered'       => 'Paket telah berhasil diterima oleh penerima.',
         'cancelled'       => 'Pengiriman dibatalkan.',
     ];
@@ -237,11 +237,11 @@ class TrackingService
         $locations = [
             'pending'    => 'Sistem',
             'confirmed'  => 'Sistem',
-            'assigned'   => 'Menuju Lokasi Pickup',
-            'picking_up' => 'Menuju Lokasi Pickup',
-            'picked_up'  => 'Lokasi Pickup',
-            'delivering' => 'Dalam Perjalanan',
-            'delivered'  => 'Lokasi Tujuan',
+            'assigned'   => 'Menuju Lokasi Pengirim',
+            'picking_up' => 'Sedang Menjemput Paket',
+            'picked_up'  => 'Dalam Perjalanan ke Penerima',
+            'delivering' => 'Segera Sampai',
+            'delivered'  => 'Lokasi Penerima',
             'cancelled'  => 'Dibatalkan',
         ];
         return $locations[$status] ?? 'Tidak Diketahui';
