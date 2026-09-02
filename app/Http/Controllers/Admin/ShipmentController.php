@@ -69,17 +69,19 @@ class ShipmentController extends Controller
         // Auto log status change
         if ($oldStatus !== $request->status) {
             $statusLabels = [
-                'pending'    => 'Menunggu',
-                'confirmed'  => 'Dikonfirmasi',
-                'picked_up'  => 'Paket Diambil',
-                'in_transit' => 'Dalam Perjalanan',
-                'delivered'  => 'Terkirim',
-                'cancelled'  => 'Dibatalkan',
+                'pending'         => 'Pesanan Dibuat',
+                'confirmed'       => 'Pesanan Dikonfirmasi',
+                'assigned'        => 'Kurir Ditugaskan',
+                'picking_up'      => 'Menjemput Paket',
+                'picked_up'       => 'Paket Telah Dijemput',
+                'delivering'      => 'Paket Dalam Perjalanan',
+                'delivered'       => 'Paket Telah Diterima',
+                'cancelled'       => 'Pesanan Dibatalkan',
             ];
 
             $shipment->logs()->create([
                 'status'      => $request->status,
-                'location'    => $request->location ?? 'Gudang Pusat',
+                'location'    => $request->location ?? 'Lokasi Pickup',
                 'description' => $request->log_description ?? "Status diperbarui menjadi " . ($statusLabels[$request->status] ?? $request->status),
             ]);
         }

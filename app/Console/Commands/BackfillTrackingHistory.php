@@ -25,7 +25,7 @@ class BackfillTrackingHistory extends Command
     private array $statusDescriptions = [
         'pending'         => 'Pesanan baru dibuat dan menunggu pembayaran.',
         'confirmed'       => 'Pembayaran telah dikonfirmasi.',
-        'assigned'        => 'Kurir telah ditugaskan untuk pengiriman ini.',
+        'assigned'        => 'Kurir telah ditugaskan. Langsung menjemput paket di lokasi pengirim.'
         'picking_up'      => 'Kurir sedang menuju lokasi pengambilan paket.',
         'picked_up'       => 'Paket berhasil dijemput dari lokasi pengirim.',
         'delivering'      => 'Paket sedang dalam perjalanan ke lokasi penerima.',
@@ -36,7 +36,7 @@ class BackfillTrackingHistory extends Command
     private array $statusLocations = [
         'pending'         => 'Sistem',
         'confirmed'       => 'Sistem',
-        'assigned'        => 'Gudang Pusat',
+        'assigned'        => 'Menuju Lokasi Pickup',
         'picking_up'      => 'Menuju Lokasi Pickup',
         'picked_up'       => 'Lokasi Pickup',
         'delivering'      => 'Dalam Perjalanan',
