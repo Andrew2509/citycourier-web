@@ -17,7 +17,7 @@ class Shipment extends Model
         'destination_name', 'destination_id',
         'package_description', 'package_weight',
         'courier_code', 'courier_name', 'courier_service', 'etd',
-        'shipping_cost', 'insurance', 'wood_packing', 'total_cost',
+        'shipping_cost', 'insurance', 'wood_packing', 'total_cost', 'payment_method',
         'status', 'tracking_number', 'notes',
     ];
 

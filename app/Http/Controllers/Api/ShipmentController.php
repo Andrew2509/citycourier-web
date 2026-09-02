@@ -77,6 +77,7 @@ class ShipmentController extends Controller
             'wood_packing'        => $request->boolean('wood_packing'),
             'total_cost'          => $request->total_cost,
             'notes'               => $request->notes,
+            'payment_method'      => $request->payment_method,
             'status'              => 'pending',
         ]);
 
@@ -223,10 +224,20 @@ class ShipmentController extends Controller
      * Confirm payment method (COD/TUNAI)
      * POST /api/shipments/{shipment}/confirm-payment
      */
+    /**
+     * Confirm payment - sesuai metode yang dipilih customer.
+     * POST /api/shipments/{shipment}/confirm-payment
+     * 
+     * Metode yang didukung:
+     * - COD: Cash on Delivery (bayar saat paket diterima)
+     * - TUNAI: Bayar tunai saat pickup
+     * - VA: Virtual Account (BCA, BNI, dll)
+     * - QRIS: QR Code QRIS
+     */
     public function confirmPayment(Request $request, Shipment $shipment)
     {
         $validator = Validator::make($request->all(), [
-            'payment_method' => 'required|in:COD,TUNAI',
+            'payment_method' => 'required|in:COD,TUNAI,VA,QRIS',
         ]);
 
         if ($validator->fails()) {
@@ -244,9 +255,22 @@ class ShipmentController extends Controller
             ], 400);
         }
 
+        $paymentMethod = $request->payment_method;
+
+        // Simpan metode pembayaran yang dipilih customer
         $shipment->update([
-            'status' => 'confirmed'
+            'status' => 'confirmed',
+            'payment_method' => $paymentMethod,
         ]);
+
+        // Buat deskripsi berdasarkan metode pembayaran
+        $description = match ($paymentMethod) {
+            'COD'   => 'Pembayaran Cash on Delivery (COD). Bayar saat paket diterima.',
+            'TUNAI' => 'Pembayaran tunai saat pickup. Kurir akan menerima pembayaran.',
+            'VA'    => 'Pembayaran via Virtual Account. Silakan lakukan transfer ke VA yang tertera.',
+            'QRIS'  => 'Pembayaran via QRIS. Silakan scan QR Code yang tertera.',
+            default => 'Pembayaran dikonfirmasi.',
+        };
 
         // Otomatis buat riwayat "Pesanan Dikonfirmasi"
         $this->trackingService->createStatusHistory(
@@ -256,12 +280,12 @@ class ShipmentController extends Controller
             null,
             null,
             null,
-            'Pembayaran dengan metode ' . $request->payment_method . ' berhasil dikonfirmasi.'
+            $description
         );
 
         return response()->json([
             'success' => true,
-            'message' => 'Metode pembayaran ' . $request->payment_method . ' berhasil dikonfirmasi.',
+            'message' => 'Metode pembayaran ' . $paymentMethod . ' berhasil dikonfirmasi.',
             'data'    => $shipment->fresh(),
         ]);
     }
