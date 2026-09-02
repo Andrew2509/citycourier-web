@@ -293,14 +293,28 @@ class DanaController extends Controller
     public function callback(Request $request)
     {
         // DANA Deeplink Binding redirect: ?auth_code=xxx&state=yyy
+        // (doc update memakai authCode; beberapa versi OAuth memakai "code")
         $authCode = $request->query('auth_code')
             ?? $request->input('auth_code')
             ?? $request->input('authCode')
+            ?? $request->input('code')
             ?? $request->input('authorization_code');
         $state    = $request->query('state') ?? $request->input('state');
 
         if (!$authCode) {
-            return $this->renderCallbackResult(false, 'Kode otorisasi DANA tidak ditemukan.');
+            // Diagnostik: catat nama parameter yang datang dari DANA (tanpa nilai,
+            // agar kode/state tidak bocor ke log).
+            Log::warning('[DanaController] callback tanpa auth_code', [
+                'query_keys'  => array_keys($request->query()),
+                'input_keys'  => array_keys($request->input()),
+            ]);
+
+            $errorMsg = $request->input('error')
+                ?? $request->input('responseMessage')
+                ?? $request->input('message')
+                ?? 'Kode otorisasi DANA tidak ditemukan.';
+
+            return $this->renderCallbackResult(false, $errorMsg);
         }
 
         // Cari kurir dari state (disimpan sebagai state_hash saat beginBinding)
