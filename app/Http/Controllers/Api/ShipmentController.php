@@ -4,11 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shipment;
+use App\Services\TrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class ShipmentController extends Controller
 {
+    protected TrackingService $trackingService;
+
+    public function __construct(TrackingService $trackingService)
+    {
+        $this->trackingService = $trackingService;
+    }
+
     /**
      * Create a new shipment request from the Flutter app.
      * POST /api/shipments
@@ -72,6 +80,9 @@ class ShipmentController extends Controller
             'status'              => 'pending',
         ]);
 
+        // Otomatis buat riwayat pelacakan "Pesanan Dibuat"
+        $this->trackingService->createOrderCreatedHistory($shipment);
+
         return response()->json([
             'success'          => true,
             'message'          => 'Permintaan pengiriman berhasil dibuat.',
@@ -122,7 +133,7 @@ class ShipmentController extends Controller
     }
 
     /**
-     * Track a shipment by its number.
+     * Track a shipment by its number (legacy endpoint).
      * GET /api/shipments/track/{number}
      */
     public function track(Request $request, $number)
@@ -144,6 +155,33 @@ class ShipmentController extends Controller
         return response()->json([
             'success' => true,
             'data'    => $shipment,
+        ]);
+    }
+
+    /**
+     * Get detailed tracking data for customer.
+     * GET /api/shipments/{tracking_number}/tracking
+     * 
+     * Mengembalikan:
+     * - status saat ini
+     * - lokasi kurir terbaru
+     * - timeline lengkap
+     * - origin & destination
+     */
+    public function tracking(Request $request, $trackingNumber)
+    {
+        $trackingData = $this->trackingService->getTrackingData($trackingNumber);
+
+        if (!$trackingData) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nomor resi tidak ditemukan.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $trackingData,
         ]);
     }
 
@@ -180,6 +218,7 @@ class ShipmentController extends Controller
             'data'    => $stats,
         ]);
     }
+
     /**
      * Confirm payment method (COD/TUNAI)
      * POST /api/shipments/{shipment}/confirm-payment
@@ -209,6 +248,17 @@ class ShipmentController extends Controller
             'status' => 'confirmed'
         ]);
 
+        // Otomatis buat riwayat "Pesanan Dikonfirmasi"
+        $this->trackingService->createStatusHistory(
+            $shipment,
+            'confirmed',
+            null,
+            null,
+            null,
+            null,
+            'Pembayaran dengan metode ' . $request->payment_method . ' berhasil dikonfirmasi.'
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Metode pembayaran ' . $request->payment_method . ' berhasil dikonfirmasi.',
@@ -216,4 +266,3 @@ class ShipmentController extends Controller
         ]);
     }
 }
-

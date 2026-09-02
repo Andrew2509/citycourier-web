@@ -4,11 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\TrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
+    protected TrackingService $trackingService;
+
+    public function __construct(TrackingService $trackingService)
+    {
+        $this->trackingService = $trackingService;
+    }
+
     /**
      * Get orders for the authenticated courier.
      * GET /api/orders
@@ -81,7 +89,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Update order status.
+     * Update order status dengan otomatis membuat riwayat pelacakan.
      * PATCH /api/update-status-order
      */
     public function updateStatus(Request $request)
@@ -89,13 +97,15 @@ class OrderController extends Controller
         $validator = Validator::make($request->all(), [
             'order_id' => 'required|exists:orders,id',
             'status' => 'required|in:assigned,picking_up,delivering,delivered,cancelled',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal.',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -117,9 +127,18 @@ class OrderController extends Controller
                 'status' => 'assigned',
             ]);
 
-            // Sync status ke Shipment
+            // Sync status ke Shipment dan buat riwayat
             if ($order->shipment) {
                 $order->shipment->update(['status' => 'assigned']);
+                
+                // Otomatis buat riwayat pelacakan
+                $this->trackingService->createStatusHistory(
+                    $order->shipment,
+                    'assigned',
+                    $courier->id,
+                    $request->latitude,
+                    $request->longitude
+                );
             }
 
             return response()->json([
@@ -160,7 +179,7 @@ class OrderController extends Controller
 
         $order->update($updateData);
 
-        // Sync status dari Order ke Shipment agar terlihat di admin panel
+        // Sync status dari Order ke Shipment dan buat riwayat
         if ($order->shipment) {
             $shipmentStatusMap = [
                 'assigned'   => 'assigned',
@@ -170,8 +189,29 @@ class OrderController extends Controller
                 'cancelled'  => 'cancelled',
             ];
             $shipmentStatus = $shipmentStatusMap[$request->status] ?? null;
+            
             if ($shipmentStatus) {
                 $order->shipment->update(['status' => $shipmentStatus]);
+                
+                // Otomatis buat riwayat pelacakan
+                $this->trackingService->createStatusHistory(
+                    $order->shipment,
+                    $shipmentStatus,
+                    $courier->id,
+                    $request->latitude,
+                    $request->longitude
+                );
+
+                // Simpan lokasi GPS jika ada
+                if ($request->latitude && $request->longitude) {
+                    $this->trackingService->saveCourierLocation(
+                        $courier->id,
+                        $order->shipment->id,
+                        $request->latitude,
+                        $request->longitude,
+                        $request->accuracy
+                    );
+                }
             }
         }
 

@@ -47,6 +47,7 @@ Route::prefix('geocoding')->group(function () {
 
 // Tracking (Public)
 Route::get('/shipments/track/{number}', [\App\Http\Controllers\Api\ShipmentController::class, 'track']);
+Route::get('/shipments/{tracking_number}/tracking', [\App\Http\Controllers\Api\ShipmentController::class, 'tracking']);
 
 // Komerce Payment Callback (PUBLIC - tidak butuh auth, dipanggil Komerce)
 Route::post('/payment/callback', [PaymentController::class, 'callback']);

@@ -4,32 +4,31 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ShipmentLog extends Model
+class CourierLocation extends Model
 {
     protected $fillable = [
-        'shipment_id',
         'courier_id',
-        'status',
-        'location',
-        'description',
+        'shipment_id',
         'latitude',
         'longitude',
         'accuracy',
+        'recorded_at',
     ];
 
     protected $casts = [
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'accuracy' => 'decimal:2',
+        'recorded_at' => 'datetime',
     ];
-
-    public function shipment()
-    {
-        return $this->belongsTo(Shipment::class);
-    }
 
     public function courier()
     {
         return $this->belongsTo(Courier::class);
+    }
+
+    public function shipment()
+    {
+        return $this->belongsTo(Shipment::class);
     }
 }

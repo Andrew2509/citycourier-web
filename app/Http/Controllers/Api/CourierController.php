@@ -3,11 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Courier;
+use App\Services\TrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class CourierController extends Controller
 {
+    protected TrackingService $trackingService;
+
+    public function __construct(TrackingService $trackingService)
+    {
+        $this->trackingService = $trackingService;
+    }
+
     /**
      * Get courier details and status.
      * GET /api/courier/details
@@ -87,21 +96,31 @@ class CourierController extends Controller
     }
 
     /**
-     * Update courier live location.
+     * Update courier live location dan simpan riwayat GPS.
      * PUT /api/courier/location
+     * 
+     * Request:
+     * {
+     *   "shipment_id": 123,
+     *   "latitude": -7.2756,
+     *   "longitude": 112.7378,
+     *   "accuracy": 8.5
+     * }
      */
     public function updateLocation(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'shipment_id' => 'required|exists:shipments,id',
+            'latitude'    => 'required|numeric|between:-90,90',
+            'longitude'   => 'required|numeric|between:-180,180',
+            'accuracy'    => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal.',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -114,15 +133,53 @@ class CourierController extends Controller
             ], 404);
         }
 
-        $courier->update([
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-        ]);
+        // Validasi bahwa shipment milik kurir ini
+        $shipment = \App\Models\Shipment::find($request->shipment_id);
+        if (!$shipment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shipment tidak ditemukan.',
+            ], 404);
+        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Lokasi berhasil diperbarui.',
-        ]);
+        // Cek apakah ada order aktif untuk kurir ini dengan shipment ini
+        $order = \App\Models\Order::where('courier_id', $courier->id)
+            ->where('order_number', $shipment->shipment_number)
+            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada pengiriman aktif untuk shipment ini.',
+            ], 403);
+        }
+
+        try {
+            // Simpan lokasi GPS ke courier_locations
+            $location = $this->trackingService->saveCourierLocation(
+                $courier->id,
+                $shipment->id,
+                $request->latitude,
+                $request->longitude,
+                $request->accuracy
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lokasi berhasil diperbarui.',
+                'data' => [
+                    'latitude'     => $location->latitude,
+                    'longitude'    => $location->longitude,
+                    'recorded_at'  => $location->recorded_at->toIso8601String(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan lokasi: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
