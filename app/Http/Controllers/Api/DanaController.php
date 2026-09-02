@@ -376,6 +376,9 @@ class DanaController extends Controller
     /**
      * POST /api/courier/dana/mock-connect
      * Mock connection for development (PRD §73).
+     * Mendaftarkan koneksi DANA simulasi langsung ke database, tanpa
+     * memanggil API DANA. Perilaku selanjutnya sama seperti akun asli
+     * (status, saldo, tarik dana) di-backend.
      */
     public function mockConnect(Request $request)
     {
@@ -384,40 +387,33 @@ class DanaController extends Controller
             return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
         }
 
-        // Simulate complete binding with mock data
-        $result = $this->danaService->completeBinding($courier->id, 'MOCK-AUTH-CODE');
+        // Reset sesi binding apapun agar status konsisten → connected.
+        DanaConnection::where('courier_id', $courier->id)
+            ->update(['status' => 'not_connected']);
 
-        if ($result['success']) {
-            return response()->json([
-                'success' => true,
-                'data'    => [
-                    'status'       => 'connected',
-                    'masked_account' => $result['masked_phone'],
-                ],
-                'message' => 'DANA berhasil terhubung (mode development).',
-            ]);
-        }
-
-        // If completeBinding fails, create mock connection directly
-        $maskedPhone = '081234******7890';
+        // Simulasi akun DANA test (nomor demo).
+        $maskedPhone = '08******1234';
 
         $connection = DanaConnection::updateOrCreate(
             ['courier_id' => $courier->id],
             [
                 'status'             => 'connected',
                 'masked_phone'       => $maskedPhone,
-                'provider_reference' => 'MOCK-AUTH-CODE',
-                'access_token'       => 'MOCK-ACCESS-TOKEN',
+                'provider_reference' => 'DEMO-' . strtoupper(Str::random(8)),
+                'external_id'        => 'DEMO-' . Str::random(16),
+                'access_token'       => 'DEMO-ACCESS-TOKEN',
                 'linked_at'          => now(),
+                'bound_at'           => now(),
             ]
         );
 
+        // Aktifkan wallet kurir.
         Wallet::updateOrCreate(
             ['courier_id' => $courier->id],
-            ['status'     => 'active']
+            ['status' => 'active']
         );
 
-        Log::info('[DanaController] Mock connection created', ['courier_id' => $courier->id]);
+        Log::info('[DanaController] Mock connection (demo) created', ['courier_id' => $courier->id]);
 
         return response()->json([
             'success' => true,
@@ -425,7 +421,7 @@ class DanaController extends Controller
                 'status'         => 'connected',
                 'masked_account' => $maskedPhone,
             ],
-            'message' => 'DANA berhasil terhubung (mode development).',
+            'message' => 'DANA berhasil terhubung (mode development/demo).',
         ]);
     }
 
