@@ -86,6 +86,14 @@ class OfficialDanaProvider implements DanaProvider
 
         $key = openssl_pkey_get_private($privateKey);
         if ($key === false) {
+            Log::error('[OfficialDANA] private key gagal dimuat (metadata)', [
+                'has_pem_header' => str_contains($this->privateKey(), '-----BEGIN'),
+                'has_pem_end'    => str_contains($this->privateKey(), '-----END'),
+                'single_line'    => !str_contains($this->privateKey(), "\n") && !str_contains($this->privateKey(), '\\n'),
+                'literal_backslash_n' => str_contains($this->privateKey(), '\\n'),
+                'length_chars'   => strlen($this->privateKey()),
+                'head'           => substr(trim($this->privateKey()), 0, 40),
+            ]);
             throw new \RuntimeException('DANA private key tidak valid. Pastikan key tersimpan dengan format PEM lengkap (-----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----).');
         }
 
