@@ -25,6 +25,7 @@ class DanaConnection extends Model
         'refresh_token_encrypted',
         'token_expires_at',
         'bound_at',
+        'linked_at',
         'revoked_at',
         // Alias (diremap ke *_encrypted oleh setAttribute()).
         'access_token',

@@ -41,23 +41,31 @@ class DanaController extends Controller
     {
         $courier = $request->user()->courier;
         if (!$courier) {
-            return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Profil kurir tidak ditemukan.',
+                'error_code' => 'SESSION_EXPIRED',
+            ], 404);
         }
 
         $connection = $this->danaService->freshStatus($courier->id);
 
         $status = $connection?->status ?? 'not_connected';
+        $label  = $connection?->status_label ?? 'NOT_CONNECTED';
 
         return response()->json([
             'success' => true,
+            'message' => 'OK',
             'data'    => [
+                'status'         => $label, // PRD §14: NOT_CONNECTED / PENDING / CONNECTED / ...
+                'status_label'   => $label,
+                'provider'       => 'DANA',
                 'connected'      => $status === 'connected',
-                'status'         => $status,
-                'status_label'   => $connection?->status_label ?? 'NOT_CONNECTED',
-                'masked_phone'   => $connection?->masked_phone,
                 'masked_account' => $connection?->masked_phone,
-                'external_id'    => $connection?->external_id,
+                'masked_phone'   => $connection?->masked_phone,
+                'bound_at'       => $connection?->bound_at?->toIso8601String(),
                 'connected_at'   => $connection?->linked_at,
+                'external_id'    => $connection?->external_id,
             ],
         ]);
     }
@@ -71,7 +79,11 @@ class DanaController extends Controller
     {
         $courier = $request->user()->courier;
         if (!$courier) {
-            return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Profil kurir tidak ditemukan.',
+                'error_code' => 'SESSION_EXPIRED',
+            ], 404);
         }
 
         // Check if already connected
@@ -80,7 +92,11 @@ class DanaController extends Controller
             ->first();
 
         if ($existing) {
-            return response()->json(['success' => false, 'message' => 'Akun DANA sudah terhubung.'], 400);
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Akun DANA sudah terhubung.',
+                'error_code' => 'DANA_ALREADY_CONNECTED',
+            ], 400);
         }
 
         // Step 1: Apply OTT / Deeplink Binding (One Time Token)
@@ -90,17 +106,20 @@ class DanaController extends Controller
         if ($result['success']) {
             return response()->json([
                 'success' => true,
+                'message' => 'DANA binding URL generated',
                 'data'    => [
                     'session_id'     => $result['ott'],
                     'redirect_url'   => $result['redirect_url'],
+                    'binding_url'    => $result['redirect_url'],
                     'status'         => 'PENDING',
                 ],
             ]);
         }
 
         return response()->json([
-            'success' => false,
-            'message' => $result['error'] ?? 'Gagal membuat sesi penghubungan.',
+            'success'    => false,
+            'message'    => $result['error'] ?? 'Gagal membuat sesi penghubungan.',
+            'error_code' => 'DANA_BINDING_FAILED',
         ], 500);
     }
 
@@ -112,7 +131,11 @@ class DanaController extends Controller
     {
         $courier = $request->user()->courier;
         if (!$courier) {
-            return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Profil kurir tidak ditemukan.',
+                'error_code' => 'SESSION_EXPIRED',
+            ], 404);
         }
 
         $existing = DanaConnection::where('courier_id', $courier->id)
@@ -120,23 +143,38 @@ class DanaController extends Controller
             ->first();
 
         if ($existing) {
-            return response()->json(['success' => false, 'message' => 'Akun DANA sudah terhubung.'], 400);
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Akun DANA sudah terhubung.',
+                'error_code' => 'DANA_ALREADY_CONNECTED',
+            ], 400);
         }
 
         $phone = $courier->phone ?? $request->input('phone_number');
         $result = $this->danaService->beginBinding($courier->id, $phone);
 
         if ($result['success']) {
+            $connection = DanaConnection::where('courier_id', $courier->id)->first();
+
             return response()->json([
                 'success'    => true,
+                'message'    => 'DANA binding URL generated',
+                'data'       => [
+                    'binding_url'  => $result['redirect_url'],
+                    'redirect_url' => $result['redirect_url'],
+                    'session_id'   => $result['ott'],
+                    'expires_at'   => $connection?->session_expires_at?->toIso8601String(),
+                ],
+                // Backward-compat legacy fields (konsumen lama connect()) tetap jalan.
                 'bindingUrl' => $result['redirect_url'],
                 'sessionId'  => $result['ott'],
             ]);
         }
 
         return response()->json([
-            'success' => false,
-            'message' => $result['error'] ?? 'Gagal membuat sesi penghubungan.',
+            'success'    => false,
+            'message'    => $result['error'] ?? 'Gagal membuat sesi penghubungan.',
+            'error_code' => 'DANA_BINDING_FAILED',
         ], 500);
     }
 
@@ -217,13 +255,13 @@ class DanaController extends Controller
                 $courierId = $resolved['connection']->courier_id;
             } else {
                 Log::warning('[DanaController] webhook session tidak valid', ['state' => $state, 'error' => $resolved['error']]);
-                return response()->json(['status' => 'failed', 'error' => $resolved['error']], 400);
+                return response()->json(['status' => 'failed', 'error' => $resolved['error'], 'error_code' => $resolved['error_code'] ?? 'INVALID_STATE'], 400);
             }
         }
 
         if (!$courierId) {
             Log::warning('[DanaController] webhook session tidak ditemukan', ['state' => $state]);
-            return response()->json(['status' => 'failed', 'error' => 'Sesi penghubungan tidak ditemukan atau kedaluwarsa.'], 400);
+            return response()->json(['status' => 'failed', 'error' => 'Sesi penghubungan tidak ditemukan atau kedaluwarsa.', 'error_code' => 'INVALID_STATE'], 400);
         }
 
         $result = $this->danaService->completeBinding($courierId, $authCode);
@@ -240,8 +278,9 @@ class DanaController extends Controller
         }
 
         return response()->json([
-            'status' => 'failed',
-            'error'  => $result['error'] ?? 'Penghubungan DANA gagal.',
+            'status'     => 'failed',
+            'error'      => $result['error'] ?? 'Penghubungan DANA gagal.',
+            'error_code' => $result['error_code'] ?? 'DANA_BINDING_FAILED',
         ], 400);
     }
 
@@ -296,19 +335,25 @@ class DanaController extends Controller
     }
 
     /**
-     * Render simple HTML result page untuk browser user setelah callback DANA.
+     * Render simple HTML result page untuk browser user setelah callback DANA,
+     * lalu auto-redirect kembali ke aplikasi Flutter via deep link (PRD §12).
      */
     private function renderCallbackResult(bool $success, string $message, ?string $maskedPhone = null)
     {
         $appUrl = config('app.url', url('/'));
-        $html = '<!DOCTYPE html><html lang="id"><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><title>City Courier - DANA</title></head>'
+        $deepLink = $success
+            ? 'citycourier://dana/binding/success'
+            : 'citycourier://dana/binding/failed';
+        $html = '<!DOCTYPE html><html lang="id"><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8">'
+            . '<meta http-equiv="refresh" content="1;url=' . e($deepLink) . '">'
+            . '<title>City Courier - DANA</title></head>'
             . '<body style="font-family:sans-serif;background:#f5f5f5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px;">'
             . '<div style="background:#fff;border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08);">'
             . '<div style="font-size:48px;margin-bottom:12px;">' . ($success ? '&#9989;' : '&#10060;') . '</div>'
             . '<h2 style="margin:0 0 8px;color:' . ($success ? '#22c55e' : '#ef4444') . ';">' . ($success ? 'DANA Terhubung' : 'Gagal') . '</h2>'
             . '<p style="color:#555;margin:0 0 8px;word-break:break-word;">' . e($message) . '</p>'
             . ($maskedPhone ? '<p style="color:#888;font-size:14px;margin:0 0 16px;">Akun: ' . e($maskedPhone) . '</p>' : '')
-            . '<p style="color:#999;font-size:13px;margin:16px 0 0;">Silakan kembali ke aplikasi City Courier.</p>'
+            . '<p style="color:#999;font-size:13px;margin:16px 0 0;">Mengembalikan ke aplikasi CityCourier...</p>'
             . '</div></body></html>';
 
         return response($html, $success ? 200 : 400)->header('Content-Type', 'text/html');
@@ -379,7 +424,11 @@ class DanaController extends Controller
     {
         $courier = $request->user()->courier;
         if (!$courier) {
-            return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Profil kurir tidak ditemukan.',
+                'error_code' => 'SESSION_EXPIRED',
+            ], 404);
         }
 
         // Check for processing withdrawals
@@ -389,8 +438,9 @@ class DanaController extends Controller
 
         if ($pendingWithdrawals > 0) {
             return response()->json([
-                'success' => false,
-                'message' => 'DANA tidak dapat diputuskan karena masih terdapat transaksi penarikan yang sedang diproses.',
+                'success'    => false,
+                'message'    => 'DANA tidak dapat diputuskan karena masih terdapat transaksi penarikan yang sedang diproses.',
+                'error_code' => 'DANA_NOT_CONNECTED',
             ], 400);
         }
 
@@ -400,9 +450,18 @@ class DanaController extends Controller
             return response()->json(['success' => true, 'message' => 'DANA berhasil diputuskan.']);
         }
 
+        if (($result['error_code'] ?? '') === 'DANA_NOT_CONNECTED') {
+            return response()->json([
+                'success'    => false,
+                'message'    => $result['error'] ?? 'Akun DANA belum terhubung.',
+                'error_code' => 'DANA_NOT_CONNECTED',
+            ], 400);
+        }
+
         return response()->json([
-            'success' => false,
-            'message' => $result['error'] ?? 'Gagal memutuskan DANA.',
+            'success'    => false,
+            'message'    => $result['error'] ?? 'Gagal memutuskan DANA.',
+            'error_code' => 'DANA_BINDING_FAILED',
         ], 400);
     }
 

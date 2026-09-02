@@ -136,12 +136,12 @@ class DanaService
      * Verifikasi state sesi binding (masih pending & belum kadaluarsa).
      * PRD §17 (expiry 10 menit), §21 (validasi state), §29 (akun beda).
      *
-     * @return array ['valid' => bool, 'connection' => DanaConnection|null, 'error' => string|null]
+     * @return array ['valid' => bool, 'connection' => DanaConnection|null, 'error' => string|null, 'error_code' => string|null]
      */
     public function resolveSession(string $state, ?int $courierId = null): array
     {
         if (!$state) {
-            return ['valid' => false, 'connection' => null, 'error' => 'State tidak ditemukan.'];
+            return ['valid' => false, 'connection' => null, 'error' => 'State tidak ditemukan.', 'error_code' => 'INVALID_STATE'];
         }
 
         $query = DanaConnection::where('state_hash', $this->hashState($state))->where('status', 'pending');
@@ -152,15 +152,15 @@ class DanaService
         $connection = $query->first();
 
         if (!$connection) {
-            return ['valid' => false, 'connection' => null, 'error' => 'Sesi penghubungan tidak ditemukan.'];
+            return ['valid' => false, 'connection' => null, 'error' => 'Sesi penghubungan tidak ditemukan.', 'error_code' => 'INVALID_STATE'];
         }
 
         if ($connection->session_expires_at && $connection->session_expires_at->isPast()) {
             $connection->update(['status' => 'expired']);
-            return ['valid' => false, 'connection' => $connection, 'error' => 'Sesi DANA telah kedaluwarsa. Silakan hubungkan kembali.'];
+            return ['valid' => false, 'connection' => $connection, 'error' => 'Sesi DANA telah kedaluwarsa. Silakan hubungkan kembali.', 'error_code' => 'DANA_AUTH_CODE_EXPIRED'];
         }
 
-        return ['valid' => true, 'connection' => $connection, 'error' => null];
+        return ['valid' => true, 'connection' => $connection, 'error' => null, 'error_code' => null];
     }
 
     /**
@@ -182,6 +182,7 @@ class DanaService
                     'success'      => false,
                     'masked_phone' => null,
                     'error'        => $tokenResult['error'] ?? 'Gagal verifikasi DANA.',
+                    'error_code'   => 'DANA_TOKEN_EXCHANGE_FAILED',
                 ];
             }
 
@@ -229,6 +230,7 @@ class DanaService
                 'success'      => true,
                 'masked_phone' => $maskedPhone,
                 'error'        => null,
+                'error_code'   => null,
             ];
         } catch (\Exception $e) {
             Log::error('[DanaService] completeBinding failed', ['error' => $e->getMessage()]);
@@ -236,6 +238,7 @@ class DanaService
                 'success'      => false,
                 'masked_phone' => null,
                 'error'        => 'Gagal menyelesaikan penghubungan DANA.',
+                'error_code'   => 'DANA_BINDING_FAILED',
             ];
         }
     }
@@ -252,7 +255,7 @@ class DanaService
                 ->first();
 
             if (!$connection || !$connection->access_token) {
-                return ['success' => false, 'error' => 'Tidak ada koneksi DANA aktif.'];
+                return ['success' => false, 'error' => 'Tidak ada koneksi DANA aktif.', 'error_code' => 'DANA_NOT_CONNECTED'];
             }
 
             // Call DANA unbind API
