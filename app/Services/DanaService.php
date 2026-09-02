@@ -330,8 +330,17 @@ class DanaService
     {
         $connection = DanaConnection::where('courier_id', $courierId)->first();
 
-        if ($connection && $connection->isExpired()) {
-            $connection->update(['status' => 'expired']);
+        if ($connection) {
+            // Sesi pending yang sudah melewati batas waktu (10 menit) → EXPIRED,
+            // agar status tidak menggantung selamanya bila callback tidak pernah datang
+            // (mis. binding dibatalkan / redirect tanpa authCode).
+            if ($connection->status === 'pending'
+                && $connection->session_expires_at
+                && $connection->session_expires_at->isPast()) {
+                $connection->update(['status' => 'expired']);
+            } elseif ($connection->isExpired()) {
+                $connection->update(['status' => 'expired']);
+            }
         }
 
         return $connection;
