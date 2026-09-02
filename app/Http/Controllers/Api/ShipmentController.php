@@ -289,14 +289,32 @@ class ShipmentController extends Controller
             ]);
         }
 
-        // ── COD/TUNAI: Konfirmasi saat kurir mengantar ──
-        if (!in_array($shipment->status, ['delivering', 'delivered'])) {
+        // ── COD/TUNAI: Bisa dari pending (saat buat order) ──
+        // Jika status pending, langsung confirmed (bayar nanti)
+        // Jika status delivering/delivered, tandai pembayaran diterima
+        if ($shipment->status === 'pending') {
+            // Saat customer pilih COD/TUNAI di payment method screen
+            $shipment->update([
+                'status' => 'confirmed',
+                'payment_method' => $paymentMethod,
+            ]);
+
+            $desc = $paymentMethod === 'COD'
+                ? 'Pesanan dikonfirmasi. Pembayaran Cash on Delivery (COD).'
+                : 'Pesanan dikonfirmasi. Pembayaran tunai saat pickup.';
+
+            $this->trackingService->createStatusHistory(
+                $shipment, 'confirmed', null, null, null, null, $desc
+            );
+
             return response()->json([
-                'success' => false,
-                'message' => 'Pembayaran COD/TUNAI dikonfirmasi saat pengiriman.',
-            ], 400);
+                'success' => true,
+                'message' => 'Pesanan dikonfirmasi. Pembayaran ' . $paymentMethod . ' saat pengiriman.',
+                'data'    => $shipment->fresh(),
+            ]);
         }
 
+        // Jika sudah delivering/delivered, tandai pembayaran diterima
         $shipment->update([
             'payment_method' => $paymentMethod,
         ]);
@@ -306,7 +324,7 @@ class ShipmentController extends Controller
             : 'Pembayaran tunai berhasil diterima kurir.';
 
         $this->trackingService->createStatusHistory(
-            $shipment, 'delivered', null, null, null, null, $desc
+            $shipment, $shipment->status, null, null, null, null, $desc
         );
 
         return response()->json([
