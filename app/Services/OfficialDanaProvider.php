@@ -79,19 +79,50 @@ class OfficialDanaProvider implements DanaProvider
      */
     private function sign(string $stringToSign): string
     {
-        $privateKey = $this->privateKey();
+        $privateKey = $this->normalizePrivateKey($this->privateKey());
         if (!$privateKey) {
             throw new \RuntimeException('DANA private key tidak dikonfigurasi.');
         }
 
         $key = openssl_pkey_get_private($privateKey);
         if ($key === false) {
-            throw new \RuntimeException('DANA private key tidak valid.');
+            throw new \RuntimeException('DANA private key tidak valid. Pastikan key tersimpan dengan format PEM lengkap (-----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----).');
         }
 
         openssl_sign($stringToSign, $signature, $key, OPENSSL_ALGO_SHA256);
 
         return base64_encode($signature);
+    }
+
+    /**
+     * Normalisasi private key PEM yang rusak karena penyimpanan 1 baris
+     * (newline hilang / literal "\n") sehingga openssl tidak bisa membacanya.
+     */
+    private function normalizePrivateKey(string $key): string
+    {
+        $key = trim((string) $key);
+
+        // Literal escape "\n" dari form → newline asli.
+        if (str_contains($key, '\\n')) {
+            $key = str_replace('\\n', "\n", $key);
+        }
+
+        // PEM tanpa newline sama sekali (satu baris penuh) → bungkus ulang.
+        if (!str_contains($key, "\n") && str_contains($key, '-----')) {
+            $hasRsa = str_contains($key, 'BEGIN RSA PRIVATE KEY');
+            $body = preg_replace('/^.*?-----BEGIN (RSA )?PRIVATE KEY-----/', '', $key);
+            $body = preg_replace('/-----END (RSA )?PRIVATE KEY-----.*$/', '', $body);
+            $body = preg_replace('/[^A-Za-z0-9+\/=\n]/', '', $body);
+            $wrapped = trim(chunk_split($body, 64, "\n"));
+
+            if ($wrapped !== '') {
+                $key = ($hasRsa ? '-----BEGIN RSA PRIVATE KEY-----' : '-----BEGIN PRIVATE KEY-----')
+                    . "\n" . $wrapped . "\n"
+                    . ($hasRsa ? '-----END RSA PRIVATE KEY-----' : '-----END PRIVATE KEY-----');
+            }
+        }
+
+        return $key;
     }
 
     /**
