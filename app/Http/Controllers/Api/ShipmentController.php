@@ -89,13 +89,13 @@ class ShipmentController extends Controller
         ]);
 
         // Riwayat pelacakan
-        $desc = match ($paymentMethod) {
+        $paymentDescs = [
             'COD'   => 'Pesanan dibuat. Pembayaran Cash on Delivery (COD).',
             'TUNAI' => 'Pesanan dibuat. Pembayaran tunai saat pickup.',
             'VA'    => 'Pesanan dibuat. Menunggu pembayaran via Virtual Account.',
             'QRIS'  => 'Pesanan dibuat. Menunggu pembayaran via QRIS.',
-            default => 'Pesanan berhasil dibuat.',
-        };
+        ];
+        $desc = $paymentDescs[$paymentMethod] ?? 'Pesanan berhasil dibuat.';
         $this->trackingService->createStatusHistory($shipment, 'pending', null, null, null, null, $desc);
 
         // Jika COD/TUNAI, langsung buat riwayat confirmed juga

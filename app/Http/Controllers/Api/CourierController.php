@@ -364,14 +364,14 @@ class CourierController extends Controller
      */
     private function withdrawalStatusLabel($status)
     {
-        return match ($status) {
+        $labels = [
             'completed' => 'Berhasil',
             'approved' => 'Disetujui',
             'pending' => 'Menunggu',
             'rejected' => 'Ditolak',
             'cancelled' => 'Dibatalkan',
-            default => ucfirst((string) $status),
-        };
+        ];
+        return $labels[$status] ?? ucfirst((string) $status);
     }
 
     /**

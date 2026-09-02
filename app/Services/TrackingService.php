@@ -30,7 +30,7 @@ class TrackingService
     private array $statusDescriptions = [
         'pending'         => 'Pesanan baru dibuat dan menunggu pembayaran.',
         'confirmed'       => 'Pembayaran telah dikonfirmasi.',
-        'assigned'        => 'Kurir telah ditugaskan. Langsung menjemput paket di lokasi pengirim.'
+        'assigned'        => 'Kurir telah ditugaskan. Langsung menjemput paket di lokasi pengirim.',
         'picking_up'      => 'Kurir sedang menuju lokasi pengambilan paket.',
         'picked_up'       => 'Paket berhasil dijemput dari lokasi pengirim.',
         'delivering'      => 'Paket sedang dalam perjalanan ke lokasi penerima.',
@@ -234,17 +234,17 @@ class TrackingService
      */
     private function getStatusLocation(string $status): string
     {
-        return match ($status) {
-            'pending'         => 'Sistem',
-            'confirmed'       => 'Sistem',
-            'assigned'        => 'Menuju Lokasi Pickup',
-            'picking_up'      => 'Menuju Lokasi Pickup',
-            'picked_up'       => 'Lokasi Pickup',
-            'delivering'      => 'Dalam Perjalanan',
-            'delivered'       => 'Lokasi Tujuan',
-            'cancelled'       => 'Dibatalkan',
-            default           => 'Tidak Diketahui',
-        };
+        $locations = [
+            'pending'    => 'Sistem',
+            'confirmed'  => 'Sistem',
+            'assigned'   => 'Menuju Lokasi Pickup',
+            'picking_up' => 'Menuju Lokasi Pickup',
+            'picked_up'  => 'Lokasi Pickup',
+            'delivering' => 'Dalam Perjalanan',
+            'delivered'  => 'Lokasi Tujuan',
+            'cancelled'  => 'Dibatalkan',
+        ];
+        return $locations[$status] ?? 'Tidak Diketahui';
     }
 
     /**

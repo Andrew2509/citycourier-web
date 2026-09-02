@@ -25,7 +25,7 @@ class BackfillTrackingHistory extends Command
     private array $statusDescriptions = [
         'pending'         => 'Pesanan baru dibuat dan menunggu pembayaran.',
         'confirmed'       => 'Pembayaran telah dikonfirmasi.',
-        'assigned'        => 'Kurir telah ditugaskan. Langsung menjemput paket di lokasi pengirim.'
+        'assigned'        => 'Kurir telah ditugaskan. Langsung menjemput paket di lokasi pengirim.',
         'picking_up'      => 'Kurir sedang menuju lokasi pengambilan paket.',
         'picked_up'       => 'Paket berhasil dijemput dari lokasi pengirim.',
         'delivering'      => 'Paket sedang dalam perjalanan ke lokasi penerima.',
@@ -98,7 +98,7 @@ class BackfillTrackingHistory extends Command
                 'updated_at'  => $timestamp,
             ]);
 
-            $minutesOffset += match ($status) {
+            $offsets = [
                 'pending'    => 0,
                 'confirmed'  => 30,
                 'assigned'   => 60,
@@ -106,8 +106,8 @@ class BackfillTrackingHistory extends Command
                 'picked_up'  => 120,
                 'delivering' => 150,
                 'delivered'  => 180,
-                default      => 10,
-            };
+            ];
+            $minutesOffset += $offsets[$status] ?? 10;
         }
     }
 
