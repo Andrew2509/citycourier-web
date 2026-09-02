@@ -85,6 +85,15 @@ class OfficialDanaProvider implements DanaProvider
         }
 
         $key = openssl_pkey_get_private($privateKey);
+        if ($key === false && str_starts_with($privateKey, '-----BEGIN PRIVATE KEY-----')) {
+            // Coba varian PKCS#1 (RSA PRIVATE KEY) bila PKCS#8 ditolak.
+            $rsaPem = str_ireplace(
+                ['-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----'],
+                ['-----BEGIN RSA PRIVATE KEY-----', '-----END RSA PRIVATE KEY-----'],
+                $privateKey
+            );
+            $key = openssl_pkey_get_private($rsaPem);
+        }
         if ($key === false) {
             Log::error('[OfficialDANA] private key gagal dimuat (metadata)', [
                 'has_pem_header' => str_contains($this->privateKey(), '-----BEGIN'),
@@ -113,6 +122,16 @@ class OfficialDanaProvider implements DanaProvider
         // Literal escape "\n" dari form → newline asli.
         if (str_contains($key, '\\n')) {
             $key = str_replace('\\n', "\n", $key);
+        }
+
+        // Body base64 TANPA header PEM sama sekali (mis. PKCS#8 tanpa BEGIN/END)
+        // → bungkus otomatis.
+        if (!str_contains($key, '-----')) {
+            $body = preg_replace('/[^A-Za-z0-9+\/=]/', '', $key);
+            if ($body !== '') {
+                $wrapped = trim(chunk_split($body, 64, "\n"));
+                $key = "-----BEGIN PRIVATE KEY-----\n" . $wrapped . "\n-----END PRIVATE KEY-----";
+            }
         }
 
         // PEM tanpa newline sama sekali (satu baris penuh) → bungkus ulang.
