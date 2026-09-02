@@ -305,9 +305,10 @@ class OfficialDanaProvider implements DanaProvider
             return [
                 'success' => true,
                 'profile' => [
-                    'masked_phone' => $profile['maskedPhoneNumber'] ?? $profile['maskedIdentifier'] ?? null,
-                    'name'         => $profile['displayName'] ?? null,
-                    'is_kyc'       => $profile['isKyc'] ?? null,
+                    'masked_phone'         => $profile['maskedPhoneNumber'] ?? $profile['maskedIdentifier'] ?? null,
+                    'name'                 => $profile['displayName'] ?? null,
+                    'is_kyc'               => $profile['isKyc'] ?? null,
+                    'dana_user_reference'  => $profile['danaUserId'] ?? $profile['userReference'] ?? $profile['userId'] ?? null,
                 ],
                 'error' => null,
             ];

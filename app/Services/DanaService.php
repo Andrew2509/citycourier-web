@@ -78,8 +78,8 @@ class DanaService
     }
 
     /**
-     * Step 1: Get OTT token for DANA Widget Binding.
-     * PRD §7: Hubungkan DANA
+     * Step 1: Get binding URL/session for DANA Widget Binding.
+     * PRD §7, §11-12: generate binding URL + external_id + state_hash.
      *
      * @return array ['success' => bool, 'ott' => string|null, 'redirect_url' => string|null, 'error' => string|null]
      */
@@ -89,18 +89,24 @@ class DanaService
             $result = $this->provider->applyOTT($phoneNumber);
 
             if ($result['success']) {
-                // Store OTT in connection record for later verification
+                $state = (string) $result['ott'];
+                $externalId = 'DANA-BIND-CRR-' . strtoupper((string) \Illuminate\Support\Str::uuid());
+
+                // Store session untuk verifikasi callback (PRD §21) + expiry 10 menit (PRD §17).
                 $connection = DanaConnection::updateOrCreate(
                     ['courier_id' => $courierId],
                     [
-                        'status'     => 'pending',
-                        'session_id' => $result['ott'],
+                        'status'              => 'pending',
+                        'external_id'         => $externalId,
+                        'session_id'          => $state,
+                        'state_hash'          => $this->hashState($state),
+                        'session_expires_at'  => now()->addMinutes(10),
                     ]
                 );
 
                 Log::info('[DanaService] Binding initiated', [
                     'courier_id' => $courierId,
-                    'ott'        => $result['ott'],
+                    'external_id' => $externalId,
                 ]);
             }
 
@@ -115,6 +121,46 @@ class DanaService
                 'exception'    => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Hash state untuk disimpan aman (PRD §21: state_hash, bukan raw state).
+     * Tanpa salt courier agar callback publik bisa menemukan sesi hanya dari state.
+     */
+    public function hashState(string $state): string
+    {
+        return hash('sha256', $state);
+    }
+
+    /**
+     * Verifikasi state sesi binding (masih pending & belum kadaluarsa).
+     * PRD §17 (expiry 10 menit), §21 (validasi state), §29 (akun beda).
+     *
+     * @return array ['valid' => bool, 'connection' => DanaConnection|null, 'error' => string|null]
+     */
+    public function resolveSession(string $state, ?int $courierId = null): array
+    {
+        if (!$state) {
+            return ['valid' => false, 'connection' => null, 'error' => 'State tidak ditemukan.'];
+        }
+
+        $query = DanaConnection::where('state_hash', $this->hashState($state))->where('status', 'pending');
+        if ($courierId) {
+            $query->where('courier_id', $courierId);
+        }
+
+        $connection = $query->first();
+
+        if (!$connection) {
+            return ['valid' => false, 'connection' => null, 'error' => 'Sesi penghubungan tidak ditemukan.'];
+        }
+
+        if ($connection->session_expires_at && $connection->session_expires_at->isPast()) {
+            $connection->update(['status' => 'expired']);
+            return ['valid' => false, 'connection' => $connection, 'error' => 'Sesi DANA telah kedaluwarsa. Silakan hubungkan kembali.'];
+        }
+
+        return ['valid' => true, 'connection' => $connection, 'error' => null];
     }
 
     /**
@@ -143,9 +189,10 @@ class DanaService
             $refreshToken = $tokenResult['refresh_token'];
             $tokenExpiresAt = $tokenResult['expires_at'] ?? null;
 
-            // Query user profile to get masked phone
+            // Query user profile to get masked phone / user reference
             $profileResult = $this->provider->queryUserProfile($accessToken);
             $maskedPhone = $profileResult['profile']['masked_phone'] ?? null;
+            $userReference = $profileResult['profile']['dana_user_reference'] ?? null;
 
             // Update connection record
             $connection = DanaConnection::where('courier_id', $courierId)->first();
@@ -155,13 +202,15 @@ class DanaService
             }
 
             $connection->update([
-                'status'             => 'connected',
-                'masked_phone'       => $maskedPhone,
-                'provider_reference' => $authCode,
-                'access_token'       => $accessToken,
-                'refresh_token'      => $refreshToken,
-                'token_expires_at'   => $tokenExpiresAt,
-                'linked_at'          => now(),
+                'status'               => 'connected',
+                'masked_phone'         => $maskedPhone,
+                'provider_reference'   => $authCode,
+                'dana_user_reference'  => $userReference,
+                'access_token'         => $accessToken,
+                'refresh_token'        => $refreshToken,
+                'token_expires_at'     => $tokenExpiresAt ? date('Y-m-d H:i:s', strtotime($tokenExpiresAt)) : null,
+                'bound_at'             => now(),
+                'linked_at'            => now(),
             ]);
 
             // Activate wallet (PRD §10)
@@ -172,6 +221,7 @@ class DanaService
 
             Log::info('[DanaService] Binding completed', [
                 'courier_id'   => $courierId,
+                'dana_user_reference' => $userReference,
                 'masked_phone' => $maskedPhone,
             ]);
 
@@ -268,6 +318,20 @@ class DanaService
         } catch (\Exception $e) {
             return ['success' => false, 'balance' => null, 'error' => 'Gagal mengecek saldo DANA.'];
         }
+    }
+
+    /**
+     * Ambil koneksi aktif & tandai otomatis EXPIRED jika token kedaluwarsa (PRD §33).
+     */
+    public function freshStatus(int $courierId): ?DanaConnection
+    {
+        $connection = DanaConnection::where('courier_id', $courierId)->first();
+
+        if ($connection && $connection->isExpired()) {
+            $connection->update(['status' => 'expired']);
+        }
+
+        return $connection;
     }
 
     /**

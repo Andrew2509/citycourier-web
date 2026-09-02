@@ -34,7 +34,8 @@ class DanaController extends Controller
 
     /**
      * GET /api/courier/dana/status
-     * Get DANA connection status.
+     * Get DANA connection status (PRD §34).
+     * Otomatis menandai EXPIRED bila token kedaluwarsa (PRD §33).
      */
     public function status(Request $request)
     {
@@ -43,14 +44,20 @@ class DanaController extends Controller
             return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
         }
 
-        $connection = DanaConnection::where('courier_id', $courier->id)->first();
+        $connection = $this->danaService->freshStatus($courier->id);
+
+        $status = $connection?->status ?? 'not_connected';
 
         return response()->json([
             'success' => true,
             'data'    => [
-                'status'       => $connection?->status ?? 'not_connected',
-                'masked_phone' => $connection?->masked_phone,
-                'connected_at' => $connection?->linked_at,
+                'connected'      => $status === 'connected',
+                'status'         => $status,
+                'status_label'   => $connection?->status_label ?? 'NOT_CONNECTED',
+                'masked_phone'   => $connection?->masked_phone,
+                'masked_account' => $connection?->masked_phone,
+                'external_id'    => $connection?->external_id,
+                'connected_at'   => $connection?->linked_at,
             ],
         ]);
     }
@@ -88,6 +95,42 @@ class DanaController extends Controller
                     'redirect_url'   => $result['redirect_url'],
                     'status'         => 'PENDING',
                 ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $result['error'] ?? 'Gagal membuat sesi penghubungan.',
+        ], 500);
+    }
+
+    /**
+     * POST /api/courier/dana/binding
+     * Generate binding URL (PRD §34). Alias resmi dari connect().
+     */
+    public function binding(Request $request)
+    {
+        $courier = $request->user()->courier;
+        if (!$courier) {
+            return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
+        }
+
+        $existing = DanaConnection::where('courier_id', $courier->id)
+            ->where('status', 'connected')
+            ->first();
+
+        if ($existing) {
+            return response()->json(['success' => false, 'message' => 'Akun DANA sudah terhubung.'], 400);
+        }
+
+        $phone = $courier->phone ?? $request->input('phone_number');
+        $result = $this->danaService->beginBinding($courier->id, $phone);
+
+        if ($result['success']) {
+            return response()->json([
+                'success'    => true,
+                'bindingUrl' => $result['redirect_url'],
+                'sessionId'  => $result['ott'],
             ]);
         }
 
@@ -169,9 +212,12 @@ class DanaController extends Controller
 
         $courierId = null;
         if ($state) {
-            $connection = DanaConnection::where('session_id', $state)->first();
-            if ($connection) {
-                $courierId = $connection->courier_id;
+            $resolved = $this->danaService->resolveSession($state);
+            if ($resolved['valid']) {
+                $courierId = $resolved['connection']->courier_id;
+            } else {
+                Log::warning('[DanaController] webhook session tidak valid', ['state' => $state, 'error' => $resolved['error']]);
+                return response()->json(['status' => 'failed', 'error' => $resolved['error']], 400);
             }
         }
 
@@ -218,12 +264,15 @@ class DanaController extends Controller
             return $this->renderCallbackResult(false, 'Kode otorisasi DANA tidak ditemukan.');
         }
 
-        // Cari kurir dari state (disimpan sebagai session_id saat beginBinding)
+        // Cari kurir dari state (disimpan sebagai state_hash saat beginBinding)
         $courierId = null;
         if ($state) {
-            $connection = DanaConnection::where('session_id', $state)->first();
-            if ($connection) {
-                $courierId = $connection->courier_id;
+            $resolved = $this->danaService->resolveSession($state);
+            if ($resolved['valid']) {
+                $courierId = $resolved['connection']->courier_id;
+            } else {
+                Log::warning('[DanaController] callback session tidak valid', ['state' => $state, 'error' => $resolved['error']]);
+                return $this->renderCallbackResult(false, $resolved['error'] ?? 'Sesi penghubungan tidak ditemukan atau kedaluwarsa.');
             }
         }
 

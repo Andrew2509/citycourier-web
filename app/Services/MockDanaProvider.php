@@ -70,10 +70,11 @@ class MockDanaProvider implements DanaProvider
         return [
             'success' => true,
             'profile' => [
-                'phone_number' => '081234567890',
-                'masked_phone' => '081234******7890',
-                'name'         => 'MOCK USER',
-                'kyc_status'   => 'verified',
+                'phone_number'        => '081234567890',
+                'masked_phone'        => '081234******7890',
+                'name'                => 'MOCK USER',
+                'kyc_status'          => 'verified',
+                'dana_user_reference' => 'MOCK-USR-REF-2026',
             ],
             'error' => null,
         ];

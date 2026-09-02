@@ -21,6 +21,9 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 // Harus publik: DANA mengirim GET tanpa bearer token.
 Route::match(['get', 'post'], '/courier/dana/callback', [DanaController::class, 'callback']);
 
+// Alias publik sesuai PRD §34.
+Route::match(['get', 'post'], '/dana/callback', [DanaController::class, 'callback']);
+
 // DANA webhook (alias publik, sesuai panduan integrasi).
 Route::post('/dana/webhook', [DanaController::class, 'webhookCallback']);
 
@@ -123,6 +126,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/courier/dana/connect', [DanaController::class, 'connect']);
     Route::post('/courier/dana/mock-connect', [DanaController::class, 'mockConnect']);
     Route::post('/courier/dana/disconnect', [DanaController::class, 'disconnect']);
+
+    // Endpoint PRD §34: binding, unbind, rebind.
+    Route::post('/courier/dana/binding', [DanaController::class, 'binding']);
+    Route::post('/courier/dana/unbind', [DanaController::class, 'disconnect']);
+    Route::post('/courier/dana/rebind', [DanaController::class, 'reconnect']);
 
     // Alias endpoint panduan integrasi DANA.
     Route::post('/dana/bind/init', [DanaController::class, 'initBinding']);
