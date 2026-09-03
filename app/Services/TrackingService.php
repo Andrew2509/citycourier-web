@@ -206,20 +206,46 @@ class TrackingService
             }
         }
 
+        // Sumber lokasi pemesanan (pengiriman → penerima). Bila koordinat atau
+        // alamat shipment kosong, ambil dari Order terkait (source of truth).
+        $originAddress = $shipment->sender_address;
+        $originLat     = $shipment->sender_latitude;
+        $originLng     = $shipment->sender_longitude;
+        $destAddress   = $shipment->receiver_address;
+        $destLat       = $shipment->receiver_latitude;
+        $destLng       = $shipment->receiver_longitude;
+
+        if (($originAddress === null || $destAddress === null) ||
+            ($originLat === null || $destLat === null)) {
+            $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
+            if ($order) {
+                $originAddress = $originAddress ?? $order->pickup_address;
+                $destAddress   = $destAddress   ?? $order->delivery_address;
+                if ($originLat === null) {
+                    $originLat = $order->pickup_latitude;
+                    $originLng = $order->pickup_longitude;
+                }
+                if ($destLat === null) {
+                    $destLat = $order->delivery_latitude;
+                    $destLng = $order->delivery_longitude;
+                }
+            }
+        }
+
         return [
             'tracking_number'   => $shipment->tracking_number,
             'shipment_number'   => $shipment->shipment_number,
             'status'            => $shipment->status,
             'status_label'      => $this->statusLabels[$shipment->status] ?? $shipment->status,
             'origin' => [
-                'address'   => $shipment->sender_address,
-                'latitude'  => $shipment->sender_latitude,
-                'longitude' => $shipment->sender_longitude,
+                'address'   => $originAddress,
+                'latitude'  => $originLat,
+                'longitude' => $originLng,
             ],
             'destination' => [
-                'address'   => $shipment->receiver_address,
-                'latitude'  => $shipment->receiver_latitude,
-                'longitude' => $shipment->receiver_longitude,
+                'address'   => $destAddress,
+                'latitude'  => $destLat,
+                'longitude' => $destLng,
             ],
             'courier_location'  => $courierLocation,
             'courier_name'      => $courierName,

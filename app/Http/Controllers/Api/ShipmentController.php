@@ -175,9 +175,45 @@ class ShipmentController extends Controller
             ], 404);
         }
 
+        // Sumber lokasi pemesanan (pengiriman → penerima).
+        // Bila koordinat/alamat shipment kosong, ambil dari Order terkait
+        // agar peta menampilkan lokasi yang benar.
+        $originLat = $shipment->sender_latitude;
+        $originLng = $shipment->sender_longitude;
+        $destLat   = $shipment->receiver_latitude;
+        $destLng   = $shipment->receiver_longitude;
+        $originAddress = $shipment->sender_address;
+        $destAddress   = $shipment->receiver_address;
+
+        if (($originLat === null || $destLat === null) ||
+            ($originAddress === null || $destAddress === null)) {
+            $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
+            if ($order) {
+                $originAddress = $originAddress ?? $order->pickup_address;
+                $destAddress   = $destAddress   ?? $order->delivery_address;
+                if ($originLat === null) {
+                    $originLat = $order->pickup_latitude;
+                    $originLng = $order->pickup_longitude;
+                }
+                if ($destLat === null) {
+                    $destLat = $order->delivery_latitude;
+                    $destLng = $order->delivery_longitude;
+                }
+            }
+        }
+
+        $data = $shipment->toArray();
+        // Jamin field lokasi terisi dari sumber pemesanan.
+        $data['sender_address']   = $originAddress;
+        $data['receiver_address'] = $destAddress;
+        $data['sender_latitude']  = $originLat;
+        $data['sender_longitude'] = $originLng;
+        $data['receiver_latitude']  = $destLat;
+        $data['receiver_longitude'] = $destLng;
+
         return response()->json([
             'success' => true,
-            'data'    => $shipment,
+            'data'    => $data,
         ]);
     }
 
