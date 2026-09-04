@@ -133,6 +133,26 @@
                         <span>Provider DANA</span>
                     </a>
                 </div>
+
+                {{-- Download App Section --}}
+                <div class="nav-section">
+                    <div class="nav-section-title">Download App</div>
+                    <div class="sidebar-download-card">
+                        <div class="dl-card-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <div class="dl-card-info">
+                            <span class="dl-card-title">CityCourier App</span>
+                            <span class="dl-card-version" id="appVersion">v1.0.0</span>
+                        </div>
+                        <a href="{{ asset('downloads/citycourier.apk') }}" class="dl-card-btn" download title="Download APK">
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                    <div class="sidebar-download-hint">
+                        <i class="fas fa-qrcode"></i> Scan QR untuk download di HP
+                    </div>
+                </div>
             </nav>
 
             <div class="sidebar-footer">
@@ -198,6 +218,24 @@
     </div>
 
     <script src="{{ asset('js/admin.js') }}"></script>
+    <script>
+    // Auto-load build info for download section
+    (function() {
+        async function loadBuildInfo() {
+            try {
+                const resp = await fetch('{{ asset('downloads/build_info.json') }}?t=' + Date.now());
+                if (!resp.ok) return;
+                const info = await resp.json();
+                const versionEl = document.getElementById('appVersion');
+                if (versionEl && info.version) {
+                    versionEl.textContent = 'v' + info.version;
+                }
+            } catch (e) { /* build_info.json not available yet */ }
+        }
+        loadBuildInfo();
+        setInterval(loadBuildInfo, 30000);
+    })();
+    </script>
     @stack('scripts')
 </body>
 </html>
