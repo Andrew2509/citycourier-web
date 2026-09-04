@@ -1,188 +1,173 @@
 @extends('layouts.admin')
 
-@section('title', 'Map Server Settings')
-@section('page-title', 'Pengaturan Map Server')
-@section('page-subtitle', 'Kelola konfigurasi peta (OSRM/OpenStreetMap, Mapbox, Maplibre, atau Google Maps) untuk proxy ekosistem Flutter')
+@section('title', 'Konfigurasi Peta')
+@section('page-title', 'Konfigurasi Peta')
 
 @section('content')
-<div class="row">
-    <div class="col-md-8">
-        <div class="card bg-white shadow-sm rounded-3">
-            <div class="card-header border-0 bg-transparent pt-4 px-4">
-                <h3 class="card-title fw-bold text-dark fs-5">Konfigurasi API Peta</h3>
+<div class="flex flex-col gap-6">
+    {{-- Header --}}
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center shadow-lg shadow-primary/20">
+                <span class="material-symbols-outlined text-white text-xl">map</span>
             </div>
-            <div class="card-body px-4 pb-4">
-                <form action="{{ route('admin.settings.map.update') }}" method="POST">
-                    @csrf
-                    
-                    <div class="form-group mb-4">
-                        <label for="map_provider" class="form-label fw-semibold text-muted small uppercase">Penyedia Peta (Map Provider)</label>
-                        <select name="map_provider" id="map_provider" class="form-control rounded-3 border-light-subtle @error('map_provider') is-invalid @enderror">
-                            <option value="osrm" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'osrm' ? 'selected' : '' }}>OSRM / OpenStreetMap (Recommended - Gratis &amp; Open Source)</option>
-                            <option value="maplibre" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'maplibre' ? 'selected' : '' }}>Maplibre GL (Open Source)</option>
-                            <option value="mapbox" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'mapbox' ? 'selected' : '' }}>Mapbox</option>
-                            <option value="google" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'google' ? 'selected' : '' }}>Google Maps API</option>
-                        </select>
-                        @error('map_provider')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+            Pengaturan Map Server
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">Kelola konfigurasi peta untuk proxy ekosistem Flutter</p>
+    </div>
 
-                    <div class="form-group mb-4">
-                        <label for="map_base_url" class="form-label fw-semibold text-muted small uppercase">API Base URL</label>
-                        <input type="url" 
-                               name="map_base_url" 
-                               id="map_base_url" 
-                               class="form-control rounded-3 border-light-subtle @error('map_base_url') is-invalid @enderror" 
-                               value="{{ old('map_base_url', $settings['base_url']) }}" 
-                               placeholder="Contoh: https://router.project-osrm.org">
-                        @error('map_base_url')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {{-- Main Form --}}
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">settings</span>
+                        Konfigurasi API Peta
+                    </h3>
+                </div>
+                <div class="p-5">
+                    <form action="{{ route('admin.settings.map.update') }}" method="POST">
+                        @csrf
+                        
+                        {{-- Provider --}}
+                        <div class="mb-5">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Penyedia Peta (Map Provider)</label>
+                            <select name="map_provider" id="map_provider" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                                <option value="osrm" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'osrm' ? 'selected' : '' }}>OSRM / OpenStreetMap (Recommended)</option>
+                                <option value="maplibre" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'maplibre' ? 'selected' : '' }}>Maplibre GL (Open Source)</option>
+                                <option value="mapbox" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'mapbox' ? 'selected' : '' }}>Mapbox</option>
+                                <option value="google" {{ old('map_provider', $settings['provider'] ?? 'osrm') == 'google' ? 'selected' : '' }}>Google Maps API</option>
+                            </select>
+                            @error('map_provider') <p class="text-sm text-red-500 mt-1">{{ $message }}</p> @enderror
+                        </div>
 
-                    <div class="form-group mb-4">
-                        <label for="map_api_key" class="form-label fw-semibold text-muted small uppercase">Access Token / API Key</label>
-                        <input type="password" 
-                               name="map_api_key" 
-                               id="map_api_key" 
-                               class="form-control rounded-3 border-light-subtle @error('map_api_key') is-invalid @enderror" 
-                               value="{{ old('map_api_key', $settings['api_key']) }}" 
-                               placeholder="Kosongkan bila memakai OSRM/OpenStreetMap publik">
-                        @error('map_api_key')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                        <div class="form-text text-muted mt-1 small" id="api-key-hint">
-                            Semua request dari Flutter akan dijaga/diproxy melalui Laravel untuk melindungi token ini agar tidak bocor ke client.
+                        {{-- Base URL --}}
+                        <div class="mb-5">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">API Base URL</label>
+                            <input type="url" name="map_base_url" id="map_base_url" value="{{ old('map_base_url', $settings['base_url']) }}" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="https://router.project-osrm.org">
+                            @error('map_base_url') <p class="text-sm text-red-500 mt-1">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- API Key --}}
+                        <div class="mb-5">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Access Token / API Key</label>
+                            <input type="password" name="map_api_key" id="map_api_key" value="{{ old('map_api_key', $settings['api_key']) }}" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Kosongkan untuk OSRM publik">
+                            @error('map_api_key') <p class="text-sm text-red-500 mt-1">{{ $message }}</p> @enderror
+                            <p class="text-xs text-slate-400 mt-2" id="api-key-hint">Semua request dari Flutter akan diproyeksi melalui Laravel untuk melindungi token ini.</p>
+                        </div>
+
+                        {{-- Actions --}}
+                        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                            <button type="button" id="btn-test-map" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm">wifi_tethering</span>
+                                Cek Koneksi
+                            </button>
+                            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/30 transition-all text-sm font-semibold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm">save</span>
+                                Simpan Perubahan
+                            </button>
+                        </div>
+                    </form>
+
+                    {{-- Test Result --}}
+                    <div id="test-result" class="mt-5 hidden">
+                        <div id="test-alert" class="p-4 rounded-xl">
+                            <p class="font-semibold text-sm" id="test-title"></p>
+                            <p class="text-sm mt-1" id="test-message"></p>
+                            <div id="test-data" class="mt-3 p-3 bg-white rounded-lg border border-slate-200 text-xs hidden"></div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
 
-                    <div class="d-flex justify-content-end gap-2 pt-2">
-                        <button type="button" id="btn-test-map" class="btn btn-light border rounded-3 px-4 fw-semibold text-secondary">
-                            <i class="fas fa-plug me-2"></i>Cek Koneksi API
-                        </button>
-                        <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold">
-                            <i class="fas fa-save me-2"></i>Simpan Perubahan
-                        </button>
-                    </div>
-                </form>
-
-                <div id="test-result" class="mt-4" style="display: none;">
-                    <div class="alert alert-success rounded-3 p-3 border-0 shadow-sm" id="test-alert">
-                        <h6 class="alert-heading fw-bold mb-1" id="test-title">Koneksi Berhasil</h6>
-                        <p class="small mb-2" id="test-message">Berhasil memanggil Geocoding API untuk Surabaya.</p>
-                        <div id="test-data" class="small p-2 bg-white rounded-3 border border-light-subtle" style="max-height: 150px; overflow-y: auto;"></div>
+        {{-- Info Panel --}}
+        <div class="space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">architecture</span>
+                        Arsitektur Proxy
+                    </h3>
+                </div>
+                <div class="p-5">
+                    <p class="text-sm text-slate-600 mb-4">Laravel bertindak sebagai <strong>Proxy & Security Guard</strong>. Token peta aman di server.</p>
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Endpoint yang di-Proxy:</p>
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                                <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span>
+                                <code class="text-xs text-slate-600">/api/shipping/map/routing</code>
+                            </div>
+                            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                                <span class="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">GET</span>
+                                <code class="text-xs text-slate-600">/api/shipping/map/autocomplete</code>
+                            </div>
+                            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                                <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span>
+                                <code class="text-xs text-slate-600">/api/shipping/map/matrix</code>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card bg-light border-0 rounded-3 shadow-none p-2">
-            <div class="card-body">
-                <h5 class="fw-bold text-dark fs-6 mb-3">Arsitektur Proxy Peta</h5>
-                <p class="card-text small text-secondary">
-                    Laravel bertindak sebagai <strong>Proxy & Security Guard</strong>. Endpoint client Flutter hanya menembak ke URL Laravel Anda, sehingga Token/Key peta aman sepenuhnya di server Anda.
-                </p>
-                <hr class="border-light-subtle my-3">
-                <h6 class="small fw-bold text-dark mb-2">Endpoint yang di-Proxy:</h6>
-                <ul class="small text-secondary ps-3 mb-0 d-flex flex-column gap-1">
-                    <li><code>POST /api/shipping/map/routing</code> (Directions)</li>
-                    <li><code>GET /api/shipping/map/autocomplete</code> (Pencarian POI)</li>
-                    <li><code>POST /api/shipping/map/matrix</code> (Perhitungan Jarak)</li>
-                </ul>
-            </div>
-        </div>
-    </div>
 </div>
 
-<style>
-    .uppercase { text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; }
-    .btn-primary { background: #EC5B13; border: none; }
-    .btn-primary:hover { background: #d44d0d; }
-    .btn-light { background: #f8f9fa; border-color: #e9ecef; }
-    .btn-light:hover { background: #e9ecef; }
-    .form-control:focus { border-color: #EC5B13; box-shadow: 0 0 0 0.25rem rgba(236, 91, 19, 0.25); }
-</style>
-
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const btnTest = document.getElementById('btn-test-map');
-        const testResult = document.getElementById('test-result');
-        const testAlert = document.getElementById('test-alert');
-        const testTitle = document.getElementById('test-title');
-        const testMessage = document.getElementById('test-message');
-        const testData = document.getElementById('test-data');
-        const providerSelect = document.getElementById('map_provider');
-        const baseUrlInput = document.getElementById('map_base_url');
-        const apiKeyInput = document.getElementById('map_api_key');
-        const apiKeyHint = document.getElementById('api-key-hint');
+document.addEventListener('DOMContentLoaded', function() {
+    const providerSelect = document.getElementById('map_provider');
+    const baseUrlInput = document.getElementById('map_base_url');
+    const apiKeyInput = document.getElementById('map_api_key');
+    const apiKeyHint = document.getElementById('api-key-hint');
+    const btnTest = document.getElementById('btn-test-map');
 
-        const PROVIDER_DEFAULTS = {
-            osrm: 'https://router.project-osrm.org',
-            mapbox: 'https://api.mapbox.com',
-            maplibre: 'https://demotiles.maplibre.org',
-            google: 'https://maps.googleapis.com',
-        };
+    const PROVIDER_DEFAULTS = {
+        osrm: 'https://router.project-osrm.org',
+        mapbox: 'https://api.mapbox.com',
+        maplibre: 'https://demotiles.maplibre.org',
+        google: 'https://maps.googleapis.com',
+    };
 
-        providerSelect.addEventListener('change', function() {
-            const preset = PROVIDER_DEFAULTS[this.value];
-            if (preset) {
-                baseUrlInput.value = preset;
-            }
-            const isOsrm = this.value === 'osrm';
-            apiKeyInput.placeholder = isOsrm
-                ? 'Kosongkan bila memakai OSRM/OpenStreetMap publik'
-                : 'Masukkan Access Token / Private Key';
-            apiKeyHint.innerText = isOsrm
-                ? 'OSRM/OpenStreetMap publik tidak memerlukan token. '
-                    + 'Kosongkan, atau isi bila memakai self-hosted OSRM dengan proteksi.'
-                : 'Semua request dari Flutter akan dijaga/diproxy melalui Laravel untuk melindungi token ini agar tidak bocor ke client.';
-        });
+    providerSelect.addEventListener('change', function() {
+        const preset = PROVIDER_DEFAULTS[this.value];
+        if (preset) baseUrlInput.value = preset;
+        const isOsrm = this.value === 'osrm';
+        apiKeyInput.placeholder = isOsrm ? 'Kosongkan untuk OSRM publik' : 'Masukkan Access Token';
+        apiKeyHint.innerText = isOsrm ? 'OSRM publik tidak memerlukan token.' : 'Token akan diproyeksi melalui Laravel.';
+    });
 
-        btnTest.addEventListener('click', function() {
-            btnTest.disabled = true;
-            btnTest.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Menghubungkan...';
-            testResult.style.display = 'none';
-
-            fetch("{{ route('admin.settings.map.test') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                testResult.style.display = 'block';
-                testAlert.className = 'alert rounded-3 p-3 border-0 shadow-sm ' + (data.success ? 'alert-success bg-success-subtle text-success-emphasis' : 'alert-danger bg-danger-subtle text-danger-emphasis');
-                testTitle.innerText = data.success ? 'Koneksi Berhasil' : 'Koneksi Gagal';
-                testMessage.innerText = data.message;
-                
-                if (data.data && data.success) {
-                    let html = '<strong>Sampel Hasil Pencarian (Surabaya):</strong><br>';
-                    data.data.forEach(item => {
-                        html += `- ${item.place_name || item.text}<br>`;
-                    });
-                    testData.innerHTML = html;
-                    testData.style.display = 'block';
-                } else {
-                    testData.style.display = 'none';
-                }
-            })
-            .catch(error => {
-                testResult.style.display = 'block';
-                testAlert.className = 'alert alert-danger bg-danger-subtle text-danger-emphasis rounded-3 p-3 border-0 shadow-sm';
-                testTitle.innerText = 'Error';
-                testMessage.innerText = 'Terjadi kesalahan sistem saat mencoba koneksi ke Map Server.';
-                testData.style.display = 'none';
-            })
-            .finally(() => {
-                btnTest.disabled = false;
-                btnTest.innerHTML = '<i class="fas fa-plug me-2"></i>Cek Koneksi API';
-            });
+    btnTest.addEventListener('click', function() {
+        btnTest.disabled = true;
+        btnTest.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> Menghubungkan...';
+        
+        fetch("{{ route('admin.settings.map.test') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            const testResult = document.getElementById('test-result');
+            const testAlert = document.getElementById('test-alert');
+            testResult.classList.remove('hidden');
+            testAlert.className = 'p-4 rounded-xl ' + (data.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200');
+            document.getElementById('test-title').innerText = data.success ? '✓ Koneksi Berhasil' : '✗ Koneksi Gagal';
+            document.getElementById('test-title').className = 'font-semibold text-sm ' + (data.success ? 'text-green-700' : 'text-red-700');
+            document.getElementById('test-message').innerText = data.message;
+        })
+        .catch(() => {
+            document.getElementById('test-result').classList.remove('hidden');
+            document.getElementById('test-alert').className = 'p-4 rounded-xl bg-red-50 border border-red-200';
+            document.getElementById('test-title').innerText = 'Error';
+            document.getElementById('test-message').innerText = 'Terjadi kesalahan sistem.';
+        })
+        .finally(() => {
+            btnTest.disabled = false;
+            btnTest.innerHTML = '<span class="material-symbols-outlined text-sm">wifi_tethering</span> Cek Koneksi';
         });
     });
+});
 </script>
 @endsection

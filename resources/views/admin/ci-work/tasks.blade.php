@@ -5,101 +5,154 @@
 @section('page-subtitle', 'Daftar tugas pengiriman yang sedang berjalan dengan bukti foto')
 
 @section('content')
-<div class="glass-card">
-    <div class="card-header">
-        <div class="card-title">
-            <i class="fas fa-tasks"></i>
-            Monitoring Tugas Aktif
+<div class="flex flex-col gap-6">
+    {{-- Header --}}
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center shadow-lg shadow-primary/20">
+                    <span class="material-symbols-outlined text-white text-xl">task</span>
+                </div>
+                Manajemen Tugas
+            </h1>
+            <p class="text-sm text-slate-500 mt-1">Daftar tugas pengiriman yang sedang berjalan</p>
         </div>
     </div>
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Nomor Resi</th>
-                    <th>Kurir</th>
-                    <th>Pengirim (Pickup)</th>
-                    <th>Penerima (Tujuan)</th>
-                    <th>Status</th>
-                    <th>Bukti Foto</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($tasks as $task)
-                    <tr onclick="window.location='{{ route('admin.orders.detail', $task) }}'" style="cursor:pointer;">
-                        <td><span style="font-weight:600;">{{ $task->tracking_number ?? $task->order_number }}</span></td>
-                        <td>
-                            <div class="user-name">{{ $task->courier->user->name ?? 'Unassigned' }}</div>
-                            <div class="user-email">{{ $task->courier->courier_id ?? '-' }}</div>
-                        </td>
-                        <td>
-                            <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 200px;">
-                                {{ $task->pickup_address }}
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-size:12px; color: var(--text-light); line-height: 1.4; max-width: 200px;">
-                                {{ $task->delivery_address }}
-                            </div>
-                        </td>
-                        <td>
-                            <span class="badge badge-{{ $task->status }}">
-                                {{ ucfirst(str_replace('_', ' ', $task->status)) }}
-                            </span>
-                        </td>
-                        <td>
-                            <div style="display: flex; gap: 8px;">
-                                @if($task->pickup_photo)
-                                    <a href="{{ asset('storage/' . $task->pickup_photo) }}" target="_blank" class="photo-thumb" title="Foto Pickup">
-                                        <i class="fas fa-camera"></i> P
-                                    </a>
-                                @endif
-                                @if($task->delivery_photo)
-                                    <a href="{{ asset('storage/' . $task->delivery_photo) }}" target="_blank" class="photo-thumb" title="Foto Delivery" style="background: var(--accent-success);">
-                                        <i class="fas fa-camera"></i> D
-                                    </a>
-                                @endif
-                                @if(!$task->pickup_photo && !$task->delivery_photo)
-                                    <span style="color: var(--text-muted); font-size: 11px;">Belum ada</span>
-                                @endif
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" style="text-align:center; padding: 30px; color: var(--text-muted);">
-                            Tidak ada tugas berjalan saat ini
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    @if($tasks->hasPages())
-        <div class="card-footer" style="padding: 15px 24px; border-top: 1px solid var(--border-glass);">
-            {{ $tasks->links('pagination::bootstrap-5') }}
-        </div>
-    @endif
-</div>
 
-<style>
-    .photo-thumb {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        background: var(--accent-primary);
-        color: white;
-        border-radius: 6px;
-        text-decoration: none;
-        font-size: 10px;
-        font-weight: 800;
-        transition: transform 0.2s;
-    }
-    .photo-thumb:hover {
-        transform: scale(1.1);
-        color: white;
-    }
-</style>
+    {{-- Stats Cards --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary text-2xl">pending</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500">Sedang Dikerjakan</p>
+                    <p class="text-2xl font-bold text-slate-800">{{ $tasks->where('status', '!=', 'delivered')->count() }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-success text-2xl">check_circle</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500">Selesai Hari Ini</p>
+                    <p class="text-2xl font-bold text-slate-800">{{ $tasks->where('status', 'delivered')->count() }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-info/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-info text-2xl">photo_camera</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500">Ada Bukti Foto</p>
+                    <p class="text-2xl font-bold text-slate-800">{{ $tasks->filter(function($t) { return $t->pickup_photo || $t->delivery_photo; })->count() }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Tasks Table --}}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+            <h3 class="text-lg font-semibold text-slate-800">Monitoring Tugas Aktif</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200">
+                        <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">No. Resi</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kurir</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lokasi Jemput</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tujuan</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bukti Foto</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($tasks as $task)
+                        <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="window.location='{{ route('admin.orders.detail', $task) }}'">
+                            <td class="px-5 py-4">
+                                <span class="font-mono text-sm font-semibold text-primary">{{ $task->tracking_number ?? $task->order_number }}</span>
+                            </td>
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                                        {{ strtoupper(substr($task->courier->user->name ?? '?', 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-slate-800">{{ $task->courier->user->name ?? 'Unassigned' }}</p>
+                                        <p class="text-xs text-slate-400">{{ $task->courier->courier_id ?? '-' }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-5 py-4">
+                                <p class="text-sm text-slate-600 max-w-[200px] truncate" title="{{ $task->pickup_address }}">
+                                    {{ $task->pickup_address }}
+                                </p>
+                            </td>
+                            <td class="px-5 py-4">
+                                <p class="text-sm text-slate-600 max-w-[200px] truncate" title="{{ $task->delivery_address }}">
+                                    {{ $task->delivery_address }}
+                                </p>
+                            </td>
+                            <td class="px-5 py-4">
+                                @php
+                                    $statusColors = [
+                                        'assigned' => 'bg-blue-100 text-blue-700',
+                                        'picked_up' => 'bg-amber-100 text-amber-700',
+                                        'in_transit' => 'bg-purple-100 text-purple-700',
+                                        'delivered' => 'bg-green-100 text-green-700',
+                                        'cancelled' => 'bg-red-100 text-red-700',
+                                    ];
+                                    $statusColor = $statusColors[$task->status] ?? 'bg-slate-100 text-slate-700';
+                                @endphp
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $statusColor }}">
+                                    {{ ucfirst(str_replace('_', ' ', $task->status)) }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-2">
+                                    @if($task->pickup_photo)
+                                        <a href="{{ asset('storage/' . $task->pickup_photo) }}" target="_blank" class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all" title="Foto Pickup">
+                                            <span class="material-symbols-outlined text-sm">photo_camera</span>
+                                        </a>
+                                    @endif
+                                    @if($task->delivery_photo)
+                                        <a href="{{ asset('storage/' . $task->delivery_photo) }}" target="_blank" class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center text-success hover:bg-success hover:text-white transition-all" title="Foto Delivery">
+                                            <span class="material-symbols-outlined text-sm">add_a_photo</span>
+                                        </a>
+                                    @endif
+                                    @if(!$task->pickup_photo && !$task->delivery_photo)
+                                        <span class="text-xs text-slate-400 italic">Belum ada</span>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-5 py-12 text-center">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-slate-400 text-3xl">inbox</span>
+                                    </div>
+                                    <p class="text-sm text-slate-500">Tidak ada tugas berjalan saat ini</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($tasks->hasPages())
+            <div class="px-5 py-4 border-t border-slate-100">
+                {{ $tasks->links() }}
+            </div>
+        @endif
+    </div>
+</div>
 @endsection

@@ -1,56 +1,63 @@
 @extends('layouts.admin')
 
 @section('title', 'Detail Pengiriman #' . ($shipment->tracking_number ?? $shipment->shipment_number))
-@section('page-title', 'Detail Pengiriman')
-@section('page-subtitle', $shipment->tracking_number ?? $shipment->shipment_number)
 
 @section('content')
-    @if(session('success'))
-        <div class="alert alert-success" style="margin-bottom:16px; padding:12px 16px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius:10px; color:#10b981;">
-            <i class="fas fa-check-circle"></i> {{ session('success') }}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="{{ route('admin.shipments.index') }}" class="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Detail Pengiriman</h1>
+            <p class="text-sm text-slate-400 mt-1">{{ $shipment->tracking_number ?? $shipment->shipment_number }}</p>
         </div>
-    @endif
+    </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start;">
-
-        {{-- Left: Shipment Details --}}
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-
-            {{-- Route Card --}}
-            <div class="glass-card">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-route"></i> Rute Pengiriman</div>
-                    <span style="font-size:13px; color: var(--text-muted);">{{ $shipment->package_weight }} kg</span>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left: Details -->
+        <div class="lg:col-span-2 space-y-5">
+            <!-- Route Card -->
+            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">route</span>
+                        Rute Pengiriman
+                    </h4>
+                    <span class="text-xs text-slate-400">{{ $shipment->package_weight }} kg</span>
                 </div>
-                <div class="card-body">
-                    <div style="display: flex; gap: 16px; align-items: stretch;">
-                        {{-- Indicator line --}}
-                        <div style="display:flex; flex-direction:column; align-items:center; padding-top:4px;">
-                            <div style="width:10px; height:10px; border-radius:50%; background: var(--accent-primary-light);"></div>
-                            <div style="width:2px; flex:1; background: var(--border-color); margin: 4px 0;"></div>
-                            <div style="width:10px; height:10px; border-radius:50%; background: #6b7280; border: 2px solid var(--border-color);"></div>
+                <div class="p-5">
+                    <div class="flex gap-5">
+                        <!-- Indicator -->
+                        <div class="flex flex-col items-center pt-1">
+                            <div class="w-3 h-3 rounded-full bg-primary"></div>
+                            <div class="w-0.5 flex-1 bg-slate-200 my-1"></div>
+                            <div class="w-3 h-3 rounded-full bg-slate-400 border-2 border-slate-200"></div>
                         </div>
-                        {{-- Addresses --}}
-                        <div style="flex:1; display:flex; flex-direction:column; gap:12px;">
+                        <!-- Addresses -->
+                        <div class="flex-1 space-y-5">
                             <div>
-                                <div style="font-size:10px; font-weight:700; color: var(--text-muted); letter-spacing:1px; margin-bottom:4px;">PENGIRIM</div>
-                                <div style="font-size:14px; font-weight:700;">{{ $shipment->sender_name }}</div>
-                                <div style="font-size:12px; color: var(--text-muted);">{{ $shipment->sender_phone }}</div>
-                                <div style="font-size:12px; color: var(--text-muted); margin-top:2px;">{{ $shipment->sender_address }}</div>
+                                <div class="text-[10px] font-bold text-slate-400 tracking-wider mb-1">PENGIRIM</div>
+                                <div class="text-sm font-bold text-slate-800">{{ $shipment->sender_name }}</div>
+                                <div class="text-xs text-slate-500">{{ $shipment->sender_phone }}</div>
+                                <div class="text-xs text-slate-500 mt-1">{{ $shipment->sender_address }}</div>
                                 @if($shipment->origin_name)
-                                    <span style="font-size:11px; background: rgba(236,91,19,0.1); color: var(--accent-primary-light); padding:2px 8px; border-radius:20px; display:inline-block; margin-top:4px;">
-                                        <i class="fas fa-map-pin" style="font-size:9px;"></i> {{ $shipment->origin_name }}
+                                    <span class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary">
+                                        <span class="material-symbols-outlined text-[10px]">location_on</span>
+                                        {{ $shipment->origin_name }}
                                     </span>
                                 @endif
                             </div>
                             <div>
-                                <div style="font-size:10px; font-weight:700; color: var(--text-muted); letter-spacing:1px; margin-bottom:4px;">PENERIMA</div>
-                                <div style="font-size:14px; font-weight:700;">{{ $shipment->receiver_name }}</div>
-                                <div style="font-size:12px; color: var(--text-muted);">{{ $shipment->receiver_phone }}</div>
-                                <div style="font-size:12px; color: var(--text-muted); margin-top:2px;">{{ $shipment->receiver_address }}</div>
+                                <div class="text-[10px] font-bold text-slate-400 tracking-wider mb-1">PENERIMA</div>
+                                <div class="text-sm font-bold text-slate-800">{{ $shipment->receiver_name }}</div>
+                                <div class="text-xs text-slate-500">{{ $shipment->receiver_phone }}</div>
+                                <div class="text-xs text-slate-500 mt-1">{{ $shipment->receiver_address }}</div>
                                 @if($shipment->destination_name)
-                                    <span style="font-size:11px; background: rgba(107,114,128,0.1); color: #6b7280; padding:2px 8px; border-radius:20px; display:inline-block; margin-top:4px;">
-                                        <i class="fas fa-map-pin" style="font-size:9px;"></i> {{ $shipment->destination_name }}
+                                    <span class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+                                        <span class="material-symbols-outlined text-[10px]">location_on</span>
+                                        {{ $shipment->destination_name }}
                                     </span>
                                 @endif
                             </div>
@@ -59,210 +66,216 @@
                 </div>
             </div>
 
-            {{-- Package & Courier --}}
-            <div class="glass-card">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-box"></i> Info Paket & Kurir</div>
+            <!-- Package & Courier -->
+            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+                <div class="p-5 border-b border-slate-100">
+                    <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">inventory_2</span>
+                        Info Paket & Kurir
+                    </h4>
                 </div>
-                <div class="card-body">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="p-5">
+                    <div class="grid grid-cols-2 gap-5 mb-5">
                         <div>
-                            <div style="font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:1px;">DESKRIPSI PAKET</div>
-                            <div style="margin-top:4px; font-size:14px;">{{ $shipment->package_description ?? '—' }}</div>
+                            <div class="text-[10px] font-bold text-slate-400 tracking-wider mb-1">DESKRIPSI PAKET</div>
+                            <div class="text-sm text-slate-700">{{ $shipment->package_description ?? '—' }}</div>
                         </div>
                         <div>
-                            <div style="font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:1px;">BERAT</div>
-                            <div style="margin-top:4px; font-size:14px; font-weight:700;">{{ $shipment->package_weight }} kg</div>
+                            <div class="text-[10px] font-bold text-slate-400 tracking-wider mb-1">BERAT</div>
+                            <div class="text-sm font-bold text-slate-700">{{ $shipment->package_weight }} kg</div>
                         </div>
                         <div>
-                            <div style="font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:1px;">EKSPEDISI</div>
-                            <div style="margin-top:4px; font-size:16px; font-weight:900; color: var(--accent-primary-light);">{{ strtoupper($shipment->courier_code ?? '—') }}</div>
-                            <div style="font-size:12px; color:var(--text-muted);">{{ $shipment->courier_name }} · {{ $shipment->courier_service }}</div>
+                            <div class="text-[10px] font-bold text-slate-400 tracking-wider mb-1">EKSPEDISI</div>
+                            <div class="text-lg font-black text-primary">{{ strtoupper($shipment->courier_code ?? '—') }}</div>
+                            <div class="text-xs text-slate-400">{{ $shipment->courier_name }} · {{ $shipment->courier_service }}</div>
                         </div>
                         <div>
-                            <div style="font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:1px;">EST. PENGIRIMAN</div>
-                            <div style="margin-top:4px; font-size:14px; font-weight:600;">{{ $shipment->etd ? $shipment->etd . ' Hari' : '—' }}</div>
+                            <div class="text-[10px] font-bold text-slate-400 tracking-wider mb-1">EST. PENGIRIMAN</div>
+                            <div class="text-sm font-semibold text-slate-700">{{ $shipment->etd ? $shipment->etd . ' Hari' : '—' }}</div>
                         </div>
                     </div>
-                    <hr style="margin: 16px 0; border-color: var(--border-color);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-muted);">
-                        <span>Ongkos Kirim</span>
-                        <span>Rp {{ number_format($shipment->shipping_cost, 0, ',', '.') }}</span>
-                    </div>
-                    @if($shipment->insurance)
-                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-muted); margin-top:6px;">
-                        <span>Asuransi Pengiriman</span>
-                        <span>Rp 2.500</span>
-                    </div>
-                    @endif
-                    @if($shipment->wood_packing)
-                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-muted); margin-top:6px;">
-                        <span>Packing Kayu</span>
-                        <span>Rp 50.000</span>
-                    </div>
-                    @endif
-                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:16px; font-weight:900; margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color);">
-                        <span>Total</span>
-                        <span style="color: var(--accent-primary-light);">Rp {{ number_format($shipment->total_cost, 0, ',', '.') }}</span>
+
+                    <div class="border-t border-slate-100 pt-4 space-y-2">
+                        <div class="flex justify-between text-sm text-slate-500">
+                            <span>Ongkos Kirim</span>
+                            <span>Rp {{ number_format($shipment->shipping_cost, 0, ',', '.') }}</span>
+                        </div>
+                        @if($shipment->insurance)
+                        <div class="flex justify-between text-sm text-slate-500">
+                            <span>Asuransi</span>
+                            <span>Rp 2.500</span>
+                        </div>
+                        @endif
+                        @if($shipment->wood_packing)
+                        <div class="flex justify-between text-sm text-slate-500">
+                            <span>Packing Kayu</span>
+                            <span>Rp 50.000</span>
+                        </div>
+                        @endif
+                        <div class="flex justify-between text-lg font-black pt-3 border-t border-slate-100">
+                            <span class="text-slate-800">Total</span>
+                            <span class="text-primary">Rp {{ number_format($shipment->total_cost, 0, ',', '.') }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {{-- Tracking History --}}
-            <div class="glass-card">
-                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div class="card-title"><i class="fas fa-history"></i> Riwayat Pelacakan</div>
-                    <button type="button" onclick="document.getElementById('addLogModal').style.display='flex'" style="background: var(--accent-primary-light); color:white; border:none; padding:4px 12px; border-radius:6px; font-size:12px; cursor:pointer;">
-                        <i class="fas fa-plus"></i> Tambah Log
+            <!-- Tracking History -->
+            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">history</span>
+                        Riwayat Pelacakan
+                    </h4>
+                    <button type="button" onclick="document.getElementById('addLogModal').classList.remove('hidden')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary-dark transition-all flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">add</span>
+                        Tambah Log
                     </button>
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     @if($shipment->logs->count() > 0)
-                        <div style="display: flex; flex-direction: column; gap: 0; padding-left: 10px;">
+                        <div class="space-y-4">
                             @foreach($shipment->logs as $log)
-                                <div style="display: flex; gap: 16px; position: relative; padding-bottom: 24px;">
-                                    {{-- Line and Dot --}}
+                            <div class="flex gap-4">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-3 h-3 rounded-full {{ $log->status === 'delivered' ? 'bg-success' : 'bg-primary' }} z-10"></div>
                                     @if(!$loop->last)
-                                        <div style="position: absolute; left: 6px; top: 20px; bottom: 0; width: 2px; background: var(--border-color);"></div>
+                                        <div class="w-0.5 flex-1 bg-slate-200"></div>
                                     @endif
-                                    <div style="width: 14px; height: 14px; border-radius: 50%; background: {{ $log->status === 'delivered' ? '#10b981' : 'var(--accent-primary-light)' }}; z-index: 1; margin-top: 4px; border: 3px solid var(--bg-card);"></div>
-                                    
-                                    <div style="flex: 1;">
-                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                            <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{{ $log->location }}</div>
-                                            <div style="font-size: 11px; color: var(--text-muted);">{{ $log->created_at->format('d M, H:i') }}</div>
-                                        </div>
-                                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ $log->description }}</div>
-                                        <div style="font-size: 10px; font-weight: 700; color: var(--accent-primary-light); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;">{{ str_replace('_', ' ', $log->status) }}</div>
-                                    </div>
                                 </div>
+                                <div class="pb-6 flex-1">
+                                    <div class="flex justify-between items-start">
+                                        <div class="text-sm font-bold text-slate-700">{{ $log->location }}</div>
+                                        <div class="text-[10px] text-slate-400">{{ $log->created_at->format('d M, H:i') }}</div>
+                                    </div>
+                                    <div class="text-xs text-slate-500 mt-1">{{ $log->description }}</div>
+                                    <div class="text-[10px] font-bold text-primary mt-1 uppercase tracking-wider">{{ str_replace('_', ' ', $log->status) }}</div>
+                                </div>
+                            </div>
                             @endforeach
                         </div>
                     @else
-                        <div style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px;">
-                            <i class="fas fa-ghost" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
-                            Belum ada riwayat pelacakan.
+                        <div class="text-center py-8 text-slate-400">
+                            <span class="material-symbols-outlined text-4xl mb-2">inbox</span>
+                            <p class="text-sm">Belum ada riwayat pelacakan.</p>
                         </div>
                     @endif
                 </div>
             </div>
-
-            {{-- Add Log Modal (Simple Implementation) --}}
-            <div id="addLogModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-                <div class="glass-card" style="width: 400px; max-width: 90%; background: var(--bg-card);">
-                    <div class="card-header">
-                        <div class="card-title">Tambah Riwayat Baru</div>
-                        <button onclick="document.getElementById('addLogModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i class="fas fa-times"></i></button>
-                    </div>
-                    <div class="card-body">
-                        <form action="{{ route('admin.shipments.logs.store', $shipment) }}" method="POST">
-                            @csrf
-                            <div style="margin-bottom:12px;">
-                                <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">STATUS</label>
-                                <input type="text" name="status" placeholder="Contoh: transit, delivery" required style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-primary); box-sizing:border-box;">
-                            </div>
-                            <div style="margin-bottom:12px;">
-                                <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">LOKASI</label>
-                                <input type="text" name="location" placeholder="Contoh: Jakarta Hub" required style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-primary); box-sizing:border-box;">
-                            </div>
-                            <div style="margin-bottom:16px;">
-                                <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">DESKRIPSI</label>
-                                <textarea name="description" rows="2" placeholder="Detail kejadian..." required style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-primary); resize:none; box-sizing:border-box;"></textarea>
-                            </div>
-                            <button type="submit" style="width:100%; padding:10px; border-radius:8px; background:var(--accent-primary-light); color:white; border:none; font-weight:700; cursor:pointer;">Simpan Log</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
-        {{-- Right: Status Update --}}
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-
-            {{-- Current Status --}}
-            <div class="glass-card">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-info-circle"></i> Status Saat Ini</div>
+        <!-- Right: Status -->
+        <div class="space-y-5">
+            <!-- Current Status -->
+            <div class="bg-white rounded-2xl border border-surface-border p-5 text-center">
+                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold
+                    {{ match($shipment->status_color ?? 'default') {
+                        'success' => 'bg-success/10 text-success',
+                        'primary', 'info' => 'bg-primary/10 text-primary',
+                        'warning' => 'bg-warning/10 text-warning',
+                        'danger', 'error' => 'bg-error/10 text-error',
+                        default => 'bg-slate-100 text-slate-500'
+                    } }}">
+                    {{ $shipment->status_label }}
+                </span>
+                <div class="mt-3 font-mono text-sm font-bold text-slate-700 bg-slate-50 px-4 py-2 rounded-xl">
+                    {{ $shipment->tracking_number ?? 'BELUM ADA RESI' }}
                 </div>
-                <div class="card-body" style="text-align:center; padding: 24px;">
-                    <span class="badge badge-{{ $shipment->status_color }}" style="font-size:14px; padding: 8px 20px;">
-                        {{ $shipment->status_label }}
-                    </span>
-                    <div style="margin-top:12px; font-size:13px; font-weight:700; font-family:monospace; background: var(--bg-card); padding: 8px 12px; border-radius:8px; border: 1px solid var(--border-color);">
-                        {{ $shipment->tracking_number ?? 'BELUM ADA RESI' }}
-                    </div>
-                    <div style="font-size:11px; color: var(--text-muted); margin-top:4px;">Nomor Resi</div>
+                <p class="text-[10px] text-slate-400 mt-1">Nomor Resi</p>
 
-                    {{-- Barcode --}}
-                    @if($shipment->tracking_number)
-                        <div style="margin-top:20px; padding:15px; background: white; border-radius:12px; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color);">
-                            {!! \Milon\Barcode\Facades\DNS2DFacade::getBarcodeHTML($shipment->tracking_number, 'QRCODE', 5, 5) !!}
-                            <div style="margin-top:8px; font-weight:700; font-family:monospace; letter-spacing:1px; font-size:11px; color: black;">
-                                {{ $shipment->tracking_number }}
-                            </div>
-                        </div>
-                    @endif
+                @if($shipment->tracking_number)
+                <div class="mt-4 p-4 bg-white rounded-xl border border-surface-border inline-block">
+                    {!! \Milon\Barcode\Facades\DNS2DFacade::getBarcodeHTML($shipment->tracking_number, 'QRCODE', 5, 5) !!}
+                    <div class="mt-2 font-mono text-[10px] font-bold text-slate-600 tracking-wider">{{ $shipment->tracking_number }}</div>
+                </div>
+                @endif
 
-                    <div style="margin-top:12px; font-size:12px; color: var(--text-muted);">
-                        ID Pengiriman Internal: <strong>{{ $shipment->shipment_number }}</strong>
-                    </div>
-                    <div style="margin-top:12px; font-size:12px; color: var(--text-muted);">
-                        Dibuat: {{ $shipment->created_at->format('d M Y H:i') }}
-                    </div>
+                <div class="mt-4 text-xs text-slate-400 space-y-1">
+                    <p>ID: <strong class="text-slate-600">{{ $shipment->shipment_number }}</strong></p>
+                    <p>Dibuat: {{ $shipment->created_at->format('d M Y H:i') }}</p>
                 </div>
             </div>
 
-            {{-- Update Status Form --}}
-            <div class="glass-card">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-edit"></i> Update Status</div>
+            <!-- Update Status -->
+            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+                <div class="p-5 border-b border-slate-100">
+                    <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">edit</span>
+                        Update Status
+                    </h4>
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     <form method="POST" action="{{ route('admin.shipments.update', $shipment) }}">
                         @csrf
                         @method('PATCH')
 
-                        <div style="margin-bottom:16px;">
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:6px;">STATUS PENGIRIMAN</label>
-                            <select name="status" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); font-size:14px;">
-                                <option value="pending"    {{ $shipment->status === 'pending'    ? 'selected' : '' }}>⏳ Menunggu</option>
-                                <option value="confirmed"  {{ $shipment->status === 'confirmed'  ? 'selected' : '' }}>✅ Dikonfirmasi</option>
-                                <option value="picked_up"  {{ $shipment->status === 'picked_up'  ? 'selected' : '' }}>📦 Paket Diambil</option>
+                        <div class="mb-4">
+                            <label class="block text-xs font-semibold text-slate-500 mb-2">STATUS PENGIRIMAN</label>
+                            <select name="status" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                <option value="pending" {{ $shipment->status === 'pending' ? 'selected' : '' }}>⏳ Menunggu</option>
+                                <option value="confirmed" {{ $shipment->status === 'confirmed' ? 'selected' : '' }}>✅ Dikonfirmasi</option>
+                                <option value="picked_up" {{ $shipment->status === 'picked_up' ? 'selected' : '' }}>📦 Paket Diambil</option>
                                 <option value="in_transit" {{ $shipment->status === 'in_transit' ? 'selected' : '' }}>🚚 Dalam Perjalanan</option>
-                                <option value="delivered"  {{ $shipment->status === 'delivered'  ? 'selected' : '' }}>✅ Terkirim</option>
-                                <option value="cancelled"  {{ $shipment->status === 'cancelled'  ? 'selected' : '' }}>❌ Dibatalkan</option>
+                                <option value="delivered" {{ $shipment->status === 'delivered' ? 'selected' : '' }}>✅ Terkirim</option>
+                                <option value="cancelled" {{ $shipment->status === 'cancelled' ? 'selected' : '' }}>❌ Dibatalkan</option>
                             </select>
                         </div>
 
-                        <div style="margin-bottom:16px;">
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:6px;">NOMOR RESI</label>
-                            <input type="text" name="tracking_number"
-                                   value="{{ $shipment->tracking_number }}"
-                                   placeholder="Nomor resi otomatis..."
-                                   style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); font-size:14px; font-family:monospace; box-sizing:border-box;">
+                        <div class="mb-4">
+                            <label class="block text-xs font-semibold text-slate-500 mb-2">NOMOR RESI</label>
+                            <input type="text" name="tracking_number" value="{{ $shipment->tracking_number }}" placeholder="Nomor resi..."
+                                   class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                         </div>
 
-                        <div style="margin-bottom:16px;">
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:6px;">CATATAN INTERNAL</label>
-                            <textarea name="notes" rows="3"
-                                      placeholder="Catatan untuk tim internal..."
-                                      style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); font-size:14px; resize:vertical; box-sizing:border-box;">{{ $shipment->notes }}</textarea>
+                        <div class="mb-4">
+                            <label class="block text-xs font-semibold text-slate-500 mb-2">CATATAN INTERNAL</label>
+                            <textarea name="notes" rows="3" placeholder="Catatan untuk tim..."
+                                      class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none">{{ $shipment->notes }}</textarea>
                         </div>
 
-                        <button type="submit" style="width:100%; padding:12px; border-radius:8px; background: var(--accent-primary-light); color:white; font-weight:700; border:none; cursor:pointer; font-size:14px;">
-                            <i class="fas fa-save"></i> Simpan Perubahan
+                        <button type="submit" class="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">save</span>
+                            Simpan Perubahan
                         </button>
                     </form>
                 </div>
             </div>
-
-            {{-- Back Button --}}
-            <a href="{{ route('admin.shipments.index') }}"
-               style="display:block; text-align:center; padding:10px; border-radius:8px; border:1px solid var(--border-color); color:var(--text-muted); font-size:13px; text-decoration:none;">
-                <i class="fas fa-arrow-left"></i> Kembali ke Daftar
-            </a>
-
         </div>
     </div>
+</div>
+
+<!-- Add Log Modal -->
+<div id="addLogModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl mx-4">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-base font-bold text-slate-800">Tambah Riwayat Baru</h4>
+            <button onclick="document.getElementById('addLogModal').classList.add('hidden')" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="p-5">
+            <form action="{{ route('admin.shipments.logs.store', $shipment) }}" method="POST">
+                @csrf
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-500 mb-2">STATUS</label>
+                    <input type="text" name="status" placeholder="Contoh: transit, delivery" required
+                           class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-500 mb-2">LOKASI</label>
+                    <input type="text" name="location" placeholder="Contoh: Jakarta Hub" required
+                           class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                </div>
+                <div class="mb-5">
+                    <label class="block text-xs font-semibold text-slate-500 mb-2">DESKRIPSI</label>
+                    <textarea name="description" rows="2" placeholder="Detail kejadian..." required
+                              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"></textarea>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/20 transition-all">
+                    Simpan Log
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
