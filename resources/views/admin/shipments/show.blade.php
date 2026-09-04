@@ -19,7 +19,7 @@
         <!-- Left: Details -->
         <div class="lg:col-span-2 space-y-5">
             <!-- Route Card -->
-            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                     <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary">route</span>
@@ -67,7 +67,7 @@
             </div>
 
             <!-- Package & Courier -->
-            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="p-5 border-b border-slate-100">
                     <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary">inventory_2</span>
@@ -121,7 +121,7 @@
             </div>
 
             <!-- Tracking History -->
-            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                     <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary">history</span>
@@ -167,7 +167,7 @@
         <!-- Right: Status -->
         <div class="space-y-5">
             <!-- Current Status -->
-            <div class="bg-white rounded-2xl border border-surface-border p-5 text-center">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 text-center">
                 <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold
                     {{ match($shipment->status_color ?? 'default') {
                         'success' => 'bg-success/10 text-success',
@@ -184,7 +184,7 @@
                 <p class="text-[10px] text-slate-400 mt-1">Nomor Resi</p>
 
                 @if($shipment->tracking_number)
-                <div class="mt-4 p-4 bg-white rounded-xl border border-surface-border inline-block">
+                <div class="mt-4 p-4 bg-white rounded-xl border border-slate-200 inline-block">
                     {!! \Milon\Barcode\Facades\DNS2DFacade::getBarcodeHTML($shipment->tracking_number, 'QRCODE', 5, 5) !!}
                     <div class="mt-2 font-mono text-[10px] font-bold text-slate-600 tracking-wider">{{ $shipment->tracking_number }}</div>
                 </div>
@@ -197,7 +197,7 @@
             </div>
 
             <!-- Update Status -->
-            <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="p-5 border-b border-slate-100">
                     <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary">edit</span>
@@ -211,7 +211,7 @@
 
                         <div class="mb-4">
                             <label class="block text-xs font-semibold text-slate-500 mb-2">STATUS PENGIRIMAN</label>
-                            <select name="status" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                            <select name="status" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                                 <option value="pending" {{ $shipment->status === 'pending' ? 'selected' : '' }}>⏳ Menunggu</option>
                                 <option value="confirmed" {{ $shipment->status === 'confirmed' ? 'selected' : '' }}>✅ Dikonfirmasi</option>
                                 <option value="picked_up" {{ $shipment->status === 'picked_up' ? 'selected' : '' }}>📦 Paket Diambil</option>
@@ -224,13 +224,13 @@
                         <div class="mb-4">
                             <label class="block text-xs font-semibold text-slate-500 mb-2">NOMOR RESI</label>
                             <input type="text" name="tracking_number" value="{{ $shipment->tracking_number }}" placeholder="Nomor resi..."
-                                   class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                   class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                         </div>
 
                         <div class="mb-4">
                             <label class="block text-xs font-semibold text-slate-500 mb-2">CATATAN INTERNAL</label>
                             <textarea name="notes" rows="3" placeholder="Catatan untuk tim..."
-                                      class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none">{{ $shipment->notes }}</textarea>
+                                      class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none">{{ $shipment->notes }}</textarea>
                         </div>
 
                         <button type="submit" class="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-2">
@@ -259,17 +259,17 @@
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-slate-500 mb-2">STATUS</label>
                     <input type="text" name="status" placeholder="Contoh: transit, delivery" required
-                           class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                           class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 </div>
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-slate-500 mb-2">LOKASI</label>
                     <input type="text" name="location" placeholder="Contoh: Jakarta Hub" required
-                           class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                           class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 </div>
                 <div class="mb-5">
                     <label class="block text-xs font-semibold text-slate-500 mb-2">DESKRIPSI</label>
                     <textarea name="description" rows="2" placeholder="Detail kejadian..." required
-                              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"></textarea>
+                              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"></textarea>
                 </div>
                 <button type="submit" class="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/20 transition-all">
                     Simpan Log
