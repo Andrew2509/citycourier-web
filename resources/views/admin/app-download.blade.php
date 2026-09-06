@@ -12,14 +12,14 @@
         </div>
     </div>
 
-    <!-- Upload Form -->
+    <!-- Add APK Form -->
     <div class="bg-white rounded-2xl border border-surface-border p-6 mb-6">
         <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">upload</span>
-            Upload APK Baru
+            <span class="material-symbols-outlined text-primary">add_link</span>
+            Tambah APK Baru
         </h2>
         
-        <form action="{{ route('admin.app-download.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+        <form action="{{ route('admin.app-download.store') }}" method="POST" class="space-y-4">
             @csrf
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -31,22 +31,22 @@
                            placeholder="1.0.0" required>
                 </div>
                 
-                <!-- APK File -->
+                <!-- APK Size -->
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">File APK</label>
-                    <input type="file" name="apk_file" accept=".apk"
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ukuran File (MB)</label>
+                    <input type="number" name="file_size" step="0.1"
                            class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                           required>
+                           placeholder="60">
                 </div>
             </div>
-            
+
             <!-- Google Drive URL -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Google Drive URL (opsional - untuk download lebih cepat)</label>
-                <input type="url" name="google_drive_url" 
+                <label class="block text-sm font-medium text-slate-700 mb-1">Google Drive URL</label>
+                <input type="url" name="google_drive_url" required
                        class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                        placeholder="https://drive.google.com/file/d/xxx/view?usp=sharing">
-                <p class="text-xs text-slate-400 mt-1">Upload APK ke Google Drive, lalu paste link share di sini</p>
+                <p class="text-xs text-slate-400 mt-1">Upload APK ke Google Drive, set bagikan ke publik, lalu paste link di sini</p>
             </div>
             
             <!-- Release Notes -->
@@ -59,10 +59,9 @@
             
             <div class="flex items-center gap-3">
                 <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-primary to-primary-light text-white rounded-xl font-medium hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[18px]">upload</span>
-                    Upload APK
+                    <span class="material-symbols-outlined text-[18px]">add_link</span>
+                    Tambahkan APK
                 </button>
-                <span class="text-sm text-slate-400">Maksimal 200MB</span>
             </div>
         </form>
     </div>
@@ -112,7 +111,12 @@
                                 <span class="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">Aktif</span>
                             @endif
                         </div>
-                        <p class="text-sm text-slate-500">{{ $download->original_filename }} • {{ $download->formatted_size }} • {{ $download->created_at->format('d M Y H:i') }}</p>
+                        <p class="text-sm text-slate-500">
+                            v{{ $download->version }} • {{ $download->formatted_size }} • {{ $download->created_at->format('d M Y H:i') }}
+                            @if($download->google_drive_url)
+                                • <a href="{{ $download->google_drive_url }}" target="_blank" class="text-primary hover:underline">Google Drive</a>
+                            @endif
+                        </p>
                         @if($download->release_notes)
                             <p class="text-sm text-slate-600 mt-1">{{ $download->release_notes }}</p>
                         @endif

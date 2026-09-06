@@ -21,42 +21,43 @@ class AppDownloadController extends Controller
     }
 
     /**
-     * Upload new APK
+     * Add new APK version (Google Drive only)
      */
     public function store(Request $request)
     {
         $request->validate([
-            'apk_file' => 'required|file|mimes:apk|max:204800', // 200MB max
             'version' => 'required|string|max:50',
+            'google_drive_url' => 'required|url',
+            'file_size' => 'nullable|numeric',
             'release_notes' => 'nullable|string',
         ]);
-
-        $file = $request->file('apk_file');
-        $filename = 'citycourier-v' . $request->version . '-' . time() . '.apk';
-        
-        // Store in storage/app/public/downloads
-        $path = $file->storeAs('downloads', $filename, 'public');
 
         // Deactivate previous versions
         AppDownload::where('is_active', true)->update(['is_active' => false]);
 
+        // Calculate file size
+        $fileSize = 0;
+        if ($request->file_size) {
+            $fileSize = (int) ($request->file_size * 1024 * 1024); // Convert MB to bytes
+        }
+
         // Create new record
         $download = AppDownload::create([
             'version' => $request->version,
-            'filename' => $filename,
-            'original_filename' => $file->getClientOriginalName(),
-            'file_size' => $file->getSize(),
-            'file_path' => $path,
+            'filename' => 'citycourier-v' . $request->version . '.apk',
+            'original_filename' => 'citycourier-v' . $request->version . '.apk',
+            'file_size' => $fileSize,
+            'file_path' => '',
             'google_drive_url' => $request->google_drive_url,
             'release_notes' => $request->release_notes,
             'is_active' => true,
         ]);
 
-        return redirect()->route('admin.app-download')->with('success', 'APK v' . $request->version . ' berhasil diupload!');
+        return redirect()->route('admin.app-download')->with('success', 'APK v' . $request->version . ' berhasil ditambahkan!');
     }
 
     /**
-     * Download the APK - optimized for large files
+     * Download the APK via Google Drive
      */
     public function download()
     {
@@ -66,45 +67,12 @@ class AppDownloadController extends Controller
             abort(404, 'File APK tidak ditemukan');
         }
 
-        $fullPath = storage_path('app/public/' . $download->file_path);
-        
-        if (!file_exists($fullPath)) {
-            abort(404, 'File APK tidak ditemukan di server');
+        // Always redirect to Google Drive
+        if ($download->google_drive_url) {
+            return redirect($download->google_drive_url);
         }
 
-        $fileSize = filesize($fullPath);
-        
-        // Set headers for large file download
-        header('Content-Type: application/vnd.android.package-archive');
-        header('Content-Disposition: attachment; filename="CityCourier.apk"');
-        header('Content-Length: ' . $fileSize);
-        header('Accept-Ranges: bytes');
-        header('Cache-Control: no-cache, must-revalidate');
-        
-        // Enable output buffering off for streaming
-        @ini_set('output_buffering', 'Off');
-        @ini_set('zlib.output_compression', false);
-        @ini_set('memory_limit', '256M');
-        
-        // Clear any previous output
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        // Stream the file in chunks
-        $chunkSize = 1024 * 1024; // 1MB chunks
-        $handle = fopen($fullPath, 'rb');
-        
-        if ($handle) {
-            while (!feof($handle)) {
-                $buffer = fread($handle, $chunkSize);
-                echo $buffer;
-                flush();
-            }
-            fclose($handle);
-        }
-        
-        exit;
+        abort(404, 'Link download tidak tersedia');
     }
 
     /**
@@ -112,14 +80,7 @@ class AppDownloadController extends Controller
      */
     public function destroy(AppDownload $appDownload)
     {
-        // Delete file from storage
-        $fullPath = storage_path('app/public/' . $appDownload->file_path);
-        if (file_exists($fullPath)) {
-            unlink($fullPath);
-        }
-
         $appDownload->delete();
-
         return redirect()->route('admin.app-download')->with('success', 'APK berhasil dihapus!');
     }
 
