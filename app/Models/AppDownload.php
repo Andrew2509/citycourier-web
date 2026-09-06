@@ -12,6 +12,7 @@ class AppDownload extends Model
         'original_filename',
         'file_size',
         'file_path',
+        'google_drive_url',
         'release_notes',
         'is_active',
     ];

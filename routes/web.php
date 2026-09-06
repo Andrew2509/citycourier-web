@@ -10,7 +10,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-// ─── Download APK (direct from public - fast, no PHP) ─────────
+// ─── Download APK (Google Drive - fast download) ────────────
 Route::get('/download/app', function () {
     $download = \App\Models\AppDownload::getActive();
     
@@ -18,22 +18,28 @@ Route::get('/download/app', function () {
         abort(404, 'APK tidak ditemukan');
     }
 
-    // Try public/downloads first (fastest - served by Apache)
+    // Check for Google Drive link first
+    if ($download->google_drive_url) {
+        return redirect($download->google_drive_url);
+    }
+
+    // Fallback: serve from server
     $publicPath = public_path('downloads/' . $download->filename);
     if (file_exists($publicPath)) {
         header('Content-Type: application/vnd.android.package-archive');
         header('Content-Disposition: attachment; filename="CityCourier.apk"');
         header('Content-Length: ' . filesize($publicPath));
+        header('Cache-Control: public, max-age=3600');
         readfile($publicPath);
         exit;
     }
 
-    // Fallback to storage
     $storagePath = storage_path('app/public/' . $download->file_path);
     if (file_exists($storagePath)) {
         header('Content-Type: application/vnd.android.package-archive');
         header('Content-Disposition: attachment; filename="CityCourier.apk"');
         header('Content-Length: ' . filesize($storagePath));
+        header('Cache-Control: public, max-age=3600');
         readfile($storagePath);
         exit;
     }

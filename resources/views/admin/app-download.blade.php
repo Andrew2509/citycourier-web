@@ -40,6 +40,15 @@
                 </div>
             </div>
             
+            <!-- Google Drive URL -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Google Drive URL (opsional - untuk download lebih cepat)</label>
+                <input type="url" name="google_drive_url" 
+                       class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                       placeholder="https://drive.google.com/file/d/xxx/view?usp=sharing">
+                <p class="text-xs text-slate-400 mt-1">Upload APK ke Google Drive, lalu paste link share di sini</p>
+            </div>
+            
             <!-- Release Notes -->
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Catatan Rilis (opsional)</label>

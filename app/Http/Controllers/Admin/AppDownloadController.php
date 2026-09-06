@@ -47,6 +47,7 @@ class AppDownloadController extends Controller
             'original_filename' => $file->getClientOriginalName(),
             'file_size' => $file->getSize(),
             'file_path' => $path,
+            'google_drive_url' => $request->google_drive_url,
             'release_notes' => $request->release_notes,
             'is_active' => true,
         ]);
