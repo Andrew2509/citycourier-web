@@ -55,7 +55,7 @@ class AppDownloadController extends Controller
     }
 
     /**
-     * Download the APK
+     * Download the APK - optimized for large files
      */
     public function download()
     {
@@ -71,9 +71,39 @@ class AppDownloadController extends Controller
             abort(404, 'File APK tidak ditemukan di server');
         }
 
-        return response()->download($fullPath, 'CityCourier.apk', [
-            'Content-Type' => 'application/vnd.android.package-archive',
-        ]);
+        $fileSize = filesize($fullPath);
+        
+        // Set headers for large file download
+        header('Content-Type: application/vnd.android.package-archive');
+        header('Content-Disposition: attachment; filename="CityCourier.apk"');
+        header('Content-Length: ' . $fileSize);
+        header('Accept-Ranges: bytes');
+        header('Cache-Control: no-cache, must-revalidate');
+        
+        // Enable output buffering off for streaming
+        @ini_set('output_buffering', 'Off');
+        @ini_set('zlib.output_compression', false);
+        @ini_set('memory_limit', '256M');
+        
+        // Clear any previous output
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // Stream the file in chunks
+        $chunkSize = 1024 * 1024; // 1MB chunks
+        $handle = fopen($fullPath, 'rb');
+        
+        if ($handle) {
+            while (!feof($handle)) {
+                $buffer = fread($handle, $chunkSize);
+                echo $buffer;
+                flush();
+            }
+            fclose($handle);
+        }
+        
+        exit;
     }
 
     /**
