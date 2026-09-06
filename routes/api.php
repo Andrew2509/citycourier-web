@@ -77,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stats', [\App\Http\Controllers\Api\CourierController::class, 'stats']);
         Route::get('/earnings', [\App\Http\Controllers\Api\CourierController::class, 'earnings']);
         Route::get('/profile', [\App\Http\Controllers\Api\CourierController::class, 'profile']);
+        Route::post('/profile', [\App\Http\Controllers\Api\CourierController::class, 'updateProfile']);
     });
 
     // Withdrawals

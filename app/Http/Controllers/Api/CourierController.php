@@ -395,10 +395,16 @@ class CourierController extends Controller
             ->where('status', 'delivered')
             ->count();
 
-        // Account age in months
+        // Total routes (all orders assigned)
+        $totalRoutes = \App\Models\Order::where('courier_id', $courier->id)
+            ->count();
+
+        // Account age (days + months)
         $createdAt = $courier->created_at;
+        $days = $createdAt ? $createdAt->diffInDays(now()) : 0;
         $months = $createdAt ? $createdAt->diffInMonths(now()) : 0;
-        $accountAge = $months > 0 ? "$months Bulan" : "Baru";
+        $remainingDays = $days - ($months * 30);
+        $accountAge = $months > 0 ? "$months Bulan $remainingDays Hari" : "$days Hari";
 
         return response()->json([
             'success' => true,
@@ -413,17 +419,90 @@ class CourierController extends Controller
                 'courier_details' => [
                     'id' => $courier->id,
                     'nik' => $courier->nik,
+                    'phone' => $courier->phone ?? $user->phone,
+                    'address' => $courier->address ?? $user->address ?? '',
+                    'city' => $courier->city ?? $user->city ?? '',
                     'vehicle_type' => $courier->vehicle_type,
+                    'vehicle_brand' => $courier->vehicle_brand,
+                    'vehicle_model' => $courier->vehicle_model,
+                    'vehicle_year' => $courier->vehicle_year,
+                    'vehicle_color' => $courier->vehicle_color,
                     'vehicle_plate' => $courier->vehicle_plate,
                     'is_verified' => $courier->is_verified,
                     'is_active' => $courier->is_active,
                 ],
                 'stats' => [
                     'total_shipments' => $totalShipments,
-                    'account_age' => $accountAge,
+                    'total_ratings' => $totalRoutes, // Using total routes as rating count for now
                     'rating' => '4.8', // Static for now, can add rating system later
+                    'account_age' => $accountAge,
+                    'total_routes' => $totalRoutes,
                 ]
             ],
+        ]);
+    }
+
+    /**
+     * Update courier profile (name, phone, vehicle info, etc.)
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+        $courier = $user->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'phone' => 'sometimes|string|max:20',
+            'email' => 'sometimes|email|max:255',
+            'nik' => 'sometimes|string|max:20',
+            'address' => 'sometimes|string|max:500',
+            'city' => 'sometimes|string|max:100',
+            'vehicle_type' => 'sometimes|string|max:50',
+            'vehicle_brand' => 'sometimes|string|max:100',
+            'vehicle_model' => 'sometimes|string|max:100',
+            'vehicle_year' => 'sometimes|string|max:4',
+            'vehicle_color' => 'sometimes|string|max:100',
+            'vehicle_plate' => 'sometimes|string|max:20',
+            'photo' => 'sometimes|image|max:5120',
+        ]);
+
+        // Update user name/email if provided
+        if (isset($validated['name'])) {
+            $user->update(['name' => $validated['name']]);
+        }
+        if (isset($validated['email'])) {
+            $user->update(['email' => $validated['email']]);
+        }
+
+        // Handle photo upload
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('courier-photos', 'public');
+            $courier->update(['photo' => $path]);
+        }
+
+        // Update courier fields
+        $courierFields = ['phone', 'nik', 'address', 'city', 'vehicle_type', 'vehicle_brand', 'vehicle_model', 'vehicle_year', 'vehicle_color', 'vehicle_plate'];
+        $updateData = [];
+        foreach ($courierFields as $field) {
+            if (array_key_exists($field, $validated)) {
+                $updateData[$field] = $validated[$field];
+            }
+        }
+
+        if (!empty($updateData)) {
+            $courier->update($updateData);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui.',
         ]);
     }
 }
