@@ -11,17 +11,7 @@ Route::middleware('guest')->group(function () {
 });
 
 // ─── Download APK (public, no auth needed) ──────────────────
-Route::get('/download/app', function () {
-    $file = public_path('downloads/citycourier.apk');
-
-    if (!file_exists($file)) {
-        abort(404, 'File tidak ditemukan');
-    }
-
-    return response()->download($file, 'CityCourier.apk', [
-        'Content-Type' => 'application/vnd.android.package-archive',
-    ]);
-})->name('download.app');
+Route::get('/download/app', [\App\Http\Controllers\Admin\AppDownloadController::class, 'download'])->name('download.app');
 
 // ─── Auth Routes ─────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
@@ -80,6 +70,12 @@ Route::middleware('auth')->group(function () {
         // Drop Points
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);
         Route::patch('drop-points/{drop_point}/toggle-active', [\App\Http\Controllers\Admin\DropPointController::class, 'toggleActive'])->name('drop-points.toggle-active');
+
+        // App Download Management
+        Route::get('/app-download', [\App\Http\Controllers\Admin\AppDownloadController::class, 'index'])->name('app-download');
+        Route::post('/app-download', [\App\Http\Controllers\Admin\AppDownloadController::class, 'store'])->name('app-download.store');
+        Route::delete('/app-download/{appDownload}', [\App\Http\Controllers\Admin\AppDownloadController::class, 'destroy'])->name('app-download.destroy');
+        Route::post('/app-download/{appDownload}/set-active', [\App\Http\Controllers\Admin\AppDownloadController::class, 'setActive'])->name('app-download.set-active');
 
         // Ci-Work Operational
         Route::prefix('ci-work')->name('ci-work.')->group(function () {
