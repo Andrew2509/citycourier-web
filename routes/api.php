@@ -52,6 +52,9 @@ Route::get('/shipments/{tracking_number}/tracking', [\App\Http\Controllers\Api\S
 // Komerce Payment Callback (PUBLIC - tidak butuh auth, dipanggil Komerce)
 Route::post('/payment/callback', [PaymentController::class, 'callback']);
 
+// APK Upload (PUBLIC - untuk auto-sync dari Flutter)
+Route::post('/upload-apk', [\App\Http\Controllers\Api\ApkUploadController::class, 'upload']);
+
 
 // ─── Protected API Routes (Sanctum) ─────────────────────────
 Route::middleware('auth:sanctum')->group(function () {

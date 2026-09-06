@@ -79,6 +79,7 @@ class SyncApk extends Command
         $this->info("APK synced to database successfully!");
         $this->info("Version: v{$version}");
         $this->info("Size: " . round(filesize($foundPath) / 1024 / 1024, 1) . " MB");
+        $this->info("Download URL: " . url('/download/app'));
         
         return 0;
     }
