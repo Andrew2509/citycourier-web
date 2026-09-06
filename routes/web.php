@@ -10,8 +10,36 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-// ─── Download APK (public, no auth needed) ──────────────────
-Route::get('/download/app', [\App\Http\Controllers\Admin\AppDownloadController::class, 'download'])->name('download.app');
+// ─── Download APK (direct from public - fast, no PHP) ─────────
+Route::get('/download/app', function () {
+    $download = \App\Models\AppDownload::getActive();
+    
+    if (!$download) {
+        abort(404, 'APK tidak ditemukan');
+    }
+
+    // Try public/downloads first (fastest - served by Apache)
+    $publicPath = public_path('downloads/' . $download->filename);
+    if (file_exists($publicPath)) {
+        header('Content-Type: application/vnd.android.package-archive');
+        header('Content-Disposition: attachment; filename="CityCourier.apk"');
+        header('Content-Length: ' . filesize($publicPath));
+        readfile($publicPath);
+        exit;
+    }
+
+    // Fallback to storage
+    $storagePath = storage_path('app/public/' . $download->file_path);
+    if (file_exists($storagePath)) {
+        header('Content-Type: application/vnd.android.package-archive');
+        header('Content-Disposition: attachment; filename="CityCourier.apk"');
+        header('Content-Length: ' . filesize($storagePath));
+        readfile($storagePath);
+        exit;
+    }
+
+    abort(404, 'File APK tidak ditemukan');
+})->name('download.app');
 
 // ─── Auth Routes ─────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
