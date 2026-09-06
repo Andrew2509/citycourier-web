@@ -10,6 +10,19 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+// ─── Download APK (public, no auth needed) ──────────────────
+Route::get('/download/app', function () {
+    $file = public_path('downloads/citycourier.apk');
+
+    if (!file_exists($file)) {
+        abort(404, 'File tidak ditemukan');
+    }
+
+    return response()->download($file, 'CityCourier.apk', [
+        'Content-Type' => 'application/vnd.android.package-archive',
+    ]);
+})->name('download.app');
+
 // ─── Auth Routes ─────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

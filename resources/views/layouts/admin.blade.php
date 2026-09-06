@@ -175,11 +175,17 @@
             </a>
 
             <!-- Download -->
-            <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2 mt-4">Unduh Aplikasi</div>
-            <a href="{{ asset('downloads/citycourier.apk') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all" download>
-                <span class="material-symbols-outlined text-[20px]">qr_code_scanner</span>
-                <span class="text-sm">Aplikasi v1.0.0</span>
-            </a>
+            <div class="px-3 mt-4">
+                <a href="{{ route('download.app') }}" class="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/30 transition-all">
+                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl">android</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">Download App</p>
+                        <p class="text-[10px] text-white/80">CityCourier v1.0.0</p>
+                    </div>
+                </a>
+            </div>
         </nav>
     </aside>
 
@@ -197,7 +203,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 lg:gap-4">
-                <a href="{{ asset('downloads/citycourier.apk') }}" class="hidden sm:flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all text-sm font-medium" download>
+                <a href="{{ route('download.app') }}" class="hidden sm:flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all text-sm font-medium">
                     <span class="material-symbols-outlined text-[18px]">download</span>
                     <span class="hidden md:inline">Download App</span>
                 </a>
@@ -227,7 +233,7 @@
         <!-- Content -->
         <main class="relative pt-16 bg-surface min-h-screen p-4 lg:p-6">
             <!-- Mobile Download Banner -->
-            <a href="{{ asset('downloads/citycourier.apk') }}" class="sm:hidden flex items-center gap-3 mb-4 p-4 bg-gradient-to-r from-primary to-primary-light rounded-2xl text-white shadow-lg shadow-primary/30" download>
+            <a href="{{ route('download.app') }}" class="sm:hidden flex items-center gap-3 mb-4 p-4 bg-gradient-to-r from-primary to-primary-light rounded-2xl text-white shadow-lg shadow-primary/30">
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <span class="material-symbols-outlined text-2xl">android</span>
                 </div>
