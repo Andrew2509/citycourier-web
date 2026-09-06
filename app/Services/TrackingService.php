@@ -189,11 +189,31 @@ class TrackingService
                 ->first();
 
             if ($order && $order->courier_id) {
+                // 1. Coba ambil dari courier_locations (GPS real-time)
                 $latestLocation = $this->getLatestCourierLocation($order->courier_id, $shipment->id);
                 if ($latestLocation) {
                     $courierLocation = [
                         'latitude'  => $latestLocation->latitude,
                         'longitude' => $latestLocation->longitude,
+                    ];
+                }
+
+                // 2. Fallback: ambil lokasi terakhir dari tabel couriers
+                if (!$courierLocation) {
+                    $courier = Courier::find($order->courier_id);
+                    if ($courier && $courier->latitude && $courier->longitude) {
+                        $courierLocation = [
+                            'latitude'  => $courier->latitude,
+                            'longitude' => $courier->longitude,
+                        ];
+                    }
+                }
+
+                // 3. Fallback: gunakan lokasi pengirim (origin) jika kurir belum update GPS
+                if (!$courierLocation && $shipment->sender_latitude && $shipment->sender_longitude) {
+                    $courierLocation = [
+                        'latitude'  => $shipment->sender_latitude,
+                        'longitude' => $shipment->sender_longitude,
                     ];
                 }
 
