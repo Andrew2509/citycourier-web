@@ -63,8 +63,11 @@
     </style>
 </head>
 <body class="bg-surface text-slate-800">
+    <!-- Mobile Overlay -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
     <!-- Sidebar -->
-    <aside class="fixed left-0 top-0 h-full w-64 bg-white border-r border-surface-border z-50 flex flex-col">
+    <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white border-r border-surface-border z-50 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-300">
         <!-- Logo -->
         <div class="px-5 py-4 border-b border-surface-border flex items-center gap-3">
             <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center shadow-md shadow-primary/20">
@@ -181,16 +184,23 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="ml-64">
+    <div class="lg:ml-64">
         <!-- Header -->
-        <header class="fixed top-0 right-0 left-64 h-16 bg-white/80 backdrop-blur-xl border-b border-surface-border z-40 flex items-center justify-between px-6">
-            <div class="flex items-center gap-4 w-96">
-                <div class="relative w-full">
+        <header class="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-white/80 backdrop-blur-xl border-b border-surface-border z-40 flex items-center justify-between px-4 lg:px-6">
+            <div class="flex items-center gap-4 flex-1 lg:w-96">
+                <button id="hamburgerBtn" class="lg:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <div class="relative w-full hidden sm:block">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 material-symbols-outlined text-slate-400 text-[18px]">search</span>
                     <input class="w-full bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Cari pesanan, kurir, atau resi..." type="text"/>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 lg:gap-4">
+                <a href="{{ asset('downloads/citycourier.apk') }}" class="hidden sm:flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all text-sm font-medium" download>
+                    <span class="material-symbols-outlined text-[18px]">download</span>
+                    <span class="hidden md:inline">Download App</span>
+                </a>
                 <button class="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
                     <span class="material-symbols-outlined">notifications</span>
                     <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary"></span>
@@ -200,7 +210,7 @@
                     <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-white font-bold text-sm shadow-md shadow-primary/20">
                         {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
                     </div>
-                    <div>
+                    <div class="hidden md:block">
                         <p class="text-sm font-semibold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Admin' }}</p>
                         <span class="text-[11px] text-slate-400">Administrator</span>
                     </div>
@@ -215,7 +225,18 @@
         </header>
 
         <!-- Content -->
-        <main class="relative pt-16 bg-surface min-h-screen p-6">
+        <main class="relative pt-16 bg-surface min-h-screen p-4 lg:p-6">
+            <!-- Mobile Download Banner -->
+            <a href="{{ asset('downloads/citycourier.apk') }}" class="sm:hidden flex items-center gap-3 mb-4 p-4 bg-gradient-to-r from-primary to-primary-light rounded-2xl text-white shadow-lg shadow-primary/30" download>
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-2xl">android</span>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold">Download CityCourier</p>
+                    <p class="text-xs text-white/80">Pasang aplikasi di perangkat Anda</p>
+                </div>
+                <span class="material-symbols-outlined">download</span>
+            </a>
             <!-- Flash Messages -->
             @if(session('success'))
                 <div class="mb-4 p-4 rounded-xl bg-success/10 border border-success/20 text-success flex items-center gap-3">
@@ -237,15 +258,17 @@
 
     <script>
     // Mobile sidebar toggle
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const hamburger = document.getElementById('hamburgerBtn');
-        const sidebar = document.querySelector('aside');
-        const overlay = document.getElementById('sidebarOverlay');
-
         if (hamburger) {
-            hamburger.addEventListener('click', function() {
-                sidebar.classList.toggle('-translate-x-full');
-            });
+            hamburger.addEventListener('click', toggleSidebar);
         }
     });
     </script>
