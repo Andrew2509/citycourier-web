@@ -185,7 +185,9 @@
     </div>
 </div>
 
+@push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+@endpush
 
 @push('scripts')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -205,13 +207,13 @@
             iconAnchor: [17, 17]
         });
 
-        const couriers = @json($couriers->getCollection()->map(fn($c) => [
+        const couriers = {!! json_encode($couriers->getCollection()->map(fn($c) => [
             'name' => $c->user->name ?? 'Kurir',
             'phone' => $c->phone ?? '',
             'latitude' => $c->latitude,
             'longitude' => $c->longitude,
             'is_active' => $c->is_active,
-        ])->filter(fn($c) => $c['latitude'] && $c['longitude'])->values());
+        ])->filter(fn($c) => $c['latitude'] && $c['longitude'])->values()) !!};
 
         const markers = [];
         couriers.forEach(function (courier) {
