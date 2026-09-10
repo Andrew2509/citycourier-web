@@ -35,6 +35,13 @@ return [
         ],
     ],
 
+    // OrbitWA WhatsApp API (legacy)
+    'orbitwa' => [
+        'api_key'   => env('ORBITWA_API_KEY'),
+        'base_url'  => env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1'),
+        'device_id' => env('ORBITWA_DEVICE_ID', 0),
+    ],
+
     'komerce_payment' => [
         'api_key'      => env('KOMERCE_PAYMENT_API_KEY'),
         'env'          => env('KOMERCE_PAYMENT_ENV', 'sandbox'),
@@ -59,6 +66,22 @@ return [
         'public_key'        => '',
         'private_key'       => '',
         'callback_url'      => '',
+    ],
+
+    // Fonnte WhatsApp API Integration
+    // Docs: https://fonnte.com/
+    'fonnte' => [
+        'token'        => env('FONNTE_TOKEN'),
+        'base_url'     => env('FONNTE_BASE_URL', 'https://api.fonnte.com'),
+        'send_number'  => env('FONNTE_SEND_NUMBER', ''), // Optional: sender number (WA number registered on Fonnte)
+    ],
+
+    // WhatsApp Configuration
+    // Provider: 'fonnte' | 'orbitwa' | 'mock'
+    // Jika tidak diisi, akan otomatis memilih berdasarkan ketersediaan token
+    'whatsapp' => [
+        'provider' => env('WHATSAPP_PROVIDER', 'auto'), // auto, fonnte, orbitwa, mock
+        'enabled'  => env('WHATSAPP_ENABLED', true),
     ],
 
 ];

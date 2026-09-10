@@ -36,8 +36,8 @@ Route::match(['get', 'post'], '/dana/callback', [DanaController::class, 'callbac
 Route::post('/dana/webhook', [DanaController::class, 'webhookCallback']);
 
 // WhatsApp Test Route
-Route::post('/test-wa', function (\Illuminate\Http\Request $request, \App\Services\WhatsAppService $wa) {
-    return $wa->sendMessage($request->phone, $request->message ?? 'Test message from City Courier');
+Route::post('/test-wa', function (\Illuminate\Http\Request $request, \App\Services\WhatsAppManager $whatsapp) {
+    return $whatsapp->sendMessage($request->phone, $request->message ?? 'Test message from City Courier');
 });
 
 Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);

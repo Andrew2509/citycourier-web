@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class WhatsAppService
+class WhatsAppService implements WhatsAppServiceInterface
 {
     protected $apiKey;
     protected $baseUrl;

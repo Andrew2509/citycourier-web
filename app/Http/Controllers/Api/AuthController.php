@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Courier;
-use App\Services\WhatsAppService;
+use App\Services\WhatsAppManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -15,11 +15,11 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    protected $whatsappService;
+    protected $whatsappManager;
 
-    public function __construct(WhatsAppService $whatsappService)
+    public function __construct(WhatsAppManager $whatsappManager)
     {
-        $this->whatsappService = $whatsappService;
+        $this->whatsappManager = $whatsappManager;
     }
 
     /**
@@ -244,8 +244,8 @@ class AuthController extends Controller
         // Store in cache for 5 minutes
         Cache::put('otp_' . $phone, $otp, now()->addMinutes(10));
 
-        // Send OTP via WhatsApp
-        $waResult = $this->whatsappService->sendOtp($phone, $otp);
+        // Send OTP via WhatsApp (uses configured provider: Fonnte/OrbitWA/Mock)
+        $waResult = $this->whatsappManager->sendOtp($phone, $otp);
 
         if (!$waResult['success']) {
             return response()->json([
