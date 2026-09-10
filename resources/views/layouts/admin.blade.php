@@ -177,7 +177,7 @@
     <!-- Main Content -->
     <div class="lg:ml-64 h-full flex flex-col">
         <!-- Header -->
-        <header class="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-white/80 backdrop-blur-xl border-b border-surface-border z-40 flex items-center justify-between px-4 lg:px-6">
+        <header class="h-16 flex-shrink-0 bg-white/80 backdrop-blur-xl border-b border-surface-border z-40 flex items-center justify-between px-4 lg:px-6">
             <div class="flex items-center gap-4 flex-1 lg:w-96">
                 <button id="hamburgerBtn" class="lg:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all">
                     <span class="material-symbols-outlined">menu</span>
@@ -216,7 +216,7 @@
         </header>
 
         <!-- Content -->
-        <main class="relative pt-16 bg-surface flex-1 overflow-y-auto p-4 lg:p-6 pb-20">
+        <main class="bg-surface flex-1 overflow-y-auto p-4 lg:p-6 pb-20">
             <!-- Mobile Download Banner -->
             <a href="{{ route('download.app') }}" class="sm:hidden flex items-center gap-3 mb-4 p-4 bg-gradient-to-r from-primary to-primary-light rounded-2xl text-white shadow-lg shadow-primary/30">
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
