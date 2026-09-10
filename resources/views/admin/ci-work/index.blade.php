@@ -1,136 +1,157 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-800">Dashboard Kerja</h1>
-        <p class="text-sm text-gray-500">Monitoring operasional harian City-Work</p>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500">Kurir Online</p>
-                <p class="text-2xl font-bold text-[#059669]">{{ $stats['online_couriers'] }}</p>
+<div class="flex flex-col w-full gap-space-xl">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
+        <div class="flex flex-col gap-space-2xs">
+            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
+                <span class="material-symbols-outlined text-[16px]">monitoring</span>
+                <span>City-Work Operational</span>
             </div>
-            <div class="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[#059669]">person</span>
+            <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Dashboard Kerja</h1>
+            <p class="font-body-md text-body-md text-secondary">Monitoring operasional harian City-Work</p>
+        </div>
+    </div>
+
+    <!-- Stat Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+                <div class="flex flex-col">
+                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Kurir Online</span>
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $stats['online_couriers'] }}</span>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">person</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+                <div class="flex flex-col">
+                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Tugas Aktif</span>
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $stats['active_tasks'] }}</span>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">assignment</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+                <div class="flex flex-col">
+                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Selesai Hari Ini</span>
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $stats['completed_today'] }}</span>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">check_circle</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+                <div class="flex flex-col">
+                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Pendapatan Hari Ini</span>
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">Rp {{ number_format($stats['total_earnings_today'], 0, ',', '.') }}</span>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">payments</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500">Tugas Aktif</p>
-                <p class="text-2xl font-bold text-[#059669]">{{ $stats['active_tasks'] }}</p>
+    <!-- Recent Tasks Table -->
+    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-space-xl py-space-md border-b border-surface-container-high">
+            <div class="flex items-center gap-space-md">
+                <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold">
+                    <span class="material-symbols-outlined text-[20px]">assignment</span>
+                </div>
+                <div class="flex flex-col">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Tugas Terbaru</h2>
+                    <span class="font-label-sm text-label-sm text-secondary">Daftar tugas pengiriman terkini</span>
+                </div>
             </div>
-            <div class="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[#059669]">assignment</span>
-            </div>
+            <a href="{{ route('admin.ci-work.tasks') }}" class="flex items-center gap-space-2xs text-primary hover:text-primary/80 font-label-md text-label-md font-semibold transition-colors">
+                <span>Lihat Semua</span>
+                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </a>
         </div>
-    </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500">Selesai Hari Ini</p>
-                <p class="text-2xl font-bold text-[#059669]">{{ $stats['completed_today'] }}</p>
-            </div>
-            <div class="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[#059669]">check_circle</span>
-            </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary">
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Resi</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Kurir</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Tujuan</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
+                        <th class="py-3.5 px-4 font-bold text-right whitespace-nowrap">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-surface-container-high/60">
+                    @forelse($recentTasks as $task)
+                    <tr class="hover:bg-surface transition-colors group">
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span class="font-data-mono font-bold text-primary">{{ $task->shipment->tracking_number ?? '-' }}</span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span class="font-medium text-on-surface">{{ $task->courier->user->name ?? '-' }}</span>
+                        </td>
+                        <td class="py-4 px-4 max-w-xs">
+                            <span class="text-sm text-secondary line-clamp-1">{{ $task->shipment->receiver_address ?? '-' }}</span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            @if($task->status === 'assigned')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-secondary-container text-on-secondary-fixed-variant font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    Ditugaskan
+                                </span>
+                            @elseif($task->status === 'picking_up')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-blue-50 text-blue-700 font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    Jemput
+                                </span>
+                            @elseif($task->status === 'delivering')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-amber-50 text-amber-700 font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    Diantar
+                                </span>
+                            @elseif($task->status === 'delivered')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                    Selesai
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-surface-container text-secondary font-label-sm text-xs font-bold">
+                                    {{ $task->status }}
+                                </span>
+                            @endif
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap text-right">
+                            <a href="{{ route('admin.ci-work.tasks') }}" class="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Lihat Detail">
+                                <span class="material-symbols-outlined text-[18px]">visibility</span>
+                            </a>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="py-space-2xl px-4 text-center">
+                            <div class="flex flex-col items-center gap-space-xs text-secondary">
+                                <span class="material-symbols-outlined text-[32px]">inbox</span>
+                                <span class="font-body-sm text-body-sm">Belum ada tugas terbaru</span>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-500">Pendapatan Hari Ini</p>
-                <p class="text-2xl font-bold text-[#059669]">Rp {{ number_format($stats['total_earnings_today'], 0, ',', '.') }}</p>
-            </div>
-            <div class="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[#059669]">payments</span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="bg-white rounded-xl shadow-sm border border-gray-100">
-    <div class="flex items-center justify-between p-5 border-b border-gray-100">
-        <div>
-            <h2 class="text-lg font-semibold text-gray-800">Tugas Terbaru</h2>
-            <p class="text-sm text-gray-500">Daftar tugas pengiriman terkini</p>
-        </div>
-        <a href="{{ route('admin.ci-work.tasks') }}" class="text-sm font-medium text-[#059669] hover:text-emerald-700 flex items-center gap-1">
-            Lihat Semua
-            <span class="material-symbols-outlined text-base">arrow_forward</span>
-        </a>
-    </div>
-
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                    <th class="text-left px-5 py-3 font-semibold">Resi</th>
-                    <th class="text-left px-5 py-3 font-semibold">Kurir Pickup</th>
-                    <th class="text-left px-5 py-3 font-semibold">Tujuan</th>
-                    <th class="text-left px-5 py-3 font-semibold">Status</th>
-                    <th class="text-left px-5 py-3 font-semibold">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @forelse($recentTasks as $task)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-5 py-4 font-medium text-gray-800">{{ $task->shipment->tracking_number ?? '-' }}</td>
-                    <td class="px-5 py-4 text-gray-600">{{ $task->courier->user->name ?? '-' }}</td>
-                    <td class="px-5 py-4 text-gray-600">{{ $task->shipment->receiver_address ?? '-' }}</td>
-                    <td class="px-5 py-4">
-                        @if($task->status === 'assigned')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                                <span class="material-symbols-outlined text-sm">schedule</span>
-                                Ditugaskan
-                            </span>
-                        @elseif($task->status === 'picking_up')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                <span class="material-symbols-outlined text-sm">local_shipping</span>
-                                Jemput
-                            </span>
-                        @elseif($task->status === 'delivering')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                                <span class="material-symbols-outlined text-sm">route</span>
-                                Diantar
-                            </span>
-                        @elseif($task->status === 'delivered')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                <span class="material-symbols-outlined text-sm">check_circle</span>
-                                Selesai
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                                {{ $task->status }}
-                            </span>
-                        @endif
-                    </td>
-                    <td class="px-5 py-4">
-                        <a href="{{ route('admin.ci-work.tasks') }}" class="text-[#059669] hover:text-emerald-700 font-medium text-xs flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm">visibility</span>
-                            Detail
-                        </a>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="5" class="px-5 py-12 text-center">
-                        <span class="material-symbols-outlined text-gray-300 text-5xl block mb-2">inbox</span>
-                        <p class="text-gray-400">Belum ada tugas terbaru</p>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
     </div>
 </div>
 @endsection

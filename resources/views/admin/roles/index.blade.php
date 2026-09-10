@@ -3,88 +3,87 @@
 @section('title', 'Manajemen Role')
 
 @section('content')
-<div class="space-y-6">
-    {{-- Header --}}
-    <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#059669]/10">
-                <span class="material-symbols-outlined text-[26px] text-[#059669]">shield</span>
+<div class="flex flex-col w-full gap-space-xl">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
+        <div class="flex flex-col gap-space-2xs">
+            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
+                <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+                <span>Sistem & Keamanan</span>
             </div>
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900">Manajemen Role</h1>
-                <p class="text-sm text-gray-500">Konfigurasi peran dan hak akses pengguna</p>
-            </div>
+            <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Manajemen Role</h1>
+            <p class="font-body-md text-body-md text-secondary">Konfigurasi peran dan hak akses pengguna</p>
         </div>
-        <a href="{{ route('admin.roles.create') }}" class="inline-flex items-center gap-2 rounded-lg bg-[#059669] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#047857] focus:outline-none focus:ring-2 focus:ring-[#059669] focus:ring-offset-2">
+        <a href="{{ route('admin.roles.create') }}" class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary shadow-sm flex items-center gap-space-xs font-label-md text-label-md font-semibold transition-colors">
             <span class="material-symbols-outlined text-[18px]">add</span>
-            Tambah Role
+            <span>Tambah Role</span>
         </a>
     </div>
 
-    {{-- Table --}}
-    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <!-- Roles Table -->
+    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
+            <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="border-b border-gray-200 bg-gray-50">
-                        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Nama Role</th>
-                        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Jumlah Permission</th>
-                        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Dibuat</th>
-                        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 text-right">Aksi</th>
+                    <tr class="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary">
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Nama Role</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Jumlah Permission</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Dibuat</th>
+                        <th class="py-3.5 px-4 font-bold text-right whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-surface-container-high/60">
                     @forelse ($roles as $role)
-                        <tr class="transition hover:bg-gray-50/50">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-[#059669]/10">
-                                        <span class="material-symbols-outlined text-[18px] text-[#059669]">badge</span>
-                                    </div>
-                                    <span class="font-medium text-gray-900">{{ ucfirst($role->name) }}</span>
+                    <tr class="hover:bg-surface transition-colors group">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-space-sm">
+                                <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                                    <span class="material-symbols-outlined text-[18px]">badge</span>
                                 </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center gap-1 text-gray-600">
-                                    <span class="material-symbols-outlined text-[16px]">key</span>
-                                    {{ $role->permissions->count() ?? 0 }} permission
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 text-gray-500">{{ $role->created_at->format('d M Y') }}</td>
-                            <td class="px-6 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('admin.roles.edit', $role->id) }}" class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                                        <span class="material-symbols-outlined text-[15px]">edit</span>
-                                        Edit
-                                    </a>
-                                    <form action="{{ route('admin.roles.destroy', $role->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus role ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm transition hover:bg-red-50">
-                                            <span class="material-symbols-outlined text-[15px]">delete</span>
-                                            Hapus
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
+                                <span class="font-medium text-on-surface">{{ ucfirst($role->name) }}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4">
+                            <span class="inline-flex items-center gap-space-2xs text-secondary">
+                                <span class="material-symbols-outlined text-[16px]">key</span>
+                                {{ $role->permissions->count() ?? 0 }} permission
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 text-secondary">{{ $role->created_at->format('d M Y') }}</td>
+                        <td class="py-4 px-4 text-right">
+                            <div class="inline-flex items-center justify-end gap-space-xs">
+                                <a href="{{ route('admin.roles.edit', $role->id) }}" class="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Edit">
+                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                </a>
+                                <form action="{{ route('admin.roles.destroy', $role->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus role ini?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="p-1.5 rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
                     @empty
-                        <tr>
-                            <td colspan="4" class="px-6 py-16 text-center">
-                                <span class="material-symbols-outlined mx-auto mb-3 block text-[48px] text-gray-300">shield</span>
-                                <p class="text-sm font-medium text-gray-500">Belum ada role terdaftar</p>
-                                <p class="mt-1 text-xs text-gray-400">Klik tombol "Tambah Role" untuk membuat role baru.</p>
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="4" class="py-space-2xl px-4 text-center">
+                            <div class="flex flex-col items-center gap-space-xs text-secondary">
+                                <span class="material-symbols-outlined text-[32px]">shield</span>
+                                <span class="font-body-sm text-body-sm">Belum ada role terdaftar</span>
+                                <span class="text-xs text-secondary">Klik "Tambah Role" untuk membuat role baru.</span>
+                            </div>
+                        </td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
         @if ($roles->hasPages())
-            <div class="border-t border-gray-200 bg-gray-50/50 px-6 py-3">
-                {{ $roles->withQueryString()->links() }}
-            </div>
+        <div class="px-space-xl py-3.5 border-t border-surface-container-high">
+            {{ $roles->withQueryString()->links() }}
+        </div>
         @endif
     </div>
 </div>

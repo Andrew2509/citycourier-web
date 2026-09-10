@@ -1,189 +1,217 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-800">Keuangan & Setoran Kurir</h1>
-        <p class="text-sm text-gray-500">Rekapitulasi penghasilan dan penarikan dana kurir</p>
-    </div>
-</div>
-
-<div class="flex border-b border-gray-200 mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
-    <button onclick="switchTab('earnings')" id="tab-earnings" class="flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 border-[#059669] text-[#059669] transition-colors">
-        <span class="material-symbols-outlined text-lg">account_balance_wallet</span>
-        Ringkasan Penghasilan
-    </button>
-    <button onclick="switchTab('withdrawals')" id="tab-withdrawals" class="flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
-        <span class="material-symbols-outlined text-lg">savings</span>
-        Penarikan Dana
-    </button>
-</div>
-
-<div id="panel-earnings" class="bg-white rounded-xl shadow-sm border border-gray-100">
-    <div class="p-5 border-b border-gray-100">
-        <h2 class="text-lg font-semibold text-gray-800">Penghasilan Kurir</h2>
-        <p class="text-sm text-gray-500">Total penghasilan dari pesanan yang telah selesai</p>
+<div class="flex flex-col w-full gap-space-xl">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
+        <div class="flex flex-col gap-space-2xs">
+            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
+                <span class="material-symbols-outlined text-[16px]">payments</span>
+                <span>Keuangan & Setoran</span>
+            </div>
+            <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Keuangan & Setoran Kurir</h1>
+            <p class="font-body-md text-body-md text-secondary">Rekapitulasi penghasilan dan penarikan dana kurir</p>
+        </div>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                    <th class="text-left px-5 py-3 font-semibold">Kurir</th>
-                    <th class="text-left px-5 py-3 font-semibold">Total Pesanan Selesai</th>
-                    <th class="text-left px-5 py-3 font-semibold">Total Penghasilan</th>
-                    <th class="text-left px-5 py-3 font-semibold">Status</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @forelse($earnings as $earning)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-5 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[#059669] text-lg">person</span>
+    <!-- Tabs -->
+    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="flex border-b border-surface-container-high">
+            <button onclick="switchTab('earnings')" id="tab-earnings" class="flex items-center gap-space-xs px-space-lg py-3.5 text-sm font-semibold border-b-2 border-primary text-primary transition-colors">
+                <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+                Ringkasan Penghasilan
+            </button>
+            <button onclick="switchTab('withdrawals')" id="tab-withdrawals" class="flex items-center gap-space-xs px-space-lg py-3.5 text-sm font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface transition-colors">
+                <span class="material-symbols-outlined text-[18px]">savings</span>
+                Penarikan Dana
+            </button>
+        </div>
+    </div>
+
+    <!-- Earnings Panel -->
+    <div id="panel-earnings" class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-space-xl py-space-md border-b border-surface-container-high">
+            <div class="flex items-center gap-space-md">
+                <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold">
+                    <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                </div>
+                <div class="flex flex-col">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Penghasilan Kurir</h2>
+                    <span class="font-label-sm text-label-sm text-secondary">Total penghasilan dari pesanan yang telah selesai</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary">
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Kurir</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Total Pesanan Selesai</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Total Penghasilan</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-surface-container-high/60">
+                    @forelse($earnings as $earning)
+                    <tr class="hover:bg-surface transition-colors">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-space-sm">
+                                <div class="w-9 h-9 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-sm shrink-0">
+                                    {{ strtoupper(substr($earning->user->name ?? 'K', 0, 1)) }}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-on-surface">{{ $earning->user->name ?? '-' }}</p>
+                                    <p class="text-xs text-secondary">{{ $earning->user->email ?? '' }}</p>
+                                </div>
                             </div>
+                        </td>
+                        <td class="py-4 px-4 font-medium text-on-surface">{{ $earning->completed_orders }}</td>
+                        <td class="py-4 px-4 font-bold text-primary">Rp {{ number_format($earning->total_earnings, 0, ',', '.') }}</td>
+                        <td class="py-4 px-4">
+                            @if($earning->total_earnings > 0)
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-xs font-bold">
+                                    <span class="material-symbols-outlined text-[14px]">trending_up</span>
+                                    Aktif
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-surface-container text-secondary font-label-sm text-xs font-bold">
+                                    Belum Ada
+                                </span>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" class="py-space-2xl px-4 text-center">
+                            <div class="flex flex-col items-center gap-space-xs text-secondary">
+                                <span class="material-symbols-outlined text-[32px]">paid</span>
+                                <span class="font-body-sm text-body-sm">Belum ada data penghasilan</span>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="px-space-xl py-3.5 border-t border-surface-container-high">
+            {{ $earnings->links() }}
+        </div>
+    </div>
+
+    <!-- Withdrawals Panel -->
+    <div id="panel-withdrawals" class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden hidden">
+        <div class="flex items-center justify-between px-space-xl py-space-md border-b border-surface-container-high">
+            <div class="flex items-center gap-space-md">
+                <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold">
+                    <span class="material-symbols-outlined text-[20px]">savings</span>
+                </div>
+                <div class="flex flex-col">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Penarikan Dana Kurir</h2>
+                    <span class="font-label-sm text-label-sm text-secondary">Permohonan penarikan dana yang perlu diproses</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary">
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Kurir</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Jumlah</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Rekening</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
+                        <th class="py-3.5 px-4 font-bold text-right whitespace-nowrap">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-surface-container-high/60">
+                    @forelse($withdrawals as $withdrawal)
+                    <tr class="hover:bg-surface transition-colors">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-space-sm">
+                                <div class="w-9 h-9 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-sm shrink-0">
+                                    {{ strtoupper(substr($withdrawal->courier->user->name ?? 'K', 0, 1)) }}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-on-surface">{{ $withdrawal->courier->user->name ?? '-' }}</p>
+                                    <p class="text-xs text-secondary">{{ \Carbon\Carbon::parse($withdrawal->created_at)->format('d M Y, H:i') }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 font-bold text-on-surface">Rp {{ number_format($withdrawal->amount, 0, ',', '.') }}</td>
+                        <td class="py-4 px-4">
                             <div>
-                                <p class="font-medium text-gray-800">{{ $earning->user->name ?? '-' }}</p>
-                                <p class="text-xs text-gray-400">{{ $earning->user->email ?? '' }}</p>
+                                <p class="font-medium text-on-surface">{{ $withdrawal->bank_name }}</p>
+                                <p class="text-xs text-secondary">{{ $withdrawal->account_number }} - {{ $withdrawal->account_name }}</p>
                             </div>
-                        </div>
-                    </td>
-                    <td class="px-5 py-4 text-gray-600 font-medium">{{ $earning->completed_orders }}</td>
-                    <td class="px-5 py-4 font-semibold text-[#059669]">Rp {{ number_format($earning->total_earnings, 0, ',', '.') }}</td>
-                    <td class="px-5 py-4">
-                        @if($earning->total_earnings > 0)
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                <span class="material-symbols-outlined text-sm">trending_up</span>
-                                Aktif
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                Belum Ada
-                            </span>
-                        @endif
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="4" class="px-5 py-12 text-center">
-                        <span class="material-symbols-outlined text-gray-300 text-5xl block mb-2">paid</span>
-                        <p class="text-gray-400">Belum ada data penghasilan</p>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    <div class="p-5 border-t border-gray-100">
-        {{ $earnings->links() }}
-    </div>
-</div>
-
-<div id="panel-withdrawals" class="bg-white rounded-xl shadow-sm border border-gray-100 hidden">
-    <div class="p-5 border-b border-gray-100">
-        <h2 class="text-lg font-semibold text-gray-800">Penarikan Dana Kurir</h2>
-        <p class="text-sm text-gray-500">Permohonan penarikan dana yang perlu diproses</p>
-    </div>
-
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                    <th class="text-left px-5 py-3 font-semibold">Kurir</th>
-                    <th class="text-left px-5 py-3 font-semibold">Jumlah</th>
-                    <th class="text-left px-5 py-3 font-semibold">Rekening</th>
-                    <th class="text-left px-5 py-3 font-semibold">Status</th>
-                    <th class="text-left px-5 py-3 font-semibold">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @forelse($withdrawals as $withdrawal)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-5 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[#059669] text-lg">person</span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            @if($withdrawal->status === 'pending')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-amber-50 text-amber-700 font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    Menunggu
+                                </span>
+                            @elseif($withdrawal->status === 'approved')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                    Disetujui
+                                </span>
+                            @elseif($withdrawal->status === 'rejected')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-red-50 text-red-700 font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                    Ditolak
+                                </span>
+                            @elseif($withdrawal->status === 'completed')
+                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-blue-50 text-blue-700 font-label-sm text-xs font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    Selesai
+                                </span>
+                            @endif
+                            @if($withdrawal->admin_notes && $withdrawal->status !== 'pending')
+                                <p class="text-xs text-secondary mt-1" title="{{ $withdrawal->admin_notes }}">{{ Str::limit($withdrawal->admin_notes, 30) }}</p>
+                            @endif
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap text-right">
+                            @if($withdrawal->status === 'pending')
+                                <div class="inline-flex items-center justify-end gap-space-xs">
+                                    <form action="{{ route('admin.ci-work.finance.withdrawal.update', $withdrawal->id) }}" method="POST" class="inline-block">
+                                        @csrf
+                                        <input type="hidden" name="status" value="approved">
+                                        <button type="submit" class="p-1.5 rounded-lg text-secondary hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Setujui">
+                                            <span class="material-symbols-outlined text-[18px]">check</span>
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('admin.ci-work.finance.withdrawal.update', $withdrawal->id) }}" method="POST" class="inline-block">
+                                        @csrf
+                                        <input type="hidden" name="status" value="rejected">
+                                        <button type="submit" class="p-1.5 rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="Tolak">
+                                            <span class="material-symbols-outlined text-[18px]">close</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            @else
+                                <span class="text-xs text-secondary">-</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="py-space-2xl px-4 text-center">
+                            <div class="flex flex-col items-center gap-space-xs text-secondary">
+                                <span class="material-symbols-outlined text-[32px]">savings</span>
+                                <span class="font-body-sm text-body-sm">Belum ada permohonan penarikan dana</span>
                             </div>
-                            <div>
-                                <p class="font-medium text-gray-800">{{ $withdrawal->courier->user->name ?? '-' }}</p>
-                                <p class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($withdrawal->created_at)->format('d M Y, H:i') }}</p>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-5 py-4 font-semibold text-gray-800">Rp {{ number_format($withdrawal->amount, 0, ',', '.') }}</td>
-                    <td class="px-5 py-4 text-gray-600">
-                        <div>
-                            <p class="font-medium">{{ $withdrawal->bank_name }}</p>
-                            <p class="text-xs text-gray-400">{{ $withdrawal->account_number }} - {{ $withdrawal->account_name }}</p>
-                        </div>
-                    </td>
-                    <td class="px-5 py-4">
-                        @if($withdrawal->status === 'pending')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                                <span class="material-symbols-outlined text-sm">pending</span>
-                                Menunggu
-                            </span>
-                        @elseif($withdrawal->status === 'approved')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                <span class="material-symbols-outlined text-sm">check_circle</span>
-                                Disetujui
-                            </span>
-                        @elseif($withdrawal->status === 'rejected')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                <span class="material-symbols-outlined text-sm">cancel</span>
-                                Ditolak
-                            </span>
-                        @elseif($withdrawal->status === 'completed')
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                <span class="material-symbols-outlined text-sm">verified</span>
-                                Selesai
-                            </span>
-                        @endif
-                        @if($withdrawal->admin_notes && $withdrawal->status !== 'pending')
-                            <p class="text-xs text-gray-400 mt-1" title="{{ $withdrawal->admin_notes }}">{{ Str::limit($withdrawal->admin_notes, 30) }}</p>
-                        @endif
-                    </td>
-                    <td class="px-5 py-4">
-                        @if($withdrawal->status === 'pending')
-                            <div class="flex items-center gap-2">
-                                <form action="{{ route('admin.ci-work.finance.withdrawal.update', $withdrawal->id) }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="status" value="approved">
-                                    <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
-                                        <span class="material-symbols-outlined text-sm">check</span>
-                                        Setujui
-                                    </button>
-                                </form>
-                                <form action="{{ route('admin.ci-work.finance.withdrawal.update', $withdrawal->id) }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="status" value="rejected">
-                                    <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors">
-                                        <span class="material-symbols-outlined text-sm">close</span>
-                                        Tolak
-                                    </button>
-                                </form>
-                            </div>
-                        @else
-                            <span class="text-xs text-gray-400">-</span>
-                        @endif
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="5" class="px-5 py-12 text-center">
-                        <span class="material-symbols-outlined text-gray-300 text-5xl block mb-2">savings</span>
-                        <p class="text-gray-400">Belum ada permohonan penarikan dana</p>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
-    <div class="p-5 border-t border-gray-100">
-        {{ $withdrawals->links() }}
+        <div class="px-space-xl py-3.5 border-t border-surface-container-high">
+            {{ $withdrawals->links() }}
+        </div>
     </div>
 </div>
 
@@ -196,17 +224,17 @@
         const withdrawalsPanel = document.getElementById('panel-withdrawals');
 
         if (tab === 'earnings') {
-            earningsTab.classList.add('border-[#059669]', 'text-[#059669]');
-            earningsTab.classList.remove('border-transparent', 'text-gray-500');
-            withdrawalsTab.classList.remove('border-[#059669]', 'text-[#059669]');
-            withdrawalsTab.classList.add('border-transparent', 'text-gray-500');
+            earningsTab.classList.add('border-primary', 'text-primary');
+            earningsTab.classList.remove('border-transparent', 'text-secondary');
+            withdrawalsTab.classList.remove('border-primary', 'text-primary');
+            withdrawalsTab.classList.add('border-transparent', 'text-secondary');
             earningsPanel.classList.remove('hidden');
             withdrawalsPanel.classList.add('hidden');
         } else {
-            withdrawalsTab.classList.add('border-[#059669]', 'text-[#059669]');
-            withdrawalsTab.classList.remove('border-transparent', 'text-gray-500');
-            earningsTab.classList.remove('border-[#059669]', 'text-[#059669]');
-            earningsTab.classList.add('border-transparent', 'text-gray-500');
+            withdrawalsTab.classList.add('border-primary', 'text-primary');
+            withdrawalsTab.classList.remove('border-transparent', 'text-secondary');
+            earningsTab.classList.remove('border-primary', 'text-primary');
+            earningsTab.classList.add('border-transparent', 'text-secondary');
             withdrawalsPanel.classList.remove('hidden');
             earningsPanel.classList.add('hidden');
         }
