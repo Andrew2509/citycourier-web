@@ -3,52 +3,60 @@
 @section('title', 'Edit Permission')
 
 @section('content')
-<div class="space-y-6">
-    {{-- Header --}}
-    <div class="flex items-center gap-3">
-        <a href="{{ route('admin.permissions.index') }}" class="p-2 rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-all">
-            <span class="material-symbols-outlined">arrow_back</span>
+<div class="flex flex-col gap-space-xl">
+    {{-- Page Header --}}
+    <div class="flex items-center gap-space-md">
+        <a href="{{ route('admin.permissions.index') }}" class="w-9 h-9 rounded-lg bg-surface-container-lowest border border-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors shadow-sm">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
         </a>
-        <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
-                <span class="material-symbols-outlined text-[26px] text-primary">vpn_key</span>
+        <div class="flex items-center gap-space-md">
+            <div class="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[22px] text-primary">edit</span>
             </div>
             <div>
-                <h1 class="text-2xl font-bold text-slate-800">Edit Permission</h1>
-                <p class="text-sm text-slate-400 mt-0.5">Edit permission {{ $permission->name }}</p>
+                <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Edit Permission</h1>
+                <p class="font-body-sm text-body-sm text-secondary mt-space-2xs">Edit permission {{ $permission->name }}</p>
             </div>
         </div>
     </div>
 
     {{-- Form --}}
-    <div class="bg-white rounded-2xl border border-surface-border p-6 max-w-2xl">
-        <form action="{{ route('admin.permissions.update', $permission) }}" method="POST">
-            @csrf
-            @method('PUT')
+    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden max-w-2xl">
+        <div class="px-space-xl py-space-md border-b border-surface-container-high">
+            <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
+                <span class="material-symbols-outlined text-primary">key</span>
+                Form Edit Permission
+            </h2>
+        </div>
+        <div class="p-space-xl">
+            <form action="{{ route('admin.permissions.update', $permission) }}" method="POST">
+                @csrf
+                @method('PUT')
 
-            <div class="mb-6">
-                <label class="block text-sm font-semibold text-slate-700 mb-2">Nama Permission</label>
-                <input type="text" name="name"
-                       class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all @error('name') border-error @enderror"
-                       value="{{ old('name', $permission->name) }}"
-                       placeholder="Contoh: manage-users"
-                       required>
-                <p class="text-xs text-slate-400 mt-1.5">Gunakan format slug (huruf kecil, pisahkan spasi dengan tanda strip).</p>
-                @error('name')
-                    <p class="text-xs text-error mt-1">{{ $message }}</p>
-                @enderror
-            </div>
+                <div class="mb-space-lg">
+                    <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Nama Permission</label>
+                    <input type="text" name="name"
+                           class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('name') border-red-500 @enderror"
+                           value="{{ old('name', $permission->name) }}"
+                           placeholder="Contoh: manage-users"
+                           required>
+                    <p class="font-label-sm text-label-sm text-secondary mt-space-xs">Gunakan format slug (huruf kecil, pisahkan spasi dengan tanda strip).</p>
+                    @error('name')
+                        <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p>
+                    @enderror
+                </div>
 
-            <div class="flex items-center gap-3 pt-2 border-t border-slate-100">
-                <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-primary-light text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all">
-                    <span class="material-symbols-outlined text-[18px]">save</span>
-                    Simpan
-                </button>
-                <a href="{{ route('admin.permissions.index') }}" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
-                    Batal
-                </a>
-            </div>
-        </form>
+                <div class="flex items-center gap-space-md pt-space-md border-t border-surface-container-high">
+                    <button type="submit" class="inline-flex items-center gap-space-xs px-space-lg py-space-xs rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-bold shadow-sm transition-all">
+                        <span class="material-symbols-outlined text-[18px]">save</span>
+                        Simpan
+                    </button>
+                    <a href="{{ route('admin.permissions.index') }}" class="inline-flex items-center gap-space-xs px-space-lg py-space-xs rounded-lg bg-surface-container-high text-on-surface-variant hover:bg-surface-container font-label-md text-label-md font-semibold transition-all">
+                        Batal
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection

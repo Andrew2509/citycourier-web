@@ -4,125 +4,125 @@
 @section('page-title', 'Layanan Pembayaran')
 
 @section('content')
-<div class="flex flex-col gap-6">
-    {{-- Header --}}
-    <div>
-        <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center shadow-lg shadow-primary/20">
-                <span class="material-symbols-outlined text-white text-xl">credit_card</span>
-            </div>
-            Layanan Pembayaran
-        </h1>
-        <p class="text-sm text-slate-500 mt-1">Kelola konfigurasi API Komerce untuk Virtual Account dan QRIS</p>
+<div class="flex flex-col gap-space-xl">
+    {{-- Page Header --}}
+    <div class="flex items-center gap-space-md">
+        <div class="w-12 h-12 rounded-xl bg-primary-container text-on-primary flex items-center justify-center shadow-sm shrink-0">
+            <span class="material-symbols-outlined text-[22px]">credit_card</span>
+        </div>
+        <div>
+            <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">Layanan Pembayaran</h1>
+            <p class="font-body-sm text-body-sm text-secondary mt-space-2xs">Kelola konfigurasi API Komerce untuk Virtual Account dan QRIS</p>
+        </div>
     </div>
 
     {{-- Flash Messages --}}
     @if (session('success'))
-        <div class="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-3">
-            <span class="material-symbols-outlined text-green-600">check_circle</span>
-            <p class="text-sm text-green-700">{{ session('success') }}</p>
+        <div class="p-space-md rounded-lg bg-emerald-50 border border-emerald-200 flex items-center gap-space-sm">
+            <span class="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
+            <p class="font-body-sm text-body-sm text-emerald-700">{{ session('success') }}</p>
         </div>
     @endif
     @if (session('error'))
-        <div class="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3">
-            <span class="material-symbols-outlined text-red-600">error</span>
-            <p class="text-sm text-red-700">{{ session('error') }}</p>
+        <div class="p-space-md rounded-lg bg-red-50 border border-red-200 flex items-center gap-space-sm">
+            <span class="material-symbols-outlined text-red-600 text-[20px]">error</span>
+            <p class="font-body-sm text-body-sm text-red-700">{{ session('error') }}</p>
         </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-space-xl">
         {{-- Main Form --}}
-        <div class="lg:col-span-2 space-y-6">
+        <div class="lg:col-span-2 flex flex-col gap-space-xl">
             {{-- Config Card --}}
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+                <div class="px-space-xl py-space-md border-b border-surface-container-high">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
                         <span class="material-symbols-outlined text-primary">settings</span>
                         Konfigurasi API Komerce Payment
                     </h3>
                 </div>
-                <div class="p-5">
+                <div class="p-space-xl">
                     <form action="{{ route('admin.settings.payment.update') }}" method="POST" id="form-payment">
                         @csrf
 
                         {{-- API Key --}}
-                        <div class="mb-5">
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">
+                        <div class="mb-space-lg">
+                            <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">
                                 Komerce Payment API Key
-                                <span class="ml-2 px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">Wajib</span>
+                                <span class="ml-space-sm px-space-sm py-space-2xs bg-red-100 text-red-600 rounded-full text-xs font-bold">Wajib</span>
                             </label>
                             <div class="flex">
-                                <input type="password" name="komerce_payment_api_key" id="komerce_payment_api_key" value="{{ old('komerce_payment_api_key', $settings['api_key']) }}" class="flex-1 px-4 py-3 rounded-l-xl border border-slate-200 border-r-0 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Masukkan API Key dari dashboard Komerce" autocomplete="off">
-                                <button type="button" id="btn-toggle-key" class="px-4 rounded-r-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors">
-                                    <span class="material-symbols-outlined text-lg" id="eye-icon">visibility</span>
+                                <input type="password" name="komerce_payment_api_key" id="komerce_payment_api_key" value="{{ old('komerce_payment_api_key', $settings['api_key']) }}" class="flex-1 px-space-md py-space-xs rounded-l-lg border border-surface-container-high border-r-0 bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all" placeholder="Masukkan API Key dari dashboard Komerce" autocomplete="off">
+                                <button type="button" id="btn-toggle-key" class="px-space-md rounded-r-lg border border-surface-container-high bg-surface text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]" id="eye-icon">visibility</span>
                                 </button>
                             </div>
-                            @error('komerce_payment_api_key') <p class="text-sm text-red-500 mt-1">{{ $message }}</p> @enderror
-                            <p class="text-xs text-slate-400 mt-2">Dapatkan API Key dari <a href="https://collaborator.komerce.id" target="_blank" class="text-primary hover:underline">collaborator.komerce.id</a> → Integration → API Key</p>
+                            @error('komerce_payment_api_key') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
+                            <p class="font-label-sm text-label-sm text-secondary mt-space-sm">Dapatkan API Key dari <a href="https://collaborator.komerce.id" target="_blank" class="text-primary hover:underline">collaborator.komerce.id</a> → Integration → API Key</p>
                         </div>
 
                         {{-- Environment --}}
-                        <div class="mb-5">
-                            <label class="block text-sm font-semibold text-slate-700 mb-3">Environment (Mode)</label>
-                            <div class="grid grid-cols-2 gap-4">
+                        <div class="mb-space-lg">
+                            <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-md">Environment (Mode)</label>
+                            <div class="grid grid-cols-2 gap-space-md">
                                 <label class="cursor-pointer">
                                     <input type="radio" name="komerce_payment_env" value="sandbox" class="hidden peer" {{ old('komerce_payment_env', $settings['env']) === 'sandbox' ? 'checked' : '' }}>
-                                    <div class="p-4 rounded-xl border-2 border-slate-200 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                                        <span class="material-symbols-outlined text-2xl text-slate-400 peer-checked:text-primary">science</span>
-                                        <p class="text-sm font-semibold text-slate-700 mt-2">Sandbox</p>
-                                        <p class="text-xs text-slate-400">Testing & Development</p>
+                                    <div class="p-space-lg rounded-lg border-2 border-surface-container-high peer-checked:border-primary peer-checked:bg-primary-container/5 transition-all text-center">
+                                        <span class="material-symbols-outlined text-[24px] text-secondary peer-checked:text-primary">science</span>
+                                        <p class="font-body-sm text-body-sm text-on-surface font-semibold mt-space-sm">Sandbox</p>
+                                        <p class="font-label-sm text-label-sm text-secondary">Testing & Development</p>
                                     </div>
                                 </label>
                                 <label class="cursor-pointer">
                                     <input type="radio" name="komerce_payment_env" value="production" class="hidden peer" {{ old('komerce_payment_env', $settings['env']) === 'production' ? 'checked' : '' }}>
-                                    <div class="p-4 rounded-xl border-2 border-slate-200 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                                        <span class="material-symbols-outlined text-2xl text-slate-400 peer-checked:text-primary">rocket_launch</span>
-                                        <p class="text-sm font-semibold text-slate-700 mt-2">Production</p>
-                                        <p class="text-xs text-slate-400">Live & Nyata</p>
+                                    <div class="p-space-lg rounded-lg border-2 border-surface-container-high peer-checked:border-primary peer-checked:bg-primary-container/5 transition-all text-center">
+                                        <span class="material-symbols-outlined text-[24px] text-secondary peer-checked:text-primary">rocket_launch</span>
+                                        <p class="font-body-sm text-body-sm text-on-surface font-semibold mt-space-sm">Production</p>
+                                        <p class="font-label-sm text-label-sm text-secondary">Live & Nyata</p>
                                     </div>
                                 </label>
                             </div>
                         </div>
 
                         {{-- Callback Key --}}
-                        <div class="mb-5">
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">
+                        <div class="mb-space-lg">
+                            <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">
                                 Callback Key
-                                <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-semibold">Opsional</span>
+                                <span class="ml-space-sm px-space-sm py-space-2xs bg-emerald-100 text-emerald-600 rounded-full text-xs font-bold">Opsional</span>
                             </label>
-                            <input type="text" name="komerce_payment_callback_key" value="{{ old('komerce_payment_callback_key', $settings['callback_key']) }}" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Key untuk verifikasi webhook">
-                            @error('komerce_payment_callback_key') <p class="text-sm text-red-500 mt-1">{{ $message }}</p> @enderror
-                            <p class="text-xs text-slate-400 mt-2">Webhook: <code class="bg-slate-100 px-1.5 py-0.5 rounded">{{ config('app.url') }}/api/payment/callback</code></p>
+                            <input type="text" name="komerce_payment_callback_key" value="{{ old('komerce_payment_callback_key', $settings['callback_key']) }}" class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all" placeholder="Key untuk verifikasi webhook">
+                            @error('komerce_payment_callback_key') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
+                            <p class="font-label-sm text-label-sm text-secondary mt-space-sm">Webhook: <code class="bg-surface-container-high px-space-xs py-space-2xs rounded font-data-mono text-xs">{{ config('app.url') }}/api/payment/callback</code></p>
                         </div>
 
                         {{-- Actions --}}
-                        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                            <button type="button" id="btn-test" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium flex items-center gap-2">
-                                <span class="material-symbols-outlined text-sm">wifi_tethering</span>
+                        <div class="flex items-center justify-end gap-space-md pt-space-md border-t border-surface-container-high">
+                            <button type="button" id="btn-test" class="px-space-md py-space-xs rounded-lg border border-surface-container-high text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm font-medium flex items-center gap-space-xs">
+                                <span class="material-symbols-outlined text-[16px]">wifi_tethering</span>
                                 Cek Koneksi
                             </button>
-                            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/30 transition-all text-sm font-semibold flex items-center gap-2">
-                                <span class="material-symbols-outlined text-sm">save</span>
+                            <button type="submit" class="px-space-lg py-space-xs rounded-lg bg-primary-container hover:bg-primary text-on-primary transition-all text-sm font-semibold flex items-center gap-space-xs shadow-sm">
+                                <span class="material-symbols-outlined text-[16px]">save</span>
                                 Simpan Perubahan
                             </button>
                         </div>
                     </form>
 
                     {{-- Test Result --}}
-                    <div id="test-result" class="mt-5 hidden">
-                        <div id="test-alert" class="p-4 rounded-xl">
+                    <div id="test-result" class="mt-space-lg hidden">
+                        <div id="test-alert" class="p-space-md rounded-lg">
                             <p class="font-semibold text-sm" id="test-title"></p>
-                            <p class="text-sm mt-1" id="test-message"></p>
-                            <div id="test-data" class="mt-3 p-3 bg-white rounded-lg border border-slate-200 text-xs hidden"></div>
+                            <p class="text-sm mt-space-2xs" id="test-message"></p>
+                            <div id="test-data" class="mt-space-sm p-space-sm bg-surface-container-lowest rounded-lg border border-surface-container-high text-xs hidden"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
             {{-- Endpoint Table --}}
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+                <div class="px-space-xl py-space-md border-b border-surface-container-high">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
                         <span class="material-symbols-outlined text-primary">api</span>
                         Endpoint API yang Digunakan
                     </h3>
@@ -130,18 +130,18 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Method</th>
-                                <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Endpoint</th>
-                                <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Fungsi</th>
+                            <tr class="bg-surface border-b border-surface-container-high">
+                                <th class="px-space-xl py-space-md font-label-sm text-label-sm text-secondary uppercase">Method</th>
+                                <th class="px-space-xl py-space-md font-label-sm text-label-sm text-secondary uppercase">Endpoint</th>
+                                <th class="px-space-xl py-space-md font-label-sm text-label-sm text-secondary uppercase">Fungsi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 text-sm">
-                            <tr><td class="px-5 py-3"><span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">GET</span></td><td class="px-5 py-3 font-mono text-xs text-slate-600">/api/payment/methods</td><td class="px-5 py-3 text-slate-600">Ambil daftar VA & QRIS</td></tr>
-                            <tr><td class="px-5 py-3"><span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span></td><td class="px-5 py-3 font-mono text-xs text-slate-600">/api/payment/create</td><td class="px-5 py-3 text-slate-600">Buat transaksi pembayaran</td></tr>
-                            <tr><td class="px-5 py-3"><span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">GET</span></td><td class="px-5 py-3 font-mono text-xs text-slate-600">/api/payment/{id}/status</td><td class="px-5 py-3 text-slate-600">Cek status pembayaran</td></tr>
-                            <tr><td class="px-5 py-3"><span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span></td><td class="px-5 py-3 font-mono text-xs text-slate-600">/api/payment/{id}/cancel</td><td class="px-5 py-3 text-slate-600">Batalkan pembayaran</td></tr>
-                            <tr><td class="px-5 py-3"><span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span></td><td class="px-5 py-3 font-mono text-xs text-slate-600">/api/payment/callback</td><td class="px-5 py-3 text-slate-600">Webhook dari Komerce</td></tr>
+                        <tbody class="divide-y divide-surface-container-high/60 font-body-sm text-body-sm text-on-surface">
+                            <tr><td class="px-space-xl py-space-md"><span class="px-space-xs py-space-2xs bg-emerald-100 text-emerald-700 rounded text-xs font-bold">GET</span></td><td class="px-space-xl py-space-md font-data-mono text-xs text-on-surface-variant">/api/payment/methods</td><td class="px-space-xl py-space-md text-on-surface-variant">Ambil daftar VA & QRIS</td></tr>
+                            <tr><td class="px-space-xl py-space-md"><span class="px-space-xs py-space-2xs bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span></td><td class="px-space-xl py-space-md font-data-mono text-xs text-on-surface-variant">/api/payment/create</td><td class="px-space-xl py-space-md text-on-surface-variant">Buat transaksi pembayaran</td></tr>
+                            <tr><td class="px-space-xl py-space-md"><span class="px-space-xs py-space-2xs bg-emerald-100 text-emerald-700 rounded text-xs font-bold">GET</span></td><td class="px-space-xl py-space-md font-data-mono text-xs text-on-surface-variant">/api/payment/{id}/status</td><td class="px-space-xl py-space-md text-on-surface-variant">Cek status pembayaran</td></tr>
+                            <tr><td class="px-space-xl py-space-md"><span class="px-space-xs py-space-2xs bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span></td><td class="px-space-xl py-space-md font-data-mono text-xs text-on-surface-variant">/api/payment/{id}/cancel</td><td class="px-space-xl py-space-md text-on-surface-variant">Batalkan pembayaran</td></tr>
+                            <tr><td class="px-space-xl py-space-md"><span class="px-space-xs py-space-2xs bg-blue-100 text-blue-700 rounded text-xs font-bold">POST</span></td><td class="px-space-xl py-space-md font-data-mono text-xs text-on-surface-variant">/api/payment/callback</td><td class="px-space-xl py-space-md text-on-surface-variant">Webhook dari Komerce</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -149,45 +149,45 @@
         </div>
 
         {{-- Info Panel --}}
-        <div class="space-y-6">
+        <div class="flex flex-col gap-space-xl">
             {{-- Status --}}
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+                <div class="px-space-xl py-space-md border-b border-surface-container-high">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
                         <span class="material-symbols-outlined text-primary">analytics</span>
                         Status Konfigurasi
                     </h3>
                 </div>
-                <div class="p-5 space-y-3">
-                    <div class="flex items-center justify-between py-2 border-b border-slate-100">
-                        <span class="text-sm text-slate-500">API Key</span>
-                        <span class="text-sm font-semibold {{ $settings['api_key'] ? 'text-success' : 'text-danger' }}">{{ $settings['api_key'] ? '✓ Terkonfigurasi' : '✗ Belum diisi' }}</span>
+                <div class="p-space-xl flex flex-col gap-space-md">
+                    <div class="flex items-center justify-between py-space-sm border-b border-surface-container-high">
+                        <span class="font-body-sm text-body-sm text-secondary">API Key</span>
+                        <span class="font-body-sm text-body-sm font-semibold {{ $settings['api_key'] ? 'text-emerald-600' : 'text-red-600' }}">{{ $settings['api_key'] ? '✓ Terkonfigurasi' : '✗ Belum diisi' }}</span>
                     </div>
-                    <div class="flex items-center justify-between py-2 border-b border-slate-100">
-                        <span class="text-sm text-slate-500">Environment</span>
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold {{ ($settings['env'] ?? 'sandbox') === 'production' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">{{ strtoupper($settings['env'] ?? 'sandbox') }}</span>
+                    <div class="flex items-center justify-between py-space-sm border-b border-surface-container-high">
+                        <span class="font-body-sm text-body-sm text-secondary">Environment</span>
+                        <span class="px-space-xs py-space-2xs rounded text-xs font-bold {{ ($settings['env'] ?? 'sandbox') === 'production' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">{{ strtoupper($settings['env'] ?? 'sandbox') }}</span>
                     </div>
-                    <div class="flex items-center justify-between py-2">
-                        <span class="text-sm text-slate-500">Base URL</span>
-                        <span class="text-xs font-mono text-slate-600">{{ ($settings['env'] ?? 'sandbox') === 'production' ? 'api.komerce.id' : 'api-sandbox.komerce.id' }}</span>
+                    <div class="flex items-center justify-between py-space-sm">
+                        <span class="font-body-sm text-body-sm text-secondary">Base URL</span>
+                        <span class="font-data-mono text-xs text-on-surface-variant">{{ ($settings['env'] ?? 'sandbox') === 'production' ? 'api.komerce.id' : 'api-sandbox.komerce.id' }}</span>
                     </div>
                 </div>
             </div>
 
             {{-- Guide --}}
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+                <div class="px-space-xl py-space-md border-b border-surface-container-high">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
                         <span class="material-symbols-outlined text-primary">menu_book</span>
                         Cara Mendapatkan API Key
                     </h3>
                 </div>
-                <div class="p-5">
-                    <ol class="space-y-3 text-sm text-slate-600">
-                        <li class="flex items-start gap-2"><span class="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>Buka <a href="https://collaborator.komerce.id" target="_blank" class="text-primary hover:underline">collaborator.komerce.id</a></li>
-                        <li class="flex items-start gap-2"><span class="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>Login dengan akun RajaOngkir</li>
-                        <li class="flex items-start gap-2"><span class="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>Menu <strong>Integration → API Key</strong></li>
-                        <li class="flex items-start gap-2"><span class="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">4</span>Salin API Key dan tempel di form</li>
+                <div class="p-space-xl">
+                    <ol class="flex flex-col gap-space-md font-body-sm text-body-sm text-on-surface-variant">
+                        <li class="flex items-start gap-space-sm"><span class="w-5 h-5 rounded-full bg-primary-container text-on-primary text-xs flex items-center justify-center shrink-0 mt-0.5">1</span>Buka <a href="https://collaborator.komerce.id" target="_blank" class="text-primary hover:underline">collaborator.komerce.id</a></li>
+                        <li class="flex items-start gap-space-sm"><span class="w-5 h-5 rounded-full bg-primary-container text-on-primary text-xs flex items-center justify-center shrink-0 mt-0.5">2</span>Login dengan akun RajaOngkir</li>
+                        <li class="flex items-start gap-space-sm"><span class="w-5 h-5 rounded-full bg-primary-container text-on-primary text-xs flex items-center justify-center shrink-0 mt-0.5">3</span>Menu <strong>Integration → API Key</strong></li>
+                        <li class="flex items-start gap-space-sm"><span class="w-5 h-5 rounded-full bg-primary-container text-on-primary text-xs flex items-center justify-center shrink-0 mt-0.5">4</span>Salin API Key dan tempel di form</li>
                     </ol>
                 </div>
             </div>
@@ -228,14 +228,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const testResult = document.getElementById('test-result');
             const testAlert = document.getElementById('test-alert');
             testResult.classList.remove('hidden');
-            testAlert.className = 'p-4 rounded-xl ' + (data.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200');
+            testAlert.className = 'p-space-md rounded-lg ' + (data.success ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200');
             document.getElementById('test-title').innerText = data.success ? '✓ Koneksi Berhasil' : '✗ Koneksi Gagal';
-            document.getElementById('test-title').className = 'font-semibold text-sm ' + (data.success ? 'text-green-700' : 'text-red-700');
+            document.getElementById('test-title').className = 'font-semibold text-sm ' + (data.success ? 'text-emerald-700' : 'text-red-700');
             document.getElementById('test-message').innerText = data.message;
         })
         .catch(() => {
             document.getElementById('test-result').classList.remove('hidden');
-            document.getElementById('test-alert').className = 'p-4 rounded-xl bg-red-50 border border-red-200';
+            document.getElementById('test-alert').className = 'p-space-md rounded-lg bg-red-50 border border-red-200';
             document.getElementById('test-title').innerText = 'Error';
             document.getElementById('test-message').innerText = 'Terjadi kesalahan jaringan.';
         })
