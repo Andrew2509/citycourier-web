@@ -400,11 +400,11 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Public Key (RSA) <span class="text-xs font-normal text-slate-400">(opsional)</span></label>
-                                    <textarea name="dana_public_key" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
+                                    <textarea name="dana_public_key" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none" placeholder="-----BEGIN PUBLIC KEY-----">{{ old('dana_public_key', $dana['public_key']) }}</textarea>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Private Key (RSA PKCS#8)</label>
-                                    <textarea name="dana_private_key" rows="4" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+                                    <textarea name="dana_private_key" rows="4" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none" placeholder="-----BEGIN PRIVATE KEY-----">{{ old('dana_private_key', $dana['private_key']) }}</textarea>
                                     <p class="text-xs text-slate-400 mt-1">Digunakan untuk menandatangani permintaan ke DANA.</p>
                                 </div>
                             </div>
