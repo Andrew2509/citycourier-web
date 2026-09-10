@@ -134,6 +134,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ─── Wallet & DANA Routes ───────────────────────────────────
     Route::get('/courier/wallet', [WalletController::class, 'index']);
     Route::get('/courier/wallet/transactions', [WalletController::class, 'transactions']);
+    Route::get('/courier/wallet/fee-config', [WalletController::class, 'feeConfig']);
 
     Route::get('/courier/dana/status', [DanaController::class, 'status']);
     Route::post('/courier/dana/connect', [DanaController::class, 'connect']);
@@ -144,6 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/courier/dana/binding', [DanaController::class, 'binding']);
     Route::post('/courier/dana/unbind', [DanaController::class, 'disconnect']);
     Route::post('/courier/dana/rebind', [DanaController::class, 'reconnect']);
+    Route::post('/courier/dana/verify', [DanaController::class, 'verify']);
 
     // Alias endpoint panduan integrasi DANA.
     Route::post('/dana/bind/init', [DanaController::class, 'initBinding']);

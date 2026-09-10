@@ -3290,6 +3290,145 @@ paths:
               schema:
                 type: object
 
+  /courier/wallet/fee-config:
+    get:
+      tags: [Wallet]
+      summary: Konfigurasi biaya penarikan
+      description: >
+        Mengambil konfigurasi biaya (fee) penarikan dana dari konfigurasi server.
+        PRD §15: Biaya tidak di-hardcode di client.
+      responses:
+        '200':
+          description: Konfigurasi biaya penarikan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          fee_type:
+                            type: string
+                            enum: [flat, percentage]
+                            example: flat
+                          fee_amount:
+                            type: number
+                            description: Biaya flat (IDR) atau persentase (0-100)
+                            example: 2500
+                          min_withdrawal:
+                            type: number
+                            example: 10000
+                          max_withdrawal:
+                            type: number
+                            nullable: true
+                            example: 5000000
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/dana/verify:
+    post:
+      tags: [DANA]
+      summary: Verifikasi akun DANA via nomor HP (Account Inquiry)
+      description: >
+        PRD §8-10: Verifikasi akun DANA menggunakan nomor telepon.
+        Untuk saat ini menggunakan mock verification — di production akan memanggil
+        DANA Account Inquiry API. Langsung menyimpan koneksi DANA jika berhasil.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_number]
+              properties:
+                phone_number:
+                  type: string
+                  minLength: 10
+                  maxLength: 15
+                  example: '081234567890'
+      responses:
+        '200':
+          description: Akun DANA terverifikasi
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: connected
+                          masked_phone:
+                            type: string
+                            example: 0812**7890
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /courier/change-password:
+    post:
+      tags: [Courier]
+      summary: Ganti password kurir
+      description: >
+        Memperbarui password kurir setelah memverifikasi password saat ini.
+        Minimal 8 karakter. Field `new_password_confirmation` harus sama dengan `new_password`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password, new_password_confirmation]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                  description: Password saat ini
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: Password baru (min 8 karakter)
+                new_password_confirmation:
+                  type: string
+                  format: password
+                  description: Konfirmasi password baru (harus sama)
+      responses:
+        '200':
+          description: Password berhasil diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          description: Password saat ini salah / validasi gagal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
   securitySchemes:
     bearerAuth:
