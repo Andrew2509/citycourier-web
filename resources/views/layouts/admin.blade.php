@@ -62,7 +62,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
     </style>
 </head>
-<body class="bg-surface text-slate-800">
+<body class="bg-surface text-slate-800 h-screen overflow-hidden">
     <!-- Mobile Overlay -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
 
@@ -175,7 +175,7 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="lg:ml-64">
+    <div class="lg:ml-64 h-full flex flex-col">
         <!-- Header -->
         <header class="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-white/80 backdrop-blur-xl border-b border-surface-border z-40 flex items-center justify-between px-4 lg:px-6">
             <div class="flex items-center gap-4 flex-1 lg:w-96">
@@ -216,7 +216,7 @@
         </header>
 
         <!-- Content -->
-        <main class="relative pt-16 bg-surface min-h-screen p-4 lg:p-6">
+        <main class="relative pt-16 bg-surface flex-1 overflow-y-auto p-4 lg:p-6 pb-20">
             <!-- Mobile Download Banner -->
             <a href="{{ route('download.app') }}" class="sm:hidden flex items-center gap-3 mb-4 p-4 bg-gradient-to-r from-primary to-primary-light rounded-2xl text-white shadow-lg shadow-primary/30">
                 <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
