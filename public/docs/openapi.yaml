@@ -41,14 +41,20 @@ info:
     name: MIT
 
 servers:
-  - url: http://127.0.0.1:8000/api
-    description: Local development
+  - url: /api
+    description: Server Aktif (Auto-detect)
   - url: https://citycourier.pabm.space/api
     description: Production
+  - url: http://127.0.0.1:8000/api
+    description: Local development
+
+security:
+  - bearerAuth: []
 
 tags:
   - name: Authentication
-    description: Login, registrasi kurir, OTP, dan login sosial (Google / Phone Firebase).
+    description: >
+      Autentikasi Aplikasi Mobile: Login menggunakan Nomor Telepon & OTP WhatsApp (`POST /request-otp` & `POST /verify-otp`), Google Sign-In (`POST /auth/google`), atau Firebase Phone (`POST /auth/phone`).
   - name: Profile
     description: Profil user terautentikasi.
   - name: Courier
@@ -76,18 +82,17 @@ tags:
   - name: System
     description: Utilitas — upload APK, test WhatsApp.
 
-security:
-  - bearerAuth: []
-
 paths:
   # ═══════════════════════════ AUTHENTICATION ═══════════════════════════
   /login:
     post:
       tags: [Authentication]
-      summary: Login email & password
+      summary: Login email & password (Legacy / Deprecated)
+      deprecated: true
       description: >
-        Login kurir/user. Token Sanctum dikembalikan pada `data.token`.
-        Gagal `403` bila akun kurir belum diverifikasi admin.
+        [LEGACY / DEPRECATED] Endpoint lama login email & password.
+        Aplikasi mobile City Courier saat ini menggunakan alur login Nomor HP + OTP WhatsApp (`/request-otp` & `/verify-otp`)
+        serta Google Sign-In (`/auth/google`). Endpoint ini tetap dipertahankan untuk backward-compatibility.
       security: []
       requestBody:
         required: true
