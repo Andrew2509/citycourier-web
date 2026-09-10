@@ -61,7 +61,10 @@ class WhatsAppManager implements WhatsAppServiceInterface
         }
 
         // Try Fonnte first (newer integration)
-        $fonnteToken = config('services.fonnte.token') ?? env('FONNTE_TOKEN');
+        $fonnteToken = is_string(\App\Models\Setting::get('fonnte_token', null))
+            && \App\Models\Setting::get('fonnte_token', null) !== ''
+            ? \App\Models\Setting::get('fonnte_token', null)
+            : (config('services.fonnte.token') ?? env('FONNTE_TOKEN'));
         if ($fonnteToken) {
             Log::info('WhatsApp: Using Fonnte provider (token configured)');
             return 'fonnte';

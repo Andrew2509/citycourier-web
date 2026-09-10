@@ -7,7 +7,7 @@
     <!-- Header -->
     <div>
         <h1 class="text-2xl font-bold text-slate-800">Provider WhatsApp</h1>
-        <p class="text-sm text-slate-400 mt-1">Kelola konfigurasi API OrbitWA</p>
+        <p class="text-sm text-slate-400 mt-1">Kelola konfigurasi API Fonnte</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -16,7 +16,7 @@
             <div class="p-5 border-b border-slate-100">
                 <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary">chat</span>
-                    Konfigurasi API OrbitWA
+                    Konfigurasi API Fonnte
                 </h4>
             </div>
             <div class="p-5">
@@ -24,39 +24,27 @@
                     @csrf
 
                     <div class="mb-5">
-                        <label for="orbitwa_api_key" class="block text-sm font-semibold text-slate-700 mb-2">OrbitWA API Key</label>
-                        <input type="text" name="orbitwa_api_key" id="orbitwa_api_key"
-                               class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all @error('orbitwa_api_key') border-error @enderror"
-                               value="{{ old('orbitwa_api_key', $settings['api_key']) }}"
-                               placeholder="Masukkan API Key dari dashboard OrbitWA">
-                        @error('orbitwa_api_key')
+                        <label for="fonnte_token" class="block text-sm font-semibold text-slate-700 mb-2">Fonnte API Token</label>
+                        <input type="text" name="fonnte_token" id="fonnte_token"
+                               class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all @error('fonnte_token') border-error @enderror"
+                               value="{{ old('fonnte_token', $settings['token']) }}"
+                               placeholder="Masukkan token dari dashboard Fonnte">
+                        @error('fonnte_token')
                             <p class="text-xs text-error mt-1">{{ $message }}</p>
                         @enderror
-                        <p class="text-xs text-slate-400 mt-1.5">Anda bisa mendapatkan API Key dari menu <strong>Profile</strong> atau <strong>API</strong> di dashboard OrbitWA.</p>
+                        <p class="text-xs text-slate-400 mt-1.5">Anda bisa mendapatkan token dari menu <strong>API Access</strong> di dashboard <a href="https://fonnte.com" target="_blank" class="text-primary hover:underline">fonnte.com</a>.</p>
                     </div>
 
                     <div class="mb-5">
-                        <label for="orbitwa_device_id" class="block text-sm font-semibold text-slate-700 mb-2">ID Device</label>
-                        <input type="text" name="orbitwa_device_id" id="orbitwa_device_id"
-                               class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all @error('orbitwa_device_id') border-error @enderror"
-                               value="{{ old('orbitwa_device_id', $settings['device_id']) }}"
-                               placeholder="Contoh: 1">
-                        @error('orbitwa_device_id')
+                        <label for="fonnte_send_number" class="block text-sm font-semibold text-slate-700 mb-2">Nomor Pengirim (opsional)</label>
+                        <input type="text" name="fonnte_send_number" id="fonnte_send_number"
+                               class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all @error('fonnte_send_number') border-error @enderror"
+                               value="{{ old('fonnte_send_number', $settings['send_number']) }}"
+                               placeholder="Contoh: 08123456789">
+                        @error('fonnte_send_number')
                             <p class="text-xs text-error mt-1">{{ $message }}</p>
                         @enderror
-                        <p class="text-xs text-slate-400 mt-1.5">Masukkan ID Device yang terdaftar di dashboard OrbitWA Anda.</p>
-                    </div>
-
-                    <div class="mb-5">
-                        <label for="orbitwa_base_url" class="block text-sm font-semibold text-slate-700 mb-2">Base URL API</label>
-                        <input type="url" name="orbitwa_base_url" id="orbitwa_base_url"
-                               class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all @error('orbitwa_base_url') border-error @enderror"
-                               value="{{ old('orbitwa_base_url', $settings['base_url']) }}"
-                               placeholder="Contoh: https://orbitwaapi.site/api/v1">
-                        @error('orbitwa_base_url')
-                            <p class="text-xs text-error mt-1">{{ $message }}</p>
-                        @enderror
-                        <p class="text-xs text-slate-400 mt-1.5">Secara default adalah <code class="bg-slate-100 px-1.5 py-0.5 rounded text-primary">https://orbitwaapi.site/api/v1</code>.</p>
+                        <p class="text-xs text-slate-400 mt-1.5">Nomor WA yang terdaftar di Fonnte. Kosongkan untuk memakai default.</p>
                     </div>
 
                     <div class="flex justify-end">
@@ -85,7 +73,7 @@
                     <ul class="text-xs text-slate-500 space-y-1.5">
                         <li class="flex items-start gap-2">
                             <span class="material-symbols-outlined text-[12px] text-success mt-0.5">check</span>
-                            Pastikan status perangkat WhatsApp Anda <strong>Connected</strong> di dashboard OrbitWA.
+                            Pastikan status akun Fonnte Anda <strong>aktif</strong> dan memiliki saldo cukup.
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="material-symbols-outlined text-[12px] text-success mt-0.5">check</span>
@@ -102,7 +90,7 @@
                     Test Koneksi
                 </h4>
                 <p class="text-xs text-slate-500 mb-4">
-                    Kirim pesan percobaan untuk memastikan API Key sudah benar.
+                    Kirim pesan percobaan untuk memastikan token sudah benar.
                 </p>
                 <form action="{{ route('admin.settings.whatsapp.test') }}" method="POST">
                     @csrf

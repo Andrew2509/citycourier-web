@@ -251,7 +251,6 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengirim OTP via WhatsApp. ' . ($waResult['message'] ?? ''),
-                'otp' => $otp // Still return OTP for debugging if needed, remove in strict production
             ], 500);
         }
 
@@ -307,6 +306,9 @@ class AuthController extends Controller
             ]
         );
 
+        // Load courier profile if exists
+        $user->load('courier');
+
         $token = $user->createToken('flutter-app')->plainTextToken;
 
         return response()->json([
@@ -322,6 +324,7 @@ class AuthController extends Controller
                     'photo_url' => $user->photo_url,
                     'role' => $user->role,
                 ],
+                'courier' => $user->courier,
                 'token' => $token,
             ],
         ]);

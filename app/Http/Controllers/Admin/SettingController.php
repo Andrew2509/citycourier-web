@@ -14,9 +14,9 @@ class SettingController extends Controller
     public function providers()
     {
         $whatsapp = [
-            'api_key'   => Setting::get('orbitwa_api_key', env('ORBITWA_API_KEY')),
-            'base_url'  => Setting::get('orbitwa_base_url', env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1')),
-            'device_id' => Setting::get('orbitwa_device_id', env('ORBITWA_DEVICE_ID')),
+            'token'       => Setting::get('fonnte_token', env('FONNTE_TOKEN')),
+            'send_number' => Setting::get('fonnte_send_number', env('FONNTE_SEND_NUMBER', '')),
+            'provider'    => Setting::get('whatsapp_provider', env('WHATSAPP_PROVIDER', 'fonnte')),
         ];
 
         $rajaongkir = [
@@ -59,9 +59,9 @@ class SettingController extends Controller
     public function whatsapp()
     {
         $settings = [
-            'api_key' => Setting::get('orbitwa_api_key', env('ORBITWA_API_KEY')),
-            'base_url' => Setting::get('orbitwa_base_url', env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1')),
-            'device_id' => Setting::get('orbitwa_device_id', env('ORBITWA_DEVICE_ID')),
+            'token'       => Setting::get('fonnte_token', env('FONNTE_TOKEN')),
+            'send_number' => Setting::get('fonnte_send_number', env('FONNTE_SEND_NUMBER', '')),
+            'provider'    => Setting::get('whatsapp_provider', env('WHATSAPP_PROVIDER', 'fonnte')),
         ];
 
         return view('admin.settings.whatsapp', compact('settings'));
@@ -73,14 +73,14 @@ class SettingController extends Controller
     public function updateWhatsapp(Request $request)
     {
         $request->validate([
-            'orbitwa_api_key' => 'required|string',
-            'orbitwa_base_url' => 'required|url',
-            'orbitwa_device_id' => 'nullable|string',
+            'fonnte_token'       => 'required|string',
+            'fonnte_send_number' => 'nullable|string',
+            'whatsapp_provider'  => 'nullable|in:fonnte,orbitwa,mock,auto',
         ]);
 
-        Setting::set('orbitwa_api_key', $request->orbitwa_api_key, 'whatsapp');
-        Setting::set('orbitwa_base_url', $request->orbitwa_base_url, 'whatsapp');
-        Setting::set('orbitwa_device_id', $request->orbitwa_device_id, 'whatsapp');
+        Setting::set('fonnte_token', $request->fonnte_token, 'whatsapp');
+        Setting::set('fonnte_send_number', $request->fonnte_send_number ?? '', 'whatsapp');
+        Setting::set('whatsapp_provider', $request->whatsapp_provider ?? 'fonnte', 'whatsapp');
 
         return redirect()->back()->with('success', 'Pengaturan WhatsApp berhasil diperbarui.');
     }
@@ -88,13 +88,13 @@ class SettingController extends Controller
     /**
      * Test the WhatsApp connection.
      */
-    public function testWhatsapp(Request $request, \App\Services\WhatsAppService $wa)
+    public function testWhatsapp(Request $request, \App\Services\WhatsAppManager $whatsapp)
     {
         $request->validate([
             'phone' => 'required|string',
         ]);
 
-        $response = $wa->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi OrbitWA sudah benar.');
+        $response = $whatsapp->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
 
         if ($response['success']) {
             return redirect()->back()->with('success', 'Pesan test berhasil dikirim ke ' . $request->phone);

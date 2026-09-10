@@ -20,7 +20,7 @@
     <div class="flex flex-col gap-4" id="provider-list">
 
         {{-- ═══════════════════════════════════════════════════════ --}}
-        {{-- 1. WhatsApp (OrbitWA) --}}
+        {{-- 1. WhatsApp (Fonnte) --}}
         {{-- ═══════════════════════════════════════════════════════ --}}
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden provider-card" data-provider="whatsapp">
             <button onclick="toggleProvider('whatsapp')" class="w-full flex items-center gap-4 p-5 text-left hover:bg-slate-50/50 transition-colors">
@@ -29,9 +29,9 @@
                 </div>
                 <div class="flex-1 min-w-0">
                     <h3 class="text-base font-bold text-slate-800">Provider WhatsApp</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">OrbitWA &mdash; OTP & notifikasi via WhatsApp</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Fonnte &mdash; OTP & notifikasi via WhatsApp</p>
                 </div>
-                @if(!empty($whatsapp['api_key']))
+                @if(!empty($whatsapp['token']))
                     <span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold flex-shrink-0">Aktif</span>
                 @else
                     <span class="px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold flex-shrink-0">Belum Diisi</span>
@@ -45,16 +45,20 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div class="md:col-span-2 space-y-4">
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">OrbitWA API Key</label>
-                                    <input type="text" name="orbitwa_api_key" value="{{ old('orbitwa_api_key', $whatsapp['api_key']) }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Masukkan API Key dari dashboard OrbitWA">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Fonnte API Token</label>
+                                    <input type="text" name="fonnte_token" value="{{ old('fonnte_token', $whatsapp['token']) }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Masukkan token dari dashboard Fonnte">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">ID Device</label>
-                                    <input type="text" name="orbitwa_device_id" value="{{ old('orbitwa_device_id', $whatsapp['device_id']) }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Contoh: 1">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Nomor Pengirim <span class="text-xs font-normal text-slate-400">(opsional)</span></label>
+                                    <input type="text" name="fonnte_send_number" value="{{ old('fonnte_send_number', $whatsapp['send_number']) }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Contoh: 08123456789">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Base URL API</label>
-                                    <input type="url" name="orbitwa_base_url" value="{{ old('orbitwa_base_url', $whatsapp['base_url']) }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="https://orbitwaapi.site/api/v1">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Provider</label>
+                                    <select name="whatsapp_provider" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                                        <option value="fonnte" {{ ($whatsapp['provider'] ?? 'fonnte') == 'fonnte' ? 'selected' : '' }}>Fonnte (Recommended)</option>
+                                        <option value="orbitwa" {{ ($whatsapp['provider'] ?? 'fonnte') == 'orbitwa' ? 'selected' : '' }}>OrbitWA (Legacy)</option>
+                                        <option value="auto" {{ ($whatsapp['provider'] ?? 'fonnte') == 'auto' ? 'selected' : '' }}>Auto (Otomatis)</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="space-y-4">
@@ -72,6 +76,7 @@
                                 </div>
                                 <div class="p-3 bg-slate-50 rounded-xl text-xs text-slate-500">
                                     <p>Digunakan untuk mengirim OTP via WhatsApp saat Login/Registrasi.</p>
+                                    <p class="mt-1">Daftar: <a href="https://fonnte.com" target="_blank" class="text-primary hover:underline">fonnte.com</a></p>
                                 </div>
                             </div>
                         </div>

@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class FonnteWhatsAppService
+class FonnteWhatsAppService implements WhatsAppServiceInterface
 {
     protected $token;
     protected $baseUrl;
@@ -13,9 +13,9 @@ class FonnteWhatsAppService
 
     public function __construct()
     {
-        $this->token = config('services.fonnte.token') ?? env('FONNTE_TOKEN');
+        $this->token = \App\Models\Setting::get('fonnte_token', config('services.fonnte.token') ?? env('FONNTE_TOKEN'));
         $this->baseUrl = config('services.fonnte.base_url') ?? env('FONNTE_BASE_URL', 'https://api.fonnte.com');
-        $this->sendNumber = config('services.fonnte.send_number') ?? env('FONNTE_SEND_NUMBER', '');
+        $this->sendNumber = \App\Models\Setting::get('fonnte_send_number', config('services.fonnte.send_number') ?? env('FONNTE_SEND_NUMBER', ''));
     }
 
     /**
