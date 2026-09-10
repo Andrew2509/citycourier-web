@@ -2697,6 +2697,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  /courier/dana/unbind:
+    post:
+      tags: [DANA]
+      summary: Putuskan akun DANA (alias unbind)
+      description: >
+        Alias dari `POST /courier/dana/disconnect`. Revoke binding DANA.
+        Gagal bila masih ada penarikan berstatus `reserved`/`processing`.
+      responses:
+        '200':
+          description: DANA diputuskan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Belum terhubung / masih ada penarikan diproses
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+                  - type: object
+                    properties:
+                      error_code:
+                        type: string
+                        example: DANA_NOT_CONNECTED
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
   /courier/dana/rebind:
     post:
       tags: [DANA]
@@ -3310,20 +3350,22 @@ paths:
                       data:
                         type: object
                         properties:
-                          fee_type:
-                            type: string
-                            enum: [flat, percentage]
-                            example: flat
-                          fee_amount:
+                          admin_fee:
                             type: number
-                            description: Biaya flat (IDR) atau persentase (0-100)
+                            description: Biaya admin penarikan (IDR, flat)
                             example: 2500
-                          min_withdrawal:
+                          minimum:
                             type: number
+                            description: Penarikan minimum (IDR)
                             example: 10000
-                          max_withdrawal:
+                          maximum:
                             type: number
+                            description: Penarikan maksimum (IDR)
                             nullable: true
+                            example: 5000000
+                          daily_limit:
+                            type: number
+                            description: Batas penarikan harian (IDR)
                             example: 5000000
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -3371,7 +3413,7 @@ paths:
                           status:
                             type: string
                             example: connected
-                          masked_phone:
+                          masked_account:
                             type: string
                             example: 0812**7890
         '401':
@@ -3385,51 +3427,7 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
-  /courier/change-password:
-    post:
-      tags: [Courier]
-      summary: Ganti password kurir
-      description: >
-        Memperbarui password kurir setelah memverifikasi password saat ini.
-        Minimal 8 karakter. Field `new_password_confirmation` harus sama dengan `new_password`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [current_password, new_password, new_password_confirmation]
-              properties:
-                current_password:
-                  type: string
-                  format: password
-                  description: Password saat ini
-                new_password:
-                  type: string
-                  format: password
-                  minLength: 8
-                  description: Password baru (min 8 karakter)
-                new_password_confirmation:
-                  type: string
-                  format: password
-                  description: Konfirmasi password baru (harus sama)
-      responses:
-        '200':
-          description: Password berhasil diperbarui
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '422':
-          description: Password saat ini salah / validasi gagal
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-
-components:
+  components:
   securitySchemes:
     bearerAuth:
       type: http
