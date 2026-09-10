@@ -157,6 +157,11 @@
                 <span class="material-symbols-outlined text-[20px]">extension</span>
                 <span class="text-sm">Provider & Integrasi</span>
             </a>
+            <a href="{{ route('api.documentation') }}" target="_blank" rel="noopener" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all {{ request()->routeIs('api.documentation') ? 'bg-primary text-white font-semibold shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800' }}">
+                <span class="material-symbols-outlined text-[20px]">api</span>
+                <span class="text-sm">Dokumentasi API</span>
+                <span class="material-symbols-outlined text-[14px] ml-auto text-slate-400">open_in_new</span>
+            </a>
 
             <!-- Download -->
             @php
