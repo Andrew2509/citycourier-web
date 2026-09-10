@@ -11,11 +11,11 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
     protected $baseUrl;
     protected $sendNumber;
 
-    public function __construct()
+    public function __construct(?string $token = null, ?string $sendNumber = null)
     {
-        $this->token = \App\Models\Setting::get('fonnte_token', config('services.fonnte.token') ?? env('FONNTE_TOKEN'));
+        $this->token = $token ?? \App\Models\Setting::get('fonnte_token', config('services.fonnte.token') ?? env('FONNTE_TOKEN'));
         $this->baseUrl = config('services.fonnte.base_url') ?? env('FONNTE_BASE_URL', 'https://api.fonnte.com');
-        $this->sendNumber = \App\Models\Setting::get('fonnte_send_number', config('services.fonnte.send_number') ?? env('FONNTE_SEND_NUMBER', ''));
+        $this->sendNumber = $sendNumber ?? \App\Models\Setting::get('fonnte_send_number', config('services.fonnte.send_number') ?? env('FONNTE_SEND_NUMBER', ''));
     }
 
     /**
@@ -54,12 +54,12 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
             Log::error('Fonnte Token is not set.');
             return [
                 'success' => false,
-                'message' => 'Fonnte API Token is not configured.',
+                'message' => 'Fonnte API Token belum diatur.',
             ];
         }
 
         $payload = [
-            'to' => $to,
+            'target'  => $to,
             'message' => $message,
         ];
 
@@ -69,7 +69,10 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
         }
 
         try {
-            $response = Http::withToken($this->token)
+            // Fonnte expects 'Authorization: TOKEN' (WITHOUT 'Bearer')
+            $response = Http::withHeaders([
+                'Authorization' => trim($this->token),
+            ])
                 ->timeout(15)
                 ->post($this->baseUrl . '/send', $payload);
 
@@ -77,7 +80,7 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
                 $data = $response->json();
                 
                 // Fonnte response structure check
-                if (isset($data['status']) && $data['status'] === 'success') {
+                if (isset($data['status']) && ($data['status'] === true || $data['status'] === 'success' || $data['status'] === 1)) {
                     return [
                         'success' => true,
                         'data' => $data,

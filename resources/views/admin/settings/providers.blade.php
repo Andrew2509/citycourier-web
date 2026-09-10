@@ -569,6 +569,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            const tokenInput = document.querySelector('input[name="fonnte_token"]');
+            const token = tokenInput ? tokenInput.value.trim() : '';
+            const sendNumberInput = document.querySelector('input[name="fonnte_send_number"]');
+            const sendNumber = sendNumberInput ? sendNumberInput.value.trim() : '';
+
             btnTestWa.disabled = true;
             btnTestWa.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> Mengirim...';
 
@@ -579,7 +584,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ phone: phone })
+                body: JSON.stringify({ 
+                    phone: phone,
+                    token: token,
+                    fonnte_send_number: sendNumber
+                })
             })
             .then(r => r.json())
             .then(data => {

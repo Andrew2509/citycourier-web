@@ -91,11 +91,21 @@ class SettingController extends Controller
     public function testWhatsapp(Request $request, \App\Services\WhatsAppManager $whatsapp)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone'              => 'required|string',
+            'token'              => 'nullable|string',
+            'fonnte_send_number' => 'nullable|string',
         ]);
 
         try {
-            $response = $whatsapp->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
+            $testToken = $request->input('token');
+            $sendNumber = $request->input('fonnte_send_number');
+
+            if (!empty($testToken)) {
+                $service = new \App\Services\FonnteWhatsAppService(trim($testToken), $sendNumber);
+                $response = $service->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
+            } else {
+                $response = $whatsapp->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
+            }
 
             $isSuccess = $response['success'] ?? false;
             $msg = $isSuccess 
