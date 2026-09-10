@@ -82,7 +82,7 @@ class SettingController extends Controller
         Setting::set('fonnte_send_number', $request->fonnte_send_number ?? '', 'whatsapp');
         Setting::set('whatsapp_provider', $request->whatsapp_provider ?? 'fonnte', 'whatsapp');
 
-        return redirect()->back()->with('success', 'Pengaturan WhatsApp berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Pengaturan WhatsApp berhasil diperbarui.')->with('provider', 'whatsapp');
     }
 
     /**
@@ -94,13 +94,36 @@ class SettingController extends Controller
             'phone' => 'required|string',
         ]);
 
-        $response = $whatsapp->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
+        try {
+            $response = $whatsapp->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
 
-        if ($response['success']) {
-            return redirect()->back()->with('success', 'Pesan test berhasil dikirim ke ' . $request->phone);
+            $isSuccess = $response['success'] ?? false;
+            $msg = $isSuccess 
+                ? ('Pesan test berhasil dikirim ke ' . $request->phone)
+                : ('Gagal mengirim pesan: ' . ($response['message'] ?? 'Kesalahan tidak diketahui'));
+
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => $isSuccess,
+                    'message' => $msg,
+                ], $isSuccess ? 200 : 400);
+            }
+
+            if ($isSuccess) {
+                return redirect()->back()->with('success', $msg)->with('provider', 'whatsapp');
+            }
+
+            return redirect()->back()->with('error', $msg)->with('provider', 'whatsapp');
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Exception: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Exception: ' . $e->getMessage())->with('provider', 'whatsapp');
         }
-
-        return redirect()->back()->with('error', 'Gagal mengirim pesan: ' . ($response['message'] ?? 'Kesalahan tidak diketahui'));
     }
 
     /**

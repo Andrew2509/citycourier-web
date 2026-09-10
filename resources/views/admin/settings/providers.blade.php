@@ -46,7 +46,10 @@
                             <div class="md:col-span-2 space-y-4">
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Fonnte API Token</label>
-                                    <input type="text" name="fonnte_token" value="{{ old('fonnte_token', $whatsapp['token']) }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Masukkan token dari dashboard Fonnte">
+                                    <input type="text" name="fonnte_token" value="{{ old('fonnte_token', $whatsapp['token']) }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all @error('fonnte_token') border-red-500 @enderror" placeholder="Masukkan token dari dashboard Fonnte" required>
+                                    @error('fonnte_token')
+                                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Nomor Pengirim <span class="text-xs font-normal text-slate-400">(opsional)</span></label>
@@ -62,17 +65,20 @@
                                 </div>
                             </div>
                             <div class="space-y-4">
-                                <div class="bg-primary/5 rounded-xl border border-dashed border-primary/30 p-4">
+                                <div class="bg-primary/5 rounded-xl border border-dashed border-primary/30 p-4" id="whatsapp-test-area">
                                     <h4 class="text-xs font-bold text-primary mb-2 flex items-center gap-1.5">
                                         <span class="material-symbols-outlined text-sm">wifi_tethering</span> Test Koneksi
                                     </h4>
-                                    <form action="{{ route('admin.settings.whatsapp.test') }}" method="POST">
-                                        @csrf
-                                        <input type="text" name="phone" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Nomor HP (0812...)" required>
-                                        <button type="submit" class="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-white text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-1.5">
-                                            <span class="material-symbols-outlined text-sm">send</span> Kirim Test
-                                        </button>
-                                    </form>
+                                    <input type="text" id="wa_test_phone" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-800 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Nomor HP (0812...)">
+                                    <button type="button" id="btn-test-whatsapp" class="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-white text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm">send</span> Kirim Test
+                                    </button>
+                                    <div id="whatsapp-test-result" class="mt-3 hidden">
+                                        <div id="whatsapp-test-alert" class="p-3 rounded-xl">
+                                            <p class="font-semibold text-xs" id="whatsapp-test-title"></p>
+                                            <p class="text-xs mt-1" id="whatsapp-test-message"></p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="p-3 bg-slate-50 rounded-xl text-xs text-slate-500">
                                     <p>Digunakan untuk mengirim OTP via WhatsApp saat Login/Registrasi.</p>
@@ -550,6 +556,85 @@ document.addEventListener('DOMContentLoaded', function() {
     setupTest('btn-test-payment', '{{ route("admin.settings.payment.test") }}', 'payment-test-result', 'payment-test-alert', 'payment-test-title', 'payment-test-message');
     setupTest('btn-test-map', '{{ route("admin.settings.map.test") }}', 'map-test-result', 'map-test-alert', 'map-test-title', 'map-test-message');
     setupTest('btn-test-dana', '{{ route("admin.settings.dana.test") }}', 'dana-test-result', 'dana-test-alert', 'dana-test-title', 'dana-test-message');
+
+    // ─── WhatsApp Test Handler ──────────────────────────────
+    const btnTestWa = document.getElementById('btn-test-whatsapp');
+    if (btnTestWa) {
+        btnTestWa.addEventListener('click', function() {
+            const phoneInput = document.getElementById('wa_test_phone');
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+            if (!phone) {
+                alert('Silakan masukkan nomor HP terlebih dahulu.');
+                if (phoneInput) phoneInput.focus();
+                return;
+            }
+
+            btnTestWa.disabled = true;
+            btnTestWa.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> Mengirim...';
+
+            fetch('{{ route("admin.settings.whatsapp.test") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ phone: phone })
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('whatsapp-test-result').classList.remove('hidden');
+                const alertEl = document.getElementById('whatsapp-test-alert');
+                alertEl.className = 'p-3 rounded-xl ' + (data.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200');
+                const titleEl = document.getElementById('whatsapp-test-title');
+                titleEl.innerText = data.success ? '✓ Berhasil' : '✗ Gagal';
+                titleEl.className = 'font-semibold text-xs ' + (data.success ? 'text-green-700' : 'text-red-700');
+                document.getElementById('whatsapp-test-message').innerText = data.message;
+            })
+            .catch(() => {
+                document.getElementById('whatsapp-test-result').classList.remove('hidden');
+                document.getElementById('whatsapp-test-alert').className = 'p-3 rounded-xl bg-red-50 border border-red-200';
+                document.getElementById('whatsapp-test-title').innerText = 'Error';
+                document.getElementById('whatsapp-test-message').innerText = 'Terjadi kesalahan jaringan.';
+            })
+            .finally(() => {
+                btnTestWa.disabled = false;
+                btnTestWa.innerHTML = '<span class="material-symbols-outlined text-sm">send</span> Kirim Test';
+            });
+        });
+    }
+
+    // ─── Auto Open Accordion State ──────────────────────────
+    const hash = window.location.hash ? window.location.hash.replace('#', '') : null;
+    @if(session('provider'))
+        toggleProvider('{{ session("provider") }}');
+    @elseif($errors->has('fonnte_token') || $errors->has('fonnte_send_number') || $errors->has('whatsapp_provider'))
+        toggleProvider('whatsapp');
+    @elseif($errors->has('rajaongkir_api_key') || $errors->has('rajaongkir_account_type') || $errors->has('rajaongkir_provider'))
+        toggleProvider('rajaongkir');
+    @elseif($errors->has('komerce_payment_api_key') || $errors->has('komerce_payment_env'))
+        toggleProvider('payment');
+    @elseif($errors->has('map_provider') || $errors->has('map_base_url'))
+        toggleProvider('map');
+    @elseif($errors->has('dana_mode') || $errors->has('dana_merchant_id'))
+        toggleProvider('dana');
+    @elseif(session('success') && str_contains(strtolower(session('success')), 'whatsapp'))
+        toggleProvider('whatsapp');
+    @elseif(session('success') && str_contains(strtolower(session('success')), 'rajaongkir'))
+        toggleProvider('rajaongkir');
+    @elseif(session('success') && (str_contains(strtolower(session('success')), 'pembayaran') || str_contains(strtolower(session('success')), 'payment')))
+        toggleProvider('payment');
+    @elseif(session('success') && (str_contains(strtolower(session('success')), 'peta') || str_contains(strtolower(session('success')), 'map')))
+        toggleProvider('map');
+    @elseif(session('success') && str_contains(strtolower(session('success')), 'dana'))
+        toggleProvider('dana');
+    @else
+        if (hash && document.getElementById('body-' + hash)) {
+            toggleProvider(hash);
+        } else {
+            toggleProvider('whatsapp');
+        }
+    @endif
 });
 </script>
 @endpush
