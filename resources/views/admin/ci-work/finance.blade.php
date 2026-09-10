@@ -2,12 +2,13 @@
 
 @section('content')
 <div class="flex flex-col w-full gap-space-xl">
-    <!-- Header Section -->
+    <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
         <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
-                <span class="material-symbols-outlined text-[16px]">payments</span>
-                <span>Keuangan & Setoran</span>
+            <div class="flex items-center gap-space-xs text-secondary font-label-md">
+                <span>City-Work Operasional</span>
+                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                <span class="text-on-surface font-semibold">Keuangan & Setoran Kurir</span>
             </div>
             <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Keuangan & Setoran Kurir</h1>
             <p class="font-body-md text-body-md text-secondary">Rekapitulasi penghasilan dan penarikan dana kurir</p>
@@ -167,9 +168,6 @@
                                     <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                                     Selesai
                                 </span>
-                            @endif
-                            @if($withdrawal->admin_notes && $withdrawal->status !== 'pending')
-                                <p class="text-xs text-secondary mt-1" title="{{ $withdrawal->admin_notes }}">{{ Str::limit($withdrawal->admin_notes, 30) }}</p>
                             @endif
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap text-right">

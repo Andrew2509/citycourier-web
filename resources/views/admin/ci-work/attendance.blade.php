@@ -2,12 +2,13 @@
 
 @section('content')
 <div class="flex flex-col w-full gap-space-xl">
-    <!-- Header Section -->
+    <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
         <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
-                <span class="material-symbols-outlined text-[16px]">badge</span>
-                <span>Presensi Kurir</span>
+            <div class="flex items-center gap-space-xs text-secondary font-label-md">
+                <span>City-Work Operasional</span>
+                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                <span class="text-on-surface font-semibold">Presensi & Pelacakan Kurir</span>
             </div>
             <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Presensi & Pelacakan Kurir</h1>
             <p class="font-body-md text-body-md text-secondary">Pemantauan real-time kehadiran dan lokasi kurir armada</p>
@@ -19,57 +20,59 @@
     </div>
 
     <!-- Stat Cards -->
+    @php
+        $activeCount = $couriers->filter(fn($c) => $c->is_active)->count();
+        $verifiedCount = $couriers->filter(fn($c) => $c->is_verified)->count();
+        $withLocationCount = $couriers->filter(fn($c) => $c->latitude && $c->longitude)->count();
+    @endphp
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Kurir Aktif</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $couriers->filter(fn($c) => $c->is_active)->count() }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">wifi</span>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Kurir Online</span>
+                <div class="flex items-baseline gap-space-xs">
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $activeCount }}</span>
+                    <span class="font-label-sm text-label-sm text-secondary">Aktif Bertugas</span>
                 </div>
             </div>
-            <p class="font-label-sm text-label-sm text-secondary mt-space-xs">Sedang siaga di lapangan</p>
+            <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-[22px]">wifi</span>
+            </div>
         </div>
-
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Terverifikasi</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $couriers->filter(fn($c) => $c->is_verified)->count() }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">verified_user</span>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Terverifikasi</span>
+                <div class="flex items-baseline gap-space-xs">
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $verifiedCount }}</span>
+                    <span class="font-label-sm text-label-sm text-secondary">Lolos Dokumen</span>
                 </div>
             </div>
-            <p class="font-label-sm text-label-sm text-secondary mt-space-xs">Lolos verifikasi dokumen</p>
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                <span class="material-symbols-outlined text-[22px]">verified_user</span>
+            </div>
         </div>
-
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Dengan Lokasi</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $couriers->filter(fn($c) => $c->latitude && $c->longitude)->count() }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">location_on</span>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Dengan Lokasi</span>
+                <div class="flex items-baseline gap-space-xs">
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $withLocationCount }}</span>
+                    <span class="font-label-sm text-label-sm text-secondary">GPS Aktif</span>
                 </div>
             </div>
-            <p class="font-label-sm text-label-sm text-secondary mt-space-xs">GPS aktif di peta</p>
+            <div class="w-10 h-10 rounded-xl bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
+                <span class="material-symbols-outlined text-[22px]">location_on</span>
+            </div>
         </div>
-
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Total Kurir</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $couriers->total() }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">group</span>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Total Kurir</span>
+                <div class="flex items-baseline gap-space-xs">
+                    <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $couriers->total() }}</span>
+                    <span class="font-label-sm text-label-sm text-secondary">Terdaftar</span>
                 </div>
             </div>
-            <p class="font-label-sm text-label-sm text-secondary mt-space-xs">Seluruh armada terdaftar</p>
+            <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary">
+                <span class="material-symbols-outlined text-[22px]">group</span>
+            </div>
         </div>
     </div>
 
@@ -102,7 +105,7 @@
                 </div>
                 <div class="flex flex-col">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Daftar Kehadiran</h2>
-                    <span class="font-label-sm text-label-sm text-secondary">{{ $couriers->total() }} kurir</span>
+                    <span class="font-label-sm text-label-sm text-secondary">{{ $couriers->total() }} kurir terdaftar</span>
                 </div>
             </div>
         </div>
@@ -185,9 +188,7 @@
     </div>
 </div>
 
-@push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-@endpush
 
 @push('scripts')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

@@ -2,75 +2,71 @@
 
 @section('content')
 <div class="flex flex-col w-full gap-space-xl">
-    <!-- Header Section -->
+    <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
         <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
-                <span class="material-symbols-outlined text-[16px]">assignment</span>
-                <span>City-Work Dispatch</span>
+            <div class="flex items-center gap-space-xs text-secondary font-label-md">
+                <span>City-Work Operasional</span>
+                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                <span class="text-on-surface font-semibold">Manajemen Tugas Pengiriman</span>
             </div>
             <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Manajemen Tugas Pengiriman</h1>
-            <p class="font-body-md text-body-md text-secondary">Pantau dan kelola seluruh tugas pengiriman kurir</p>
+            <p class="font-body-md text-body-md text-secondary">Pantau dan kelola seluruh tugas pengiriman kurir secara real-time</p>
         </div>
-        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full font-label-sm text-label-sm bg-red-50 text-red-700 font-bold animate-pulse">
+        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full font-label-sm text-label-sm bg-red-50 text-red-700 font-bold animate-pulse self-start">
             <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
             LIVE DISPATCH
         </span>
     </div>
 
     <!-- Stat Cards -->
+    @php
+        $activeTasks = $tasks->filter(fn($t) => in_array($t->status, ['assigned','picking_up','delivering']))->count();
+        $completedTasks = $tasks->filter(fn($t) => $t->status === 'delivered')->count();
+        $pendingPhoto = $tasks->filter(fn($t) => !$t->delivery_photo && $t->status === 'delivering')->count();
+    @endphp
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Sedang Dikerjakan</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $tasks->filter(fn($t) => in_array($t->status, ['assigned','picking_up','delivering']))->count() }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">pending_actions</span>
-                </div>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Sedang Dikerjakan</span>
+                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $activeTasks }}</span>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
+                <span class="material-symbols-outlined text-[22px]">pending_actions</span>
             </div>
         </div>
-
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Selesai Hari Ini</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $tasks->filter(fn($t) => $t->status === 'delivered')->count() }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">check_circle</span>
-                </div>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Selesai Hari Ini</span>
+                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $completedTasks }}</span>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                <span class="material-symbols-outlined text-[22px]">check_circle</span>
             </div>
         </div>
-
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Menunggu Bukti Foto</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $tasks->filter(fn($t) => !$t->delivery_photo && $t->status === 'delivering')->count() }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">add_a_photo</span>
-                </div>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Menunggu Bukti Foto</span>
+                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $pendingPhoto }}</span>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                <span class="material-symbols-outlined text-[22px]">add_a_photo</span>
             </div>
         </div>
-
-        <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-bold">Rata-rata Durasi</span>
-                    <span class="font-display-lg text-display-lg text-on-surface font-bold mt-space-xs">{{ $avgDuration }} mnt</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">timer</span>
-                </div>
+        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+            <div class="flex flex-col gap-space-2xs">
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Rata-rata Durasi</span>
+                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $avgDuration }} mnt</span>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-[22px]">timer</span>
             </div>
         </div>
     </div>
 
-    <!-- Filter Tabs -->
+    <!-- Task Table -->
     <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <!-- Filter Tabs -->
         <div class="flex border-b border-surface-container-high overflow-x-auto">
             <a href="{{ request()->fullUrlWithQuery(['status' => '']) }}" class="px-space-lg py-3.5 text-sm font-medium transition-colors whitespace-nowrap {{ !request('status') ? 'text-primary border-b-2 border-primary font-bold' : 'text-secondary hover:text-on-surface' }}">
                 Semua Tugas
@@ -80,9 +76,6 @@
             </a>
             <a href="{{ request()->fullUrlWithQuery(['status' => 'completed']) }}" class="px-space-lg py-3.5 text-sm font-medium transition-colors whitespace-nowrap {{ request('status') === 'completed' ? 'text-primary border-b-2 border-primary font-bold' : 'text-secondary hover:text-on-surface' }}">
                 Selesai
-            </a>
-            <a href="{{ request()->fullUrlWithQuery(['status' => 'issue']) }}" class="px-space-lg py-3.5 text-sm font-medium transition-colors whitespace-nowrap {{ request('status') === 'issue' ? 'text-primary border-b-2 border-primary font-bold' : 'text-secondary hover:text-on-surface' }}">
-                Kendala Lapangan
             </a>
         </div>
 
@@ -94,7 +87,7 @@
                         <th class="py-3.5 px-4 font-bold whitespace-nowrap">Kurir</th>
                         <th class="py-3.5 px-4 font-bold whitespace-nowrap">Lokasi Jemput</th>
                         <th class="py-3.5 px-4 font-bold whitespace-nowrap">Lokasi Tujuan</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status Tugas</th>
+                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
                         <th class="py-3.5 px-4 font-bold whitespace-nowrap">Bukti Foto</th>
                         <th class="py-3.5 px-4 font-bold text-right whitespace-nowrap">Aksi</th>
                     </tr>
@@ -120,31 +113,24 @@
                             <span class="text-xs text-secondary line-clamp-1" title="{{ $task->shipment->receiver_address ?? '' }}">{{ $task->shipment->receiver_address ?? '-' }}</span>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
-                            @if($task->status === 'assigned')
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-secondary-container text-on-secondary-fixed-variant font-label-sm text-xs font-bold">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                    Ditugaskan
-                                </span>
-                            @elseif($task->status === 'picking_up')
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-blue-50 text-blue-700 font-label-sm text-xs font-bold">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                    Jemput Barang
-                                </span>
-                            @elseif($task->status === 'delivering')
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-amber-50 text-amber-700 font-label-sm text-xs font-bold">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                    Dalam Perjalanan
-                                </span>
-                            @elseif($task->status === 'delivered')
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-xs font-bold">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                    Selesai
-                                </span>
-                            @else
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-surface-container text-secondary font-label-sm text-xs font-bold">
-                                    {{ $task->status }}
-                                </span>
-                            @endif
+                            @php
+                                $taskStyles = [
+                                    'assigned' => 'bg-secondary-container text-on-secondary-fixed-variant',
+                                    'picking_up' => 'bg-blue-50 text-blue-700',
+                                    'delivering' => 'bg-amber-50 text-amber-700',
+                                    'delivered' => 'bg-emerald-50 text-emerald-700',
+                                ];
+                                $taskLabels = [
+                                    'assigned' => 'Ditugaskan',
+                                    'picking_up' => 'Jemput Barang',
+                                    'delivering' => 'Dalam Perjalanan',
+                                    'delivered' => 'Selesai',
+                                ];
+                            @endphp
+                            <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full {{ $taskStyles[$task->status] ?? 'bg-surface-container text-secondary' }} font-label-sm text-xs font-bold">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $task->status === 'delivering' ? 'bg-amber-500' : ($task->status === 'delivered' ? 'bg-emerald-600' : 'bg-current') }}"></span>
+                                {{ $taskLabels[$task->status] ?? $task->status }}
+                            </span>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
                             @if($task->delivery_photo)
