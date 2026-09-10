@@ -9,6 +9,51 @@ use Illuminate\Http\Request;
 class SettingController extends Controller
 {
     /**
+     * Show the unified Providers page (all provider cards in one view).
+     */
+    public function providers()
+    {
+        $whatsapp = [
+            'api_key'   => Setting::get('orbitwa_api_key', env('ORBITWA_API_KEY')),
+            'base_url'  => Setting::get('orbitwa_base_url', env('ORBITWA_BASE_URL', 'https://orbitwaapi.site/api/v1')),
+            'device_id' => Setting::get('orbitwa_device_id', env('ORBITWA_DEVICE_ID')),
+        ];
+
+        $rajaongkir = [
+            'api_key'      => Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY')),
+            'account_type' => Setting::get('rajaongkir_account_type', env('RAJAONGKIR_ACCOUNT_TYPE', 'starter')),
+            'provider'     => Setting::get('rajaongkir_provider', 'rajaongkir'),
+        ];
+        $rajaongkir_sandbox = Setting::get('rajaongkir_sandbox');
+
+        $payment = [
+            'api_key'      => Setting::get('komerce_payment_api_key', env('KOMERCE_PAYMENT_API_KEY', '')),
+            'env'          => Setting::get('komerce_payment_env', env('KOMERCE_PAYMENT_ENV', 'sandbox')),
+            'callback_key' => Setting::get('komerce_payment_callback_key', env('KOMERCE_PAYMENT_CALLBACK_KEY', '')),
+        ];
+
+        $mapProvider = Setting::get('map_provider', env('MAP_PROVIDER', 'osrm'));
+        $map = [
+            'provider' => $mapProvider,
+            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', \App\Services\MapService::defaultBaseUrl($mapProvider))),
+            'api_key'  => Setting::get('map_api_key', env('MAP_API_KEY', '')),
+        ];
+
+        $dana = [
+            'mode'          => Setting::get('dana_mode', 'mock'),
+            'api_base_url'  => Setting::get('dana_api_base_url', 'https://api.sandbox.dana.id'),
+            'client_id'     => Setting::get('dana_client_id', ''),
+            'client_secret' => Setting::get('dana_client_secret', ''),
+            'merchant_id'   => Setting::get('dana_merchant_id', ''),
+            'public_key'    => Setting::get('dana_public_key', ''),
+            'private_key'   => Setting::get('dana_private_key', ''),
+            'callback_url'  => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
+        ];
+
+        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana'));
+    }
+
+    /**
      * Show the WhatsApp settings form.
      */
     public function whatsapp()

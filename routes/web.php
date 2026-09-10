@@ -79,7 +79,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/shipments/{shipment}/logs', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.logs.store');
         Route::delete('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroy'])->name('shipments.destroy');
 
-        // Settings / Provider
+        // Settings / Provider (Unified)
+        Route::get('/providers', [\App\Http\Controllers\Admin\SettingController::class, 'providers'])->name('settings.providers');
+
+        // Legacy individual settings (kept for direct access / bookmarks)
         Route::get('/settings/whatsapp', [\App\Http\Controllers\Admin\SettingController::class, 'whatsapp'])->name('settings.whatsapp');
         Route::post('/settings/whatsapp', [\App\Http\Controllers\Admin\SettingController::class, 'updateWhatsapp'])->name('settings.whatsapp.update');
         Route::post('/settings/whatsapp/test', [\App\Http\Controllers\Admin\SettingController::class, 'testWhatsapp'])->name('settings.whatsapp.test');

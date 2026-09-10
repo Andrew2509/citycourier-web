@@ -153,25 +153,9 @@
                 <span class="material-symbols-outlined text-[20px]">vpn_key</span>
                 <span class="text-sm">Manajemen Permission</span>
             </a>
-            <a href="{{ route('admin.settings.whatsapp') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all {{ request()->routeIs('admin.settings.whatsapp*') ? 'bg-primary text-white font-semibold shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800' }}">
-                <span class="material-symbols-outlined text-[20px]">chat</span>
-                <span class="text-sm">Provider WhatsApp</span>
-            </a>
-            <a href="{{ route('admin.settings.rajaongkir') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all {{ request()->routeIs('admin.settings.rajaongkir*') ? 'bg-primary text-white font-semibold shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800' }}">
-                <span class="material-symbols-outlined text-[20px]">api</span>
-                <span class="text-sm">Provider RajaOngkir</span>
-            </a>
-            <a href="{{ route('admin.settings.payment') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all {{ request()->routeIs('admin.settings.payment*') ? 'bg-primary text-white font-semibold shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800' }}">
-                <span class="material-symbols-outlined text-[20px]">credit_card</span>
-                <span class="text-sm">Layanan Pembayaran</span>
-            </a>
-            <a href="{{ route('admin.settings.map') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all {{ request()->routeIs('admin.settings.map*') ? 'bg-primary text-white font-semibold shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-80' }}">
-                <span class="material-symbols-outlined text-[20px]">map</span>
-                <span class="text-sm">Konfigurasi Peta</span>
-            </a>
-            <a href="{{ route('admin.settings.dana') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all {{ request()->routeIs('admin.settings.dana*') ? 'bg-primary text-white font-semibold shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800' }}">
-                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-                <span class="text-sm">Provider DANA</span>
+            <a href="{{ route('admin.settings.providers') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-all {{ request()->routeIs('admin.settings.providers*') || request()->routeIs('admin.settings.whatsapp*') || request()->routeIs('admin.settings.rajaongkir*') || request()->routeIs('admin.settings.payment*') || request()->routeIs('admin.settings.map*') || request()->routeIs('admin.settings.dana*') ? 'bg-primary text-white font-semibold shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800' }}">
+                <span class="material-symbols-outlined text-[20px]">extension</span>
+                <span class="text-sm">Provider & Integrasi</span>
             </a>
 
             <!-- Download -->
