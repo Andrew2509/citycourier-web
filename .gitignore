@@ -20,3 +20,7 @@ yarn-error.log
 # APK files (too large for GitHub)
 *.apk
 /public/downloads/*.apk
+
+# Stitch UI Redesign source (local reference only)
+/stitch_ui_redesign_project/
+/stitch_ui_redesign_project.zip

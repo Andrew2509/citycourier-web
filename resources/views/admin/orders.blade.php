@@ -4,149 +4,224 @@
 
 @section('content')
 <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800">Manajemen Pesanan</h1>
-            <p class="text-sm text-slate-400 mt-1">Pantau dan kelola seluruh pesanan pengiriman</p>
+
+    {{-- Header --}}
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-emerald-600 text-[22px]">inventory_2</span>
+            </div>
+            <div>
+                <h1 class="text-xl font-semibold text-gray-900">Manajemen Pesanan</h1>
+                <p class="text-sm text-gray-500">Kelola dan pantau seluruh pesanan masuk</p>
+            </div>
         </div>
     </div>
 
-    <!-- Filter Tabs -->
-    <div class="bg-white rounded-2xl p-4 border border-surface-border">
-        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <!-- Status Tabs -->
-            <div class="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 w-full lg:w-auto">
-                <a href="{{ route('admin.orders') }}" class="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all {{ !request('status') ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-700' }}">
-                    Semua ({{ $statusCounts['all'] }})
-                </a>
-                <a href="{{ route('admin.orders', ['status' => 'pending']) }}" class="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all {{ request('status') === 'pending' ? 'bg-warning text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-700' }}">
-                    Pending ({{ $statusCounts['pending'] }})
-                </a>
-                <a href="{{ route('admin.orders', ['status' => 'assigned']) }}" class="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all {{ request('status') === 'assigned' ? 'bg-info text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-700' }}">
-                    Assigned ({{ $statusCounts['assigned'] }})
-                </a>
-                <a href="{{ route('admin.orders', ['status' => 'picking_up']) }}" class="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all {{ request('status') === 'picking_up' ? 'bg-purple-500 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-700' }}>
-                    Picking Up ({{ $statusCounts['picking_up'] }})
-                </a>
-                <a href="{{ route('admin.orders', ['status' => 'delivering']) }}" class="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all {{ request('status') === 'delivering' ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-700' }}>
-                    Delivering ({{ $statusCounts['delivering'] }})
-                </a>
-                <a href="{{ route('admin.orders', ['status' => 'delivered']) }}" class="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all {{ request('status') === 'delivered' ? 'bg-success text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-700' }}">
-                    Selesai ({{ $statusCounts['delivered'] }})
-                </a>
-                <a href="{{ route('admin.orders', ['status' => 'cancelled']) }}" class="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all {{ request('status') === 'cancelled' ? 'bg-error text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-700' }}">
-                    Batal ({{ $statusCounts['cancelled'] }})
-                </a>
-            </div>
+    {{-- Status Filter Pills --}}
+    <div class="flex flex-wrap gap-2">
+        @php
+            $filters = [
+                'all'        => ['label' => 'Semua',              'icon' => 'apps'],
+                'pending'    => ['label' => 'Pending',            'icon' => 'hourglass_empty'],
+                'assigned'   => ['label' => 'Assigned',           'icon' => 'person_add'],
+                'picking_up' => ['label' => 'Dalam Pengiriman',  'icon' => 'local_shipping'],
+                'delivered'  => ['label' => 'Selesai',            'icon' => 'check_circle'],
+                'cancelled'  => ['label' => 'Dibatalkan',         'icon' => 'cancel'],
+            ];
+            $activeStatus = request('status', 'all');
+        @endphp
 
-            <!-- Search -->
-            <form method="GET" action="{{ route('admin.orders') }}" class="flex items-center gap-2">
-                @if(request('status'))
-                    <input type="hidden" name="status" value="{{ request('status') }}">
-                @endif
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 material-symbols-outlined text-slate-400 text-[18px]">search</span>
-                    <input type="text" name="search" class="bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary w-64" placeholder="Cari order, nama, telepon..." value="{{ request('search') }}">
-                </div>
-            </form>
-        </div>
+        @foreach($filters as $key => $filter)
+            @php
+                $count = $statusCounts[$key] ?? 0;
+                $isActive = $activeStatus === $key;
+            @endphp
+            <a href="{{ route('admin.orders', $key === 'all' ? [] : ['status' => $key]) }}"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                      {{ $isActive
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
+                          : 'bg-white text-gray-600 border border-gray-200 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50' }}">
+                <span class="material-symbols-outlined text-[18px]">{{ $filter['icon'] }}</span>
+                {{ $filter['label'] }}
+                <span class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-xs font-semibold
+                             {{ $isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500' }}">
+                    {{ $count }}
+                </span>
+            </a>
+        @endforeach
     </div>
 
-    <!-- Orders Table -->
-    <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
-        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary text-xl">shopping_bag</span>
-                </div>
-                <div>
-                    <h4 class="text-base font-bold text-slate-800">Daftar Pesanan</h4>
-                    <p class="text-xs text-slate-400">Total: {{ $orders->total() }} pesanan</p>
-                </div>
-            </div>
-        </div>
+    {{-- Search --}}
+    <div class="relative">
+        <form method="GET" action="{{ route('admin.orders') }}">
+            @if($activeStatus !== 'all')
+                <input type="hidden" name="status" value="{{ $activeStatus }}">
+            @endif
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
+            <input type="text"
+                   name="search"
+                   value="{{ request('search') }}"
+                   placeholder="Cari berdasarkan nama pelanggan atau nomor resi..."
+                   class="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400
+                          focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all duration-200" />
+        </form>
+    </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="border-b border-slate-100 bg-slate-50">
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Nomor Resi</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Customer</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Pengirim</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Penerima</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Harga</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tanggal</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-right">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse($orders as $order)
-                    <tr class="hover:bg-slate-50 transition-all cursor-pointer" onclick="window.location='{{ route('admin.orders.detail', $order) }}'">
-                        <td class="py-3.5 px-5">
-                            <span class="font-mono text-sm font-bold text-primary">{{ $order->tracking_number ?? $order->order_number }}</span>
-                        </td>
-                        <td class="py-3.5 px-5">
-                            <div class="text-sm font-semibold text-slate-700">{{ $order->customer_name }}</div>
-                            <div class="text-xs text-slate-400">{{ $order->customer_phone }}</div>
-                        </td>
-                        <td class="py-3.5 px-5 text-xs text-slate-500 max-w-[200px] truncate">{{ $order->pickup_address }}</td>
-                        <td class="py-3.5 px-5 text-xs text-slate-500 max-w-[200px] truncate">{{ $order->delivery_address }}</td>
-                        <td class="py-3.5 px-5 text-sm font-semibold text-success">Rp {{ number_format($order->price, 0, ',', '.') }}</td>
-                        <td class="py-3.5 px-5">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold
-                                {{ match($order->status) {
-                                    'delivered' => 'bg-success/10 text-success',
-                                    'delivering', 'in_transit' => 'bg-primary/10 text-primary',
-                                    'assigned' => 'bg-info/10 text-info',
-                                    'picking_up' => 'bg-purple-100 text-purple-600',
-                                    'pending' => 'bg-warning/10 text-warning',
-                                    'cancelled' => 'bg-error/10 text-error',
-                                    default => 'bg-slate-100 text-slate-500'
-                                } }}">
-                                {{ ucfirst(str_replace('_', ' ', $order->status)) }}
-                            </span>
-                        </td>
-                        <td class="py-3.5 px-5 text-xs text-slate-400 whitespace-nowrap">
-                            {{ $order->created_at->format('d M Y') }}
-                            <br>
-                            <span class="text-[10px]">{{ $order->created_at->format('H:i') }}</span>
-                        </td>
-                        <td class="py-3.5 px-5 text-right">
-                            <form action="{{ route('admin.orders.destroy', $order) }}" method="POST" class="inline" onclick="event.stopPropagation();" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pesanan {{ addslashes($order->order_number) }}?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="p-2 rounded-lg text-slate-400 hover:text-error hover:bg-error/5 transition-all" title="Hapus">
-                                    <span class="material-symbols-outlined text-[18px]">delete</span>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="8" class="py-12 text-center">
-                            <div class="flex flex-col items-center">
-                                <span class="material-symbols-outlined text-5xl text-slate-300 mb-3">inventory_2</span>
-                                <h3 class="text-base font-semibold text-slate-600">Belum ada pesanan</h3>
-                                <p class="text-sm text-slate-400 mt-1">Pesanan baru dari aplikasi akan muncul di sini.</p>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+    {{-- Table --}}
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        @if($orders->count() > 0)
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50/80 border-b border-gray-200">
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">No. Resi</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pelanggan</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Alamat</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kurir</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Harga</th>
+                            <th class="text-center px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach($orders as $order)
+                            @php
+                                $statusStyles = match($order->status) {
+                                    'pending'    => 'bg-amber-50 text-amber-700 border-amber-200',
+                                    'assigned'   => 'bg-blue-50 text-blue-700 border-blue-200',
+                                    'picking_up' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                    'delivering' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                    'delivered'  => 'bg-green-50 text-green-700 border-green-200',
+                                    'cancelled'  => 'bg-red-50 text-red-700 border-red-200',
+                                    default      => 'bg-gray-50 text-gray-700 border-gray-200',
+                                };
 
-        <!-- Pagination -->
-        @if($orders->hasPages())
-        <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
-            <span class="text-sm text-slate-400">Menampilkan {{ $orders->firstItem() }}-{{ $orders->lastItem() }} dari {{ $orders->total() }}</span>
-            <div class="flex items-center gap-1.5">
-                {{ $orders->withQueryString()->links('pagination.custom') }}
+                                $statusLabel = match($order->status) {
+                                    'pending'    => 'Pending',
+                                    'assigned'   => 'Assigned',
+                                    'picking_up' => 'Dalam Pengambilan',
+                                    'delivering' => 'Mengirim',
+                                    'delivered'  => 'Selesai',
+                                    'cancelled'  => 'Dibatalkan',
+                                    default      => ucfirst($order->status),
+                                };
+
+                                $courierName = $order->courier?->user?->name ?? '-';
+                            @endphp
+                            <tr class="hover:bg-emerald-50/30 transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <span class="font-mono text-sm font-semibold text-emerald-700">
+                                        {{ $order->order_number }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-medium text-gray-900">{{ $order->customer_name }}</span>
+                                        <span class="text-xs text-gray-500 mt-0.5">
+                                            <span class="material-symbols-outlined text-[14px] align-middle mr-0.5">phone</span>
+                                            {{ $order->customer_phone }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 max-w-[220px]">
+                                    <div class="flex flex-col gap-1.5 text-xs">
+                                        <div class="flex items-start gap-1.5">
+                                            <span class="material-symbols-outlined text-[14px] text-emerald-500 mt-0.5 shrink-0">upload</span>
+                                            <span class="text-gray-600 leading-relaxed">{{ $order->pickup_address }}</span>
+                                        </div>
+                                        <div class="flex items-start gap-1.5">
+                                            <span class="material-symbols-outlined text-[14px] text-red-500 mt-0.5 shrink-0">download</span>
+                                            <span class="text-gray-600 leading-relaxed">{{ $order->delivery_address }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    @if($order->courier && $order->courier->user)
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                                <span class="material-symbols-outlined text-emerald-600 text-[16px]">person</span>
+                                            </div>
+                                            <span class="text-sm text-gray-700">{{ $courierName }}</span>
+                                        </div>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 italic">
+                                            <span class="material-symbols-outlined text-[14px]">person_off</span>
+                                            Belum ditugaskan
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border {{ $statusStyles }}">
+                                        {{ $statusLabel }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <span class="text-sm font-semibold text-gray-900">
+                                        Rp {{ number_format($order->price, 0, ',', '.') }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <a href="{{ route('admin.orders.detail', $order->id) }}"
+                                           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg
+                                                  hover:bg-emerald-100 transition-colors duration-150"
+                                           title="Lihat Detail">
+                                            <span class="material-symbols-outlined text-[16px]">visibility</span>
+                                            Detail
+                                        </a>
+
+                                        <form action="{{ route('admin.orders.destroy', $order->id) }}"
+                                              method="POST"
+                                              class="inline-block"
+                                              onsubmit="return confirm('Apakah Anda yakin ingin menghapus pesanan {{ $order->order_number }}?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg
+                                                           hover:bg-red-100 transition-colors duration-150"
+                                                    title="Hapus Pesanan">
+                                                <span class="material-symbols-outlined text-[16px]">delete</span>
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        </div>
+
+            {{-- Pagination --}}
+            <div class="px-6 py-4 border-t border-gray-100">
+                {{ $orders->withQueryString()->links('pagination::tailwind') }}
+            </div>
+        @else
+            {{-- Empty State --}}
+            <div class="flex flex-col items-center justify-center py-16 px-6">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined text-emerald-400 text-[32px]">inbox</span>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">Tidak ada pesanan</h3>
+                <p class="text-sm text-gray-500 text-center max-w-sm">
+                    @if(request('search'))
+                        Tidak ditemukan pesanan yang sesuai dengan pencarian "{{ request('search') }}".
+                    @elseif(request('status'))
+                        Tidak ada pesanan dengan status "{{ $filters[request('status')]['label'] ?? request('status') }}".
+                    @else
+                        Belum ada pesanan masuk saat ini.
+                    @endif
+                </p>
+                <a href="{{ route('admin.orders') }}"
+                   class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl
+                          hover:bg-emerald-700 shadow-sm shadow-emerald-200 transition-all duration-200">
+                    <span class="material-symbols-outlined text-[18px]">refresh</span>
+                    Lihat Semua Pesanan
+                </a>
+            </div>
         @endif
     </div>
+
 </div>
 @endsection

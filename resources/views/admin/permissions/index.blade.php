@@ -4,80 +4,89 @@
 
 @section('content')
 <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800">Manajemen Permission</h1>
-            <p class="text-sm text-slate-400 mt-1">Kelola Permission akses</p>
+    {{-- Header --}}
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                <span class="material-symbols-outlined text-[26px] text-primary">vpn_key</span>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Manajemen Permission</h1>
+                <p class="text-sm text-slate-400 mt-0.5">Kelola hak akses granular untuk setiap fitur sistem</p>
+            </div>
         </div>
-        <a href="{{ route('admin.permissions.create') }}" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center gap-2">
+        <a href="{{ route('admin.permissions.create') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-primary-light text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all">
             <span class="material-symbols-outlined text-[18px]">add</span>
             Tambah Permission
         </a>
     </div>
 
-    <!-- Permissions Table -->
+    {{-- Table --}}
     <div class="bg-white rounded-2xl border border-surface-border overflow-hidden">
-        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary text-xl">vpn_key</span>
-                </div>
-                <div>
-                    <h4 class="text-base font-bold text-slate-800">Daftar Permission</h4>
-                    <p class="text-xs text-slate-400">Total: {{ $permissions->total() }} permission</p>
-                </div>
-            </div>
-        </div>
-
         <div class="overflow-x-auto">
-            <table class="w-full text-left">
+            <table class="w-full text-left text-sm">
                 <thead>
                     <tr class="border-b border-slate-100 bg-slate-50">
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">ID</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Nama Permission</th>
-                        <th class="py-3 px-5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-right">Aksi</th>
+                        <th class="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Nama Permission</th>
+                        <th class="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Kode</th>
+                        <th class="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Dibuat</th>
+                        <th class="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @foreach($permissions as $permission)
-                    <tr class="hover:bg-slate-50 transition-all">
-                        <td class="py-3.5 px-5 text-sm text-slate-500 font-mono">{{ $permission->id }}</td>
-                        <td class="py-3.5 px-5">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-success text-sm">key</span>
+                    @forelse ($permissions as $permission)
+                        <tr class="transition hover:bg-slate-50/50">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-[18px] text-primary">key</span>
+                                    </div>
+                                    <span class="font-semibold text-slate-700">{{ $permission->name }}</span>
                                 </div>
-                                <span class="text-sm font-semibold text-slate-700">{{ $permission->name }}</span>
-                            </div>
-                        </td>
-                        <td class="py-3.5 px-5 text-right">
-                            <div class="flex items-center justify-end gap-1">
-                                <a href="{{ route('admin.permissions.edit', $permission) }}" class="p-2 rounded-lg text-slate-400 hover:text-info hover:bg-info/5 transition-all" title="Edit">
-                                    <span class="material-symbols-outlined text-[18px]">edit</span>
-                                </a>
-                                <form action="{{ route('admin.permissions.destroy', $permission) }}" method="POST" class="inline" onsubmit="return confirm('Yakin hapus permission ini?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-2 rounded-lg text-slate-400 hover:text-error hover:bg-error/5 transition-all" title="Hapus">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center rounded-lg bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-mono text-slate-500">
+                                    {{ Str::slug($permission->name) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-slate-500">{{ $permission->created_at->format('d M Y') }}</td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ route('admin.permissions.edit', $permission) }}" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition hover:bg-primary-50 hover:text-primary-700">
+                                        <span class="material-symbols-outlined text-[15px]">edit</span>
+                                        Edit
+                                    </a>
+                                    <form action="{{ route('admin.permissions.destroy', $permission) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus permission ini?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm transition hover:bg-red-50">
+                                            <span class="material-symbols-outlined text-[15px]">delete</span>
+                                            Hapus
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-6 py-16 text-center">
+                                <span class="material-symbols-outlined mx-auto mb-3 block text-[48px] text-slate-300">vpn_key</span>
+                                <p class="text-sm font-medium text-slate-500">Belum ada permission terdaftar</p>
+                                <p class="mt-1 text-xs text-slate-400">Klik tombol "Tambah Permission" untuk membuat permission baru.</p>
+                            </td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
 
-        @if($permissions->hasPages())
-        <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
-            <span class="text-sm text-slate-400">Menampilkan {{ $permissions->firstItem() }}-{{ $permissions->lastItem() }} dari {{ $permissions->total() }}</span>
-            <div class="flex items-center gap-1.5">
-                {{ $permissions->links() }}
+        @if ($permissions->hasPages())
+            <div class="border-t border-slate-100 bg-slate-50/50 px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
+                <span class="text-xs text-slate-400">Menampilkan {{ $permissions->firstItem() }}–{{ $permissions->lastItem() }} dari {{ $permissions->total() }}</span>
+                <div class="flex items-center gap-1.5">
+                    {{ $permissions->links() }}
+                </div>
             </div>
-        </div>
         @endif
     </div>
 </div>

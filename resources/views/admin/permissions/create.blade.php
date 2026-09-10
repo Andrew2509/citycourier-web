@@ -1,21 +1,26 @@
 @extends('layouts.admin')
 
-@section('title', 'Tambah Permission')
+@section('title', 'Tambah Permission Baru')
 
 @section('content')
 <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center gap-4">
-        <a href="{{ route('admin.permissions.index') }}" class="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all">
+    {{-- Header --}}
+    <div class="flex items-center gap-3">
+        <a href="{{ route('admin.permissions.index') }}" class="p-2 rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-all">
             <span class="material-symbols-outlined">arrow_back</span>
         </a>
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800">Tambah Permission</h1>
-            <p class="text-sm text-slate-400 mt-1">Buat permission baru</p>
+        <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                <span class="material-symbols-outlined text-[26px] text-primary">vpn_key</span>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Tambah Permission Baru</h1>
+                <p class="text-sm text-slate-400 mt-0.5">Buat permission baru untuk mengontrol hak akses fitur</p>
+            </div>
         </div>
     </div>
 
-    <!-- Form -->
+    {{-- Form --}}
     <div class="bg-white rounded-2xl border border-surface-border p-6 max-w-2xl">
         <form action="{{ route('admin.permissions.store') }}" method="POST">
             @csrf
@@ -27,16 +32,18 @@
                        value="{{ old('name') }}"
                        placeholder="Contoh: manage-users"
                        required>
+                <p class="text-xs text-slate-400 mt-1.5">Gunakan format slug (huruf kecil, pisahkan spasi dengan tanda strip).</p>
                 @error('name')
                     <p class="text-xs text-error mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
-            <div class="flex items-center gap-3">
-                <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-primary-light text-white hover:shadow-lg hover:shadow-primary/20 transition-all">
+            <div class="flex items-center gap-3 pt-2 border-t border-slate-100">
+                <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-primary-light text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all">
+                    <span class="material-symbols-outlined text-[18px]">check</span>
                     Simpan
                 </button>
-                <a href="{{ route('admin.permissions.index') }}" class="px-6 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
+                <a href="{{ route('admin.permissions.index') }}" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
                     Batal
                 </a>
             </div>

@@ -11,12 +11,12 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#EC5B13',
-                        'primary-light': '#FF8A00',
-                        success: '#4CAF50',
-                        warning: '#FF9800',
-                        danger: '#F44336',
-                        info: '#2196F3',
+                        primary: '#059669',
+                        'primary-light': '#10B981',
+                        success: '#059669',
+                        warning: '#F59E0B',
+                        danger: '#DC2626',
+                        info: '#0284C7',
                     }
                 }
             }
@@ -28,7 +28,7 @@
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+<body class="min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 flex items-center justify-center p-4">
     <div class="w-full max-w-md">
         {{-- Logo & Title --}}
         <div class="text-center mb-8">

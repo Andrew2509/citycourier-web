@@ -58,7 +58,13 @@ class CiWorkController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view('admin.ci-work.tasks', compact('tasks'));
+        $avgDuration = (int) round(
+            $tasks->filter(fn($t) => $t->delivered_at && $t->picked_up_at)
+                ->map(fn($t) => $t->delivered_at->diffInMinutes($t->picked_up_at))
+                ->avg() ?? 0
+        );
+
+        return view('admin.ci-work.tasks', compact('tasks', 'avgDuration'));
     }
 
     /**
