@@ -11,6 +11,14 @@ use App\Http\Controllers\Api\DanaController;
 use App\Http\Controllers\Api\WithdrawalController;
 
 
+// ─── API Documentation (Redoc) ──────────────────────────────
+// Dilayani tanpa session middleware agar tetap hidup walau database mati.
+Route::get('/documentation', function () {
+    return response(
+        file_get_contents(public_path('docs/index.html')), 200
+    )->header('Content-Type', 'text/html; charset=UTF-8');
+})->name('api.documentation');
+
 // ─── Public API Routes ───────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register-kurir', [AuthController::class, 'registerKurir']);

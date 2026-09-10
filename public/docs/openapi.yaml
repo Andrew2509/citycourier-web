@@ -1,0 +1,3962 @@
+openapi: 3.0.3
+info:
+  title: City Courier API
+  description: |
+    REST API untuk **City Courier** — aplikasi kurir & pengiriman.
+
+    API ini digunakan oleh:
+    * **Aplikasi Kurir (Flutter)** — manajemen order, lokasi GPS, dompet, penarikan dana.
+    * **Aplikasi Pelanggan (Flutter)** — buat pengiriman, lacak paket, pembayaran.
+
+    ## Autentikasi
+    Endpoint yang dilindungi menggunakan **Laravel Sanctum** (Bearer token).
+    Dapatkan token melalui `POST /login`, `POST /verify-otp`, `POST /auth/google`,
+    `POST /auth/phone`, atau `POST /register-kurir`, lalu kirim pada header:
+
+    ```
+    Authorization: Bearer {token}
+    Accept: application/json
+    ```
+
+    ## Konvensi Response
+    Semua response dibungkus envelope standar:
+
+    ```json
+    { "success": true, "message": "...", "data": { } }
+    ```
+
+    * `success: false` menandakan gagal (dengan `message` dan opsional `errors`).
+    * Validasi gagal → HTTP `422` dengan objek `errors` per-field.
+    * Tidak terautentikasi → HTTP `401`.
+
+    ## Pagination
+    Endpoint daftar (orders, shipments) memakai paginator Laravel:
+    `data`, `current_page`, `last_page`, `per_page`, `total`, `next_page_url`, `prev_page_url`.
+
+  version: 1.0.0
+  contact:
+    name: City Courier Team
+    email: support@citycourier.id
+  license:
+    name: MIT
+
+servers:
+  - url: http://127.0.0.1:8000/api
+    description: Local development
+  - url: https://citycourier.pabm.space/api
+    description: Production
+
+tags:
+  - name: Authentication
+    description: Login, registrasi kurir, OTP, dan login sosial (Google / Phone Firebase).
+  - name: Profile
+    description: Profil user terautentikasi.
+  - name: Courier
+    description: Operasi kurir — status kerja, lokasi GPS, statistik, pendapatan.
+  - name: Orders
+    description: Order pengantaran untuk kurir.
+  - name: Shipments
+    description: Permintaan pengiriman (request pickup) & pelacakan publik.
+  - name: Addresses
+    description: Alamat tersimpan (alamat favorit) pelanggan.
+  - name: Shipping
+    description: Data wilayah & ongkir (RajaOngkir/Komerce) serta proxy peta.
+  - name: Geocoding
+    description: Proxy geocoding Nominatim/Photon (public).
+  - name: Payments
+    description: Pembayaran VA/QRIS via Komerce Payment API.
+  - name: Wallet
+    description: Saldo & buku besar (ledger) dompet kurir.
+  - name: DANA
+    description: Binding akun DANA untuk pencairan dana kurir (PRD §34).
+  - name: Withdrawals
+    description: Penarikan dana kurir ke DANA.
+  - name: Drop Points
+    description: Lokasi drop point aktif (public).
+  - name: System
+    description: Utilitas — upload APK, test WhatsApp.
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ═══════════════════════════ AUTHENTICATION ═══════════════════════════
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Login email & password
+      description: >
+        Login kurir/user. Token Sanctum dikembalikan pada `data.token`.
+        Gagal `403` bila akun kurir belum diverifikasi admin.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: kurir@citycourier.id
+                password:
+                  type: string
+                  format: password
+                  example: rahasia123
+      responses:
+        '200':
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          courier:
+                            $ref: '#/components/schemas/Courier'
+                          token:
+                            type: string
+                            example: '1|abcdef1234567890...'
+        '401':
+          $ref: '#/components/responses/CredentialsError'
+        '403':
+          description: Akun kurir belum diverifikasi admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /register-kurir:
+    post:
+      tags: [Authentication]
+      summary: Registrasi kurir baru
+      description: >
+        Mendaftarkan kurir baru beserta dokumen (KTP, SIM, foto profil).
+        Status awal `is_verified: false` — menunggu persetujuan admin.
+        Bila request membawa token Sanctum (user existing), email/password
+        opsional (mode upgrade akun).
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                [name, email, password, password_confirmation, nik, phone, address, city,
+                 vehicle_type, vehicle_brand, vehicle_year, vehicle_plate, photo,
+                 id_card_photo, driving_license_photo]
+              properties:
+                name:
+                  type: string
+                  example: Budi Santoso
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  format: password
+                nik:
+                  type: string
+                  minLength: 16
+                  maxLength: 16
+                  example: '3578012345678901'
+                phone:
+                  type: string
+                  example: '081234567890'
+                address:
+                  type: string
+                city:
+                  type: string
+                  example: Surabaya
+                vehicle_type:
+                  type: string
+                  enum: [motor, mobil, pickup, box, truck, sepeda]
+                vehicle_brand:
+                  type: string
+                  example: Honda
+                vehicle_year:
+                  type: string
+                  example: '2021'
+                vehicle_plate:
+                  type: string
+                  example: L 1234 ABC
+                photo:
+                  type: string
+                  format: binary
+                  description: Foto profil (jpg/png, maks 4MB)
+                id_card_photo:
+                  type: string
+                  format: binary
+                  description: Foto KTP (jpg/png, maks 4MB)
+                driving_license_photo:
+                  type: string
+                  format: binary
+                  description: Foto SIM (jpg/png, maks 4MB)
+                skck_photo:
+                  type: string
+                  format: binary
+                  description: Foto SKCK (opsional)
+      responses:
+        '201':
+          description: Registrasi berhasil — menunggu verifikasi admin
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          courier:
+                            $ref: '#/components/schemas/Courier'
+                          token:
+                            type: string
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /request-otp:
+    post:
+      tags: [Authentication]
+      summary: Kirim OTP via WhatsApp
+      description: OTP 4 digit dikirim ke WhatsApp nomor tujuan. Berlaku 10 menit.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                  example: '081234567890'
+      responses:
+        '200':
+          description: OTP terkirim
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '500':
+          description: Gagal mengirim OTP via WhatsApp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /verify-otp:
+    post:
+      tags: [Authentication]
+      summary: Verifikasi OTP & login
+      description: >
+        Memverifikasi OTP, membuat user baru bila nomor belum terdaftar (role `customer`),
+        lalu mengembalikan token Sanctum.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp]
+              properties:
+                phone:
+                  type: string
+                  example: '081234567890'
+                otp:
+                  type: string
+                  minLength: 4
+                  maxLength: 4
+                  example: '1234'
+      responses:
+        '200':
+          description: Verifikasi berhasil, token dikembalikan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          token:
+                            type: string
+        '401':
+          description: OTP salah atau kedaluwarsa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/google:
+    post:
+      tags: [Authentication]
+      summary: Login / registrasi via Google (Firebase)
+      description: >
+        Verifikasi ID token Firebase dari sign-in Google, lalu find-or-create user
+        (role `customer`) dan kembalikan token Sanctum.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token]
+              properties:
+                id_token:
+                  type: string
+                  description: Firebase ID token dari client
+      responses:
+        '200':
+          description: Login Google berhasil
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          token:
+                            type: string
+        '401':
+          description: Token Firebase tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/phone:
+    post:
+      tags: [Authentication]
+      summary: Login / registrasi via nomor HP (Firebase)
+      description: >
+        Verifikasi ID token Firebase phone auth, lalu find-or-create user dan
+        kembalikan token Sanctum.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token]
+              properties:
+                id_token:
+                  type: string
+                  description: Firebase ID token (harus mengandung claim phone_number)
+      responses:
+        '200':
+          description: Login nomor HP berhasil
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          token:
+                            type: string
+        '400':
+          description: Nomor HP tidak ditemukan dalam token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Token Firebase tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /logout:
+    post:
+      tags: [Authentication]
+      summary: Logout (revoke token aktif)
+      responses:
+        '200':
+          description: Logout berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  # ═══════════════════════════ PROFILE ═══════════════════════════
+  /profile:
+    get:
+      tags: [Profile]
+      summary: Profil user terautentikasi
+      responses:
+        '200':
+          description: Data user + kurir (bila ada)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          courier:
+                            $ref: '#/components/schemas/Courier'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /profile/update:
+    post:
+      tags: [Profile]
+      summary: Perbarui profil user
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                  nullable: true
+                address:
+                  type: string
+                  nullable: true
+                photo:
+                  type: string
+                  format: binary
+                  description: Foto profil baru (jpg/png, maks 2MB)
+      responses:
+        '200':
+          description: Profil diperbarui
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ═══════════════════════════ ORDERS ═══════════════════════════
+  /orders:
+    get:
+      tags: [Orders]
+      summary: Daftar order milik kurir
+      description: Riwayat order kurir yang sedang login, diurut terbaru, 15 per halaman.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+          description: Filter berdasarkan status
+      responses:
+        '200':
+          description: Daftar order (paginator Laravel)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderPaginator'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /orders/available:
+    get:
+      tags: [Orders]
+      summary: Order tersedia untuk diambil kurir
+      description: Semua order berstatus `pending`, 15 per halaman.
+      responses:
+        '200':
+          description: Daftar order tersedia (paginator)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderPaginator'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /orders/active:
+    get:
+      tags: [Orders]
+      summary: Order aktif kurir
+      description: Order pertama dengan status `assigned|picking_up|delivering`.
+      responses:
+        '200':
+          description: Order aktif (atau `null` bila tidak ada)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        oneOf:
+                          - $ref: '#/components/schemas/Order'
+                          - type: 'null'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /update-status-order:
+    patch:
+      tags: [Orders]
+      summary: Ubah status order
+      description: >
+        Update status order oleh kurir. Bila `status=assigned` pada order `pending`,
+        order di-assign ke kurir. Timestamp (`picked_up_at`, `delivering_at`,
+        `delivered_at`) diisi otomatis. Status shipment & riwayat pelacakan dibuat
+        otomatis. Bila `latitude`/`longitude` dikirim, lokasi GPS kurir disimpan.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [order_id, status]
+              properties:
+                order_id:
+                  type: integer
+                  example: 42
+                status:
+                  $ref: '#/components/schemas/OrderStatus'
+                latitude:
+                  type: number
+                  format: double
+                  nullable: true
+                  example: -7.2756
+                longitude:
+                  type: number
+                  format: double
+                  nullable: true
+                  example: 112.7521
+                photo:
+                  type: string
+                  format: binary
+                  description: Bukti foto (wajib secara fungsional untuk picking_up/delivered)
+      responses:
+        '200':
+          description: Status diperbarui
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Order'
+        '403':
+          description: Order bukan milik kurir ini
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ═══════════════════════════ SHIPMENTS ═══════════════════════════
+  /shipments:
+    get:
+      tags: [Shipments]
+      summary: Daftar pengiriman user
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: 'Filter status, bisa multi dipisah koma: pending,confirmed,delivered'
+      responses:
+        '200':
+          description: Daftar pengiriman (paginator)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShipmentPaginator'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [Shipments]
+      summary: Buat permintaan pengiriman (request pickup)
+      description: >
+        Membuat shipment baru. Status awal `confirmed` untuk COD/TUNAI,
+        `pending` untuk VA/QRIS (menunggu pembayaran).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                [customer_name, customer_phone, sender_name, sender_phone, sender_address,
+                 receiver_name, receiver_phone, receiver_address, package_weight,
+                 courier_code, courier_name, courier_service, shipping_cost, total_cost]
+              properties:
+                customer_name:
+                  type: string
+                customer_phone:
+                  type: string
+                sender_name:
+                  type: string
+                sender_phone:
+                  type: string
+                sender_address:
+                  type: string
+                sender_latitude:
+                  type: number
+                  nullable: true
+                sender_longitude:
+                  type: number
+                  nullable: true
+                origin_name:
+                  type: string
+                  nullable: true
+                origin_id:
+                  type: string
+                  nullable: true
+                  description: ID wilayah asal (RajaOngkir/Komerce)
+                receiver_name:
+                  type: string
+                receiver_phone:
+                  type: string
+                receiver_address:
+                  type: string
+                receiver_latitude:
+                  type: number
+                  nullable: true
+                receiver_longitude:
+                  type: number
+                  nullable: true
+                destination_name:
+                  type: string
+                  nullable: true
+                destination_id:
+                  type: string
+                  nullable: true
+                  description: ID wilayah tujuan (RajaOngkir/Komerce)
+                package_description:
+                  type: string
+                  nullable: true
+                package_weight:
+                  type: number
+                  description: Berat dalam kg (min 0.01)
+                  example: 1.5
+                courier_code:
+                  type: string
+                  example: jne
+                courier_name:
+                  type: string
+                  example: JNE Express
+                courier_service:
+                  type: string
+                  example: REG
+                etd:
+                  type: string
+                  nullable: true
+                  description: Estimated time of delivery, mis. '1-2 HARI'
+                shipping_cost:
+                  type: integer
+                  description: Ongkir dalam Rupiah
+                  example: 24000
+                insurance:
+                  type: boolean
+                  default: false
+                wood_packing:
+                  type: boolean
+                  default: false
+                total_cost:
+                  type: integer
+                  example: 27000
+                notes:
+                  type: string
+                  nullable: true
+                payment_method:
+                  type: string
+                  enum: [COD, TUNAI, VA, QRIS]
+                  nullable: true
+      responses:
+        '201':
+          description: Shipment dibuat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shipment'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipments/stats:
+    get:
+      tags: [Shipments]
+      summary: Rekap jumlah pengiriman per status
+      responses:
+        '200':
+          description: Jumlah shipment per status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          pending:
+                            type: integer
+                          confirmed:
+                            type: integer
+                          assigned:
+                            type: integer
+                          picking_up:
+                            type: integer
+                          picked_up:
+                            type: integer
+                          delivering:
+                            type: integer
+                          delivered:
+                            type: integer
+                          cancelled:
+                            type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /shipments/track/{number}:
+    get:
+      tags: [Shipments]
+      summary: Lacak pengiriman (publik, legacy)
+      description: >
+        Lacak berdasarkan nomor resi atau shipment number. Termasuk logs dan
+        koordinat origin/destination (fallback ke Order terkait bila kosong).
+      security: []
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema:
+            type: string
+          example: CC260901ABCD
+      responses:
+        '200':
+          description: Data pelacakan lengkap
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shipment'
+        '404':
+          description: Nomor resi tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /shipments/{tracking_number}/tracking:
+    get:
+      tags: [Shipments]
+      summary: Data pelacakan terstruktur (publik)
+      description: >
+        Tracking detail untuk layar pelacakan pelanggan — origin, destination,
+        lokasi kurir real-time, dan timeline riwayat status.
+      security: []
+      parameters:
+        - name: tracking_number
+          in: path
+          required: true
+          schema:
+            type: string
+          example: CC260901ABCD
+      responses:
+        '200':
+          description: Data pelacakan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          tracking_number:
+                            type: string
+                          shipment_number:
+                            type: string
+                          status:
+                            $ref: '#/components/schemas/ShipmentStatus'
+                          status_label:
+                            type: string
+                          origin:
+                            $ref: '#/components/schemas/GeoPoint'
+                          destination:
+                            $ref: '#/components/schemas/GeoPoint'
+                          courier_location:
+                            type: object
+                            nullable: true
+                            properties:
+                              latitude:
+                                type: number
+                              longitude:
+                                type: number
+                          courier_name:
+                            type: string
+                            nullable: true
+                          courier_phone:
+                            type: string
+                            nullable: true
+                          timeline:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/TimelineEntry'
+                          estimated_delivery:
+                            nullable: true
+        '404':
+          description: Nomor resi tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /shipments/{shipment}:
+    get:
+      tags: [Shipments]
+      summary: Detail pengiriman
+      parameters:
+        - name: shipment
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detail shipment
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shipment'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shipments/{shipment}/confirm-payment:
+    post:
+      tags: [Shipments]
+      summary: Konfirmasi pembayaran shipment
+      description: >
+        * VA/QRIS — konfirmasi pembayaran online saat status `pending`.
+        * COD/TUNAI — konfirmasi pemesanan (bayar nanti), atau kurir menandai
+          uang diterima saat status `delivering`/`delivered`.
+      parameters:
+        - name: shipment
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_method]
+              properties:
+                payment_method:
+                  type: string
+                  enum: [COD, TUNAI, VA, QRIS]
+      responses:
+        '200':
+          description: Pembayaran dikonfirmasi
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shipment'
+        '400':
+          description: Pesanan sudah diproses / state tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ═══════════════════════════ ADDRESSES ═══════════════════════════
+  /addresses:
+    get:
+      tags: [Addresses]
+      summary: Daftar alamat tersimpan
+      responses:
+        '200':
+          description: Alamat favorit diurut duluan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SavedAddress'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [Addresses]
+      summary: Simpan alamat baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: Rumah
+                phone:
+                  type: string
+                  nullable: true
+                address:
+                  type: string
+                province_id:
+                  type: string
+                  nullable: true
+                province_name:
+                  type: string
+                  nullable: true
+                city_id:
+                  type: string
+                  nullable: true
+                city_name:
+                  type: string
+                  nullable: true
+                subdistrict_id:
+                  type: string
+                  nullable: true
+                subdistrict_name:
+                  type: string
+                  nullable: true
+                is_favorite:
+                  type: boolean
+                  default: false
+                latitude:
+                  type: number
+                  nullable: true
+                longitude:
+                  type: number
+                  nullable: true
+      responses:
+        '201':
+          description: Alamat disimpan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SavedAddress'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /addresses/{address}:
+    put:
+      tags: [Addresses]
+      summary: Perbarui alamat
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+                province_id:
+                  type: string
+                province_name:
+                  type: string
+                city_id:
+                  type: string
+                city_name:
+                  type: string
+                subdistrict_id:
+                  type: string
+                subdistrict_name:
+                  type: string
+                is_favorite:
+                  type: boolean
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+      responses:
+        '200':
+          description: Alamat diperbarui
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SavedAddress'
+        '403':
+          description: Bukan pemilik alamat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Addresses]
+      summary: Hapus alamat
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alamat dihapus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '403':
+          description: Bukan pemilik alamat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /addresses/{address}/favorite:
+    patch:
+      tags: [Addresses]
+      summary: Toggle status favorit alamat
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Status favorit di-toggle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  is_favorite:
+                    type: boolean
+        '403':
+          description: Bukan pemilik alamat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ═══════════════════════════ COURIER ═══════════════════════════
+  /courier/details:
+    get:
+      tags: [Courier]
+      summary: Detail & status kerja kurir
+      responses:
+        '200':
+          description: Status kurir saat ini
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          work_status:
+                            type: string
+                            enum: [online, offline]
+                          latitude:
+                            type: number
+                            nullable: true
+                          longitude:
+                            type: number
+                            nullable: true
+                          is_verified:
+                            type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/status:
+    put:
+      tags: [Courier]
+      summary: Set status kerja kurir (online/offline)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [online, offline, busy, on_delivery]
+                  example: online
+                latitude:
+                  type: number
+                  nullable: true
+                longitude:
+                  type: number
+                  nullable: true
+      responses:
+        '200':
+          description: Status diperbarui
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          work_status:
+                            type: string
+                            enum: [online, offline]
+                          latitude:
+                            type: number
+                            nullable: true
+                          longitude:
+                            type: number
+                            nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /courier/location:
+    put:
+      tags: [Courier]
+      summary: Update lokasi GPS kurir
+      description: >
+        Simpan titik GPS kurir ke riwayat lokasi (`courier_locations`).
+        Hanya diizinkan bila kurir memiliki order aktif pada shipment terkait.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shipment_id, latitude, longitude]
+              properties:
+                shipment_id:
+                  type: integer
+                  example: 12
+                latitude:
+                  type: number
+                  example: -7.2756
+                longitude:
+                  type: number
+                  example: 112.7521
+                accuracy:
+                  type: number
+                  nullable: true
+                  description: Akurasi GPS dalam meter
+                  example: 8.5
+      responses:
+        '200':
+          description: Lokasi disimpan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          latitude:
+                            type: number
+                          longitude:
+                            type: number
+                          recorded_at:
+                            type: string
+                            format: date-time
+        '403':
+          description: Tidak ada pengiriman aktif untuk shipment ini
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Shipment / profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /courier/stats:
+    get:
+      tags: [Courier]
+      summary: Statistik kurir (saldo, pendapatan, order)
+      responses:
+        '200':
+          description: Ringkasan statistik
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          total_balance:
+                            type: number
+                          today_earnings:
+                            type: number
+                          today_orders:
+                            type: integer
+                          total_earnings:
+                            type: number
+                          total_withdrawals:
+                            type: number
+                          active_orders:
+                            type: integer
+                          total_shipments:
+                            type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/earnings:
+    get:
+      tags: [Courier]
+      summary: Ringkasan pendapatan kurir
+      description: >
+        Pendapatan hari ini/minggu/bulan/total (90% dari harga order), saldo
+        dompet, dan 20 aktivitas terbaru (pendapatan + penarikan).
+      responses:
+        '200':
+          description: Ringkasan pendapatan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          today:
+                            type: number
+                          week:
+                            type: number
+                          month:
+                            type: number
+                          total:
+                            type: number
+                          balance:
+                            type: number
+                          pending_balance:
+                            type: number
+                          today_orders:
+                            type: integer
+                          total_withdrawals:
+                            type: number
+                          recent_activity:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                at:
+                                  type: string
+                                  format: date-time
+                                type:
+                                  type: string
+                                  enum: [income, withdrawal]
+                                title:
+                                  type: string
+                                amount:
+                                  type: number
+                                time:
+                                  type: string
+                                date_label:
+                                  type: string
+                                status:
+                                  type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/profile:
+    get:
+      tags: [Courier]
+      summary: Profil kurir + statistik untuk layar mobile
+      responses:
+        '200':
+          description: Profil & statistik kurir
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                              name:
+                                type: string
+                              email:
+                                type: string
+                              phone:
+                                type: string
+                              photo:
+                                type: string
+                                nullable: true
+                          courier_details:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                              nik:
+                                type: string
+                              phone:
+                                type: string
+                              address:
+                                type: string
+                              city:
+                                type: string
+                              vehicle_type:
+                                type: string
+                              vehicle_brand:
+                                type: string
+                              vehicle_model:
+                                type: string
+                                nullable: true
+                              vehicle_year:
+                                type: string
+                              vehicle_color:
+                                type: string
+                                nullable: true
+                              vehicle_plate:
+                                type: string
+                              is_verified:
+                                type: boolean
+                              is_active:
+                                type: boolean
+                          stats:
+                            type: object
+                            properties:
+                              total_shipments:
+                                type: integer
+                              total_ratings:
+                                type: integer
+                              rating:
+                                type: string
+                              account_age:
+                                type: string
+                              total_routes:
+                                type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags: [Courier]
+      summary: Perbarui profil kurir
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                nik:
+                  type: string
+                address:
+                  type: string
+                city:
+                  type: string
+                vehicle_type:
+                  type: string
+                vehicle_brand:
+                  type: string
+                vehicle_model:
+                  type: string
+                vehicle_year:
+                  type: string
+                vehicle_color:
+                  type: string
+                vehicle_plate:
+                  type: string
+                photo:
+                  type: string
+                  format: binary
+                  description: Foto profil baru (maks 5MB)
+      responses:
+        '200':
+          description: Profil diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ═══════════════════════════ SHIPPING ═══════════════════════════
+  /shipping/provinces:
+    get:
+      tags: [Shipping]
+      summary: Daftar provinsi
+      responses:
+        '200':
+          description: Daftar provinsi
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            province_id:
+                              type: string
+                            province:
+                              type: string
+        '400':
+          description: Gagal mengambil data dari provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /shipping/cities:
+    get:
+      tags: [Shipping]
+      summary: Daftar kota dalam provinsi
+      parameters:
+        - name: province_id
+          in: query
+          required: true
+          schema:
+            type: string
+          example: '35'
+      responses:
+        '200':
+          description: Daftar kota
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            city_id:
+                              type: string
+                            city_name:
+                              type: string
+                            province_id:
+                              type: string
+                            province:
+                              type: string
+                            type:
+                              type: string
+                            postal_code:
+                              type: string
+        '400':
+          description: Gagal mengambil data dari provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipping/districts:
+    get:
+      tags: [Shipping]
+      summary: Daftar kecamatan dalam kota
+      parameters:
+        - name: city_id
+          in: query
+          required: true
+          schema:
+            type: string
+          example: '3578'
+      responses:
+        '200':
+          description: Daftar kecamatan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            subdistrict_id:
+                              type: string
+                            subdistrict_name:
+                              type: string
+                            city_id:
+                              type: string
+        '400':
+          description: Gagal mengambil data dari provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipping/subdistricts:
+    get:
+      tags: [Shipping]
+      summary: Daftar kelurahan/desa dalam kecamatan
+      parameters:
+        - name: district_id
+          in: query
+          required: true
+          schema:
+            type: string
+          example: '3578010'
+      responses:
+        '200':
+          description: Daftar kelurahan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            kecamatan_id:
+                              type: string
+                            zip_code:
+                              type: string
+        '400':
+          description: Gagal mengambil data dari provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipping/cost:
+    post:
+      tags: [Shipping]
+      summary: Hitung ongkos kirim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [origin, destination, weight, courier]
+              properties:
+                origin:
+                  type: string
+                  description: ID kota/kecamatan asal
+                  example: '3578'
+                destination:
+                  type: string
+                  description: ID kota/kecamatan tujuan
+                  example: '3178'
+                weight:
+                  type: number
+                  description: Berat dalam gram
+                  example: 1000
+                courier:
+                  type: string
+                  example: jne
+      responses:
+        '200':
+          description: Daftar layanan & biaya per kurir
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+                              example: jne
+                            name:
+                              type: string
+                              example: JNE Express
+                            costs:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  service:
+                                    type: string
+                                    example: REG
+                                  description:
+                                    type: string
+                                  cost:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        value:
+                                          type: integer
+                                        etd:
+                                          type: string
+                                        note:
+                                          type: string
+        '400':
+          description: Gagal menghitung ongkir
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipping/map/routing:
+    post:
+      tags: [Shipping]
+      summary: Rute antar dua titik (proxy MapAPI)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [origin, destination]
+              properties:
+                origin:
+                  type: string
+                  description: 'Format "lng,lat"'
+                  example: '112.7521,-7.2756'
+                destination:
+                  type: string
+                  description: 'Format "lng,lat"'
+                  example: '112.7508,-7.2492'
+                vias:
+                  type: array
+                  items:
+                    type: string
+                  nullable: true
+                  description: Titik-titik perantara 'lng,lat'
+      responses:
+        '200':
+          description: Data rute (geometry, distance, duration)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        description: GeoJSON route dari provider peta
+        '400':
+          description: Gagal menghitung rute
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipping/map/autocomplete:
+    get:
+      tags: [Shipping]
+      summary: Autocomplete POI (proxy MapAPI)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          example: Tunjungan Plaza
+        - name: proximity
+          in: query
+          schema:
+            type: string
+          description: 'Bias pencarian ke posisi "lng,lat"'
+      responses:
+        '200':
+          description: Daftar fitur GeoJSON hasil pencarian
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        description: GeoJSON features
+                        items:
+                          type: object
+        '400':
+          description: Gagal mencari POI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipping/map/matrix:
+    post:
+      tags: [Shipping]
+      summary: Matriks jarak & durasi (proxy MapAPI)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [coordinates]
+              properties:
+                coordinates:
+                  type: array
+                  minItems: 2
+                  items:
+                    type: string
+                  example: ['112.7521,-7.2756', '112.7508,-7.2492']
+      responses:
+        '200':
+          description: Matriks distances & durations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+        '400':
+          description: Gagal menghitung matriks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipping/map/styles/{name}.json:
+    get:
+      tags: [Shipping]
+      summary: Style peta (proxy aman tile provider)
+      description: >
+        Mengembalikan style JSON dengan URL tile/sprite/glyph yang sudah
+        diproxy ke backend, menyembunyikan API key penyedia peta dari client.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          example: bright
+      responses:
+        '200':
+          description: MapLibre/Mapbox style JSON
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Style tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  # ═══════════════════════════ GEOCODING ═══════════════════════════
+  /geocoding/search:
+    get:
+      tags: [Geocoding]
+      summary: Cari alamat (geocoding proxy)
+      description: >
+        Proxy Nominatim dengan fallback Photon. Hasil di-cache 5 menit.
+        Query disederhanakan otomatis bila tidak ada hasil.
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          example: Tunjungan Plaza Surabaya
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+            maximum: 10
+      responses:
+        '200':
+          description: Daftar alamat terstruktur
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Address'
+                      source:
+                        type: string
+                        description: Provider sumber hasil (nominatim, photon, cache, dll)
+        '400':
+          description: Query minimal 2 karakter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /geocoding/reverse:
+    get:
+      tags: [Geocoding]
+      summary: Reverse geocoding koordinat
+      security: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+          example: -7.2756
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+          example: 112.7521
+      responses:
+        '200':
+          description: Alamat dari koordinat (bisa `null`)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        oneOf:
+                          - $ref: '#/components/schemas/Address'
+                          - type: 'null'
+                      source:
+                        type: string
+                        nullable: true
+        '400':
+          description: lat & lng wajib diisi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  # ═══════════════════════════ PAYMENTS ═══════════════════════════
+  /payment/methods:
+    get:
+      tags: [Payments]
+      summary: Daftar metode pembayaran tersedia
+      responses:
+        '200':
+          description: Metode pembayaran (VA & QRIS)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        description: Daftar channel dari Komerce
+                        items:
+                          type: object
+        '502':
+          description: Provider pembayaran gagal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /payment/create:
+    post:
+      tags: [Payments]
+      summary: Buat transaksi pembayaran (VA/QRIS)
+      description: >
+        Membuat pembayaran via Komerce. Nominal minimal Rp10.000.
+        Bila `customer`/`items` kosong, diisi otomatis dari user login & amount.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_type, amount]
+              properties:
+                order_id:
+                  nullable: true
+                  description: ID order lokal (opsional)
+                shipment_id:
+                  type: string
+                  nullable: true
+                payment_type:
+                  type: string
+                  enum: [bank_transfer, virtual_account, va, qris, ewallet]
+                  description: Tipe pembayaran (va → bank_transfer)
+                channel_code:
+                  type: string
+                  nullable: true
+                  description: >
+                    Wajib untuk bank_transfer/VA. Contoh: BCA, BNI, BRI,
+                    MANDIRI, PERMATA, DANAMON, CIMB (case-insensitive).
+                amount:
+                  type: integer
+                  minimum: 10000
+                  example: 50000
+                customer:
+                  type: object
+                  nullable: true
+                  properties:
+                    name:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                    phone:
+                      type: string
+                items:
+                  type: array
+                  nullable: true
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      quantity:
+                        type: integer
+                        minimum: 1
+                      price:
+                        type: integer
+                expiry_duration:
+                  type: integer
+                  nullable: true
+                  description: Masa berlaku detik (min 3600)
+      responses:
+        '201':
+          description: Pembayaran dibuat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Payment'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '502':
+          description: Provider pembayaran gagal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /payment/status:
+    get:
+      tags: [Payments]
+      summary: Cek status pembayaran (query param)
+      parameters:
+        - name: payment_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/PaymentStatus'
+        '400':
+          description: Payment ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Pembayaran tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /payment/{paymentId}/status:
+    get:
+      tags: [Payments]
+      summary: Cek status pembayaran (path param)
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: PAY-123456789
+      responses:
+        '200':
+          $ref: '#/components/responses/PaymentStatus'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Pembayaran tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /payment/cancel:
+    post:
+      tags: [Payments]
+      summary: Batalkan pembayaran (body param)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payment_id:
+                  type: string
+                reason:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Pembayaran dibatalkan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          description: Payment ID required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Pembayaran tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Hanya pembayaran PENDING yang bisa dibatalkan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /payment/{paymentId}/cancel:
+    post:
+      tags: [Payments]
+      summary: Batalkan pembayaran (path param)
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pembayaran dibatalkan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '404':
+          description: Pembayaran tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Hanya pembayaran PENDING yang bisa dibatalkan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /payment/callback:
+    post:
+      tags: [Payments]
+      summary: Callback / webhook Komerce (server-to-server)
+      description: >
+        Dipanggil Komerce saat status pembayaran berubah. Verifikasi via
+        header `x-callback-key` atau field `callback_api_key`.
+      security: []
+      parameters:
+        - name: x-callback-key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Callback API key dari Komerce
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payment_id:
+                  type: string
+                status:
+                  type: string
+                  example: paid
+                callback_api_key:
+                  type: string
+      responses:
+        '200':
+          description: Callback diterima
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: OK
+        '401':
+          description: Callback key tidak valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Unauthorized
+
+  # ═══════════════════════════ WALLET ═══════════════════════════
+  /courier/wallet:
+    get:
+      tags: [Wallet]
+      summary: Saldo dompet kurir
+      responses:
+        '200':
+          description: Saldo tersedia & tertahan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          available_balance:
+                            type: number
+                          pending_balance:
+                            type: number
+                          currency:
+                            type: string
+                            example: IDR
+                          status:
+                            type: string
+                            example: active
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/wallet/transactions:
+    get:
+      tags: [Wallet]
+      summary: Buku besar (ledger) dompet
+      description: Riwayat transaksi dompet, 15 per halaman (PRD §27 audit trail).
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Daftar transaksi
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          transactions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/WalletTransaction'
+                          total:
+                            type: integer
+                          page:
+                            type: integer
+                          per_page:
+                            type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  # ═══════════════════════════ DANA ═══════════════════════════
+  /courier/dana/status:
+    get:
+      tags: [DANA]
+      summary: Status koneksi akun DANA
+      description: >
+        Status binding DANA kurir. Sesi pending yang melewati batas waktu
+        otomatis ditandai EXPIRED (PRD §33).
+      responses:
+        '200':
+          description: Status koneksi DANA
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            description: NOT_CONNECTED / PENDING / CONNECTED / EXPIRED / ...
+                          status_label:
+                            type: string
+                          provider:
+                            type: string
+                            example: DANA
+                          connected:
+                            type: boolean
+                          masked_account:
+                            type: string
+                            nullable: true
+                            example: 08******1234
+                          masked_phone:
+                            type: string
+                            nullable: true
+                          bound_at:
+                            type: string
+                            format: date-time
+                            nullable: true
+                          connected_at:
+                            type: string
+                            format: date-time
+                            nullable: true
+                          external_id:
+                            type: string
+                            nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/dana/connect:
+    post:
+      tags: [DANA]
+      summary: Mulai binding akun DANA
+      description: >
+        Langkah 1 alur resmi: panggil ApplyOTT lalu kembalikan `redirect_url`
+        untuk membuka aplikasi DANA. Gagal `400` bila sudah terhubung.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_number:
+                  type: string
+                  nullable: true
+                  description: Dipakai bila kurir belum punya nomor terdaftar
+      responses:
+        '200':
+          description: URL binding dibuat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          session_id:
+                            type: string
+                            description: One Time Token (OTT)
+                          redirect_url:
+                            type: string
+                            format: uri
+                          binding_url:
+                            type: string
+                            format: uri
+                          status:
+                            type: string
+                            example: PENDING
+        '400':
+          description: Akun DANA sudah terhubung
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Gagal membuat sesi binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/dana/binding:
+    post:
+      tags: [DANA]
+      summary: Generate binding URL (alias resmi PRD §34)
+      description: Fungsional sama dengan `/courier/dana/connect`, bentuk response berbeda.
+      responses:
+        '200':
+          description: Binding URL dibuat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          binding_url:
+                            type: string
+                            format: uri
+                          redirect_url:
+                            type: string
+                            format: uri
+                          session_id:
+                            type: string
+                          expires_at:
+                            type: string
+                            format: date-time
+                            nullable: true
+                      bindingUrl:
+                        type: string
+                        description: Field legacy (backward-compat)
+                      sessionId:
+                        type: string
+        '400':
+          description: Akun DANA sudah terhubung
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Gagal membuat sesi binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/dana/mock-connect:
+    post:
+      tags: [DANA]
+      summary: Hubungkan DANA simulasi (development)
+      description: >
+        PRD §73: mendaftarkan koneksi DANA demo langsung ke database tanpa
+        memanggil API DANA. Perilaku selanjutnya sama seperti akun asli.
+      responses:
+        '200':
+          description: Koneksi demo dibuat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: connected
+                          masked_account:
+                            type: string
+                            example: 08******1234
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/dana/disconnect:
+    post:
+      tags: [DANA]
+      summary: Putuskan akun DANA
+      description: >
+        Revoke binding. Gagal bila masih ada penarikan berstatus
+        `reserved`/`processing`. Alias: `POST /courier/dana/unbind`.
+      responses:
+        '200':
+          description: DANA diputuskan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Belum terhubung / masih ada penarikan diproses
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+                  - type: object
+                    properties:
+                      error_code:
+                        type: string
+                        example: DANA_NOT_CONNECTED
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/dana/rebind:
+    post:
+      tags: [DANA]
+      summary: Reset koneksi & mulai binding baru (ganti akun)
+      description: PRD §35. Mereset koneksi lama lalu menjalankan alur connect.
+      responses:
+        '200':
+          description: Binding baru dimulai
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          session_id:
+                            type: string
+                          redirect_url:
+                            type: string
+                            format: uri
+                          binding_url:
+                            type: string
+                            format: uri
+                          status:
+                            type: string
+        '400':
+          description: Gagal (mis. sudah terhubung)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /dana/bind/init:
+    post:
+      tags: [DANA]
+      summary: Inisialisasi binding (alias panduan integrasi)
+      description: Response berbentuk flat tanpa envelope `success`.
+      responses:
+        '200':
+          description: Binding URL & state dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  binding_url:
+                    type: string
+                    format: uri
+                  state:
+                    type: string
+                  redirect_url:
+                    type: string
+                    format: uri
+        '400':
+          description: Sudah terhubung
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  state:
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /dana/bind/status:
+    post:
+      tags: [DANA]
+      summary: Cek status binding (alias panduan integrasi)
+      responses:
+        '200':
+          description: Status binding
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  masked_phone:
+                    type: string
+                    nullable: true
+                  connected_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /dana/webhook:
+    post:
+      tags: [DANA]
+      summary: Webhook binding DANA (publik)
+      description: >
+        Menerima authCode dari DANA (alias panduan integrasi) dan menukarnya
+        dengan accessToken untuk menyelesaikan binding.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auth_code:
+                  type: string
+                  description: Kode otorisasi (alias authCode / authorization_code)
+                state:
+                  type: string
+                  description: OTT / state dari init binding
+      responses:
+        '200':
+          description: Binding selesai
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  masked_phone:
+                    type: string
+        '400':
+          description: Sesi tidak valid / authCode hilang
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: failed
+                  error:
+                    type: string
+                  error_code:
+                    type: string
+                    example: INVALID_STATE
+
+  /courier/dana/callback:
+    get:
+      tags: [DANA]
+      summary: Callback redirect DANA (publik, HTML)
+      description: >
+        DANA me-redirect browser user ke endpoint ini dengan query
+        `auth_code` & `state`. Response berupa halaman HTML yang otomatis
+        mengarahkan kembali ke aplikasi via deep link
+        `citycourier://dana/binding/success|failed`. Alias publik:
+        `GET|POST /dana/callback`.
+      security: []
+      parameters:
+        - name: auth_code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Halaman HTML hasil binding sukses
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: Halaman HTML hasil binding gagal
+          content:
+            text/html:
+              schema:
+                type: string
+
+  # ═══════════════════════════ WITHDRAWALS ═══════════════════════════
+  /withdrawals:
+    get:
+      tags: [Withdrawals]
+      summary: Daftar penarikan kurir
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Daftar penarikan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          withdrawals:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Withdrawal'
+                          total:
+                            type: integer
+                          page:
+                            type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags: [Withdrawals]
+      summary: Ajukan penarikan dana
+      description: >
+        Buat penarikan saldo ke akun DANA. `idempotency_key` wajib agar
+        permintaan ganda tidak memproses penarikan dua kali — request ulang
+        dengan key yang sama mengembalikan data penarikan yang sama (HTTP 200).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, idempotency_key]
+              properties:
+                amount:
+                  type: number
+                  minimum: 1
+                  example: 100000
+                idempotency_key:
+                  type: string
+                  maxLength: 50
+                  example: wd-2026-09-10-001
+      responses:
+        '201':
+          description: Penarikan dibuat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Withdrawal'
+        '200':
+          description: Idempotent — penarikan sudah pernah diproses
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Withdrawal'
+        '400':
+          description: Saldo tidak cukup / validasi gagal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /withdrawals/{id}:
+    get:
+      tags: [Withdrawals]
+      summary: Detail penarikan
+      description: Cari berdasarkan ID numerik atau `idempotency_key`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+          example: 12
+      responses:
+        '200':
+          description: Detail penarikan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Withdrawal'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Penarikan tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/withdrawals:
+    get:
+      tags: [Withdrawals]
+      summary: Daftar penarikan kurir (alias)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Daftar penarikan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          withdrawals:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Withdrawal'
+                          total:
+                            type: integer
+                          page:
+                            type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags: [Withdrawals]
+      summary: Ajukan penarikan dana (alias)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, idempotency_key]
+              properties:
+                amount:
+                  type: number
+                  minimum: 1
+                idempotency_key:
+                  type: string
+                  maxLength: 50
+      responses:
+        '201':
+          description: Penarikan dibuat
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Withdrawal'
+        '400':
+          description: Saldo tidak cukup / validasi gagal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Profil kurir tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /courier/withdrawals/{id}:
+    get:
+      tags: [Withdrawals]
+      summary: Detail penarikan (alias)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+      responses:
+        '200':
+          description: Detail penarikan
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Withdrawal'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Penarikan tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  # ═══════════════════════════ DROP POINTS ═══════════════════════════
+  /drop-points:
+    get:
+      tags: [Drop Points]
+      summary: Daftar drop point aktif
+      security: []
+      responses:
+        '200':
+          description: Drop point aktif
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            name:
+                              type: string
+                            address:
+                              type: string
+                            phone:
+                              type: string
+                              nullable: true
+                            schedule:
+                              type: string
+                              example: '08:00 - 21:00'
+                            rating:
+                              type: number
+                              format: float
+                            latitude:
+                              type: number
+                              nullable: true
+                            longitude:
+                              type: number
+                              nullable: true
+                            is_active:
+                              type: boolean
+
+  # ═══════════════════════════ SYSTEM ═══════════════════════════
+  /upload-apk:
+    post:
+      tags: [System]
+      summary: Upload APK (auto-sync dari Flutter)
+      description: Diproteksi header `X-Secret-Key`. Maks 200MB.
+      security: []
+      parameters:
+        - name: X-Secret-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [apk_file]
+              properties:
+                apk_file:
+                  type: string
+                  format: binary
+                  description: File APK (maks 200MB)
+                version:
+                  type: string
+                  description: Default tanggal hari ini (Y.m.d)
+                release_notes:
+                  type: string
+      responses:
+        '200':
+          description: APK terupload
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          version:
+                            type: string
+                          size:
+                            type: string
+                            example: 45.3 MB
+                          download_url:
+                            type: string
+                            format: uri
+        '401':
+          description: Secret key salah
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Unauthorized
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /test-wa:
+    post:
+      tags: [System]
+      summary: Tes pengiriman pesan WhatsApp
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                message:
+                  type: string
+                  default: Test message from City Courier
+      responses:
+        '200':
+          description: Hasil pengiriman WhatsApp
+          content:
+            application/json:
+              schema:
+                type: object
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+      description: Token dari endpoint login/OTP/social auth.
+
+  responses:
+    Unauthenticated:
+      description: Tidak terautentikasi
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ValidationError:
+      description: Validasi gagal
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationEnvelope'
+    NotFound:
+      description: Resource tidak ditemukan
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    CredentialsError:
+      description: Email atau password salah
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    PaymentStatus:
+      description: Status pembayaran terkini
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SuccessEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      payment_id:
+                        type: string
+                      status:
+                        type: string
+                        enum: [pending, paid, expired, canceled]
+                      amount:
+                        type: integer
+                      payment_type:
+                        type: string
+                      channel_code:
+                        type: string
+                        nullable: true
+                      va_number:
+                        type: string
+                        nullable: true
+                      expired_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      paid_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          description: Payload respons
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+
+    ValidationEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+          description: Peta field → daftar pesan error
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email:
+              - 'The email field is required.'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        photo_url:
+          type: string
+          nullable: true
+        role:
+          type: string
+          example: courier
+
+    Courier:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        nik:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        photo:
+          type: string
+          nullable: true
+        vehicle_type:
+          type: string
+        vehicle_brand:
+          type: string
+        vehicle_year:
+          type: string
+        vehicle_plate:
+          type: string
+        is_verified:
+          type: boolean
+        is_active:
+          type: boolean
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+
+    OrderStatus:
+      type: string
+      enum: [assigned, picking_up, delivering, delivered, cancelled]
+      description: |
+        Status order:
+        * `assigned` — kurir ditugaskan
+        * `picking_up` — kurir menuju lokasi pengirim
+        * `delivering` — paket dalam perjalanan
+        * `delivered` — paket terkirim
+        * `cancelled` — dibatalkan
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_number:
+          type: string
+          example: SHP-20260910-ABC123
+        tracking_number:
+          type: string
+          example: CC260910XYZ9
+        courier_id:
+          type: integer
+          nullable: true
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        pickup_address:
+          type: string
+        pickup_latitude:
+          type: number
+          nullable: true
+        pickup_longitude:
+          type: number
+          nullable: true
+        delivery_address:
+          type: string
+        delivery_latitude:
+          type: number
+          nullable: true
+        delivery_longitude:
+          type: number
+          nullable: true
+        package_description:
+          type: string
+          nullable: true
+        package_weight:
+          type: number
+        price:
+          type: number
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        notes:
+          type: string
+        pickup_photo_url:
+          type: string
+          nullable: true
+        delivery_photo_url:
+          type: string
+          nullable: true
+        picked_up_at:
+          type: string
+          format: date-time
+          nullable: true
+        delivering_at:
+          type: string
+          format: date-time
+          nullable: true
+        delivered_at:
+          type: string
+          format: date-time
+          nullable: true
+        shipment:
+          $ref: '#/components/schemas/Shipment'
+
+    OrderPaginator:
+      type: object
+      description: Paginator Laravel
+      properties:
+        current_page:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        first_page_url:
+          type: string
+        last_page:
+          type: integer
+        last_page_url:
+          type: string
+        next_page_url:
+          type: string
+          nullable: true
+        prev_page_url:
+          type: string
+          nullable: true
+        path:
+          type: string
+        per_page:
+          type: integer
+        total:
+          type: integer
+        from:
+          type: integer
+          nullable: true
+        to:
+          type: integer
+          nullable: true
+
+    ShipmentStatus:
+      type: string
+      enum: [pending, confirmed, assigned, picking_up, picked_up, delivering, delivered, cancelled]
+      description: |
+        Siklus hidup shipment:
+        `pending` → `confirmed` → `assigned` → `picking_up` → `picked_up` →
+        `delivering` → `delivered` (atau `cancelled` kapan saja sebelum delivered).
+
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: integer
+        shipment_number:
+          type: string
+          example: SHP-20260910-ABC123
+        tracking_number:
+          type: string
+          example: CC260910XYZ9
+        user_id:
+          type: integer
+          nullable: true
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        sender_name:
+          type: string
+        sender_phone:
+          type: string
+        sender_address:
+          type: string
+        sender_latitude:
+          type: number
+          nullable: true
+        sender_longitude:
+          type: number
+          nullable: true
+        origin_name:
+          type: string
+          nullable: true
+        origin_id:
+          type: string
+          nullable: true
+        receiver_name:
+          type: string
+        receiver_phone:
+          type: string
+        receiver_address:
+          type: string
+        receiver_latitude:
+          type: number
+          nullable: true
+        receiver_longitude:
+          type: number
+          nullable: true
+        destination_name:
+          type: string
+          nullable: true
+        destination_id:
+          type: string
+          nullable: true
+        package_description:
+          type: string
+          nullable: true
+        package_weight:
+          type: number
+        courier_code:
+          type: string
+        courier_name:
+          type: string
+        courier_service:
+          type: string
+        etd:
+          type: string
+          nullable: true
+        shipping_cost:
+          type: integer
+        insurance:
+          type: boolean
+        wood_packing:
+          type: boolean
+        total_cost:
+          type: integer
+        payment_method:
+          type: string
+          enum: [COD, TUNAI, VA, QRIS]
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ShipmentStatus'
+        status_label:
+          type: string
+          description: Label status dalam Bahasa Indonesia (computed)
+        status_color:
+          type: string
+          description: Warna UI (computed)
+        payment_info:
+          type: object
+          nullable: true
+          description: Info pembayaran aktif (VA/QRIS pending)
+          properties:
+            va_number:
+              type: string
+            bank_name:
+              type: string
+            amount:
+              type: integer
+            expired_at:
+              type: string
+              format: date-time
+            payment_url:
+              type: string
+            qr_string:
+              type: string
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ShipmentPaginator:
+      type: object
+      description: Paginator Laravel
+      properties:
+        current_page:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shipment'
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        next_page_url:
+          type: string
+          nullable: true
+        prev_page_url:
+          type: string
+          nullable: true
+
+    TimelineEntry:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/ShipmentStatus'
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    GeoPoint:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+
+    Address:
+      type: object
+      description: Hasil geocoding terstruktur
+      properties:
+        place_id:
+          nullable: true
+        osm_type:
+          type: string
+          nullable: true
+        osm_id:
+          nullable: true
+        formatted_address:
+          type: string
+        house_number:
+          type: string
+          nullable: true
+        street_name:
+          type: string
+          nullable: true
+        neighbourhood:
+          type: string
+          nullable: true
+        village:
+          type: string
+          nullable: true
+        district:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        province:
+          type: string
+          nullable: true
+        postal_code:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+        longitude:
+          type: number
+        location_source:
+          type: string
+
+    SavedAddress:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        province_id:
+          type: string
+          nullable: true
+        province_name:
+          type: string
+          nullable: true
+        city_id:
+          type: string
+          nullable: true
+        city_name:
+          type: string
+          nullable: true
+        subdistrict_id:
+          type: string
+          nullable: true
+        subdistrict_name:
+          type: string
+          nullable: true
+        is_favorite:
+          type: boolean
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        payment_id:
+          type: string
+          example: PAY-1725955200-AB
+        payment_type:
+          type: string
+          enum: [bank_transfer, qris]
+        channel_code:
+          type: string
+          nullable: true
+          example: BCA
+        amount:
+          type: integer
+        status:
+          type: string
+          enum: [pending, paid, expired, canceled]
+        va_number:
+          type: string
+          nullable: true
+          example: '88081234567890'
+        qr_string:
+          type: string
+          nullable: true
+        payment_url:
+          type: string
+          nullable: true
+          format: uri
+        expired_at:
+          type: string
+          format: date-time
+          nullable: true
+        instructions:
+          type: array
+          items:
+            type: string
+          description: Langkah pembayaran dalam Bahasa Indonesia
+
+    WalletTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        wallet_id:
+          type: integer
+        courier_id:
+          type: integer
+        order_id:
+          type: integer
+          nullable: true
+        type:
+          type: string
+          enum: [earning, withdrawal, release, refund]
+        amount:
+          type: number
+        fee:
+          type: number
+        net_amount:
+          type: number
+        status:
+          type: string
+          enum: [completed, pending, failed]
+        reference:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Withdrawal:
+      type: object
+      properties:
+        withdrawal_id:
+          type: integer
+        idempotency_key:
+          type: string
+        amount:
+          type: number
+        fee:
+          type: number
+        net_amount:
+          type: number
+        status:
+          type: string
+          enum: [pending, approved, reserved, processing, completed, rejected, cancelled]
+          description: |
+            Siklus hidup penarikan (PRD §60):
+            `pending` → `approved`/`reserved` → `processing` → `completed`,
+            atau `rejected`/`cancelled`.
+        destination:
+          type: string
+          example: DANA
+        masked_account:
+          type: string
+          nullable: true
+        provider_reference:
+          type: string
+          nullable: true
+        failure_reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        processed_at:
+          type: string
+          format: date-time
+          nullable: true

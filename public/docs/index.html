@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Courier API Documentation</title>
+    <meta name="description" content="Dokumentasi API City Courier — aplikasi kurir & pengiriman.">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+        /* Loading indicator sebelum Redoc siap */
+        #loading {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            background: #f8fafc;
+            z-index: 10;
+        }
+        #loading .spinner {
+            width: 42px;
+            height: 42px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #0ea5e9;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        #loading p { color: #64748b; font-size: 14px; margin: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Memuat dokumentasi API City Courier…</p>
+    </div>
+
+    <div id="redoc-container"></div>
+
+    <!-- Redoc v2 standalone -->
+    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+    <script>
+        // Fallback CDN bila CDN utama gagal dimuat
+        if (typeof Redoc === 'undefined') {
+            document.write('<script src="https://unpkg.com/redoc@2/bundles/redoc.standalone.js"><\/script>');
+        }
+    </script>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            var loading = document.getElementById('loading');
+            var container = document.getElementById('redoc-container');
+
+            if (typeof Redoc === 'undefined') {
+                loading.innerHTML = '<p style="color:#ef4444">Gagal memuat Redoc. Periksa koneksi internet Anda.</p>';
+                return;
+            }
+
+            Redoc.init('/docs/openapi.yaml', {
+                lazyRendering: true,
+                expandResponses: '200,201',
+                pathInMiddlePanel: true,
+                requiredPropsFirst: true,
+                noAutoAuth: true,
+                hideHostname: false,
+                sortTagsAlphabetically: false,
+                theme: {
+                    colors: {
+                        primary: { main: '#0ea5e9' },
+                        text: { primary: '#1e293b', secondary: '#64748b' },
+                        success: { main: '#22c55e' },
+                        warning: { main: '#f59e0b' },
+                        error: { main: '#ef4444' }
+                    },
+                    typography: {
+                        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        headings: { fontWeight: '700' },
+                        code: {
+                            fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+                            fontSize: '13px'
+                        }
+                    },
+                    sidebar: { width: '285px', backgroundColor: '#f8fafc' },
+                    rightPanel: { backgroundColor: '#0f172a' }
+                }
+            }, container, function () {
+                loading.remove();
+            });
+        });
+    </script>
+</body>
+</html>

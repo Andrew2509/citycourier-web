@@ -78,6 +78,24 @@
 
 ---
 
+## 📚 API Documentation
+
+Interactive API documentation (Redoc) is available at:
+
+```
+GET /api/documentation
+```
+
+The OpenAPI 3.0 spec lives in [`public/docs/openapi.yaml`](public/docs/openapi.yaml) and is served at `/docs/openapi.yaml`.
+
+Validate the spec after editing it:
+
+```bash
+node scripts/validate-openapi.cjs
+```
+
+---
+
 ## 🔒 Security
 
 This project implements best-of-breed security practices:
