@@ -92,9 +92,10 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
                     ];
                 }
 
+                $reason = $data['reason'] ?? $data['description'] ?? $data['message'] ?? 'Unknown error';
                 return [
                     'success' => false,
-                    'message' => $data['description'] ?? 'Gagal mengirim pesan WhatsApp.',
+                    'message' => 'Fonnte: ' . $reason,
                     'status' => $response->status(),
                 ];
             }
@@ -105,7 +106,7 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
             ]);
 
             $json = $response->json();
-            $errorMessage = $json['description'] ?? $json['message'] ?? $json['error'] ?? 'Server error (' . $response->status() . ')';
+            $errorMessage = $json['reason'] ?? $json['description'] ?? $json['message'] ?? $json['error'] ?? 'Server error (' . $response->status() . ')';
 
             return [
                 'success' => false,
