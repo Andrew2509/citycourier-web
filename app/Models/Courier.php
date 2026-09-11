@@ -56,4 +56,12 @@ class Courier extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * Get the wallet belonging to this courier.
+     */
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class);
+    }
 }
