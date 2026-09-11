@@ -1,13 +1,25 @@
 @extends('layouts.admin')
 
 @push('styles')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     .chip-btn.active { background: var(--md-sys-color-surface-container-lowest, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
     .chip-btn .chip-count { font-size: 10px; background: rgba(0,0,0,.06); border-radius: 999px; padding: 0 5px; font-weight: 700; }
     .chip-btn.active .chip-count { background: var(--md-sys-color-primary-container, #ccf1d0); color: var(--md-sys-color-primary, #166534); }
     @keyframes pulsate { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .45; } }
     .pulsate-dot { animation: pulsate 1.6s ease-in-out infinite; }
-    .courier-marker { transition: opacity .25s ease; }
+    #attendanceMap .leaf-div-icon, #detailMiniMap .leaf-div-icon { background: transparent; border: none; }
+    #attendanceMap .att-marker, #detailMiniMap .att-marker {
+        display: flex; flex-direction: column; align-items: center; cursor: pointer;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,.35));
+    }
+    #attendanceMap .att-marker .dot, #detailMiniMap .att-marker .dot {
+        width: 36px; height: 36px; border-radius: 999px; position: relative; display: flex; align-items: center;
+        justify-content: center; color: #fff; border: 3px solid rgba(255,255,255,.95);
+        font-size: 17px; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    #attendanceMap .leaflet-popup-content-wrapper, #detailMiniMap .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+    #attendanceMap .leaflet-popup-content, #detailMiniMap .leaflet-popup-content { margin: 12px 14px; font-family: 'Inter', sans-serif; }
     @media print { header, nav, aside, footer { display: none !important; } }
 </style>
 @endpush
@@ -251,69 +263,13 @@ $hudDefault = $mapMarks->first();
             </div>
         </div>
 
-        <div id="attendanceMap" class="relative h-[420px] sm:h-[480px] overflow-hidden">
-            {{-- Map background + SVG grid --}}
-            <div id="mapBg" class="absolute inset-0 bg-[linear-gradient(180deg,#e8f3ec_0%,#ddeeda_35%,#cfe2d8_70%,#f4e7d0_100%)]">
-                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 800 480" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#7b8f7b" stroke-opacity="0.18" stroke-width="1"/>
-                        </pattern>
-                        <pattern id="gridLite" width="200" height="200" patternUnits="userSpaceOnUse">
-                            <path d="M 200 0 L 0 0 0 200" fill="none" stroke="#5f7a5f" stroke-opacity="0.16" stroke-width="1.5"/>
-                        </pattern>
-                    </defs>
-                    <rect width="800" height="480" fill="url(#grid)"/>
-                    <rect width="800" height="480" fill="url(#gridLite)"/>
-                    {{-- water --}}
-                    <path d="M -20 20 C 120 10, 180 96, 300 80 C 420 64, 470 130, 420 180 C 350 250, 220 210, 120 260 C 40 300, -20 260, -20 20 Z" fill="#a8cfe6" fill-opacity="0.55"/>
-                    <path d="M 560 -20 C 620 40, 720 30, 820 80 L 820 -20 Z" fill="#a8cfe6" fill-opacity="0.45"/>
-                    {{-- arterial roads --}}
-                    <path d="M -20 220 C 140 200, 260 240, 420 210 C 560 186, 680 220, 820 190" fill="none" stroke="#f6c97a" stroke-opacity="0.7" stroke-width="16" stroke-linecap="round"/>
-                    <path d="M 220 -20 C 200 120, 250 220, 200 480" fill="none" stroke="#f6c97a" stroke-opacity="0.6" stroke-width="13" stroke-linecap="round"/>
-                    <path d="M 560 -20 C 540 140, 590 260, 620 480" fill="none" stroke="#f6c97a" stroke-opacity="0.55" stroke-width="12" stroke-linecap="round"/>
-                    <path d="M -20 360 C 160 340, 420 380, 820 350" fill="none" stroke="#f3d89c" stroke-opacity="0.55" stroke-width="9" stroke-linecap="round"/>
-                    <path d="M 100 60 C 140 160, 380 120, 460 200" fill="none" stroke="#e8c27a" stroke-opacity="0.5" stroke-width="7" stroke-linecap="round"/>
-                    <circle cx="420" cy="240" r="180" fill="none" stroke="#4a7d5a" stroke-opacity="0.12" stroke-dasharray="6 10" stroke-width="1.5"/>
-                    <circle cx="420" cy="240" r="230" fill="none" stroke="#4a7d5a" stroke-opacity="0.08" stroke-dasharray="4 12" stroke-width="1.5"/>
-                </svg>
-            </div>
-
-            {{-- Hub marker --}}
-            <button type="button" style="left: {{ $hubX }}%; top: {{ $hubY }}%; transform: translate(-50%, -50%);"
-                class="absolute z-20 flex flex-col items-center cursor-pointer group" title="{{ $hub->name ?? 'Drop Point' }}">
-                <span class="relative flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white shadow-lg ring-4 ring-white/80 group-hover:scale-110 transition-transform">
-                    <span class="material-symbols-outlined text-[20px]">warehouse</span>
-                    <span class="absolute inset-0 rounded-full bg-amber-500 animate-ping opacity-30"></span>
-                </span>
-                <span class="mt-1 whitespace-nowrap px-2 py-0.5 rounded-md bg-white/95 shadow text-[11px] font-bold text-amber-800">{{ $hub->name ?? 'Hub' }}</span>
-            </button>
-
-            {{-- Courier markers --}}
-            @foreach($mapMarks as $mark)
-            <button type="button" data-marker="{{ $mark['id'] }}" onclick="selectCourier({{ $mark['id'] }})"
-                style="left: {{ $mark['x'] }}%; top: {{ $mark['y'] }}%; transform: translate(-50%, -50%);"
-                class="courier-marker absolute z-10 flex flex-col items-center cursor-pointer group">
-                <span class="relative flex items-center justify-center w-9 h-9 rounded-full bg-primary text-white shadow-lg ring-4 ring-white/90 group-hover:scale-110 transition-transform courier-dot">
-                    <span class="material-symbols-outlined text-[18px]">delivery_dining</span>
-                    <span class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full {{ $mark['status'] === 'offline' ? 'bg-secondary' : 'bg-emerald-400' }} border-2 border-white pulsate-dot"></span>
-                </span>
-                <span class="mt-1 whitespace-nowrap px-2 py-0.5 rounded-md bg-white/95 shadow text-[11px] font-bold text-on-surface">{{ $mark['name'] }}
-                    <span class="text-secondary font-medium">(ID: {{ $mark['id'] }})</span>
-                </span>
-            </button>
-            @endforeach
-
-            @if($mapMarks->isEmpty())
-            <div class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-space-xs text-secondary pointer-events-none">
-                <span class="material-symbols-outlined text-[40px]">gps_off</span>
-                <span class="font-label-md text-label-md">Belum ada sinyal GPS dari kurir</span>
-            </div>
-            @endif
+        <div class="relative h-[420px] sm:h-[480px]">
+            {{-- OpenStreetMap (Leaflet) — map instance created in JS --}}
+            <div id="attendanceMap" class="absolute inset-0 z-0 w-full h-full"></div>
 
             @if($hudDefault)
             {{-- Telemetry HUD --}}
-            <div id="hudCard" class="absolute right-3 top-3 z-30 w-[248px] rounded-xl bg-white/95 backdrop-blur shadow-xl border border-surface-container-high p-3.5 flex flex-col gap-2.5">
+            <div id="hudCard" class="absolute right-3 top-3 z-[1000] w-[248px] rounded-xl bg-white/95 backdrop-blur shadow-xl border border-surface-container-high p-3.5 flex flex-col gap-2.5">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-sm shrink-0">{{ $hudDefault['initial'] }}</div>
                     <div class="flex flex-col min-w-0">
@@ -609,18 +565,7 @@ $hudDefault = $mapMarks->first();
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md" id="detailGrid"></div>
             <div class="flex flex-col gap-space-xs">
                 <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Lokasi Terakhir</span>
-                <div class="relative rounded-xl overflow-hidden border border-surface-container-high h-40">
-                    <div class="absolute inset-0 bg-[linear-gradient(180deg,#e8f3ec,#cfe2d8)]">
-                        <svg class="absolute inset-0 w-full h-full" viewBox="0 0 800 480" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-                            <defs><pattern id="dgrid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#7b8f7b" stroke-opacity="0.18" stroke-width="1"/></pattern></defs>
-                            <rect width="800" height="480" fill="url(#dgrid)"/>
-                            <path d="M -20 220 C 140 200, 260 240, 420 210 C 560 186, 680 220, 820 190" fill="none" stroke="#f6c97a" stroke-opacity="0.7" stroke-width="16" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <span id="d-minimarker" class="absolute w-9 h-9 rounded-full bg-primary text-white shadow-lg ring-4 ring-white/90 flex items-center justify-center" style="--mx: 50%; --my: 50%; left: var(--mx); top: var(--my); transform: translate(-50%,-50%);">
-                        <span class="material-symbols-outlined text-[17px]">delivery_dining</span>
-                    </span>
-                </div>
+                <div id="detailMiniMap" class="relative w-full h-40 rounded-xl overflow-hidden border border-surface-container-high z-0"></div>
                 <span class="font-label-sm text-label-sm text-secondary" id="d-address">—</span>
                 <span class="font-label-xs text-label-xs text-secondary font-mono" id="d-coords">—</span>
             </div>
@@ -631,7 +576,7 @@ $hudDefault = $mapMarks->first();
                 <a id="d-call" href="#" class="inline-flex items-center gap-1.5 h-10 px-space-md rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-label-md text-label-md font-semibold transition-colors">
                     <span class="material-symbols-outlined text-[17px]">phone</span> Telepon
                 </a>
-                <button onclick="closeDetail(); focusCourierDetail()" class="inline-flex items-center gap-1.5 h-10 px-space-md rounded-lg bg-primary-container hover:bg-primary hover:text-on-primary text-primary font-label-md text-label-md font-semibold transition-colors">
+                <button onclick="openDetailOnMap()" class="inline-flex items-center gap-1.5 h-10 px-space-md rounded-lg bg-primary-container hover:bg-primary hover:text-on-primary text-primary font-label-md text-label-md font-semibold transition-colors">
                     <span class="material-symbols-outlined text-[17px]">map</span> Lihat di Peta
                 </button>
             </div>
@@ -674,11 +619,16 @@ $hudDefault = $mapMarks->first();
 @endsection
 
 @push('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
     const ATT = {!! json_encode($rows->keyBy('id')) !!};
     const MAPMARKS = {!! json_encode($mapMarks) !!};
+    const HUB = {!! json_encode(['name' => $hub->name ?? 'Hub DP', 'lat' => (float) $hub->latitude, 'lng' => (float) $hub->longitude]) !!};
     window.__ATT = ATT;
+
+    const TILE = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
     const statusChipMap = {
         online: { c: 'bg-emerald-500', t: 'text-emerald-700', b: 'bg-emerald-50' },
@@ -686,13 +636,99 @@ $hudDefault = $mapMarks->first();
         break: { c: 'bg-sky-500', t: 'text-sky-700', b: 'bg-sky-50' },
         offline: { c: 'bg-secondary', t: 'text-secondary', b: 'bg-surface-container' },
     };
+    const statusLabel = (s) => s === 'online' ? 'Online • Siaga' : s === 'delivering' ? 'Sedang Mengantar' : s === 'break' ? 'Istirahat' : 'Offline';
 
-    const label = (s) => s === 'online' ? 'Online • Siaga' : s === 'delivering' ? 'Sedang Mengantar' : s === 'break' ? 'Istirahat' : 'Offline';
+    let liveMap = null;
+    let liveMarkers = {};
+    let hubMarker = null;
+    let fitBoundsGroup = null;
+    let detailMap = null;
+    let detailMarker = null;
+    let currentDetailId = null;
 
-    /* HUD update */
+    function courierIcon(m) {
+        const color = m.status === 'offline' ? '#6b7280' : '#166534';
+        const dot = m.status === 'offline' ? '#9ca3af' : '#34d399';
+        const pulse = m.status === 'offline' ? '' : 'animation:pulsate 1.6s ease-in-out infinite';
+        return L.divIcon({
+            className: 'att-div',
+            html: '<div class="att-marker">' +
+                '<div class="dot" style="background:' + color + '">' +
+                '<span class="material-symbols-outlined" style="font-size:17px;line-height:1">delivery_dining</span>' +
+                '<span style="position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:999px;background:' + dot + ';border:2px solid #fff;' + pulse + '"></span>' +
+                '</div>' +
+                '<div style="margin-top:3px;padding:2px 6px;border-radius:6px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);font-size:11px;font-weight:700;color:#1a1a1a;white-space:nowrap;">' + m.name + ' <span style="color:#6b7280;font-weight:600;">(ID: ' + m.id + ')</span></div>' +
+                '</div>',
+            iconSize: [78, 62],
+            iconAnchor: [39, 40]
+        });
+    }
+
+    function hubIcon() {
+        return L.divIcon({
+            className: 'att-div',
+            html: '<div class="att-marker">' +
+                '<div class="dot" style="background:#f59e0b">' +
+                '<span class="material-symbols-outlined" style="font-size:19px;line-height:1">warehouse</span>' +
+                '<span style="position:absolute;inset:0;border-radius:999px;background:#f59e0b;opacity:.35;animation:pulsate 1.6s ease-in-out infinite"></span>' +
+                '</div>' +
+                '<div style="margin-top:3px;padding:2px 6px;border-radius:6px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);font-size:11px;font-weight:700;color:#92400e;white-space:nowrap;">' + HUB.name + '</div>' +
+                '</div>',
+            iconSize: [96, 62],
+            iconAnchor: [48, 40]
+        });
+    }
+
+    function popupHtml(m) {
+        const milli = '<span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:' + (m.status === 'offline' ? '#9ca3af' : '#34d399') + ';margin-right:4px;"></span>';
+        return '<div style="font-family:Inter,sans-serif;min-width:200px;">' +
+            '<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px;">' +
+            '<div style="width:32px;height:32px;border-radius:999px;background:#166534;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">' + m.initial + '</div>' +
+            '<div><div style="font-weight:700;font-size:13px;color:#111827;">' + m.name + '</div>' +
+            '<div style="font-size:11px;color:#6b7280;">' + milli + statusLabel(m.status) + '</div></div>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#374151;margin-bottom:8px;">' +
+            '&#9889; ' + (m.speed !== null ? m.speed : '-') + ' km/j &nbsp;&bull;&nbsp; &#128267; ' + (m.battery !== null ? m.battery : '-') + '% &nbsp;&bull;&nbsp; &#127919; ±' + (m.accuracy !== null ? m.accuracy : '-') + 'm' +
+            '</div>' +
+            '<button onclick="openDetail(' + m.id + ')" style="width:100%;padding:7px 0;border:0;border-radius:8px;background:#166534;color:#fff;font-weight:700;font-size:12px;cursor:pointer;">Lihat Detail</button>' +
+            '</div>';
+    }
+
+    function hubPopupHtml() {
+        return '<div style="font-family:Inter,sans-serif;min-width:170px;">' +
+            '<div style="font-weight:700;font-size:13px;color:#92400e;">' + HUB.name + '</div>' +
+            '<div style="font-size:11px;color:#6b7280;margin-top:2px;">Hub distribusi • Geofence ±150 m</div>' +
+            '</div>';
+    }
+
+    function initLiveMap() {
+        if (liveMap) return;
+        liveMap = L.map('attendanceMap', { zoomControl: false }).setView([-7.2575, 112.7521], 12);
+        L.tileLayer(TILE, { maxZoom: 19, attribution: ATTR }).addTo(liveMap);
+
+        if (HUB.lat && HUB.lng) {
+            hubMarker = L.marker([HUB.lat, HUB.lng], { icon: hubIcon() }).addTo(liveMap).bindPopup(hubPopupHtml());
+        }
+
+        MAPMARKS.forEach(function (m) {
+            const mk = L.marker([m.latitude, m.longitude], { icon: courierIcon(m) }).addTo(liveMap).bindPopup(popupHtml(m));
+            mk.on('click', function () { selectCourier(m.id); });
+            liveMarkers[m.id] = mk;
+        });
+
+        const pts = [];
+        if (hubMarker) pts.push(hubMarker.getLatLng());
+        Object.keys(liveMarkers).forEach(function (id) { pts.push(liveMarkers[id].getLatLng()); });
+        if (pts.length > 0) {
+            fitBoundsGroup = L.featureGroup(pts.map(function (p) { return L.marker(p); }));
+            liveMap.fitBounds(fitBoundsGroup.getBounds().pad(0.25));
+        }
+        setTimeout(function () { liveMap && liveMap.invalidateSize(); }, 200);
+    }
+
+    /* HUD update + focus */
     window.selectCourier = function (id) {
         const m = MAPMARKS.find(x => x.id === id);
-        const r = ATT[id];
         if (!m) return;
         const fuel = document.getElementById('hudCard');
         if (fuel) {
@@ -706,21 +742,40 @@ $hudDefault = $mapMarks->first();
             document.getElementById('hudPlace').textContent = m.city || '-';
             document.getElementById('hudTime').textContent = new Date().toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
         }
-        document.querySelectorAll('.courier-marker').forEach(el => el.style.opacity = 0.45);
-        const marker = document.querySelector('[data-marker="' + id + '"]');
-        if (marker) marker.style.opacity = 1;
+        const mk = liveMarkers[id];
+        if (mk && liveMap) {
+            mk.openPopup();
+            liveMap.flyTo(mk.getLatLng(), Math.max(liveMap.getZoom(), 14), { duration: 0.5 });
+        }
     };
 
     window.focusCourier = function (id) {
         document.getElementById('attendanceMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => selectCourier(id), 400);
+        setTimeout(() => selectCourier(id), 450);
     };
-    window.focusCourierDetail = function () {};
 
-    /* Detail modal */
+    /* Detail modal with OpenStreetMap minimap */
+    function initDetailMap(id) {
+        const r = ATT[id];
+        if (!detailMap) {
+            detailMap = L.map('detailMiniMap', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false });
+            L.tileLayer(TILE, { maxZoom: 19 }).addTo(detailMap);
+        }
+        if (r && r.lat && r.lng) {
+            detailMap.setView([r.lat, r.lng], 15);
+            if (detailMarker) {
+                detailMarker.setLatLng([r.lat, r.lng]);
+            } else {
+                detailMarker = L.marker([r.lat, r.lng], { icon: courierIcon(r) }).addTo(detailMap);
+            }
+        }
+        detailMap.invalidateSize();
+    }
+
     window.openDetail = function (id) {
         const r = ATT[id];
         if (!r) return;
+        currentDetailId = id;
         document.getElementById('d-initial').textContent = r.initial;
         document.getElementById('d-name').textContent = r.name;
         document.getElementById('d-id').textContent = 'ID: ' + r.id;
@@ -728,9 +783,9 @@ $hudDefault = $mapMarks->first();
 
         const st = statusChipMap[r.status] || statusChipMap.online;
         document.getElementById('d-status').className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-sm text-xs font-bold ' + st.b + ' ' + st.t;
-        document.getElementById('d-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full ' + st.c + '"></span>' + (r.status === 'online' || r.status === 'delivering' ? r.statusLabel : (r.status === 'break' ? 'Istirahat' : 'Offline'));
+        document.getElementById('d-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full ' + st.c + '"></span>' + statusLabel(r.status);
 
-        const statusTitle = r.status === 'break' ? 'Istirahat' : (r.status === 'delivering' ? 'Sedang Mengantar' : (r.status === 'online' ? 'Online • Siaga' : 'Offline'));
+        const statusTitle = statusLabel(r.status);
         const isOnline = r.status !== 'offline';
         const items = [
             { label: 'Status', icon: 'toggle_on', value: statusTitle, extra: isOnline ? 'Aplikasi ' + r.device + ' • Aktif' : null },
@@ -749,13 +804,9 @@ $hudDefault = $mapMarks->first();
                 ${it.extra ? `<span class="text-[11px] font-semibold text-emerald-700">${it.extra}</span>` : ''}
             </div>`).join('');
 
-        if (r.lat) {
+        if (r.lat && r.lng) {
             document.getElementById('d-address').textContent = r.address || 'Surabaya';
             document.getElementById('d-coords').textContent = r.lat.toFixed(5).replace('.', ',') + ', ' + r.lng.toFixed(5).replace('.', ',') + ' • Sinyal update ' + (r.lastSeen !== null && r.lastSeen <= 60 ? r.lastSeen + ' detik lalu' : '—');
-            const pctX = Math.max(8, Math.min(92, (r.lng - 112.65) / 0.20 * 100));
-            const pctY = Math.max(8, Math.min(92, (-7.20 - r.lat) / 0.15 * 100));
-            document.getElementById('d-minimarker').style.setProperty('--mx', pctX + '%');
-            document.getElementById('d-minimarker').style.setProperty('--my', pctY + '%');
         } else {
             document.getElementById('d-address').textContent = '-';
             document.getElementById('d-coords').textContent = 'GPS nonaktif';
@@ -765,8 +816,16 @@ $hudDefault = $mapMarks->first();
         document.getElementById('d-wa').href = 'https://wa.me/' + waNum;
         document.getElementById('d-call').href = 'tel:' + r.phone;
         document.getElementById('detailModal').classList.remove('hidden');
+        setTimeout(function () { initDetailMap(id); }, 80);
     };
     window.closeDetail = function () { document.getElementById('detailModal').classList.add('hidden'); };
+    window.openDetailOnMap = function () {
+        closeDetail();
+        if (currentDetailId) {
+            document.getElementById('attendanceMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => selectCourier(currentDetailId), 450);
+        }
+    };
 
     /* Date modal */
     window.openDateModal = function () { document.getElementById('dateModal').classList.remove('hidden'); };
@@ -815,25 +874,21 @@ $hudDefault = $mapMarks->first();
     document.addEventListener('click', function (e) {
         document.querySelectorAll('[id^="qm-"]').forEach(el => { if (!el.contains(e.target)) { el.classList.add('hidden'); el.classList.remove('flex'); } });
     });
+    document.addEventListener('fullscreenchange', function () { liveMap && liveMap.invalidateSize(); });
 
-    /* Map controls */
-    let mapScale = 1;
-    window.mapZoom = function (d) {
-        mapScale = Math.min(1.6, Math.max(0.6, mapScale + d * 0.2));
-        const bg = document.getElementById('mapBg');
-        if (bg) bg.style.transform = 'scale(' + mapScale + ')';
-    };
+    /* OSM map controls */
+    window.mapZoom = function (d) { if (liveMap) liveMap.setZoom(liveMap.getZoom() + d); };
     window.mapCenter = function () {
-        mapScale = 1;
-        const bg = document.getElementById('mapBg');
-        if (bg) bg.style.transform = 'none';
+        if (!liveMap) return;
+        if (fitBoundsGroup) liveMap.fitBounds(fitBoundsGroup.getBounds().pad(0.25));
+        else liveMap.setView([-7.2575, 112.7521], 12);
     };
     window.mapFullscreen = function () {
         const el = document.getElementById('attendanceMap');
         if (!document.fullscreenElement) { el.requestFullscreen && el.requestFullscreen(); } else { document.exitFullscreen(); }
     };
 
-    if (MAPMARKS.length > 0) selectCourier(MAPMARKS[0].id);
+    setTimeout(initLiveMap, 50);
 })();
 </script>
 @endpush

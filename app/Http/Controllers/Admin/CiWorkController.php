@@ -118,6 +118,7 @@ class CiWorkController extends Controller
             'longitude' => $c->map_lng,
             'speed'     => $c->loc && $c->loc->speed_kmh !== null ? (float) $c->loc->speed_kmh : null,
             'battery'   => $c->loc ? $c->loc->battery_percent : null,
+            'accuracy'  => $c->loc && $c->loc->accuracy != null ? (float) $c->loc->accuracy : null,
             'lastSeen'  => $c->last_seen_secs,
             'city'      => $c->address ?? $c->city ?? '-',
         ]);
