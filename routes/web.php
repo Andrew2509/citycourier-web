@@ -121,6 +121,8 @@ Route::middleware('auth')->group(function () {
         Route::prefix('ci-work')->name('ci-work.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\CiWorkController::class, 'index'])->name('index');
             Route::get('/attendance', [\App\Http\Controllers\Admin\CiWorkController::class, 'attendance'])->name('attendance');
+            Route::get('/attendance/export', [\App\Http\Controllers\Admin\CiWorkController::class, 'exportAttendance'])->name('attendance.export');
+            Route::post('/attendance/{courier}/toggle-active', [\App\Http\Controllers\Admin\CiWorkController::class, 'toggleActive'])->name('attendance.toggle-active');
             Route::get('/tasks', [\App\Http\Controllers\Admin\CiWorkController::class, 'tasks'])->name('tasks');
             Route::get('/finance', [\App\Http\Controllers\Admin\CiWorkController::class, 'finance'])->name('finance');
             Route::post('/finance/commission', [\App\Http\Controllers\Admin\CiWorkController::class, 'updateCommission'])->name('finance.commission');

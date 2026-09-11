@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Courier;
+use App\Models\DropPoint;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Wallet;
@@ -40,16 +41,165 @@ class CiWorkController extends Controller
     }
 
     /**
-     * Courier Attendance monitoring.
+     * Courier Attendance monitoring & live tracking.
      */
-    public function attendance()
+    public function attendance(Request $request)
     {
-        $couriers = Courier::with('user')
-            ->where('is_verified', true)
-            ->latest()
+        $date      = $request->query('date') ? \Carbon\Carbon::parse($request->query('date'))->toDateString() : today()->toDateString();
+        $dateLabel = \Carbon\Carbon::parse($date)->translatedFormat('d M Y');
+        $cutoff    = Setting::get('attendance_shift_cutoff', '08:00');
+        $dropPoint = Setting::get('attendance_drop_point', 'Drop Point Bratang');
+
+        $couriers = Courier::with([
+            'user',
+            'attendance'  => fn ($q) => $q->whereDate('check_in_at', $date)->latest(),
+            'locations'   => fn ($q) => $q->latest('recorded_at')->take(1),
+        ])
+            ->with(['orders' => fn ($q) => $q->whereIn('status', ['assigned', 'picking_up', 'delivering'])])
             ->paginate(10);
 
-        return view('admin.ci-work.attendance', compact('couriers'));
+        $cutoffCarbon = $cutoff ? \Carbon\Carbon::createFromFormat('H:i', $cutoff) : null;
+
+        $chipCounts = ['semua' => 0, 'online' => 0, 'delivering' => 0, 'break' => 0, 'offline' => 0];
+        $onTime     = 0;
+
+        foreach ($couriers as $courier) {
+            $att = $courier->attendance->first();
+            $loc = $courier->locations->first();
+            $delivering = $courier->orders->isNotEmpty();
+
+            $status = 'offline';
+            if ($delivering) {
+                $status = 'delivering';
+            } elseif ($att && $att->status === 'break') {
+                $status = 'break';
+            } elseif ($courier->is_active) {
+                $status = 'online';
+            }
+
+            $lat = $loc->latitude ?? $courier->latitude;
+            $lng = $loc->longitude ?? $courier->longitude;
+
+            $courier->presence_status = $status;
+            $courier->att             = $att;
+            $courier->loc             = $loc;
+            $courier->online          = in_array($status, ['online', 'delivering']);
+            $courier->is_late         = $att && $cutoffCarbon
+                && (int) $att->check_in_at->format('Hi') > (int) $cutoffCarbon->format('Hi');
+            $courier->map_lat         = $lat ? (float) $lat : null;
+            $courier->map_lng         = $lng ? (float) $lng : null;
+            $courier->last_seen_secs  = $loc && $loc->recorded_at
+                ? (int) max(0, $loc->recorded_at->diffInSeconds(now()))
+                : null;
+
+            $chipCounts['semua']++;
+            $chipCounts[$status]++;
+            if ($att && ! $courier->is_late) {
+                $onTime++;
+            }
+        }
+
+        $onlineCount = $chipCounts['online'] + $chipCounts['delivering'];
+        $gpsCount    = $couriers->filter(fn ($c) => $c->map_lat && $c->map_lng)->count();
+
+        $times = $couriers->filter(fn ($c) => $c->att && $c->att->check_in_at)
+            ->map(fn ($c) => $c->att->check_in_at);
+
+        $avgCheckin = $times->isNotEmpty()
+            ? \Carbon\Carbon::createFromTimestamp((int) floor($times->avg(fn ($t) => $t->timestamp)))
+            : null;
+
+        $mapCouriers = $couriers->filter(fn ($c) => $c->map_lat && $c->map_lng)->values()->map(fn ($c) => [
+            'id'        => $c->id,
+            'name'      => $c->user->name ?? 'Kurir',
+            'initial'   => strtoupper(substr($c->user->name ?? 'K', 0, 1)),
+            'status'    => $c->presence_status,
+            'latitude'  => $c->map_lat,
+            'longitude' => $c->map_lng,
+            'speed'     => $c->loc && $c->loc->speed_kmh !== null ? (float) $c->loc->speed_kmh : null,
+            'battery'   => $c->loc ? $c->loc->battery_percent : null,
+            'lastSeen'  => $c->last_seen_secs,
+            'city'      => $c->address ?? $c->city ?? '-',
+        ]);
+
+        $hub = DropPoint::where('name', 'Drop Point Bratang')->first()
+            ?: (object) [
+                'name'      => 'Drop Point Bratang',
+                'address'   => 'Jl. Bratang Gede No. 42, Ngagelrejo, Surabaya',
+                'latitude'  => -7.29124,
+                'longitude' => 112.75921,
+            ];
+
+        $mapBounds = [
+            'latMin' => -7.35,
+            'latMax' => -7.20,
+            'lngMin' => 112.65,
+            'lngMax' => 112.85,
+        ];
+
+        return view('admin.ci-work.attendance', compact(
+            'couriers',
+            'date',
+            'dateLabel',
+            'cutoff',
+            'dropPoint',
+            'onlineCount',
+            'gpsCount',
+            'avgCheckin',
+            'onTime',
+            'chipCounts',
+            'mapCouriers',
+            'hub',
+            'mapBounds'
+        ));
+    }
+
+    /**
+     * Export attendance log (CSV).
+     */
+    public function exportAttendance(Request $request)
+    {
+        $date = $request->query('date') ? \Carbon\Carbon::parse($request->query('date'))->toDateString() : today()->toDateString();
+
+        $attendances = \App\Models\Attendance::with('courier.user')
+            ->whereDate('check_in_at', $date)
+            ->latest('check_in_at')
+            ->get();
+
+        $filename = 'log-kehadiran-' . $date . '.csv';
+
+        return response()->streamDownload(function () use ($attendances, $date) {
+            $output = fopen('php://output', 'w');
+            fwrite($output, "\xEF\xBB\xBF");
+
+            fputcsv($output, ['No', 'Nama Kurir', 'WhatsApp', 'Email', 'Check-In', 'Check-Out', 'Status', 'Drop Point', 'Durasi']);
+
+            foreach ($attendances->values() as $i => $att) {
+                fputcsv($output, [
+                    $i + 1,
+                    $att->courier->user->name ?? '-',
+                    $att->courier->user->phone ?? $att->courier->phone ?? '-',
+                    $att->courier->user->email ?? '-',
+                    $att->check_in_at ? $att->check_in_at->format('H:i') : '-',
+                    $att->check_out_at ? $att->check_out_at->format('H:i') : '-',
+                    ucfirst($att->status),
+                    $att->drop_point_name ?? '-',
+                    $att->duration ?? '-',
+                ]);
+            }
+
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Toggle courier active state from the attendance roster.
+     */
+    public function toggleActive(Request $request, Courier $courier)
+    {
+        $courier->update(['is_active' => ! $courier->is_active]);
+
+        return back()->with('success', 'Status kurir ' . ($courier->user->name ?? '') . ' diperbarui menjadi ' . ($courier->is_active ? 'Aktif' : 'Nonaktif') . '.');
     }
 
     /**

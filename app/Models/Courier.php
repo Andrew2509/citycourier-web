@@ -64,4 +64,20 @@ class Courier extends Model
     {
         return $this->hasOne(Wallet::class);
     }
+
+    /**
+     * Get attendance records for this courier.
+     */
+    public function attendance()
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    /**
+     * Get the courier locations (telemetry).
+     */
+    public function locations()
+    {
+        return $this->hasMany(CourierLocation::class);
+    }
 }
