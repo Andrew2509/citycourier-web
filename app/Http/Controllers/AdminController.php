@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Shipment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
 {
@@ -48,56 +49,68 @@ class AdminController extends Controller
     }
 
     /**
-     * Courier management page.
+     * Courier management page (Manajemen Armada Kurir).
      */
-    public function couriers(Request $request)
+    public function couriers()
     {
-        $query = Courier::with('user');
+        $couriers = Courier::with([
+            'user',
+            // Today's delivered orders = "Rekap Hari Ini" for each courier
+            'orders' => function ($q) {
+                $q->where('status', 'delivered')->whereDate('delivered_at', today());
+            },
+        ])->latest()->paginate(10);
 
-        // Filter by verification status
-        if ($request->has('filter')) {
-            match ($request->filter) {
-                'verified' => $query->where('is_verified', true),
-                'unverified' => $query->where('is_verified', false),
-                'active' => $query->where('is_active', true),
-                default => null,
-            };
-        }
+        $stats = [
+            'total' => Courier::count(),
+            'active' => Courier::where('is_active', true)->count(),
+            'verified' => Courier::where('is_verified', true)->count(),
+            'unverified' => Courier::where('is_verified', false)->count(),
+        ];
 
-        // Search
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            })->orWhere('phone', 'like', "%{$search}%");
-        }
+        return view('admin.couriers', compact('couriers', 'stats'));
+    }
 
-        // Labels & Titles
-        $viewTitle = 'Manajemen Kurir';
-        $viewSubtitle = 'Kelola data dan verifikasi kurir';
+    /**
+     * Export courier data as CSV.
+     */
+    public function exportCouriers()
+    {
+        $couriers = Courier::with('user')->latest()->get();
 
-        if ($request->has('filter')) {
-            match ($request->filter) {
-                'verified' => [
-                    $viewTitle = 'Daftar Kurir',
-                    $viewSubtitle = 'Daftar kurir yang sudah terverifikasi'
-                ],
-                'unverified' => [
-                    $viewTitle = 'Verifikasi Kurir',
-                    $viewSubtitle = 'Daftar kurir baru yang menunggu verifikasi'
-                ],
-                'active' => [
-                    $viewTitle = 'Kurir Aktif',
-                    $viewSubtitle = 'Daftar kurir yang sedang bertugas/aktif'
-                ],
-                default => null,
-            };
-        }
+        $filename = 'data-kurir-' . now()->format('Y-m-d') . '.csv';
 
-        $couriers = $query->latest()->paginate(10);
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
 
-        return view('admin.couriers', compact('couriers', 'viewTitle', 'viewSubtitle'));
+        return new StreamedResponse(function () use ($couriers) {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM (Excel compatibility)
+
+            fputcsv($handle, [
+                'Nama', 'Email', 'Telepon', 'Kota', 'Kendaraan', 'Merk', 'Plat Nomor',
+                'Bergabung', 'Verifikasi', 'Status',
+            ]);
+
+            foreach ($couriers as $courier) {
+                fputcsv($handle, [
+                    $courier->user?->name ?? '-',
+                    $courier->user?->email ?? '-',
+                    $courier->phone ?? '-',
+                    $courier->city ?? '-',
+                    $courier->vehicle_type ?? '-',
+                    $courier->vehicle_brand ?? '-',
+                    $courier->vehicle_plate ?? '-',
+                    $courier->created_at?->format('d M Y') ?? '-',
+                    $courier->is_verified ? 'Terverifikasi' : 'Belum Verifikasi',
+                    $courier->is_active ? 'Aktif' : 'Nonaktif',
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
     }
 
     /**
