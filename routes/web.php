@@ -64,6 +64,8 @@ Route::middleware('auth')->group(function () {
         // Couriers
         Route::get('/couriers', [AdminController::class, 'couriers'])->name('couriers');
         Route::get('/couriers/export', [AdminController::class, 'exportCouriers'])->name('couriers.export');
+        Route::post('/couriers', [AdminController::class, 'storeCourier'])->name('couriers.store');
+        Route::put('/couriers/{courier}', [AdminController::class, 'updateCourier'])->name('couriers.update');
         Route::patch('/couriers/{courier}/verify', [AdminController::class, 'toggleVerifyCourier'])->name('couriers.verify');
         Route::patch('/couriers/{courier}/toggle-active', [AdminController::class, 'toggleActiveCourier'])->name('couriers.toggle-active');
 

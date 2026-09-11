@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Courier;
 use App\Models\Order;
 use App\Models\Shipment;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
@@ -111,6 +114,90 @@ class AdminController extends Controller
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    /**
+     * Create a new courier (user + courier profile) from the admin panel.
+     */
+    public function storeCourier(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'nullable|string|min:6|max:255',
+            'phone' => 'nullable|string|max:20',
+            'nik' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:100',
+            'vehicle_type' => 'required|in:motor,mobil,sepeda',
+            'vehicle_brand' => 'nullable|string|max:100',
+            'vehicle_year' => 'nullable|string|max:5',
+            'vehicle_plate' => 'required|string|max:20',
+            'activate' => 'nullable|boolean',
+        ]);
+
+        $password = $request->filled('password')
+            ? $request->input('password')
+            : Str::random(10);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($password),
+            'role' => 'courier',
+        ]);
+        $user->syncRoles(['courier']);
+
+        $activate = $request->boolean('activate', true);
+
+        $courier = Courier::create([
+            'user_id' => $user->id,
+            'phone' => $data['phone'] ?? null,
+            'nik' => $data['nik'] ?? null,
+            'city' => $data['city'] ?? null,
+            'vehicle_type' => $data['vehicle_type'],
+            'vehicle_brand' => $data['vehicle_brand'] ?? null,
+            'vehicle_year' => $data['vehicle_year'] ?? null,
+            'vehicle_plate' => strtoupper($data['vehicle_plate']),
+            'is_verified' => $activate,
+            'is_active' => $activate,
+        ]);
+
+        $msg = "Kurir {$user->name} berhasil ditambahkan. "
+            . ($request->filled('password') ? '' : "Password awal: {$password}. ");
+
+        return back()->with('success', rtrim($msg));
+    }
+
+    /**
+     * Update an existing courier profile from the admin panel.
+     */
+    public function updateCourier(Request $request, Courier $courier)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'nik' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:100',
+            'vehicle_type' => 'required|in:motor,mobil,sepeda',
+            'vehicle_brand' => 'nullable|string|max:100',
+            'vehicle_year' => 'nullable|string|max:5',
+            'vehicle_plate' => 'required|string|max:20',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $courier->user?->update(['name' => $data['name']]);
+        $courier->update([
+            'phone' => $data['phone'] ?? null,
+            'nik' => $data['nik'] ?? null,
+            'city' => $data['city'] ?? null,
+            'vehicle_type' => $data['vehicle_type'],
+            'vehicle_brand' => $data['vehicle_brand'] ?? null,
+            'vehicle_year' => $data['vehicle_year'] ?? null,
+            'vehicle_plate' => strtoupper($data['vehicle_plate']),
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
+        return back()->with('success', "Data kurir {$courier->user?->name} berhasil diperbarui.");
     }
 
     /**

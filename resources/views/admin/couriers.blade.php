@@ -36,6 +36,11 @@
             'wa' => $wa,
             'idLabel' => 'CC-KRR-' . ($c->created_at?->format('Y') ?? date('Y')) . '-' . str_pad($c->id, 3, '0', STR_PAD_LEFT),
             'nik' => $nik,
+            'nikRaw' => $c->nik ?? '',
+            'city' => $c->city ?? '',
+            'vehicleType' => $c->vehicle_type ?? '',
+            'vehicleBrand' => $c->vehicle_brand ?? '',
+            'vehicleYear' => $c->vehicle_year ?? '',
             'vehicleLabel' => $vehicleLabel,
             'vehicleIcon' => $vehicleIcon,
             'plate' => $c->vehicle_plate ?? '-',
@@ -82,7 +87,7 @@
                 <span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
                 <span>Export Data Kurir</span>
             </a>
-            <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary shadow-sm flex items-center gap-space-xs font-label-md text-label-md font-semibold transition-colors" onclick="shareRegistrationLink()" type="button">
+            <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary shadow-sm flex items-center gap-space-xs font-label-md text-label-md font-semibold transition-colors" onclick="openAddCourierModal()" type="button">
                 <span class="material-symbols-outlined text-[18px]">person_add</span>
                 <span>+ Tambah Kurir Baru</span>
             </button>
@@ -307,7 +312,7 @@
                                     <button class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors" onclick="openDriverModal({{ $courier->id }})" title="Lihat Profil &amp; Dokumen" type="button">
                                         <span class="material-symbols-outlined text-[18px]">visibility</span>
                                     </button>
-                                    <button class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors" onclick="openDriverModal({{ $courier->id }})" title="Edit Data Armada" type="button">
+                                    <button class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors" onclick="openEditModal({{ $courier->id }})" title="Edit Data Armada" type="button">
                                         <span class="material-symbols-outlined text-[18px]">edit</span>
                                     </button>
                                     <form action="{{ route('admin.couriers.toggle-active', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirmSuspend('{{ addslashes($courierData[$courier->id]['name']) }}')">
@@ -602,10 +607,174 @@
             </div>
         </div>
     </div>
+
+    <!-- Add Courier Modal -->
+    <div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="addCourierModal" onclick="if(event.target === this) closeAddCourierModal()">
+        <div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <!-- Modal Header -->
+            <div class="px-space-xl py-space-md bg-surface-container flex items-center justify-between">
+                <div class="flex items-center gap-space-sm">
+                    <span class="material-symbols-outlined text-[22px] text-primary">person_add</span>
+                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Tambah Kurir Baru</span>
+                </div>
+                <button class="text-secondary hover:text-on-surface p-1 rounded transition-colors" onclick="closeAddCourierModal()" type="button">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <form action="{{ route('admin.couriers.store') }}" method="POST">
+                @csrf
+                <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addName">Nama Lengkap <span class="text-error">*</span></label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addName" name="name" required placeholder="Nama mitra kurir" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addEmail">Email <span class="text-error">*</span></label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addEmail" name="email" required placeholder="nama@email.com" type="email"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPassword">Password Akun</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addPassword" name="password" placeholder="Kosongkan = diacak otomatis" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPhone">Telepon / WhatsApp</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addPhone" name="phone" placeholder="08xxxxxxxxxx" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addNik">NIK</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addNik" name="nik" maxlength="16" placeholder="16 digit NIK" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addCity">Kota</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addCity" name="city" placeholder="Kota domisili" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addVehicleType">Jenis Kendaraan <span class="text-error">*</span></label>
+                            <select class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addVehicleType" name="vehicle_type" required>
+                                <option value="motor">Sepeda Motor</option>
+                                <option value="mobil">Mobil</option>
+                                <option value="sepeda">Sepeda</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addVehicleBrand">Merk / Model Kendaraan</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addVehicleBrand" name="vehicle_brand" placeholder="cth: Honda Vario 160" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addVehicleYear">Tahun Kendaraan</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addVehicleYear" name="vehicle_year" maxlength="4" placeholder="cth: 2023" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPlate">Plat Nomor <span class="text-error">*</span></label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant uppercase" id="addPlate" name="vehicle_plate" required placeholder="B 1234 ABC" type="text"/>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-space-sm cursor-pointer select-none">
+                        <input class="w-4 h-4 rounded accent-[#9d4300]" id="addActivate" name="activate" value="1" checked type="checkbox"/>
+                        <span class="font-body-sm text-body-sm text-on-surface">Aktif &amp; terverifikasi langsung (bisa langsung menerima pesanan)</span>
+                    </label>
+                </div>
+                <!-- Modal Actions -->
+                <div class="p-space-lg bg-surface flex items-center justify-between border-t border-surface-container-high">
+                    <button class="px-space-md py-space-xs rounded-lg bg-surface-container text-secondary hover:text-on-surface font-label-md text-label-md" onclick="closeAddCourierModal()" type="button">
+                        Batal
+                    </button>
+                    <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-semibold shadow-sm flex items-center gap-space-xs" type="submit">
+                        <span class="material-symbols-outlined text-[16px]">person_add</span>
+                        <span>Simpan Kurir</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Courier Modal -->
+    <div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="editCourierModal" onclick="if(event.target === this) closeEditModal()">
+        <div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <!-- Modal Header -->
+            <div class="px-space-xl py-space-md bg-surface-container flex items-center justify-between">
+                <div class="flex items-center gap-space-sm">
+                    <span class="material-symbols-outlined text-[22px] text-primary">edit</span>
+                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Edit Data Armada Kurir</span>
+                </div>
+                <button class="text-secondary hover:text-on-surface p-1 rounded transition-colors" onclick="closeEditModal()" type="button">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <form id="editCourierForm" action="#" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
+                    <div class="flex items-center gap-space-sm">
+                        <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm font-bold shrink-0" id="editAvatar">P</div>
+                        <div class="flex flex-col">
+                            <span class="font-headline-sm text-headline-sm text-on-surface font-semibold" id="editIdentityLabel">Kurir</span>
+                            <span class="font-label-sm text-label-sm text-secondary font-data-mono" id="editIdLabel">ID Kurir: -</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editName">Nama Lengkap <span class="text-error">*</span></label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editName" name="name" required type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPhone">Telepon / WhatsApp</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editPhone" name="phone" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editNik">NIK</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editNik" name="nik" maxlength="16" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editCity">Kota</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editCity" name="city" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editVehicleType">Jenis Kendaraan <span class="text-error">*</span></label>
+                            <select class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editVehicleType" name="vehicle_type" required>
+                                <option value="motor">Sepeda Motor</option>
+                                <option value="mobil">Mobil</option>
+                                <option value="sepeda">Sepeda</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editVehicleBrand">Merk / Model Kendaraan</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editVehicleBrand" name="vehicle_brand" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editVehicleYear">Tahun Kendaraan</label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editVehicleYear" name="vehicle_year" maxlength="4" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-space-2xs">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPlate">Plat Nomor <span class="text-error">*</span></label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant uppercase" id="editPlate" name="vehicle_plate" required type="text"/>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-space-sm cursor-pointer select-none">
+                        <input class="w-4 h-4 rounded accent-[#9d4300]" id="editIsActive" name="is_active" value="1" type="checkbox"/>
+                        <span class="font-body-sm text-body-sm text-on-surface">Akun Kurir Aktif</span>
+                    </label>
+                </div>
+                <!-- Modal Actions -->
+                <div class="p-space-lg bg-surface flex items-center justify-between border-t border-surface-container-high">
+                    <button class="px-space-md py-space-xs rounded-lg bg-surface-container text-secondary hover:text-on-surface font-label-md text-label-md" onclick="closeEditModal()" type="button">
+                        Batal
+                    </button>
+                    <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-semibold shadow-sm flex items-center gap-space-xs" type="submit">
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span>Simpan Perubahan</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
     window.__couriers = @json($courierData);
 
@@ -701,6 +870,54 @@
         modal.classList.remove('flex');
     }
 
+    function openAddCourierModal() {
+        closeDriverModal();
+        closeEditModal();
+        const modal = document.getElementById('addCourierModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeAddCourierModal() {
+        const modal = document.getElementById('addCourierModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function openEditModal(id) {
+        const c = window.__couriers[id];
+        if (!c) return;
+
+        closeDriverModal();
+        closeAddCourierModal();
+
+        const form = document.getElementById('editCourierForm');
+        form.action = `{{ url('admin/couriers') }}/${id}`;
+
+        document.getElementById('editAvatar').textContent = c.name.charAt(0).toUpperCase();
+        document.getElementById('editIdentityLabel').textContent = c.name;
+        document.getElementById('editIdLabel').textContent = 'ID Kurir: ' + c.idLabel;
+        document.getElementById('editName').value = c.name;
+        document.getElementById('editPhone').value = c.phone === '-' ? '' : c.phone;
+        document.getElementById('editNik').value = c.nikRaw || '';
+        document.getElementById('editCity').value = c.city || '';
+        document.getElementById('editVehicleType').value = c.vehicleType || 'motor';
+        document.getElementById('editVehicleBrand').value = c.vehicleBrand || '';
+        document.getElementById('editVehicleYear').value = c.vehicleYear || '';
+        document.getElementById('editPlate').value = c.plate === '-' ? '' : c.plate;
+        document.getElementById('editIsActive').checked = c.active;
+
+        const modal = document.getElementById('editCourierModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeEditModal() {
+        const modal = document.getElementById('editCourierModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
     function confirmSuspend(name) {
         return confirm(`Apakah Anda yakin ingin menangguhkan akun kurir ${name}? Tindakan ini akan menghentikan akses kurir ke aplikasi penerimaan pesanan.`);
     }
@@ -718,4 +935,4 @@
         }
     }
 </script>
-@endsection
+@endpush
