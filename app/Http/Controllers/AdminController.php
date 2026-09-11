@@ -8,6 +8,7 @@ use App\Models\Shipment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -127,12 +128,17 @@ class AdminController extends Controller
             'password' => 'nullable|string|min:6|max:255',
             'phone' => 'nullable|string|max:20',
             'nik' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',
-            'vehicle_type' => 'required|in:motor,mobil,sepeda',
+            'vehicle_type' => 'required|in:motor,mobil,pickup,box,truck,sepeda',
             'vehicle_brand' => 'nullable|string|max:100',
             'vehicle_year' => 'nullable|string|max:5',
             'vehicle_plate' => 'required|string|max:20',
             'activate' => 'nullable|boolean',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
+            'id_card_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
+            'driving_license_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
+            'skck_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
         ]);
 
         $password = $request->filled('password')
@@ -153,11 +159,16 @@ class AdminController extends Controller
             'user_id' => $user->id,
             'phone' => $data['phone'] ?? null,
             'nik' => $data['nik'] ?? null,
+            'address' => $data['address'] ?? null,
             'city' => $data['city'] ?? null,
+            'photo' => $this->storeCourierPhoto($request, 'photo', 'couriers/photos'),
             'vehicle_type' => $data['vehicle_type'],
             'vehicle_brand' => $data['vehicle_brand'] ?? null,
             'vehicle_year' => $data['vehicle_year'] ?? null,
             'vehicle_plate' => strtoupper($data['vehicle_plate']),
+            'id_card_photo' => $this->storeCourierPhoto($request, 'id_card_photo', 'couriers/documents'),
+            'driving_license_photo' => $this->storeCourierPhoto($request, 'driving_license_photo', 'couriers/documents'),
+            'skck_photo' => $this->storeCourierPhoto($request, 'skck_photo', 'couriers/documents'),
             'is_verified' => $activate,
             'is_active' => $activate,
         ]);
@@ -174,30 +185,73 @@ class AdminController extends Controller
     public function updateCourier(Request $request, Courier $courier)
     {
         $data = $request->validate([
+            'email' => 'required|email|max:255|unique:users,email,' . $courier->user_id,
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'nik' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',
-            'vehicle_type' => 'required|in:motor,mobil,sepeda',
+            'vehicle_type' => 'required|in:motor,mobil,pickup,box,truck,sepeda',
             'vehicle_brand' => 'nullable|string|max:100',
             'vehicle_year' => 'nullable|string|max:5',
             'vehicle_plate' => 'required|string|max:20',
             'is_active' => 'nullable|boolean',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
+            'id_card_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
+            'driving_license_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
+            'skck_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
         ]);
 
-        $courier->user?->update(['name' => $data['name']]);
+        $courier->user?->update([
+            'name' => $data['name'],
+            'email' => $data['email'],
+        ]);
+
         $courier->update([
             'phone' => $data['phone'] ?? null,
             'nik' => $data['nik'] ?? null,
+            'address' => $data['address'] ?? null,
             'city' => $data['city'] ?? null,
+            'photo' => $this->replaceCourierPhoto($courier->photo, $request, 'photo', 'couriers/photos'),
             'vehicle_type' => $data['vehicle_type'],
             'vehicle_brand' => $data['vehicle_brand'] ?? null,
             'vehicle_year' => $data['vehicle_year'] ?? null,
             'vehicle_plate' => strtoupper($data['vehicle_plate']),
+            'id_card_photo' => $this->replaceCourierPhoto($courier->id_card_photo, $request, 'id_card_photo', 'couriers/documents'),
+            'driving_license_photo' => $this->replaceCourierPhoto($courier->driving_license_photo, $request, 'driving_license_photo', 'couriers/documents'),
+            'skck_photo' => $this->replaceCourierPhoto($courier->skck_photo, $request, 'skck_photo', 'couriers/documents'),
             'is_active' => $request->boolean('is_active'),
         ]);
 
         return back()->with('success', "Data kurir {$courier->user?->name} berhasil diperbarui.");
+    }
+
+    /**
+     * Store an uploaded courier document photo onto the public disk.
+     */
+    private function storeCourierPhoto(Request $request, string $field, string $folder): ?string
+    {
+        if ($request->hasFile($field)) {
+            return $request->file($field)->store($folder, 'public');
+        }
+
+        return null;
+    }
+
+    /**
+     * Replace a courier document photo when a new file is uploaded (keeps old one otherwise).
+     */
+    private function replaceCourierPhoto(?string $current, Request $request, string $field, string $folder): ?string
+    {
+        if (! $request->hasFile($field)) {
+            return $current;
+        }
+
+        if ($current && Storage::disk('public')->exists($current)) {
+            Storage::disk('public')->delete($current);
+        }
+
+        return $request->file($field)->store($folder, 'public');
     }
 
     /**

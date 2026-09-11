@@ -37,19 +37,24 @@
             'idLabel' => 'CC-KRR-' . ($c->created_at?->format('Y') ?? date('Y')) . '-' . str_pad($c->id, 3, '0', STR_PAD_LEFT),
             'nik' => $nik,
             'nikRaw' => $c->nik ?? '',
+            'address' => $c->address ?? '',
             'city' => $c->city ?? '',
+            'joined' => $c->created_at?->format('d M Y') ?? '-',
             'vehicleType' => $c->vehicle_type ?? '',
             'vehicleBrand' => $c->vehicle_brand ?? '',
             'vehicleYear' => $c->vehicle_year ?? '',
             'vehicleLabel' => $vehicleLabel,
             'vehicleIcon' => $vehicleIcon,
             'plate' => $c->vehicle_plate ?? '-',
-            'joined' => $c->created_at?->format('d M Y') ?? '-',
             'verified' => (bool) $c->is_verified,
             'active' => (bool) $c->is_active,
             'hasKtp' => (bool) $c->id_card_photo,
             'hasSim' => (bool) $c->driving_license_photo,
             'hasVehicle' => (bool) ($c->skck_photo || $c->photo),
+            'photoUrl' => $c->photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($c->photo) : null,
+            'ktpUrl' => $c->id_card_photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($c->id_card_photo) : null,
+            'simUrl' => $c->driving_license_photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($c->driving_license_photo) : null,
+            'skckUrl' => $c->skck_photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($c->skck_photo) : null,
             'recapCount' => $c->orders->count(),
             'recapTotal' => $c->orders->sum('price'),
         ];
@@ -526,10 +531,11 @@
             <!-- Modal Body -->
             <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
                 <div class="flex items-center gap-space-md">
-                    <div class="w-14 h-14 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-display-lg text-display-lg font-bold" id="modalDriverAvatar">
-                        P
+                    <div class="w-14 h-14 rounded-full bg-primary-container text-on-primary border border-outline-variant overflow-hidden flex items-center justify-center font-display-lg text-display-lg font-bold shrink-0" id="modalDriverAvatar">
+                        <span id="modalDriverAvatarLetter">P</span>
+                        <img id="modalDriverAvatarImg" class="w-full h-full object-cover hidden" alt="Foto profil kurir"/>
                     </div>
-                    <div class="flex flex-col">
+                    <div class="flex flex-col gap-space-2xs">
                         <div class="flex items-center gap-space-xs">
                             <h4 class="font-headline-lg text-headline-lg font-bold text-on-surface" id="modalDriverName">Princeton</h4>
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold" id="modalDriverBadge">
@@ -540,56 +546,124 @@
                         <span class="font-label-sm text-label-sm text-secondary font-data-mono" id="modalDriverId">ID Kurir: CC-KRR-2024-001</span>
                     </div>
                 </div>
+                <!-- Contact chips -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+                    <span class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm">
+                        <span class="material-symbols-outlined text-[16px] text-primary">mail</span>
+                        <span class="truncate" id="modalDriverEmail">mail@example.com</span>
+                    </span>
+                    <span class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm">
+                        <span class="material-symbols-outlined text-[16px] text-primary">call</span>
+                        <span id="modalDriverPhone">08xx</span>
+                    </span>
+                </div>
+                <!-- Profile Detail Box -->
+                <div class="bg-surface p-space-md rounded-lg flex flex-col gap-space-xs">
+                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Profil Mitra Kurir</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm mt-space-2xs text-left">
+                        <div>
+                            <span class="font-label-sm text-label-sm text-secondary block">NIK</span>
+                            <span class="font-data-mono text-data-mono text-on-surface font-semibold" id="modalNik">-</span>
+                        </div>
+                        <div>
+                            <span class="font-label-sm text-label-sm text-secondary block">Bergabung</span>
+                            <span class="font-body-sm text-body-sm text-on-surface font-medium" id="modalJoined">-</span>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <span class="font-label-sm text-label-sm text-secondary block">Alamat</span>
+                            <span class="font-body-sm text-body-sm text-on-surface font-medium" id="modalAddress">-</span>
+                        </div>
+                    </div>
+                </div>
                 <!-- Vehicle Detail Box -->
                 <div class="bg-surface p-space-md rounded-lg flex flex-col gap-space-xs">
                     <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Spesifikasi Kendaraan</span>
-                    <div class="grid grid-cols-3 gap-space-sm mt-space-2xs text-left">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm mt-space-2xs text-left">
                         <div>
                             <span class="font-label-sm text-label-sm text-secondary block">Jenis</span>
                             <span class="font-headline-sm text-headline-sm text-on-surface font-semibold" id="modalVehicleType">Sepeda Motor</span>
                         </div>
                         <div>
+                            <span class="font-label-sm text-label-sm text-secondary block">Merk / Model</span>
+                            <span class="font-body-sm text-body-sm text-on-surface font-medium" id="modalVehicleBrand">-</span>
+                        </div>
+                        <div>
+                            <span class="font-label-sm text-label-sm text-secondary block">Tahun</span>
+                            <span class="font-data-mono text-data-mono text-on-surface font-bold" id="modalVehicleYear">-</span>
+                        </div>
+                        <div>
                             <span class="font-label-sm text-label-sm text-secondary block">Nomor Polisi</span>
                             <span class="font-data-mono text-data-mono text-on-surface font-bold" id="modalVehiclePlate">B 1234 ABC</span>
                         </div>
-                        <div>
-                            <span class="font-label-sm text-label-sm text-secondary block">Masa Berlaku STNK</span>
-                            <span class="font-data-mono text-data-mono text-emerald-700 font-medium" id="modalVehicleYear">Terdaftar di sistem</span>
-                        </div>
                     </div>
                 </div>
-                <!-- Document Status Checklist -->
+                <!-- Document Photo Gallery -->
                 <div class="flex flex-col gap-space-sm">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Kelengkapan Dokumen Fisik</span>
-                    <div class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low">
-                        <div class="flex items-center gap-space-sm">
-                            <span class="material-symbols-outlined text-[20px] text-emerald-600">badge</span>
-                            <div class="flex flex-col">
-                                <span class="font-body-sm text-body-sm font-semibold text-on-surface">KTP Elektronik</span>
-                                <span class="font-label-sm text-label-sm text-secondary font-data-mono" id="modalDocKtp">NIK: Belum dilengkapi</span>
+                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Foto &amp; Dokumen Fisik</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
+                            <a id="docLinkPhoto" class="block relative" href="#" target="_blank">
+                                <div id="photoEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
+                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
+                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
+                                </div>
+                                <img id="photoImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto profil"/>
+                            </a>
+                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
+                                <div class="flex flex-col">
+                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">Foto Profil</span>
+                                </div>
+                                <span id="photoBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
                             </div>
                         </div>
-                        <span class="px-space-xs py-0.5 rounded font-label-sm text-label-sm font-semibold" id="modalDocKtpStatus">Belum</span>
-                    </div>
-                    <div class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low">
-                        <div class="flex items-center gap-space-sm">
-                            <span class="material-symbols-outlined text-[20px] text-emerald-600">credit_card</span>
-                            <div class="flex flex-col">
-                                <span class="font-body-sm text-body-sm font-semibold text-on-surface">SIM C Aktif</span>
-                                <span class="font-label-sm text-label-sm text-secondary font-data-mono" id="modalDocSim">Berlaku s/d: Mengecek berkas</span>
+                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
+                            <a id="docLinkKtp" class="block relative" href="#" target="_blank">
+                                <div id="ktpEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
+                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
+                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
+                                </div>
+                                <img id="ktpImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto KTP"/>
+                            </a>
+                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
+                                <div class="flex flex-col min-w-0">
+                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">KTP Elektronik</span>
+                                    <span class="font-label-sm text-label-sm text-secondary truncate" id="ktpSub">NIK: -</span>
+                                </div>
+                                <span id="ktpBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
                             </div>
                         </div>
-                        <span class="px-space-xs py-0.5 rounded font-label-sm text-label-sm font-semibold" id="modalDocSimStatus">Belum</span>
-                    </div>
-                    <div class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low">
-                        <div class="flex items-center gap-space-sm">
-                            <span class="material-symbols-outlined text-[20px] text-emerald-600">receipt_long</span>
-                            <div class="flex flex-col">
-                                <span class="font-body-sm text-body-sm font-semibold text-on-surface">Foto Kendaraan &amp; Plat Nomor</span>
-                                <span class="font-label-sm text-label-sm text-secondary" id="modalDocVehicle">Tampak depan &amp; nomor rangka sesuai</span>
+                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
+                            <a id="docLinkSim" class="block relative" href="#" target="_blank">
+                                <div id="simEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
+                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
+                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
+                                </div>
+                                <img id="simImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto SIM"/>
+                            </a>
+                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
+                                <div class="flex flex-col">
+                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">SIM C Aktif</span>
+                                    <span class="font-label-sm text-label-sm text-secondary" id="simSub">Belum diunggah</span>
+                                </div>
+                                <span id="simBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
                             </div>
                         </div>
-                        <span class="px-space-xs py-0.5 rounded font-label-sm text-label-sm font-semibold" id="modalDocVehicleStatus">Belum</span>
+                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
+                            <a id="docLinkSkck" class="block relative" href="#" target="_blank">
+                                <div id="skckEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
+                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
+                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
+                                </div>
+                                <img id="skckImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto kendaraan &amp; plat"/>
+                            </a>
+                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
+                                <div class="flex flex-col">
+                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">Foto Kendaraan &amp; Plat</span>
+                                    <span class="font-label-sm text-label-sm text-secondary" id="skckSub">Belum diunggah</span>
+                                </div>
+                                <span id="skckBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -622,7 +696,7 @@
                 </button>
             </div>
             <!-- Modal Body -->
-            <form action="{{ route('admin.couriers.store') }}" method="POST">
+            <form action="{{ route('admin.couriers.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
@@ -650,11 +724,18 @@
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addCity">Kota</label>
                             <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addCity" name="city" placeholder="Kota domisili" type="text"/>
                         </div>
+                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addAddress">Alamat Domisili</label>
+                            <textarea class="w-full bg-surface px-space-md py-space-sm rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant min-h-[64px] resize-none" id="addAddress" name="address" placeholder="Alamat lengkap mitra kurir" rows="2"></textarea>
+                        </div>
                         <div class="flex flex-col gap-space-2xs">
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addVehicleType">Jenis Kendaraan <span class="text-error">*</span></label>
                             <select class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addVehicleType" name="vehicle_type" required>
                                 <option value="motor">Sepeda Motor</option>
                                 <option value="mobil">Mobil</option>
+                                <option value="pickup">Pickup</option>
+                                <option value="box">Box</option>
+                                <option value="truck">Truck</option>
                                 <option value="sepeda">Sepeda</option>
                             </select>
                         </div>
@@ -669,6 +750,27 @@
                         <div class="flex flex-col gap-space-2xs">
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPlate">Plat Nomor <span class="text-error">*</span></label>
                             <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant uppercase" id="addPlate" name="vehicle_plate" required placeholder="B 1234 ABC" type="text"/>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-space-sm">
+                        <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Dokumen &amp; Foto (opsional)</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPhoto">Foto Profil</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addPhoto" name="photo" type="file" accept="image/*"/>
+                            </div>
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addIdCard">Foto KTP</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addIdCard" name="id_card_photo" type="file" accept="image/*"/>
+                            </div>
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addSim">Foto SIM</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addSim" name="driving_license_photo" type="file" accept="image/*"/>
+                            </div>
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addSkck">Foto Kendaraan / SKCK</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addSkck" name="skck_photo" type="file" accept="image/*"/>
+                            </div>
                         </div>
                     </div>
                     <label class="flex items-center gap-space-sm cursor-pointer select-none">
@@ -704,7 +806,7 @@
                 </button>
             </div>
             <!-- Modal Body -->
-            <form id="editCourierForm" action="#" method="POST">
+            <form id="editCourierForm" action="#" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
@@ -720,6 +822,10 @@
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editName">Nama Lengkap <span class="text-error">*</span></label>
                             <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editName" name="name" required type="text"/>
                         </div>
+                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editEmail">Email <span class="text-error">*</span></label>
+                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editEmail" name="email" required type="email"/>
+                        </div>
                         <div class="flex flex-col gap-space-2xs">
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPhone">Telepon / WhatsApp</label>
                             <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editPhone" name="phone" type="text"/>
@@ -732,11 +838,18 @@
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editCity">Kota</label>
                             <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editCity" name="city" type="text"/>
                         </div>
+                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
+                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editAddress">Alamat Domisili</label>
+                            <textarea class="w-full bg-surface px-space-md py-space-sm rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant min-h-[64px] resize-none" id="editAddress" name="address" rows="2"></textarea>
+                        </div>
                         <div class="flex flex-col gap-space-2xs">
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editVehicleType">Jenis Kendaraan <span class="text-error">*</span></label>
                             <select class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editVehicleType" name="vehicle_type" required>
                                 <option value="motor">Sepeda Motor</option>
                                 <option value="mobil">Mobil</option>
+                                <option value="pickup">Pickup</option>
+                                <option value="box">Box</option>
+                                <option value="truck">Truck</option>
                                 <option value="sepeda">Sepeda</option>
                             </select>
                         </div>
@@ -751,6 +864,27 @@
                         <div class="flex flex-col gap-space-2xs">
                             <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPlate">Plat Nomor <span class="text-error">*</span></label>
                             <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant uppercase" id="editPlate" name="vehicle_plate" required type="text"/>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-space-sm">
+                        <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Ganti Dokumen &amp; Foto (pilih file untuk mengganti)</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPhoto">Foto Profil</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editPhoto" name="photo" type="file" accept="image/*"/>
+                            </div>
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editIdCard">Foto KTP</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editIdCard" name="id_card_photo" type="file" accept="image/*"/>
+                            </div>
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editSim">Foto SIM</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editSim" name="driving_license_photo" type="file" accept="image/*"/>
+                            </div>
+                            <div class="flex flex-col gap-space-2xs">
+                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editSkck">Foto Kendaraan / SKCK</label>
+                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editSkck" name="skck_photo" type="file" accept="image/*"/>
+                            </div>
                         </div>
                     </div>
                     <label class="flex items-center gap-space-sm cursor-pointer select-none">
@@ -831,11 +965,20 @@
 
         const modal = document.getElementById('driverDetailModal');
         document.getElementById('modalDriverName').textContent = c.name;
-        document.getElementById('modalDriverAvatar').textContent = c.name.charAt(0).toUpperCase();
         document.getElementById('modalDriverEmailPhone').textContent = c.email + ' • ' + c.phone;
         document.getElementById('modalDriverId').textContent = 'ID Kurir: ' + c.idLabel;
-        document.getElementById('modalVehicleType').textContent = c.vehicleLabel;
-        document.getElementById('modalVehiclePlate').textContent = c.plate;
+
+        const letter = document.getElementById('modalDriverAvatarLetter');
+        const avatarImg = document.getElementById('modalDriverAvatarImg');
+        if (c.photoUrl) {
+            letter.classList.add('hidden');
+            avatarImg.src = c.photoUrl;
+            avatarImg.classList.remove('hidden');
+        } else {
+            letter.textContent = c.name.charAt(0).toUpperCase();
+            letter.classList.remove('hidden');
+            avatarImg.classList.add('hidden');
+        }
 
         const badge = document.getElementById('modalDriverBadge');
         if (c.verified) {
@@ -848,20 +991,50 @@
             badge.innerHTML = '<span class="material-symbols-outlined text-[13px]">hourglass_top</span> Menunggu Verifikasi';
         }
 
-        document.getElementById('modalDocKtp').textContent = 'NIK: ' + c.nik;
-        document.getElementById('modalDocKtpStatus').textContent = c.hasKtp ? 'Valid' : 'Belum';
-        document.getElementById('modalDocKtpStatus').className = 'px-space-xs py-0.5 rounded font-label-sm text-label-sm font-semibold ' + (c.hasKtp ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-container-highest text-secondary');
-        document.getElementById('modalDocSim').textContent = c.hasSim ? 'Berlaku aktif' : 'Belum diunggah';
-        document.getElementById('modalDocSimStatus').textContent = c.hasSim ? 'Valid' : 'Belum';
-        document.getElementById('modalDocSimStatus').className = 'px-space-xs py-0.5 rounded font-label-sm text-label-sm font-semibold ' + (c.hasSim ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-container-highest text-secondary');
-        document.getElementById('modalDocVehicle').textContent = c.hasVehicle ? 'Foto kendaraan & plat sudah diunggah' : 'Belum ada foto kendaraan';
-        document.getElementById('modalDocVehicleStatus').textContent = c.hasVehicle ? 'Valid' : 'Belum';
-        document.getElementById('modalDocVehicleStatus').className = 'px-space-xs py-0.5 rounded font-label-sm text-label-sm font-semibold ' + (c.hasVehicle ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-container-highest text-secondary');
+        document.getElementById('modalDriverEmail').textContent = c.email || '-';
+        document.getElementById('modalDriverPhone').textContent = c.phone || '-';
+        document.getElementById('modalNik').textContent = c.nikRaw || 'Belum dilengkapi';
+        document.getElementById('modalJoined').textContent = c.joined;
+        document.getElementById('modalAddress').textContent = c.address || 'Belum diisi';
+        document.getElementById('modalVehicleType').textContent = c.vehicleLabel;
+        document.getElementById('modalVehicleBrand').textContent = c.vehicleBrand || '-';
+        document.getElementById('modalVehicleYear').textContent = c.vehicleYear || '-';
+        document.getElementById('modalVehiclePlate').textContent = c.plate;
+
+        setDocImage('photoImg', 'photoEmpty', 'docLinkPhoto', 'photoBadge', c.photoUrl);
+        setDocImage('ktpImg', 'ktpEmpty', 'docLinkKtp', 'ktpBadge', c.ktpUrl);
+        document.getElementById('ktpSub').textContent = 'NIK: ' + (c.nikRaw || '-');
+        setDocImage('simImg', 'simEmpty', 'docLinkSim', 'simBadge', c.simUrl);
+        setDocImage('skckImg', 'skckEmpty', 'docLinkSkck', 'skckBadge', c.skckUrl);
 
         document.getElementById('modalWaLink').href = 'https://wa.me/' + c.wa;
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+    }
+
+    function setDocImage(imgId, emptyId, linkId, badgeId, url) {
+        const img = document.getElementById(imgId);
+        const empty = document.getElementById(emptyId);
+        const link = document.getElementById(linkId);
+        const badge = document.getElementById(badgeId);
+
+        if (url) {
+            img.src = url;
+            img.classList.remove('hidden');
+            empty.classList.add('hidden');
+            link.href = url;
+            link.classList.remove('pointer-events-none');
+            badge.textContent = 'Valid';
+            badge.className = 'shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-emerald-100 text-emerald-800';
+        } else {
+            img.classList.add('hidden');
+            empty.classList.remove('hidden');
+            link.href = '#';
+            link.classList.add('pointer-events-none');
+            badge.textContent = 'Belum';
+            badge.className = 'shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary';
+        }
     }
 
     function closeDriverModal() {
@@ -898,9 +1071,11 @@
         document.getElementById('editIdentityLabel').textContent = c.name;
         document.getElementById('editIdLabel').textContent = 'ID Kurir: ' + c.idLabel;
         document.getElementById('editName').value = c.name;
+        document.getElementById('editEmail').value = c.email === '-' ? '' : c.email;
         document.getElementById('editPhone').value = c.phone === '-' ? '' : c.phone;
         document.getElementById('editNik').value = c.nikRaw || '';
         document.getElementById('editCity').value = c.city || '';
+        document.getElementById('editAddress').value = c.address || '';
         document.getElementById('editVehicleType').value = c.vehicleType || 'motor';
         document.getElementById('editVehicleBrand').value = c.vehicleBrand || '';
         document.getElementById('editVehicleYear').value = c.vehicleYear || '';
