@@ -176,11 +176,11 @@
             </button>
             <button class="tab-btn px-space-md py-space-xs rounded-lg font-label-md text-label-md font-bold {{ request('filter') === 'unverified' ? '' : 'bg-primary-container text-on-primary shadow-sm' }} transition-colors whitespace-nowrap flex items-center gap-space-xs" onclick="setActiveTab(this, 'verified')" type="button">
                 <span>Terverifikasi</span>
-                <span class="px-1.5 py-0.2 rounded font-data-mono text-[11px]">{{ $stats['verified'] }}</span>
+                <span class="px-space-xs py-space-2xs rounded font-data-mono text-[11px]">{{ $stats['verified'] }}</span>
             </button>
             <button class="tab-btn px-space-md py-space-xs rounded-lg font-label-md text-label-md font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors whitespace-nowrap flex items-center gap-space-xs" onclick="setActiveTab(this, 'unverified')" type="button">
                 <span>Belum Verifikasi</span>
-                <span class="px-1.5 py-0.2 bg-surface-container-highest text-secondary rounded font-data-mono text-[11px]">{{ $stats['unverified'] }}</span>
+                <span class="px-space-xs py-space-2xs bg-surface-container-highest text-secondary rounded font-data-mono text-[11px]">{{ $stats['unverified'] }}</span>
             </button>
             <button class="tab-btn px-space-md py-space-xs rounded-lg font-label-md text-label-md font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors whitespace-nowrap flex items-center gap-space-xs" onclick="setActiveTab(this, 'active')" type="button">
                 <span>Aktif Online</span>
@@ -255,7 +255,7 @@
                             <td class="py-space-md px-space-md">
                                 <div class="flex items-center gap-space-xs">
                                     <span class="font-data-mono text-data-mono text-on-surface font-medium">{{ $courierData[$courier->id]['phone'] }}</span>
-                                    <a class="p-1 rounded text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center" href="https://wa.me/{{ $courierData[$courier->id]['wa'] }}" target="_blank" title="Kirim Pesan WhatsApp">
+                                    <a class="p-space-2xs rounded text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center" href="https://wa.me/{{ $courierData[$courier->id]['wa'] }}" target="_blank" title="Kirim Pesan WhatsApp">
                                         <span class="material-symbols-outlined text-[16px]">chat</span>
                                     </a>
                                 </div>
@@ -352,21 +352,21 @@
                 </span>
                 <div class="flex items-center gap-space-xs">
                     @if ($couriers->previousPageUrl())
-                        <a href="{{ $couriers->previousPageUrl() }}" class="px-space-sm py-1 rounded bg-surface-container-high text-secondary font-label-sm text-label-sm">Sebelumnya</a>
+                        <a href="{{ $couriers->previousPageUrl() }}" class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary font-label-sm text-label-sm">Sebelumnya</a>
                     @else
-                        <button class="px-space-sm py-1 rounded bg-surface-container-high text-secondary opacity-50 cursor-not-allowed font-label-sm text-label-sm" disabled type="button">Sebelumnya</button>
+                        <button class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary opacity-50 cursor-not-allowed font-label-sm text-label-sm" disabled type="button">Sebelumnya</button>
                     @endif
                     @for ($i = 1; $i <= $couriers->lastPage(); $i++)
                         @if ($i === $couriers->currentPage())
-                            <span class="px-space-sm py-1 rounded bg-primary-container text-on-primary font-data-mono text-data-mono font-bold">{{ $i }}</span>
+                            <span class="px-space-sm py-space-xs rounded bg-primary-container text-on-primary font-data-mono text-data-mono font-bold">{{ $i }}</span>
                         @else
-                            <a href="{{ $couriers->url($i) }}" class="px-space-sm py-1 rounded bg-surface-container-high text-secondary font-data-mono text-data-mono">{{ $i }}</a>
+                            <a href="{{ $couriers->url($i) }}" class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary font-data-mono text-data-mono">{{ $i }}</a>
                         @endif
                     @endfor
                     @if ($couriers->nextPageUrl())
-                        <a href="{{ $couriers->nextPageUrl() }}" class="px-space-sm py-1 rounded bg-surface-container-high text-secondary font-label-sm text-label-sm">Selanjutnya</a>
+                        <a href="{{ $couriers->nextPageUrl() }}" class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary font-label-sm text-label-sm">Selanjutnya</a>
                     @else
-                        <button class="px-space-sm py-1 rounded bg-surface-container-high text-secondary opacity-50 cursor-not-allowed font-label-sm text-label-sm" disabled type="button">Selanjutnya</button>
+                        <button class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary opacity-50 cursor-not-allowed font-label-sm text-label-sm" disabled type="button">Selanjutnya</button>
                     @endif
                 </div>
             </div>
@@ -503,10 +503,10 @@
                     </p>
                 </div>
                 <div class="pt-space-md border-t border-surface-container-high flex items-center justify-between">
-                    <span class="font-label-sm text-label-sm text-emerald-600 font-semibold flex items-center gap-1">
+                    <span class="font-label-sm text-label-sm text-emerald-600 font-semibold flex items-center gap-space-2xs">
                         <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Hotline Siaga
                     </span>
-                    <a class="h-8 px-space-sm rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 transition-colors" href="tel:081343323155">
+                    <a class="h-8 px-space-sm rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-space-2xs transition-colors" href="tel:081343323155">
                         <span class="material-symbols-outlined text-[15px]">call</span>
                         <span>Hubungi Lapangan</span>
                     </a>
@@ -524,7 +524,7 @@
                     <span class="material-symbols-outlined text-[22px] text-primary">badge</span>
                     <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Detail Dokumen Mitra Kurir</span>
                 </div>
-                <button class="text-secondary hover:text-on-surface p-1 rounded transition-colors" onclick="closeDriverModal()" type="button">
+                <button class="text-secondary hover:text-on-surface p-space-2xs rounded transition-colors" onclick="closeDriverModal()" type="button">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -538,7 +538,7 @@
                     <div class="flex flex-col gap-space-2xs">
                         <div class="flex items-center gap-space-xs">
                             <h4 class="font-headline-lg text-headline-lg font-bold text-on-surface" id="modalDriverName">Princeton</h4>
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold" id="modalDriverBadge">
+                            <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold" id="modalDriverBadge">
                                 <span class="material-symbols-outlined text-[13px]">verified</span> Terverifikasi
                             </span>
                         </div>
@@ -691,7 +691,7 @@
                     <span class="material-symbols-outlined text-[22px] text-primary">person_add</span>
                     <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Tambah Kurir Baru</span>
                 </div>
-                <button class="text-secondary hover:text-on-surface p-1 rounded transition-colors" onclick="closeAddCourierModal()" type="button">
+                <button class="text-secondary hover:text-on-surface p-space-2xs rounded transition-colors" onclick="closeAddCourierModal()" type="button">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -801,7 +801,7 @@
                     <span class="material-symbols-outlined text-[22px] text-primary">edit</span>
                     <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Edit Data Armada Kurir</span>
                 </div>
-                <button class="text-secondary hover:text-on-surface p-1 rounded transition-colors" onclick="closeEditModal()" type="button">
+                <button class="text-secondary hover:text-on-surface p-space-2xs rounded transition-colors" onclick="closeEditModal()" type="button">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>

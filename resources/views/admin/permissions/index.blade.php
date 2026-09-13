@@ -64,7 +64,7 @@
                 <div class="flex items-center gap-space-xs">
                     <span class="font-headline-sm text-headline-sm font-bold text-on-surface">Sanctum Token</span>
                 </div>
-                <span class="font-label-sm text-label-sm text-emerald-700 font-semibold flex items-center gap-1">
+                <span class="font-label-sm text-label-sm text-emerald-700 font-semibold flex items-center gap-space-2xs">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> RBAC Enforcement
                 </span>
             </div>
@@ -78,11 +78,11 @@
     <div class="flex flex-col bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
         <!-- Tab Controls -->
         <div class="flex flex-col md:flex-row md:items-center justify-between p-space-md gap-space-md bg-surface-container-low/50">
-            <div class="inline-flex p-1 bg-surface-container-high rounded-xl gap-1">
+            <div class="inline-flex p-space-2xs bg-surface-container-high rounded-xl gap-space-2xs">
                 <button class="px-space-md py-space-xs rounded-lg font-label-md text-label-md font-semibold transition-all bg-surface-container-lowest text-on-surface shadow-sm flex items-center gap-space-xs" id="tab-btn-list" onclick="switchTab('list')">
                     <span class="material-symbols-outlined text-[16px] text-primary">key</span>
                     <span>Daftar Permission</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-primary-fixed text-on-primary-fixed-variant font-bold">{{ $totalPermissions }}</span>
+                    <span class="px-space-xs py-space-2xs rounded-full text-[10px] bg-primary-fixed text-on-primary-fixed-variant font-bold">{{ $totalPermissions }}</span>
                 </button>
             </div>
             <div class="flex items-center gap-space-sm">
@@ -123,13 +123,13 @@
                         <td class="py-space-md px-space-md text-secondary">{{ $permission->created_at->format('d M Y') }}</td>
                         <td class="py-space-md px-space-lg text-right">
                             <div class="inline-flex items-center gap-space-2xs text-secondary">
-                                <a href="{{ route('admin.permissions.edit', $permission) }}" class="p-1 hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors" title="Edit Permission">
+                                <a href="{{ route('admin.permissions.edit', $permission) }}" class="p-space-2xs hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors" title="Edit Permission">
                                     <span class="material-symbols-outlined text-[18px]">edit</span>
                                 </a>
                                 <form action="{{ route('admin.permissions.destroy', $permission) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus permission ini?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-1 hover:text-error hover:bg-error-container/40 rounded-lg transition-colors" title="Hapus Permission">
+                                    <button type="submit" class="p-space-2xs hover:text-error hover:bg-error-container/40 rounded-lg transition-colors" title="Hapus Permission">
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
@@ -153,7 +153,7 @@
         <!-- Pagination -->
         @if ($permissions->hasPages())
         <div class="px-space-xl py-3.5 border-t border-surface-container-high flex items-center justify-between">
-            <span class="text-xs text-secondary">Menampilkan {{ $permissions->firstItem() }}–{{ $permissions->lastItem() }} dari {{ $permissions->total() }}</span>
+            <span class="font-label-sm text-label-sm text-secondary">Menampilkan {{ $permissions->firstItem() }}–{{ $permissions->lastItem() }} dari {{ $permissions->total() }}</span>
             <div>{{ $permissions->links() }}</div>
         </div>
         @endif

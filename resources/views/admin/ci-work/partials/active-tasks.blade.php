@@ -23,10 +23,10 @@
             </div>
         </div>
         <div class="flex items-center gap-space-xs">
-            <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-md bg-surface-container-low text-secondary font-data-mono text-[12px]">
+            <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-md bg-surface-container-low text-secondary font-data-mono text-[12px]">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Live Tracking
             </span>
-            <a class="inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:text-surface-tint font-semibold pl-space-xs" href="{{ route('admin.ci-work.tasks') }}">
+            <a class="inline-flex items-center gap-space-2xs font-label-md text-label-md text-primary hover:text-surface-tint font-semibold pl-space-xs" href="{{ route('admin.ci-work.tasks') }}">
                 Lihat Semua
                 <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
             </a>
@@ -62,7 +62,7 @@
                 <div class="px-space-xs py-space-2xs bg-surface-container-highest rounded font-data-mono font-bold text-on-surface text-body-sm">
                     #{{ $featured['tracking'] }}
                 </div>
-                <span class="inline-flex items-center gap-1.5 px-space-xs py-space-2xs rounded-full {{ $sc['b'] }} font-label-sm text-label-sm font-bold">
+                <span class="inline-flex items-center gap-space-xs px-space-xs py-space-2xs rounded-full {{ $sc['b'] }} font-label-sm text-label-sm font-bold">
                     <span class="w-2 h-2 rounded-full {{ $sc['d'] }} {{ $sc['pulse'] ? 'animate-pulse' : '' }}"></span>
                     {{ $featured['status_label'] }}
                 </span>
@@ -113,7 +113,7 @@
                 </div>
                 <div class="flex items-center gap-space-xs pl-2">
                     <div class="h-4 w-0.5 bg-primary"></div>
-                    <div class="flex items-center gap-1 text-[11px] font-data-mono text-primary font-bold">
+                    <div class="flex items-center gap-space-2xs text-[11px] font-data-mono text-primary font-bold">
                         <span class="material-symbols-outlined text-[14px]">navigation</span>
                         @if($featured['distance'] !== null)
                             Sedang melintas • {{ $featured['distance'] }} km ke tujuan
@@ -207,7 +207,7 @@
      data-phone="{{ $t['phone'] }}"
 >
     <div class="px-space-xs py-space-2xs bg-surface-container-highest rounded font-data-mono font-bold text-on-surface text-body-sm">#{{ $t['tracking'] }}</div>
-    <span class="inline-flex items-center gap-1.5 px-space-xs py-space-2xs rounded-full {{ $sc2['b'] }} font-label-sm text-label-sm font-bold">
+    <span class="inline-flex items-center gap-space-xs px-space-xs py-space-2xs rounded-full {{ $sc2['b'] }} font-label-sm text-label-sm font-bold">
         <span class="w-2 h-2 rounded-full {{ $sc2['d'] }} {{ $sc2['pulse'] ? 'animate-pulse' : '' }}"></span>{{ $t['status_label'] }}
     </span>
     <div class="flex items-center gap-space-sm flex-1 min-w-[180px]">
@@ -245,11 +245,11 @@
             </div>
         </div>
         @if(($stats['pending_count'] ?? 0) > 0)
-            <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full bg-amber-50 text-amber-800 font-label-sm text-label-sm font-semibold">
+            <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full bg-amber-50 text-amber-800 font-label-sm text-label-sm font-semibold">
                 <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ $stats['pending_count'] }} Order Dalam Antrean
             </span>
         @else
-            <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full bg-emerald-50 text-emerald-800 font-label-sm text-label-sm font-semibold">
+            <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full bg-emerald-50 text-emerald-800 font-label-sm text-label-sm font-semibold">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Mesin Algoritma: Siaga
             </span>
         @endif
@@ -260,7 +260,7 @@
         <div class="flex flex-wrap items-center justify-between gap-space-sm">
             <div class="flex items-center gap-space-xs">
                 <div class="px-space-xs py-space-2xs bg-surface-container-highest rounded font-data-mono font-bold text-on-surface text-body-sm">#{{ $q['tracking'] }}</div>
-                <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full bg-amber-100 text-amber-900 font-label-sm text-label-sm font-bold">
+                <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full bg-amber-100 text-amber-900 font-label-sm text-label-sm font-bold">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Menunggu Assign
                 </span>
                 <span class="font-label-sm text-label-sm text-secondary font-data-mono">{{ $q['created_at'] }}</span>

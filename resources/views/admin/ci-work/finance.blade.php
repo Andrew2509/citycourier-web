@@ -80,7 +80,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <div class="w-10 h-10 rounded-lg bg-primary-container text-primary flex items-center justify-center">
                     <span class="material-symbols-outlined text-[20px]">trending_up</span>
                 </div>
-                <span class="inline-flex items-center gap-space-2xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-bold">
+                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-bold">
                     <span class="material-symbols-outlined text-[14px]">check_circle</span>
                     {{ $stats['delivered_today'] }} Pengiriman
                 </span>
@@ -97,7 +97,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                     <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
                 </div>
-                <span class="inline-flex items-center gap-space-2xs px-2 py-1 rounded-full bg-primary-container text-primary font-label-sm text-label-sm font-bold">
+                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-xs rounded-full bg-primary-container text-primary font-label-sm text-label-sm font-bold">
                     {{ (int) (100 - $stats['commission_rate']) }}% Porsi
                 </span>
             </div>
@@ -113,7 +113,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <div class="w-10 h-10 rounded-lg bg-surface-container text-secondary flex items-center justify-center">
                     <span class="material-symbols-outlined text-[20px]">percent</span>
                 </div>
-                <span class="inline-flex items-center gap-space-2xs px-2 py-1 rounded-full bg-surface-container text-secondary font-label-sm text-label-sm font-bold">
+                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-xs rounded-full bg-surface-container text-secondary font-label-sm text-label-sm font-bold">
                     {{ (int) $stats['commission_rate'] }}% Margin
                 </span>
             </div>
@@ -129,7 +129,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                     <span class="material-symbols-outlined text-[20px]">savings</span>
                 </div>
-                <span class="inline-flex items-center gap-space-2xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-sm text-label-sm font-bold">
+                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-xs rounded-full bg-blue-50 text-blue-700 font-label-sm text-label-sm font-bold">
                     {{ $stats['pending_wd_count'] }} Antrean
                 </span>
             </div>
@@ -177,7 +177,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
 
             <div class="flex items-center gap-space-sm">
                 <div class="relative">
-                    <span class="material-symbols-outlined text-[18px] text-secondary absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                    <span class="material-symbols-outlined text-[18px] text-secondary absolute left-space-sm top-1/2 -translate-y-1/2">search</span>
                     <input type="text" oninput="filterRecaps()"
                         class="h-9 pl-9 pr-3 rounded-lg border border-outline-variant bg-surface-container-lowest font-body-sm text-body-sm text-on-surface placeholder:text-secondary outline-none focus:border-primary w-52"
                         placeholder="Cari kurir..." id="recapSearch">
@@ -267,15 +267,15 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                         <td class="py-4 px-4 whitespace-nowrap text-right">
                             <div class="inline-flex items-center justify-end gap-space-2xs">
                                 <button onclick="openReconcile({{ $courier->id }})" type="button"
-                                    class="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-primary-container/30 transition-colors" title="Riwayat Transaksi">
+                                    class="p-space-xs rounded-lg text-secondary hover:text-primary hover:bg-primary-container/30 transition-colors" title="Riwayat Transaksi">
                                     <span class="material-symbols-outlined text-[18px]">history</span>
                                 </button>
                                 <button onclick="openTripModal({{ $courier->id }})" type="button"
-                                    class="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-primary-container/30 transition-colors" title="Rincian Trip">
+                                    class="p-space-xs rounded-lg text-secondary hover:text-primary hover:bg-primary-container/30 transition-colors" title="Rincian Trip">
                                     <span class="material-symbols-outlined text-[18px]">map</span>
                                 </button>
                                 <button onclick="openAdjustModal(this)" type="button" data-name="{{ $courier->user->name ?? 'Kurir' }}" data-route="{{ route('admin.ci-work.finance.reconcile', $courier->id) }}"
-                                    class="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-primary-container/30 transition-colors" title="Penyesuaian Saldo">
+                                    class="p-space-xs rounded-lg text-secondary hover:text-primary hover:bg-primary-container/30 transition-colors" title="Penyesuaian Saldo">
                                     <span class="material-symbols-outlined text-[18px]">tune</span>
                                 </button>
                             </div>
@@ -529,7 +529,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <h4 class="font-headline-sm text-headline-sm font-bold text-on-surface" id="rec-name">Kurir</h4>
                 <span class="font-label-sm text-label-sm text-secondary">Rincian Transaksi Kurir</span>
             </div>
-            <button onclick="closeReconcile()" type="button" class="p-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
+            <button onclick="closeReconcile()" type="button" class="p-space-xs rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
@@ -570,7 +570,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Rincian Pengiriman</h4>
                 <span class="font-label-sm text-label-sm text-secondary" id="trip-subtitle">Trip selesai kurir hari ini</span>
             </div>
-            <button onclick="closeTripModal()" type="button" class="p-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
+            <button onclick="closeTripModal()" type="button" class="p-space-xs rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
@@ -591,7 +591,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Penyesuaian Saldo</h4>
                 <span class="font-label-sm text-label-sm text-secondary" id="adjustCourierName">Kurir</span>
             </div>
-            <button onclick="closeAdjustModal()" type="button" class="p-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
+            <button onclick="closeAdjustModal()" type="button" class="p-space-xs rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
@@ -644,7 +644,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Atur Bagi Hasil</h4>
                 <span class="font-label-sm text-label-sm text-secondary">Persentase komisi platform per pengiriman</span>
             </div>
-            <button onclick="closeCommissionModal()" type="button" class="p-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
+            <button onclick="closeCommissionModal()" type="button" class="p-space-xs rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
@@ -682,7 +682,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Detail SOP Keuangan</h4>
                 <span class="font-label-sm text-label-sm text-secondary">Standar Operasional Prosedur setoran & bagi hasil</span>
             </div>
-            <button onclick="closeSopModal()" type="button" class="p-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
+            <button onclick="closeSopModal()" type="button" class="p-space-xs rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
@@ -726,7 +726,7 @@ $withdrawalTotalText = 'Menampilkan ' . ($withdrawals->total() > 0 ? $withdrawal
                 <h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Panduan Persetujuan Penarikan</h4>
                 <span class="font-label-sm text-label-sm text-secondary">Langkah pemrosesan penarikan dana kurir</span>
             </div>
-            <button onclick="closeGuideModal()" type="button" class="p-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
+            <button onclick="closeGuideModal()" type="button" class="p-space-xs rounded-lg text-secondary hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>

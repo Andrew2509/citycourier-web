@@ -8,7 +8,7 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
         <div class="flex flex-col gap-space-2xs">
             <div class="flex items-center gap-space-xs text-secondary font-label-md">
-                <a class="hover:text-primary transition-colors flex items-center gap-1" href="{{ route('admin.dashboard') }}">
+                <a class="hover:text-primary transition-colors flex items-center gap-space-2xs" href="{{ route('admin.dashboard') }}">
                     <span class="material-symbols-outlined text-[15px]">home</span>
                     <span>Beranda</span>
                 </a>
@@ -173,7 +173,7 @@
                         <td class="py-space-md px-space-lg whitespace-nowrap">
                             <div class="flex flex-col">
                                 @if($dp->phone)
-                                <a class="font-data-mono text-data-mono text-primary hover:underline font-semibold flex items-center gap-1" href="tel:{{ $dp->phone }}">
+                                <a class="font-data-mono text-data-mono text-primary hover:underline font-semibold flex items-center gap-space-2xs" href="tel:{{ $dp->phone }}">
                                     <span class="material-symbols-outlined text-[14px]">call</span>
                                     {{ $dp->phone }}
                                 </a>
@@ -199,7 +199,7 @@
                             </div>
                         </td>
                         <td class="py-space-md px-space-lg whitespace-nowrap text-center">
-                            <span class="inline-flex items-center gap-1.5 px-space-sm py-space-2xs rounded-full {{ $isActive ? 'bg-emerald-50 text-emerald-800' : 'bg-surface-container text-secondary' }} font-label-md font-bold shadow-sm">
+                            <span class="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full {{ $isActive ? 'bg-emerald-50 text-emerald-800' : 'bg-surface-container text-secondary' }} font-label-md font-bold shadow-sm">
                                 <span class="w-2 h-2 rounded-full {{ $isActive ? 'bg-emerald-500' : 'bg-gray-400' }}"></span>
                                 {{ $isActive ? 'Aktif' : 'Nonaktif' }}
                             </span>

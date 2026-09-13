@@ -3,7 +3,7 @@
 @section('title', 'Manajemen Pesanan')
 
 @section('content')
-<div class="flex flex-col w-full gap-space-lg">
+<div class="flex flex-col w-full gap-space-xl">
     <!-- Header Section with Quick Stats Bento Summary -->
     <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
         <div class="flex flex-col gap-space-2xs">
@@ -60,7 +60,7 @@
                 @if($activeStatus !== 'all')
                     <input type="hidden" name="status" value="{{ $activeStatus }}">
                 @endif
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[18px] pointer-events-none">search</span>
+                <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-secondary text-[18px] pointer-events-none">search</span>
                 <input type="text"
                        name="search"
                        value="{{ request('search') }}"
@@ -137,13 +137,13 @@
                         <td class="py-4 px-4 whitespace-nowrap">
                             <div class="flex items-center gap-space-xs">
                                 <span class="font-data-mono font-bold text-primary tracking-wide">{{ $order->tracking_number }}</span>
-                                <button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container-high text-secondary hover:text-primary transition-opacity" onclick="navigator.clipboard.writeText('{{ $order->tracking_number }}')" title="Salin Nomor Resi" type="button">
+                                <button class="opacity-0 group-hover:opacity-100 p-space-2xs rounded hover:bg-surface-container-high text-secondary hover:text-primary transition-opacity" onclick="navigator.clipboard.writeText('{{ $order->tracking_number }}')" title="Salin Nomor Resi" type="button">
                                     <span class="material-symbols-outlined text-[15px]">content_copy</span>
                                 </button>
                             </div>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="flex items-center gap-2.5">
+                            <div class="flex items-center gap-space-sm">
                                 <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
                                     {{ strtoupper(substr($order->customer_name, 0, 1)) }}
                                 </div>
@@ -159,33 +159,33 @@
                         <td class="py-4 px-4 max-w-xs">
                             <div class="flex flex-col">
                                 <span class="font-medium text-on-surface truncate">{{ $order->pickup_name ?? '-' }}</span>
-                                <span class="text-xs text-secondary line-clamp-1">{{ $order->pickup_address }}</span>
+                                <span class="font-label-sm text-label-sm text-secondary line-clamp-1">{{ $order->pickup_address }}</span>
                             </div>
                         </td>
                         <td class="py-4 px-4 max-w-xs">
                             <div class="flex flex-col">
                                 <span class="font-medium text-on-surface truncate">{{ $order->customer_name }}</span>
-                                <span class="text-xs text-secondary line-clamp-1">{{ $order->delivery_address }}</span>
+                                <span class="font-label-sm text-label-sm text-secondary line-clamp-1">{{ $order->delivery_address }}</span>
                             </div>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
                             <span class="font-data-mono font-bold text-emerald-600 text-sm">Rp {{ number_format($order->price, 0, ',', '.') }}</span>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full {{ $statusStyles }}">
+                            <div class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-full {{ $statusStyles }}">
                                 <span class="w-1.5 h-1.5 rounded-full {{ $order->status === 'delivered' ? 'bg-emerald-600' : ($order->status === 'assigned' ? 'bg-blue-500' : 'bg-current') }}"></span>
                                 <span class="font-label-sm text-xs font-bold">{{ $statusLabel }}</span>
                             </div>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap text-right">
-                            <div class="inline-flex items-center gap-1">
-                                <a href="{{ route('admin.orders.detail', $order->id) }}" class="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Lihat Detail Pesanan">
+                            <div class="inline-flex items-center gap-space-2xs">
+                                <a href="{{ route('admin.orders.detail', $order->id) }}" class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Lihat Detail Pesanan">
                                     <span class="material-symbols-outlined text-[18px]">visibility</span>
                                 </a>
                                 <form action="{{ route('admin.orders.destroy', $order->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pesanan {{ $order->tracking_number }}?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-1.5 rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="Hapus Pesanan">
+                                    <button type="submit" class="p-space-xs rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="Hapus Pesanan">
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
@@ -210,7 +210,7 @@
                     Belum ada pesanan masuk saat ini.
                 @endif
             </p>
-            <a href="{{ route('admin.orders') }}" class="mt-space-lg px-space-md py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md rounded-lg font-medium transition-colors">
+            <a href="{{ route('admin.orders') }}" class="mt-space-lg px-space-md py-space-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md rounded-lg font-medium transition-colors">
                 Reset Filter Pencarian
             </a>
         </div>

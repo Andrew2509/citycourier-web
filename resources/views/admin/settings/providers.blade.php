@@ -18,7 +18,7 @@
             <div class="flex flex-col">
                 <div class="flex items-center gap-space-sm flex-wrap">
                     <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Provider &amp; Integrasi Eksternal</h1>
-                    <span class="inline-flex items-center gap-1.5 px-space-sm py-space-2xs rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm">
+                    <span class="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         Semua Layanan Online
                     </span>
@@ -45,7 +45,7 @@
                 <div class="flex flex-col">
                     <div class="flex items-center gap-space-sm">
                         <span class="font-headline-sm text-headline-sm text-on-surface">Provider WhatsApp</span>
-                        <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full {{ !empty($whatsapp['token']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
+                        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full {{ !empty($whatsapp['token']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
                             <span class="w-1.5 h-1.5 rounded-full {{ !empty($whatsapp['token']) ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                             {{ !empty($whatsapp['token']) ? 'Aktif' : 'Nonaktif' }}
                         </span>
@@ -152,7 +152,7 @@
                 <div class="flex flex-col">
                     <div class="flex items-center gap-space-sm">
                         <span class="font-headline-sm text-headline-sm text-on-surface">Provider RajaOngkir</span>
-                        <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full {{ !empty($rajaongkir['api_key']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
+                        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full {{ !empty($rajaongkir['api_key']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
                             <span class="w-1.5 h-1.5 rounded-full {{ !empty($rajaongkir['api_key']) ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                             {{ !empty($rajaongkir['api_key']) ? 'Aktif' : 'Nonaktif' }}
                         </span>
@@ -206,7 +206,7 @@
                 <div class="flex flex-col">
                     <div class="flex items-center gap-space-sm">
                         <span class="font-headline-sm text-headline-sm text-on-surface">Layanan Pembayaran (Payment Gateway)</span>
-                        <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full {{ !empty($payment['api_key']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
+                        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full {{ !empty($payment['api_key']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
                             <span class="w-1.5 h-1.5 rounded-full {{ !empty($payment['api_key']) ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                             {{ !empty($payment['api_key']) ? 'Aktif' : 'Nonaktif' }}
                         </span>
@@ -263,7 +263,7 @@
                 <div class="flex flex-col">
                     <div class="flex items-center gap-space-sm">
                         <span class="font-headline-sm text-headline-sm text-on-surface">Konfigurasi Peta &amp; Routing Engine</span>
-                        <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full {{ !empty($map['base_url']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
+                        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full {{ !empty($map['base_url']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
                             <span class="w-1.5 h-1.5 rounded-full {{ !empty($map['base_url']) ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                             {{ !empty($map['base_url']) ? 'Aktif' : 'Nonaktif' }}
                         </span>
@@ -320,7 +320,7 @@
                 <div class="flex flex-col">
                     <div class="flex items-center gap-space-sm">
                         <span class="font-headline-sm text-headline-sm text-on-surface">Provider DANA</span>
-                        <span class="inline-flex items-center gap-1 px-space-xs py-space-2xs rounded-full {{ !empty($dana['client_id']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
+                        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full {{ !empty($dana['client_id']) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }} font-label-sm text-label-sm font-semibold">
                             <span class="w-1.5 h-1.5 rounded-full {{ !empty($dana['client_id']) ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                             {{ !empty($dana['client_id']) ? 'Aktif' : 'Nonaktif' }}
                         </span>

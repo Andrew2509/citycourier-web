@@ -301,7 +301,7 @@ $hudDefault = $mapMarks->first();
                     <span class="text-[10px] text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">signal_cellular_alt</span>Sinyal GPS</span>
                     <span class="inline-flex items-center gap-1 font-bold text-[11px] text-emerald-700"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Baik</span>
                 </div>
-                <div class="flex flex-col gap-0.5">
+                <div class="flex flex-col gap-space-2xs">
                     <span class="text-[10px] text-secondary font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">place</span>Last Known Place</span>
                     <span class="text-[11px] font-medium text-on-surface" id="hudPlace">{{ $hudDefault['city'] }}</span>
                 </div>
@@ -340,12 +340,12 @@ $hudDefault = $mapMarks->first();
                 </div>
             </div>
             <div class="flex items-center gap-space-sm">
-                <div class="flex items-center gap-1 p-1 rounded-lg bg-surface-container font-label-sm text-label-sm font-semibold" id="filterChips">
-                    <button type="button" data-chip="semua" class="chip-btn active px-2.5 py-1 rounded-md text-on-surface inline-flex items-center gap-1 transition-colors">Semua <span class="chip-count">{{ $chipCounts['semua'] }}</span></button>
-                    <button type="button" data-chip="online" class="chip-btn px-2.5 py-1 rounded-md text-secondary inline-flex items-center gap-1 transition-colors">Online Siaga <span class="chip-count">{{ $chipCounts['online'] }}</span></button>
-                    <button type="button" data-chip="delivering" class="chip-btn px-2.5 py-1 rounded-md text-secondary inline-flex items-center gap-1 transition-colors">Sedang Mengantar <span class="chip-count">{{ $chipCounts['delivering'] }}</span></button>
-                    <button type="button" data-chip="break" class="chip-btn px-2.5 py-1 rounded-md text-secondary inline-flex items-center gap-1 transition-colors">Istirahat <span class="chip-count">{{ $chipCounts['break'] }}</span></button>
-                    <button type="button" data-chip="offline" class="chip-btn px-2.5 py-1 rounded-md text-secondary inline-flex items-center gap-1 transition-colors">Offline <span class="chip-count">{{ $chipCounts['offline'] }}</span></button>
+                <div class="flex items-center gap-space-2xs p-space-2xs rounded-lg bg-surface-container font-label-sm text-label-sm font-semibold" id="filterChips">
+                    <button type="button" data-chip="semua" class="chip-btn active px-space-sm py-space-xs rounded-md text-on-surface inline-flex items-center gap-space-2xs transition-colors">Semua <span class="chip-count">{{ $chipCounts['semua'] }}</span></button>
+                    <button type="button" data-chip="online" class="chip-btn px-space-sm py-space-xs rounded-md text-secondary inline-flex items-center gap-space-2xs transition-colors">Online Siaga <span class="chip-count">{{ $chipCounts['online'] }}</span></button>
+                    <button type="button" data-chip="delivering" class="chip-btn px-space-sm py-space-xs rounded-md text-secondary inline-flex items-center gap-space-2xs transition-colors">Sedang Mengantar <span class="chip-count">{{ $chipCounts['delivering'] }}</span></button>
+                    <button type="button" data-chip="break" class="chip-btn px-space-sm py-space-xs rounded-md text-secondary inline-flex items-center gap-space-2xs transition-colors">Istirahat <span class="chip-count">{{ $chipCounts['break'] }}</span></button>
+                    <button type="button" data-chip="offline" class="chip-btn px-space-sm py-space-xs rounded-md text-secondary inline-flex items-center gap-space-2xs transition-colors">Offline <span class="chip-count">{{ $chipCounts['offline'] }}</span></button>
                 </div>
                 <button type="button" onclick="refreshSignal()" title="Muat ulang data"
                     class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-secondary inline-flex items-center justify-center transition-colors">
@@ -356,7 +356,7 @@ $hudDefault = $mapMarks->first();
 
         <div class="flex items-center justify-between px-space-xl py-space-sm border-b border-surface-container-high/60">
             <div class="relative flex-1 max-w-sm">
-                <span class="material-symbols-outlined text-[18px] text-secondary absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                <span class="material-symbols-outlined text-[18px] text-secondary absolute left-space-sm top-1/2 -translate-y-1/2">search</span>
                 <input type="text" id="attSearch" oninput="filterRows()" placeholder="Cari nama, telepon, atau email kurir..."
                     class="w-full h-9 pl-9 pr-3 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-label-sm text-label-sm focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-secondary">
             </div>
@@ -394,23 +394,23 @@ $hudDefault = $mapMarks->first();
                                     <span class="absolute -bottom-0 -right-0 w-3 h-3 rounded-full {{ $row['statusDot'] }} border-2 border-white {{ $row['status'] === 'offline' ? '' : 'pulsate-dot' }}"></span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <div class="flex items-center gap-1.5">
+                                    <div class="flex items-center gap-space-xs">
                                         <span class="font-semibold">{{ $row['name'] }}</span>
                                         <span class="text-[10px] font-mono font-bold bg-surface-container rounded px-1 py-0.5 text-secondary">{{ $row['status'] === 'online' || $row['status'] === 'delivering' ? 'Online' : 'Nonaktif' }}</span>
                                     </div>
-                                    <span class="text-xs text-secondary">{{ $row['email'] }}</span>
+                                    <span class="font-label-sm text-label-sm text-secondary">{{ $row['email'] }}</span>
                                     @if($row['vehicle'])
-                                    <span class="text-xs text-secondary flex items-center gap-1 mt-0.5"><span class="material-symbols-outlined text-[13px]">two_wheeler</span>{{ $row['vehicle'] }}</span>
+                                    <span class="font-label-sm text-label-sm text-secondary flex items-center gap-space-2xs mt-0.5"><span class="material-symbols-outlined text-[13px]">two_wheeler</span>{{ $row['vehicle'] }}</span>
                                     @endif
                                 </div>
                             </div>
                         </td>
                         <td class="py-4 px-4">
-                            <div class="flex flex-col gap-1">
-                                <span class="text-secondary flex items-center gap-1 whitespace-nowrap"><span class="material-symbols-outlined text-[15px]">call</span>{{ $row['phone'] }}</span>
-                                <div class="flex items-center gap-1.5">
+                            <div class="flex flex-col gap-space-2xs">
+                                <span class="text-secondary flex items-center gap-space-2xs whitespace-nowrap"><span class="material-symbols-outlined text-[15px]">call</span>{{ $row['phone'] }}</span>
+                                <div class="flex items-center gap-space-xs">
                                     <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['phone'])) }}"
-                                        class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline">
+                                        class="inline-flex items-center gap-space-2xs text-xs font-semibold text-emerald-700 hover:underline">
                                         <span class="material-symbols-outlined text-[14px]">chat</span>WhatsApp
                                     </a>
                                     <a href="tel:{{ $row['phone'] }}" title="Telepon"
@@ -422,16 +422,16 @@ $hudDefault = $mapMarks->first();
                         </td>
                         <td class="py-4 px-4">
                             @if($row['attTime'])
-                            <div class="flex flex-col gap-0.5">
-                                <div class="flex items-center gap-1.5">
+                            <div class="flex flex-col gap-space-2xs">
+                                <div class="flex items-center gap-space-xs">
                                     <span class="font-mono font-bold">{{ $row['attTime'] }} WIB</span>
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold {{ $row['late'] ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700' }}">
+                                    <span class="inline-flex items-center px-space-xs py-space-2xs rounded-full text-[10px] font-bold {{ $row['late'] ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700' }}">
                                         {{ $row['late'] ? 'Terlambat' : 'Tepat Waktu' }}
                                     </span>
                                 </div>
-                                <span class="text-xs text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">storefront</span>{{ $row['dropPoint'] }}</span>
+                                <span class="text-xs text-secondary flex items-center gap-space-2xs"><span class="material-symbols-outlined text-[13px]">storefront</span>{{ $row['dropPoint'] }}</span>
                                 @if($row['duration'])
-                                <span class="text-xs text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">hourglass</span>Durasi Shift: {{ $row['duration'] }}</span>
+                                <span class="text-xs text-secondary flex items-center gap-space-2xs"><span class="material-symbols-outlined text-[13px]">hourglass</span>Durasi Shift: {{ $row['duration'] }}</span>
                                 @endif
                             </div>
                             @else
@@ -453,7 +453,7 @@ $hudDefault = $mapMarks->first();
                             @endif
                         </td>
                         <td class="py-4 px-4">
-                            <div class="flex flex-col gap-0.5">
+                            <div class="flex flex-col gap-space-2xs">
                                 <span class="text-xs font-semibold text-on-surface">{{ $row['lat'] ? ($row['address']) : '—' }}</span>
                                 <span class="text-[11px] text-secondary" id="coords-{{ $row['id'] }}">{{ $row['lat'] ? number_format($row['lat'], 5, ',', '.') . ', ' . number_format($row['lng'], 5, ',', '.') : 'GPS nonaktif' }}</span>
                                 @if($row['lastSeen'] !== null)
@@ -464,13 +464,13 @@ $hudDefault = $mapMarks->first();
                             </div>
                         </td>
                         <td class="py-4 px-4">
-                            <div class="flex items-center justify-end gap-1.5">
+                            <div class="flex items-center justify-end gap-space-xs">
                                 <button type="button" onclick="focusCourier({{ $row['id'] }})"
-                                    class="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-high text-xs font-semibold transition-colors">
+                                    class="inline-flex items-center gap-space-2xs h-8 px-space-sm rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-high text-xs font-semibold transition-colors">
                                     <span class="material-symbols-outlined text-[15px] text-secondary">map</span> Lihat Map
                                 </button>
                                 <button type="button" onclick="openDetail({{ $row['id'] }})"
-                                    class="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg bg-primary-container text-primary hover:bg-primary hover:text-on-primary text-xs font-semibold transition-colors">
+                                    class="inline-flex items-center gap-space-2xs h-8 px-space-sm rounded-lg bg-primary-container text-primary hover:bg-primary hover:text-on-primary text-xs font-semibold transition-colors">
                                     <span class="material-symbols-outlined text-[15px]">info</span> Detail
                                 </button>
                                 <div class="relative">
@@ -812,7 +812,7 @@ $hudDefault = $mapMarks->first();
             { label: 'Baterai', icon: 'battery_full', value: r.battery !== null ? r.battery + '%' : '-', extra: r.accuracy !== null ? 'Akurasi ±' + r.accuracy + ' m' : null },
         ];
         document.getElementById('detailGrid').innerHTML = items.map(it => `
-            <div class="rounded-xl bg-surface-container-low p-3 flex flex-col gap-0.5">
+            <div class="rounded-xl bg-surface-container-low p-3 flex flex-col gap-space-2xs">
                 <span class="text-[11px] text-secondary font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">${it.icon}</span>${it.label}</span>
                 <span class="font-medium text-sm">${it.value}</span>
                 ${it.extra ? `<span class="text-[11px] font-semibold text-emerald-700">${it.extra}</span>` : ''}

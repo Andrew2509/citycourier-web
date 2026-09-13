@@ -59,35 +59,35 @@
             <form action="{{ route('admin.app-download.store') }}" method="POST" class="space-y-4">
                 @csrf
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
                     <div>
-                        <label for="version" class="block font-label-md text-label-md font-semibold text-on-surface mb-1.5">Versi</label>
+                        <label for="version" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Versi</label>
                         <input type="text" name="version" id="version" value="{{ old('version', $active->version ?? '1.0.0') }}"
                                class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('version') border-red-500 @enderror"
                                placeholder="1.0.0" required>
-                        @error('version')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                        @error('version')<p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p>@enderror
                     </div>
                     <div>
-                        <label for="file_size" class="block font-label-md text-label-md font-semibold text-on-surface mb-1.5">Ukuran File (MB)</label>
+                        <label for="file_size" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Ukuran File (MB)</label>
                         <input type="number" name="file_size" id="file_size" step="0.1" min="0"
                                value="{{ old('file_size') }}"
                                class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('file_size') border-red-500 @enderror"
                                placeholder="60">
-                        @error('file_size')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                        @error('file_size')<p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p>@enderror
                     </div>
                 </div>
 
                 <div>
-                    <label for="google_drive_url" class="block font-label-md text-label-md font-semibold text-on-surface mb-1.5">Google Drive URL</label>
+                    <label for="google_drive_url" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Google Drive URL</label>
                     <input type="url" name="google_drive_url" id="google_drive_url" value="{{ old('google_drive_url') }}"
                            class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('google_drive_url') border-red-500 @enderror"
                            placeholder="https://drive.google.com/file/d/xxx/view?usp=sharing" required>
-                    @error('google_drive_url')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
-                    <p class="text-xs text-secondary mt-1">Upload APK ke Google Drive, setel berbagi ke publik, lalu tempel link di sini.</p>
+                    @error('google_drive_url')<p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p>@enderror
+                    <p class="text-xs text-secondary mt-space-2xs">Upload APK ke Google Drive, setel berbagi ke publik, lalu tempel link di sini.</p>
                 </div>
 
                 <div>
-                    <label for="release_notes" class="block font-label-md text-label-md font-semibold text-on-surface mb-1.5">Catatan Rilis <span class="text-xs font-normal text-secondary">(opsional)</span></label>
+                    <label for="release_notes" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Catatan Rilis <span class="text-xs font-normal text-secondary">(opsional)</span></label>
                     <textarea name="release_notes" id="release_notes" rows="3"
                               class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all resize-none"
                               placeholder="Apa yang baru di versi ini...">{{ old('release_notes') }}</textarea>
@@ -146,7 +146,7 @@
                         <td class="py-4 px-4">
                             <p class="text-on-surface font-medium">{{ $download->filename ?: 'citycourier-v' . $download->version . '.apk' }}</p>
                             @if($download->google_drive_url)
-                            <a href="{{ $download->google_drive_url }}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-space-2xs">
+                            <a href="{{ $download->google_drive_url }}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline inline-flex items-center gap-space-2xs mt-space-2xs">
                                 <span class="material-symbols-outlined text-[12px]">link</span> Google Drive
                             </a>
                             @endif
@@ -173,12 +173,12 @@
                                 @if(!$download->is_active)
                                 <form action="{{ route('admin.app-download.set-active', $download) }}" method="POST" class="inline-block">
                                     @csrf
-                                    <button type="submit" title="Set sebagai aktif" class="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-container-low transition-colors">
+                                    <button type="submit" title="Set sebagai aktif" class="p-space-xs rounded-lg text-secondary hover:text-primary hover:bg-surface-container-low transition-colors">
                                         <span class="material-symbols-outlined text-[18px]">check_circle</span>
                                     </button>
                                 </form>
                                 @else
-                                <span class="p-1.5 text-primary cursor-not-allowed" title="Versi aktif saat ini">
+                                <span class="p-space-xs text-primary cursor-not-allowed" title="Versi aktif saat ini">
                                     <span class="material-symbols-outlined text-[18px]">verified</span>
                                 </span>
                                 @endif
@@ -187,7 +187,7 @@
                                       onsubmit="return confirm('Hapus versi v{{ $download->version }}? Tindakan ini tidak dapat dibatalkan.');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" title="Hapus" class="p-1.5 rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors">
+                                    <button type="submit" title="Hapus" class="p-space-xs rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors">
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>

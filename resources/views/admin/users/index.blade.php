@@ -204,13 +204,13 @@
                             <span class="font-data-mono text-body-sm text-secondary">{{ $user->phone ?? '-' }}</span>
                         </td>
                         <td class="py-space-md px-space-md">
-                            <span class="inline-flex items-center gap-1 px-space-sm py-space-2xs rounded-lg text-label-sm font-label-sm {{ $roleColor }} font-semibold">
+                            <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-lg text-label-sm font-label-sm {{ $roleColor }} font-semibold">
                                 <span class="material-symbols-outlined text-[14px]">{{ $roleIcons[$roleName] ?? 'badge' }}</span>
                                 {{ $roleName }}
                             </span>
                         </td>
                         <td class="py-space-md px-space-md">
-                            <span class="inline-flex items-center gap-1.5 px-space-xs py-space-2xs rounded-full bg-emerald-50 text-emerald-800 text-label-sm font-label-sm font-semibold">
+                            <span class="inline-flex items-center gap-space-xs px-space-xs py-space-2xs rounded-full bg-emerald-50 text-emerald-800 text-label-sm font-label-sm font-semibold">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Aktif
                             </span>
                         </td>

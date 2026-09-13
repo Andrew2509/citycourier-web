@@ -147,10 +147,10 @@
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap text-right">
                             <div class="inline-flex items-center justify-end gap-space-xs">
-                                <a href="#" class="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-container-low transition-colors" title="Detail Rute">
+                                <a href="#" class="p-space-xs rounded-lg text-secondary hover:text-primary hover:bg-surface-container-low transition-colors" title="Detail Rute">
                                     <span class="material-symbols-outlined text-[18px]">map</span>
                                 </a>
-                                <a href="#" class="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Hubungi Kurir">
+                                <a href="#" class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Hubungi Kurir">
                                     <span class="material-symbols-outlined text-[18px]">phone</span>
                                 </a>
                             </div>

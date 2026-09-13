@@ -65,7 +65,7 @@
                                 </div>
                                 <div class="flex flex-col min-w-0">
                                     <span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">{{ ucfirst($role->name) }}</span>
-                                    <span class="px-space-xs py-space-2xs rounded-full text-[10px] font-label-sm font-bold {{ $roleBadgeColors[$role->name] ?? 'bg-surface-container text-secondary' }} inline-flex items-center gap-1 w-fit mt-0.5">
+                                    <span class="px-space-xs py-space-2xs rounded-full text-[10px] font-label-sm font-bold {{ $roleBadgeColors[$role->name] ?? 'bg-surface-container text-secondary' }} inline-flex items-center gap-space-2xs w-fit mt-0.5">
                                         <span class="material-symbols-outlined text-[10px]">shield</span>
                                         {{ ucfirst($role->name) }} Role
                                     </span>

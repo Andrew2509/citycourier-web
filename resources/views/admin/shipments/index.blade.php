@@ -3,7 +3,7 @@
 @section('title', 'Manajemen Pengiriman')
 
 @section('content')
-<div class="flex flex-col w-full gap-space-lg">
+<div class="flex flex-col w-full gap-space-xl">
     <!-- Header Section -->
     <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
         <div class="flex flex-col gap-space-2xs">
@@ -53,7 +53,7 @@
                 @if($currentFilter !== 'all')
                     <input type="hidden" name="status" value="{{ $currentFilter }}">
                 @endif
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[18px] pointer-events-none">search</span>
+                <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-secondary text-[18px] pointer-events-none">search</span>
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nomor, nama, atau alamat..."
                        class="w-full bg-surface pl-9 pr-8 py-2 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:bg-surface-container-lowest transition-all shadow-sm" />
             </form>
@@ -112,7 +112,7 @@
                             @endif
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="flex flex-col gap-1">
+                            <div class="flex flex-col gap-space-2xs">
                                 <div class="flex items-center gap-2">
                                     <span class="font-label-sm text-[10px] uppercase font-bold text-secondary">Dari</span>
                                     <span class="font-body-sm text-on-surface font-medium">{{ $shipment->sender_name }}</span>
@@ -124,29 +124,29 @@
                             </div>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full {{ $status['style'] }}">
+                            <div class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-full {{ $status['style'] }}">
                                 <span class="w-1.5 h-1.5 rounded-full {{ $status['dot'] }}"></span>
-                                <span class="font-label-sm text-xs font-bold">{{ $status['label'] }}</span>
+                                <span class="font-label-sm font-label-sm text-label-sm font-bold">{{ $status['label'] }}</span>
                             </div>
                         </td>
                         <td class="py-4 px-4 max-w-xs">
                             <div class="flex flex-col">
-                                <span class="text-xs text-secondary line-clamp-1">{{ Str::limit($shipment->sender_address, 40) }}</span>
-                                <span class="text-xs text-secondary line-clamp-1">{{ Str::limit($shipment->receiver_address, 40) }}</span>
+                                <span class="font-label-sm text-label-sm text-secondary line-clamp-1">{{ Str::limit($shipment->sender_address, 40) }}</span>
+                                <span class="font-label-sm text-label-sm text-secondary line-clamp-1">{{ Str::limit($shipment->receiver_address, 40) }}</span>
                             </div>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
                             <span class="font-data-mono font-bold text-emerald-600 text-sm">Rp {{ number_format($shipment->total_cost, 0, ',', '.') }}</span>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap text-right">
-                            <div class="inline-flex items-center gap-1">
-                                <a href="{{ route('admin.shipments.show', $shipment->id) }}" class="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Lihat Detail">
+                            <div class="inline-flex items-center gap-space-2xs">
+                                <a href="{{ route('admin.shipments.show', $shipment->id) }}" class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Lihat Detail">
                                     <span class="material-symbols-outlined text-[18px]">visibility</span>
                                 </a>
                                 <form action="{{ route('admin.shipments.destroy', $shipment->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus pengiriman #{{ $shipment->shipment_number }}?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-1.5 rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="Hapus">
+                                    <button type="submit" class="p-space-xs rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="Hapus">
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>

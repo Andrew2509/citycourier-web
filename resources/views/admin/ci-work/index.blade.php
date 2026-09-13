@@ -26,9 +26,9 @@
 @endpush
 
 @section('content')
-<div class="flex flex-col w-full">
+<div class="flex flex-col w-full gap-space-xl">
     <!-- Header Bar -->
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md mb-space-xl">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
         <div>
             <div class="flex items-center gap-space-xs mb-space-2xs">
                 <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">City-Work Dispatch Cockpit</span>
@@ -52,7 +52,7 @@
     </div>
 
     <!-- KPI Stat Metrics Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md mb-space-xl">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">
         <!-- Card 1: Kurir Online -->
         <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
             <div class="flex items-start justify-between">
@@ -68,7 +68,7 @@
                 </div>
             </div>
             <div class="mt-space-md pt-space-xs flex items-center justify-between">
-                <span class="inline-flex items-center gap-1.5 px-space-xs py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold">
+                <span class="inline-flex items-center gap-space-xs px-space-xs py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     {{ $stats['online_couriers'] }} Siap Kerja
                 </span>
