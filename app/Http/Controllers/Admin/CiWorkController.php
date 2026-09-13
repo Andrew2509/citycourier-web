@@ -487,6 +487,63 @@ class CiWorkController extends Controller
     }
 
     /**
+     * Live JSON: lokasi terbaru semua kurir (untuk polling peta presensi).
+     */
+    public function attendanceLocations(Request $request)
+    {
+        $today = today()->toDateString();
+
+        $couriers = Courier::with([
+            'user',
+            'attendance' => fn ($q) => $q->whereDate('check_in_at', $today)->latest(),
+            'locations'  => fn ($q) => $q->latest('recorded_at')->take(1),
+            'orders'     => fn ($q) => $q->whereIn('status', ['assigned', 'picking_up', 'delivering']),
+        ])->get();
+
+        $data = [];
+
+        foreach ($couriers as $courier) {
+            $loc = $courier->locations->first();
+            $att = $courier->attendance->first();
+
+            $lat = $loc->latitude ?? $courier->latitude;
+            $lng = $loc->longitude ?? $courier->longitude;
+            if (! $lat || ! $lng) {
+                continue;
+            }
+
+            $delivering = $courier->orders->isNotEmpty();
+
+            $status = 'offline';
+            if ($delivering) {
+                $status = 'delivering';
+            } elseif ($att && ($att->status === 'break' || $att->status === 'paused')) {
+                $status = 'break';
+            } elseif ($courier->is_active) {
+                $status = 'online';
+            }
+
+            $data[] = [
+                'id'        => $courier->id,
+                'name'      => $courier->user->name ?? 'Kurir',
+                'initial'   => strtoupper(substr($courier->user->name ?? 'K', 0, 1)),
+                'status'    => $status,
+                'latitude'  => (float) $lat,
+                'longitude' => (float) $lng,
+                'speed'     => $loc && $loc->speed_kmh !== null ? (float) $loc->speed_kmh : null,
+                'battery'   => $loc ? $loc->battery_percent : null,
+                'accuracy'  => $loc && $loc->accuracy != null ? (float) $loc->accuracy : null,
+                'lastSeen'  => $loc && $loc->recorded_at
+                    ? (int) max(0, $loc->recorded_at->diffInSeconds(now()))
+                    : null,
+                'city'      => $courier->address ?? $courier->city ?? '-',
+            ];
+        }
+
+        return response()->json($data);
+    }
+
+    /**
      * Export attendance log (CSV).
      */
     public function exportAttendance(Request $request)

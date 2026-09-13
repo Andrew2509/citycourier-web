@@ -124,6 +124,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/auto-assign', [\App\Http\Controllers\Admin\CiWorkController::class, 'autoAssign'])->name('auto-assign');
             Route::post('/queue/assign/{order}', [\App\Http\Controllers\Admin\CiWorkController::class, 'assignQueueOrder'])->name('queue.assign');
             Route::get('/attendance', [\App\Http\Controllers\Admin\CiWorkController::class, 'attendance'])->name('attendance');
+            Route::get('/attendance/locations', [\App\Http\Controllers\Admin\CiWorkController::class, 'attendanceLocations'])->name('attendance.locations');
             Route::get('/attendance/export', [\App\Http\Controllers\Admin\CiWorkController::class, 'exportAttendance'])->name('attendance.export');
             Route::post('/attendance/{courier}/toggle-active', [\App\Http\Controllers\Admin\CiWorkController::class, 'toggleActive'])->name('attendance.toggle-active');
             Route::get('/tasks', [\App\Http\Controllers\Admin\CiWorkController::class, 'tasks'])->name('tasks');

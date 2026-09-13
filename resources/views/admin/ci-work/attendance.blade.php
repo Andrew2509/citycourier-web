@@ -136,6 +136,11 @@ $hudDefault = $mapMarks->first();
                     <span class="material-symbols-outlined text-[18px]">sync</span>
                     Refresh Sinyal
                 </button>
+                <span class="h-10 hidden md:inline-flex items-center gap-space-xs px-space-md rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-secondary">
+                    <span id="livePulse" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Live GPS</span>
+                    <span id="liveSyncText" class="font-mono font-semibold text-on-surface">memuat...</span>
+                </span>
             </div>
         </div>
     </div>
@@ -381,7 +386,7 @@ $hudDefault = $mapMarks->first();
                 </thead>
                 <tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-surface-container-high/60">
                     @forelse($rows as $row)
-                    <tr class="hover:bg-surface transition-colors" data-filter="{{ $row['status'] }}" data-search="{{ strtolower($row['name'] . ' ' . $row['email'] . ' ' . $row['phone']) }}">
+                    <tr class="hover:bg-surface transition-colors" data-courier="{{ $row['id'] }}" data-filter="{{ $row['status'] }}" data-search="{{ strtolower($row['name'] . ' ' . $row['email'] . ' ' . $row['phone']) }}">
                         <td class="py-4 px-4">
                             <div class="flex items-center gap-space-sm">
                                 <div class="relative shrink-0">
@@ -450,10 +455,10 @@ $hudDefault = $mapMarks->first();
                         <td class="py-4 px-4">
                             <div class="flex flex-col gap-0.5">
                                 <span class="text-xs font-semibold text-on-surface">{{ $row['lat'] ? ($row['address']) : '—' }}</span>
-                                <span class="text-[11px] text-secondary">{{ $row['lat'] ? number_format($row['lat'], 5, ',', '.') . ', ' . number_format($row['lng'], 5, ',', '.') : 'GPS nonaktif' }}</span>
+                                <span class="text-[11px] text-secondary" id="coords-{{ $row['id'] }}">{{ $row['lat'] ? number_format($row['lat'], 5, ',', '.') . ', ' . number_format($row['lng'], 5, ',', '.') : 'GPS nonaktif' }}</span>
                                 @if($row['lastSeen'] !== null)
                                 <span class="text-[11px] {{ $row['lastSeen'] <= 60 ? 'text-emerald-600 font-semibold' : 'text-secondary' }} flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-[13px]">radar</span> Sinyal update {{ $row['lastSeen'] <= 60 ? $row['lastSeen'] . ' detik lalu' : 'sejak ' . $row['lastSeen'] . ' dtk' }}
+                                    <span class="material-symbols-outlined text-[13px]">radar</span> <span id="ls-{{ $row['id'] }}">Sinyal update {{ $row['lastSeen'] <= 60 ? $row['lastSeen'] . ' detik lalu' : 'sejak ' . $row['lastSeen'] . ' dtk' }}</span>
                                 </span>
                                 @endif
                             </div>
@@ -625,6 +630,8 @@ $hudDefault = $mapMarks->first();
     const ATT = {!! json_encode($rows->keyBy('id')) !!};
     const MAPMARKS = {!! json_encode($mapMarks) !!};
     const HUB = {!! json_encode(['name' => $hub->name ?? 'Hub DP', 'lat' => (float) $hub->latitude, 'lng' => (float) $hub->longitude]) !!};
+    const ATT_LOC_URL = "{{ route('admin.ci-work.attendance.locations') }}";
+    const POLL_MS = 10000;
     window.__ATT = ATT;
 
     const TILE = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -713,6 +720,8 @@ $hudDefault = $mapMarks->first();
         MAPMARKS.forEach(function (m) {
             const mk = L.marker([m.latitude, m.longitude], { icon: courierIcon(m) }).addTo(liveMap).bindPopup(popupHtml(m));
             mk.on('click', function () { selectCourier(m.id); });
+            mk.__m = m;
+            mk.__status = m.status;
             liveMarkers[m.id] = mk;
         });
 
@@ -727,21 +736,25 @@ $hudDefault = $mapMarks->first();
     }
 
     /* HUD update + focus */
-    window.selectCourier = function (id) {
-        const m = MAPMARKS.find(x => x.id === id);
-        if (!m) return;
+    function updateHud(m) {
         const fuel = document.getElementById('hudCard');
-        if (fuel) {
-            const on = m.status === 'online' || m.status === 'delivering';
-            document.getElementById('hudName').textContent = m.name;
-            document.getElementById('hudSpeed').innerHTML = (m.speed !== null ? m.speed : '-') + ' <span class="text-[10px] text-secondary font-medium">km/j</span>';
-            document.getElementById('hudBattery').textContent = (m.battery !== null ? m.battery + '%' : '-');
-            document.getElementById('hudStatus').innerHTML = on
-                ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulsate-dot"></span>Online • Bergerak'
-                : '<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>Offline';
-            document.getElementById('hudPlace').textContent = m.city || '-';
-            document.getElementById('hudTime').textContent = new Date().toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
-        }
+        if (!fuel) return;
+        const on = m.status === 'online' || m.status === 'delivering';
+        document.getElementById('hudName').textContent = m.name;
+        document.getElementById('hudSpeed').innerHTML = (m.speed !== null ? m.speed : '-') + ' <span class="text-[10px] text-secondary font-medium">km/j</span>';
+        document.getElementById('hudBattery').textContent = (m.battery !== null ? m.battery + '%' : '-');
+        document.getElementById('hudStatus').innerHTML = on
+            ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulsate-dot"></span>Online • Bergerak'
+            : '<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>Offline';
+        document.getElementById('hudPlace').textContent = m.city || '-';
+        document.getElementById('hudTime').textContent = new Date().toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
+    }
+
+    window.selectCourier = function (id) {
+        const m = (liveMarkers[id] && liveMarkers[id].__m) || MAPMARKS.find(x => x.id === id);
+        if (!m) return;
+        window.__hudId = id;
+        updateHud(m);
         const mk = liveMarkers[id];
         if (mk && liveMap) {
             mk.openPopup();
@@ -787,11 +800,12 @@ $hudDefault = $mapMarks->first();
 
         const statusTitle = statusLabel(r.status);
         const isOnline = r.status !== 'offline';
+        const phone = r.phone || '-';
         const items = [
-            { label: 'Status', icon: 'toggle_on', value: statusTitle, extra: isOnline ? 'Aplikasi ' + r.device + ' • Aktif' : null },
-            { label: 'Telepon', icon: 'call', value: r.phone, extra: null },
+            { label: 'Status', icon: 'toggle_on', value: statusTitle, extra: isOnline ? 'Aplikasi ' + (r.device || 'v1.0.0') + ' • Aktif' : null },
+            { label: 'Telepon', icon: 'call', value: phone, extra: null },
             { label: 'Kendaraan', icon: 'two_wheeler', value: r.vehicle || '-', extra: null },
-            { label: 'Drop Point', icon: 'storefront', value: r.dropPoint, extra: null },
+            { label: 'Drop Point', icon: 'storefront', value: r.dropPoint || '-', extra: null },
             { label: 'Check-In', icon: 'schedule', value: r.attTime ? r.attTime + ' WIB' : 'Belum check-in', extra: r.attTime ? (r.late ? 'Terlambat' : 'Tepat Waktu') : null },
             { label: 'Durasi Shift', icon: 'hourglass', value: r.duration || '-', extra: null },
             { label: 'Kecepatan', icon: 'speed', value: r.speed !== null ? r.speed + ' km/j' : '-', extra: null },
@@ -812,9 +826,9 @@ $hudDefault = $mapMarks->first();
             document.getElementById('d-coords').textContent = 'GPS nonaktif';
         }
 
-        const waNum = String(r.phone).replace(/\D/g, '').replace(/^0/, '62');
-        document.getElementById('d-wa').href = 'https://wa.me/' + waNum;
-        document.getElementById('d-call').href = 'tel:' + r.phone;
+        const waNum = String(r.phone || '').replace(/\D/g, '').replace(/^0/, '62');
+        document.getElementById('d-wa').href = waNum ? 'https://wa.me/' + waNum : '#';
+        document.getElementById('d-call').href = phone !== '-' ? 'tel:' + phone : '#';
         document.getElementById('detailModal').classList.remove('hidden');
         setTimeout(function () { initDetailMap(id); }, 80);
     };
@@ -888,7 +902,82 @@ $hudDefault = $mapMarks->first();
         if (!document.fullscreenElement) { el.requestFullscreen && el.requestFullscreen(); } else { document.exitFullscreen(); }
     };
 
-    setTimeout(initLiveMap, 50);
+    /* Real-time GPS polling (fetches courier locations from server) */
+    function toRow(l) {
+        return {
+            id: l.id, name: l.name, initial: l.initial, status: l.status,
+            lat: l.latitude, lng: l.longitude,
+            speed: l.speed, battery: l.battery, accuracy: l.accuracy,
+            lastSeen: l.lastSeen, city: l.city,
+        };
+    }
+
+    let pollTimer = null;
+
+    async function pollLocations() {
+        if (!liveMap) return;
+        try {
+            const res = await fetch(ATT_LOC_URL, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store', credentials: 'same-origin',
+            });
+            if (!res.ok) return;
+            const locs = await res.json();
+
+            locs.forEach(function (l) {
+                if (ATT[l.id]) ATT[l.id] = Object.assign({}, ATT[l.id], toRow(l));
+                else ATT[l.id] = toRow(l);
+
+                let mk = liveMarkers[l.id];
+                if (mk) {
+                    mk.setLatLng([l.latitude, l.longitude]);
+                    mk.__m = Object.assign({}, mk.__m, l);
+                    if (mk.__status !== l.status) {
+                        mk.__status = l.status;
+                        mk.setIcon(courierIcon(l));
+                    }
+                    if (mk.isPopupOpen()) mk.setPopupContent(popupHtml(mk.__m));
+                } else {
+                    const nm = L.marker([l.latitude, l.longitude], { icon: courierIcon(l) }).addTo(liveMap).bindPopup(popupHtml(l));
+                    nm.on('click', function () { selectCourier(l.id); });
+                    nm.__m = l;
+                    nm.__status = l.status;
+                    liveMarkers[l.id] = nm;
+                }
+
+                const ls = document.getElementById('ls-' + l.id);
+                if (ls) {
+                    const n = l.lastSeen;
+                    ls.textContent = n !== null ? 'Sinyal update ' + (n <= 60 ? n + ' detik lalu' : 'sejak ' + n + ' dtk') : 'GPS nonaktif';
+                    ls.className = '';
+                    if (n !== null && n <= 60) ls.className = 'text-emerald-600 font-semibold';
+                }
+                const coords = document.getElementById('coords-' + l.id);
+                if (coords && l.lastSeen !== null) {
+                    coords.textContent = Number(l.latitude).toFixed(5).replace('.', ',') + ', ' + Number(l.longitude).toFixed(5).replace('.', ',');
+                }
+                const row = document.querySelector('tr[data-courier="' + l.id + '"]');
+                if (row) row.dataset.filter = l.status;
+            });
+
+            if (window.__hudId && liveMarkers[window.__hudId]) updateHud(liveMarkers[window.__hudId].__m);
+
+            if (currentDetailId && detailMarker && liveMarkers[currentDetailId]) {
+                const ll = liveMarkers[currentDetailId].getLatLng();
+                if (ll) detailMarker.setLatLng([ll.lat, ll.lng]);
+            }
+
+            const sync = document.getElementById('liveSyncText');
+            if (sync) sync.textContent = '• ' + new Date().toLocaleTimeString('id-ID', { hour12: false });
+        } catch (e) { /* koneksi bermasalah, dicoba lagi di interval berikutnya */ }
+    }
+
+    function startPolling() {
+        if (pollTimer) return;
+        pollTimer = setInterval(pollLocations, POLL_MS);
+    }
+
+    setTimeout(function () { initLiveMap(); startPolling(); pollLocations(); }, 50);
 })();
 </script>
 @endpush
