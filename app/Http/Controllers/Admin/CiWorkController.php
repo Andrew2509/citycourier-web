@@ -20,9 +20,19 @@ class CiWorkController extends Controller
      */
     public function index()
     {
+        [$stats, $recentTasks] = $this->dashboardData();
+
+        return view('admin.ci-work.index', compact('stats', 'recentTasks'));
+    }
+
+    /**
+     * Build the Ci-Work dashboard stats + recent active tasks (shared by index & refresh).
+     */
+    protected function dashboardData(): array
+    {
         $stats = [
             'online_couriers' => Courier::where('is_active', true)->count(),
-            'active_tasks' => Order::whereIn('status', ['picking_up', 'delivering'])->count(),
+            'active_tasks' => Order::whereIn('status', ['assigned', 'picking_up', 'delivering'])->count(),
             'completed_today' => Order::where('status', 'delivered')
                 ->whereDate('delivered_at', today())
                 ->count(),
@@ -32,12 +42,28 @@ class CiWorkController extends Controller
         ];
 
         $recentTasks = Order::with(['courier.user', 'shipment'])
-            ->whereIn('status', ['picking_up', 'delivering'])
+            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
             ->latest()
-            ->take(5)
+            ->take(8)
             ->get();
 
-        return view('admin.ci-work.index', compact('stats', 'recentTasks'));
+        return [$stats, $recentTasks];
+    }
+
+    /**
+     * Polling endpoint: JSON stats + rendered active-tasks rows.
+     * Called by the Ci-Work Dashboard every few seconds so a task accepted
+     * on the Flutter app appears in "Tugas Aktif Terkini" automatically.
+     */
+    public function refreshTasks()
+    {
+        [$stats, $recentTasks] = $this->dashboardData();
+
+        return response()->json([
+            'stats' => $stats,
+            'rows' => view('admin.ci-work.partials.active-tasks', compact('recentTasks'))->render(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
     }
 
     /**
