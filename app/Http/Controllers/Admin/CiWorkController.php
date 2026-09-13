@@ -12,58 +12,363 @@ use App\Models\WalletTransaction;
 use App\Models\Withdrawal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Attendance;
+use App\Models\CourierLocation;
+use App\Services\TrackingService;
 
 class CiWorkController extends Controller
 {
+    protected TrackingService $tracking;
+
+    public function __construct(TrackingService $tracking)
+    {
+        $this->tracking = $tracking;
+    }
+
     /**
      * Ci-Work Operational Dashboard.
      */
     public function index()
     {
-        [$stats, $recentTasks] = $this->dashboardData();
+        $data = $this->dashboardData();
 
-        return view('admin.ci-work.index', compact('stats', 'recentTasks'));
+        return view('admin.ci-work.index', $data);
     }
 
     /**
-     * Build the Ci-Work dashboard stats + recent active tasks (shared by index & refresh).
+     * Build the full Ci-Work dashboard payload (stats + tasks + queue).
      */
     protected function dashboardData(): array
     {
-        $stats = [
-            'online_couriers' => Courier::where('is_active', true)->count(),
-            'active_tasks' => Order::whereIn('status', ['assigned', 'picking_up', 'delivering'])->count(),
-            'completed_today' => Order::where('status', 'delivered')
-                ->whereDate('delivered_at', today())
-                ->count(),
-            'total_earnings_today' => Order::where('status', 'delivered')
-                ->whereDate('delivered_at', today())
-                ->sum('price'),
-        ];
+        $commissionRate = (float) Setting::get('finance_commission_rate', 10);
+        $avgSpeed       = (float) Setting::get('dispatch_avg_speed_kmh', 10);
+        $radius         = (float) Setting::get('dispatch_coverage_radius_km', 8.5);
+        $dropPointName  = Setting::get('attendance_drop_point', 'Drop Point Bratang');
 
-        $recentTasks = Order::with(['courier.user', 'shipment'])
+        $couriersActive = Courier::with('user')->where('is_active', true)->get();
+        $attendedToday  = Attendance::whereDate('check_in_at', today())->distinct()->count('courier_id');
+
+        $deliveredToday = Order::where('status', 'delivered')->whereDate('delivered_at', today())->get();
+
+        $activeOrders  = Order::with(['courier.user', 'shipment'])
             ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
             ->latest()
-            ->take(8)
             ->get();
 
-        return [$stats, $recentTasks];
+        $pendingOrders = Order::with('shipment')->where('status', 'pending')->latest()->get();
+
+        // Latest telemetry per active courier
+        $locations = CourierLocation::whereIn('courier_id', $couriersActive->pluck('id')->all())
+            ->latest('recorded_at')
+            ->get()
+            ->groupBy('courier_id')
+            ->map->first();
+
+        $batteries  = $locations->filter(fn ($l) => $l->battery_percent !== null)->pluck('battery_percent');
+        $avgBattery = $batteries->isNotEmpty() ? (int) round($batteries->avg()) : null;
+
+        $motorCount = $couriersActive->filter(fn ($c) => strtolower($c->vehicle_type ?? '') === 'motor')->count();
+        $totalActive = $couriersActive->count();
+        $motorPct    = $totalActive ? (int) round($motorCount / $totalActive * 100) : 0;
+
+        $weights     = $activeOrders->map(fn ($o) => (float) $o->package_weight)->filter(fn ($w) => $w > 0);
+        $capacityPct = $weights->isNotEmpty() ? (int) max(0, min(100, round($weights->avg() / 15 * 100))) : 0;
+
+        $tasks = $activeOrders->map(fn ($o) => $this->enrichTask($o, $locations[$o->courier_id] ?? null, $avgSpeed))->values();
+
+        $featured   = $tasks->first();
+        $extraTasks = $tasks->slice(1)->values();
+
+        $earningsToday = (float) $deliveredToday->sum('price');
+
+        $stats = [
+            'online_couriers'      => $totalActive,
+            'standby_count'        => $attendedToday,
+            'active_tasks'         => $tasks->count(),
+            'completed_today'      => $deliveredToday->count(),
+            'total_earnings_today' => $earningsToday,
+            'net_earnings'         => round($earningsToday * (100 - $commissionRate) / 100, 0),
+            'commission_rate'      => $commissionRate,
+            'on_time_pct'          => 100,
+            'pending_count'        => $pendingOrders->count(),
+            'pending_amount'       => (float) $pendingOrders->sum('price'),
+            'avg_battery'          => $avgBattery,
+            'motor_pct'            => $motorPct,
+            'motor_units'          => $motorCount,
+            'delivery_units'       => $totalActive - $motorCount,
+            'capacity_pct'         => $capacityPct,
+            'attended_today'       => $attendedToday,
+            'unverified_count'     => Courier::where('is_verified', false)->count(),
+            'drop_point'           => $dropPointName,
+            'coverage_radius_km'   => $radius,
+            'featured_eta'         => $featured ? $featured['eta'] : null,
+        ];
+
+        $queue = $pendingOrders->map(function ($o) {
+            return [
+                'id'         => $o->id,
+                'tracking'   => $o->tracking_number,
+                'desc'       => $o->package_description,
+                'weight'     => (float) $o->package_weight,
+                'price'      => (float) $o->price,
+                'pickup_addr'=> $o->pickup_address,
+                'dest_addr'  => $o->delivery_address,
+                'created_at' => $o->created_at?->diffForHumans(),
+            ];
+        })->values();
+
+        return compact('stats', 'featured', 'extraTasks', 'queue', 'couriersActive');
     }
 
     /**
-     * Polling endpoint: JSON stats + rendered active-tasks rows.
-     * Called by the Ci-Work Dashboard every few seconds so a task accepted
-     * on the Flutter app appears in "Tugas Aktif Terkini" automatically.
+     * Flatten an active order into a render-ready task payload.
+     */
+    protected function enrichTask(Order $task, ?CourierLocation $loc, float $avgSpeed): array
+    {
+        $courier = $task->courier;
+        $user    = $courier?->user;
+
+        $clat = $loc?->latitude ?? $courier?->latitude;
+        $clng = $loc?->longitude ?? $courier?->longitude;
+
+        $fill = function ($a, $b) {
+            return $a ?? $b;
+        };
+        $pl  = $task->pickup_latitude ?? $task->shipment?->sender_latitude;
+        $pg  = $task->pickup_longitude ?? $task->shipment?->sender_longitude;
+        $dlat = $task->delivery_latitude ?? $task->shipment?->receiver_latitude;
+        $dlng = $task->delivery_longitude ?? $task->shipment?->receiver_longitude;
+
+        $dlatF = $dlat !== null && $dlat !== '' ? (float) $dlat : null;
+        $dlngF = $dlng !== null && $dlng !== '' ? (float) $dlng : null;
+        $clatF = $clat !== null && $clat !== '' ? (float) $clat : null;
+        $clngF = $clng !== null && $clng !== '' ? (float) $clng : null;
+
+        $distanceKm = null;
+        $eta        = null;
+        if ($clatF !== null && $clngF !== null && $dlatF !== null && $dlngF !== null) {
+            $distanceKm = round($this->haversineKm($clatF, $clngF, $dlatF, $dlngF), 1);
+            $eta        = $avgSpeed > 0 ? (int) max(1, round($distanceKm / $avgSpeed * 60)) : null;
+        }
+
+        $lastSeen = $loc && $loc->recorded_at ? (int) max(0, $loc->recorded_at->diffInSeconds(now())) : null;
+        $phone    = $courier?->phone ?: $user?->phone ?: '';
+
+        $wa = $phone ? preg_replace('/[^0-9]/', '', $phone) : null;
+        if ($wa) {
+            $wa = str_starts_with($wa, '0') ? '62' . substr($wa, 1) : $wa;
+            $wa = str_starts_with($wa, '62') ? $wa : '62' . $wa;
+        }
+
+        $photo = null;
+        if ($courier && $courier->photo && is_file(public_path('storage/' . $courier->photo))) {
+            $photo = url('storage/' . $courier->photo);
+        }
+        if (! $photo && $user?->avatar) {
+            $photo = $user->photo_url;
+        }
+
+        $statusLabels = [
+            'assigned'   => 'Ditugaskan',
+            'picking_up' => 'Sedang Jemput',
+            'delivering' => 'Dalam Pengantaran',
+        ];
+
+        return [
+            'id'             => $task->id,
+            'tracking'       => $task->tracking_number,
+            'status'         => $task->status,
+            'status_label'   => $statusLabels[$task->status] ?? ucfirst($task->status),
+            'price'          => (float) $task->price,
+            'weight'         => (float) $task->package_weight,
+            'desc'           => $task->package_description,
+            'pickup_addr'    => $fill($task->pickup_address, $task->shipment?->sender_address),
+            'dest_addr'      => $fill($task->delivery_address, $task->shipment?->receiver_address),
+            'dest_lat'       => $dlatF,
+            'dest_lng'       => $dlngF,
+            'courier_lat'    => $clatF,
+            'courier_lng'    => $clngF,
+            'accuracy'       => $loc && $loc->accuracy !== null ? (float) $loc->accuracy : null,
+            'last_seen'      => $lastSeen,
+            'speed'          => $loc && $loc->speed_kmh !== null ? (float) $loc->speed_kmh : null,
+            'courier_name'   => $user?->name ?: 'Kurir',
+            'courier_initial'=> strtoupper(substr($user?->name ?: 'K', 0, 1)),
+            'courier_photo'  => $photo,
+            'vehicle'        => $courier ? ucfirst($courier->vehicle_type ?: 'Motor') : 'Motor',
+            'plate'          => $courier?->vehicle_plate,
+            'phone'          => $phone,
+            'wa'             => $wa,
+            'rating_avg'     => $courier && $courier->rating_avg !== null ? (float) $courier->rating_avg : null,
+            'rating_count'   => (int) ($courier?->rating_count ?? 0),
+            'distance'       => $distanceKm,
+            'eta'            => $eta,
+            'target'         => $eta ? now()->addMinutes($eta)->format('H:i') : null,
+            'pickup_time'    => $task->status === 'delivering' && $task->picked_up_at ? $task->picked_up_at->format('H:i') : null,
+        ];
+    }
+
+    /**
+     * Haversine distance in kilometres.
+     */
+    protected function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $r     = 6371.0;
+        $dLat  = deg2rad($lat2 - $lat1);
+        $dLng  = deg2rad($lng2 - $lng1);
+        $a     = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+
+        return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
+    /**
+     * Polling endpoint: JSON stats + rendered realtime zone (featured task + queue).
      */
     public function refreshTasks()
     {
-        [$stats, $recentTasks] = $this->dashboardData();
+        $data = $this->dashboardData();
 
         return response()->json([
-            'stats' => $stats,
-            'rows' => view('admin.ci-work.partials.active-tasks', compact('recentTasks'))->render(),
+            'stats'      => $data['stats'],
+            'html'       => view('admin.ci-work.partials.active-tasks', [
+                'stats'       => $data['stats'],
+                'featured'    => $data['featured'],
+                'extraTasks'  => $data['extraTasks'],
+                'queue'       => $data['queue'],
+            ])->render(),
             'updated_at' => now()->toIso8601String(),
         ]);
+    }
+
+    /**
+     * Assign every pending order to the nearest available courier.
+     */
+    public function autoAssign(Request $request)
+    {
+        $pending = Order::with('shipment')->where('status', 'pending')->get();
+
+        if ($pending->isEmpty()) {
+            return response()->json([
+                'ok'       => true,
+                'assigned' => 0,
+                'message'  => 'Tidak ada order tertunda. Semua tugas telah dialokasikan.',
+            ]);
+        }
+
+        $available = Courier::with('user')->where('is_active', true)->get();
+
+        if ($available->isEmpty()) {
+            return response()->json([
+                'ok'       => false,
+                'assigned' => 0,
+                'message'  => 'Tidak ada kurir aktif yang tersedia untuk auto-assign.',
+            ]);
+        }
+
+        $assigned = 0;
+
+        DB::transaction(function () use ($pending, $available, &$assigned) {
+            foreach ($pending as $order) {
+                $courier = $this->nearestCourier($order, $available);
+
+                $order->update(['courier_id' => $courier->id, 'status' => 'assigned']);
+
+                if ($order->shipment) {
+                    $order->shipment->update(['status' => 'assigned']);
+                    $this->tracking->createStatusHistory(
+                        $order->shipment,
+                        'assigned',
+                        $courier->id,
+                        $courier->latitude ? (float) $courier->latitude : null,
+                        $courier->longitude ? (float) $courier->longitude : null
+                    );
+                }
+
+                $assigned++;
+            }
+        });
+
+        return response()->json([
+            'ok'       => true,
+            'assigned' => $assigned,
+            'message'  => "Auto-assign berhasil: {$assigned} order ditetapkan ke kurir terdekat.",
+        ]);
+    }
+
+    /**
+     * Assign a single pending order to the nearest available courier.
+     */
+    public function assignQueueOrder(Request $request, Order $order)
+    {
+        if ($order->status !== 'pending') {
+            return response()->json([
+                'ok'      => false,
+                'message' => "Order #{$order->tracking_number} sudah bukan berstatus pending.",
+            ]);
+        }
+
+        $available = Courier::with('user')->where('is_active', true)->get();
+
+        if ($available->isEmpty()) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Tidak ada kurir aktif yang tersedia.',
+            ]);
+        }
+
+        $courier = $this->nearestCourier($order, $available);
+
+        DB::transaction(function () use ($order, $courier) {
+            $order->update(['courier_id' => $courier->id, 'status' => 'assigned']);
+
+            if ($order->shipment) {
+                $order->shipment->update(['status' => 'assigned']);
+                $this->tracking->createStatusHistory(
+                    $order->shipment,
+                    'assigned',
+                    $courier->id,
+                    $courier->latitude ? (float) $courier->latitude : null,
+                    $courier->longitude ? (float) $courier->longitude : null
+                );
+            }
+        });
+
+        return response()->json([
+            'ok'      => true,
+            'message' => "Order #{$order->tracking_number} ditetapkan ke " . ($courier->user?->name ?? 'kurir') . '.',
+        ]);
+    }
+
+    /**
+     * Pick the nearest courier to the order pickup point.
+     */
+    protected function nearestCourier(Order $order, $couriers)
+    {
+        if ($couriers->count() === 1) {
+            return $couriers->first();
+        }
+
+        $pl = $order->pickup_latitude !== null && $order->pickup_latitude !== '' ? (float) $order->pickup_latitude : null;
+        $pg = $order->pickup_longitude !== null && $order->pickup_longitude !== '' ? (float) $order->pickup_longitude : null;
+
+        if ($pl === null || $pg === null) {
+            return $couriers->first();
+        }
+
+        $best  = $couriers->first();
+        $bestD = PHP_FLOAT_MAX;
+
+        foreach ($couriers as $c) {
+            if (! $c->latitude || ! $c->longitude) {
+                continue;
+            }
+            $d = $this->haversineKm((float) $c->latitude, (float) $c->longitude, $pl, $pg);
+            if ($d < $bestD) {
+                $bestD = $d;
+                $best  = $c;
+            }
+        }
+
+        return $best;
     }
 
     /**

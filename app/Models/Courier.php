@@ -27,6 +27,8 @@ class Courier extends Model
         'skck_photo',
         'is_verified',
         'is_active',
+        'rating_avg',
+        'rating_count',
         'latitude',
         'longitude',
     ];
@@ -36,6 +38,8 @@ class Courier extends Model
         return [
             'is_verified' => 'boolean',
             'is_active' => 'boolean',
+            'rating_avg' => 'decimal:1',
+            'rating_count' => 'integer',
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
         ];
