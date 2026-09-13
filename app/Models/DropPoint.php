@@ -11,13 +11,23 @@ class DropPoint extends Model
 
     protected $fillable = [
         'name',
+        'type',
         'address',
+        'city',
+        'province',
+        'description',
+        'landmark',
         'phone',
+        'pic_name',
         'schedule',
+        'open_days',
         'rating',
+        'radius_m',
+        'capacity_pct',
         'latitude',
         'longitude',
         'is_active',
+        'status',
     ];
 
     protected $casts = [
@@ -25,5 +35,9 @@ class DropPoint extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'rating' => 'decimal:2',
+        'radius_m' => 'integer',
+        'capacity_pct' => 'integer',
+        'status' => 'string',
+        'type' => 'string',
     ];
 }

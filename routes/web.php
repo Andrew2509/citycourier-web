@@ -108,8 +108,10 @@ Route::middleware('auth')->group(function () {
 
 
         // Drop Points
+        Route::get('drop-points/export', [\App\Http\Controllers\Admin\DropPointController::class, 'exportCsv'])->name('drop-points.export');
         Route::resource('drop-points', \App\Http\Controllers\Admin\DropPointController::class);
         Route::patch('drop-points/{drop_point}/toggle-active', [\App\Http\Controllers\Admin\DropPointController::class, 'toggleActive'])->name('drop-points.toggle-active');
+        Route::patch('drop-points/{drop_point}/radius', [\App\Http\Controllers\Admin\DropPointController::class, 'updateRadius'])->name('drop-points.radius');
 
         // App Download Management
         Route::get('/app-download', [\App\Http\Controllers\Admin\AppDownloadController::class, 'index'])->name('app-download');
