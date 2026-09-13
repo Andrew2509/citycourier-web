@@ -408,8 +408,12 @@ class CiWorkController extends Controller
                 $status = 'online';
             }
 
-            $lat = $loc->latitude ?? $courier->latitude;
-            $lng = $loc->longitude ?? $courier->longitude;
+            $lat = null;
+            $lng = null;
+            if ($loc && $loc->recorded_at && $loc->recorded_at->greaterThanOrEqualTo(now()->subMinutes(20))) {
+                $lat = $loc->latitude;
+                $lng = $loc->longitude;
+            }
 
             $courier->presence_status = $status;
             $courier->att             = $att;
@@ -506,8 +510,12 @@ class CiWorkController extends Controller
             $loc = $courier->locations->first();
             $att = $courier->attendance->first();
 
-            $lat = $loc->latitude ?? $courier->latitude;
-            $lng = $loc->longitude ?? $courier->longitude;
+            $lat = null;
+            $lng = null;
+            if ($loc && $loc->recorded_at && $loc->recorded_at->greaterThanOrEqualTo(now()->subMinutes(20))) {
+                $lat = $loc->latitude;
+                $lng = $loc->longitude;
+            }
             if (! $lat || ! $lng) {
                 continue;
             }

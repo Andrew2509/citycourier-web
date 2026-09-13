@@ -101,19 +101,23 @@ class CourierController extends Controller
      * 
      * Request:
      * {
-     *   "shipment_id": 123,
+     *   "shipment_id": 123,          (opsional — untuk konteks pengiriman tertentu)
      *   "latitude": -7.2756,
      *   "longitude": 112.7378,
-     *   "accuracy": 8.5
+     *   "accuracy": 8.5,
+     *   "speed_kmh": 21.3,
+     *   "battery_percent": 86
      * }
      */
     public function updateLocation(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'shipment_id' => 'required|exists:shipments,id',
-            'latitude'    => 'required|numeric|between:-90,90',
-            'longitude'   => 'required|numeric|between:-180,180',
-            'accuracy'    => 'nullable|numeric|min:0',
+            'shipment_id'      => 'nullable|exists:shipments,id',
+            'latitude'         => 'required|numeric|between:-90,90',
+            'longitude'        => 'required|numeric|between:-180,180',
+            'accuracy'         => 'nullable|numeric|min:0',
+            'speed_kmh'        => 'nullable|numeric|min:0',
+            'battery_percent'  => 'nullable|integer|min:0|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -133,45 +137,54 @@ class CourierController extends Controller
             ], 404);
         }
 
-        // Validasi bahwa shipment milik kurir ini
-        $shipment = \App\Models\Shipment::find($request->shipment_id);
-        if (!$shipment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Shipment tidak ditemukan.',
-            ], 404);
-        }
+        $shipmentId = $request->input('shipment_id');
 
-        // Cek apakah ada order aktif untuk kurir ini dengan shipment ini
-        $order = \App\Models\Order::where('courier_id', $courier->id)
-            ->where('order_number', $shipment->shipment_number)
-            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
-            ->first();
+        if ($shipmentId !== null) {
+            // Validasi bahwa shipment milik kurir ini
+            $shipment = \App\Models\Shipment::find($shipmentId);
+            if (!$shipment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Shipment tidak ditemukan.',
+                ], 404);
+            }
 
-        if (!$order) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tidak ada pengiriman aktif untuk shipment ini.',
-            ], 403);
+            // Cek apakah ada order aktif untuk kurir ini dengan shipment ini
+            $order = \App\Models\Order::where('courier_id', $courier->id)
+                ->where('order_number', $shipment->shipment_number)
+                ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+                ->first();
+
+            if (!$order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada pengiriman aktif untuk shipment ini.',
+                ], 403);
+            }
         }
 
         try {
-            // Simpan lokasi GPS ke courier_locations
+            // Simpan lokasi GPS ke courier_locations.
+            // Tanpa shipment_id → simpan sebagai lokasi umum (kurir online/navigasi).
             $location = $this->trackingService->saveCourierLocation(
                 $courier->id,
-                $shipment->id,
+                $shipmentId,
                 $request->latitude,
                 $request->longitude,
-                $request->accuracy
+                $request->accuracy,
+                $request->speed_kmh,
+                $request->battery_percent
             );
 
             return response()->json([
                 'success' => true,
                 'message' => 'Lokasi berhasil diperbarui.',
                 'data' => [
-                    'latitude'     => $location->latitude,
-                    'longitude'    => $location->longitude,
-                    'recorded_at'  => $location->recorded_at->toIso8601String(),
+                    'latitude'        => $location->latitude,
+                    'longitude'       => $location->longitude,
+                    'speed_kmh'       => $location->speed_kmh,
+                    'battery_percent' => $location->battery_percent,
+                    'recorded_at'     => $location->recorded_at->toIso8601String(),
                 ],
             ]);
         } catch (\Exception $e) {

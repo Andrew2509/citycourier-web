@@ -85,13 +85,18 @@ class TrackingService
     /**
      * Simpan lokasi GPS kurir ke courier_locations.
      * Hanya menyimpan jika ada perubahan jarak minimal atau interval waktu.
+     *
+     * $shipmentId boleh null → menyimpan "lokasi umum" kurir tanpa konteks
+     * pengiriman (dipakai saat kurir online/navigasi/terima pesanan).
      */
     public function saveCourierLocation(
         int $courierId,
-        int $shipmentId,
+        ?int $shipmentId,
         float $latitude,
         float $longitude,
-        ?float $accuracy = null
+        ?float $accuracy = null,
+        ?float $speedKmh = null,
+        ?int $batteryPercent = null
     ): CourierLocation {
         $courier = Courier::find($courierId);
         if (!$courier) {
@@ -100,7 +105,7 @@ class TrackingService
 
         // Cek apakah ada perubahan signifikan dari lokasi terakhir
         $lastLocation = CourierLocation::where('courier_id', $courierId)
-            ->where('shipment_id', $shipmentId)
+            ->when($shipmentId !== null, fn ($q) => $q->where('shipment_id', $shipmentId))
             ->latest('recorded_at')
             ->first();
 
@@ -118,12 +123,14 @@ class TrackingService
         }
 
         $location = CourierLocation::create([
-            'courier_id'   => $courierId,
-            'shipment_id'  => $shipmentId,
-            'latitude'     => $latitude,
-            'longitude'    => $longitude,
-            'accuracy'     => $accuracy,
-            'recorded_at'  => now(),
+            'courier_id'      => $courierId,
+            'shipment_id'     => $shipmentId,
+            'latitude'        => $latitude,
+            'longitude'       => $longitude,
+            'accuracy'        => $accuracy,
+            'speed_kmh'       => $speedKmh,
+            'battery_percent' => $batteryPercent,
+            'recorded_at'     => now(),
         ]);
 
         // Update lokasi terakhir di tabel courier
