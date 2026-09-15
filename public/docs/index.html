@@ -17,6 +17,7 @@ tailwind.config={darkMode:'class',theme:{extend:{colors:{brand:{50:'#ecfdf5',100
 .code-key{color:#0284c7}.code-str{color:#059669}.code-num{color:#d97706}.code-bool{color:#7c3aed}.code-null{color:#64748b}
 .terminal-key{color:#38bdf8}.terminal-str{color:#34d399}.terminal-num{color:#fbbf24}.terminal-bool{color:#c084fc}.terminal-null{color:#94a3b8}
 .tab-active{background:#fff;color:#059669;border-color:rgb(226 232 240 / .8);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+#sidebarBody::-webkit-scrollbar{width:4px}#sidebarBody::-webkit-scrollbar-track{background:transparent}#sidebarBody::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}#sidebarBody::-webkit-scrollbar-thumb:hover{background:#9ca3af}
 </style>
 </head>
 <body class="bg-white text-slate-700 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
@@ -36,9 +37,9 @@ tailwind.config={darkMode:'class',theme:{extend:{colors:{brand:{50:'#ecfdf5',100
 </div>
 </header>
 <div class="flex-1 flex overflow-hidden">
-<aside class="w-80 border-r border-slate-200 bg-slate-50/70 overflow-y-auto shrink-0 hidden md:flex flex-col">
+<aside class="w-80 border-r border-slate-200 bg-slate-50/70 shrink-0 hidden md:flex flex-col overflow-hidden">
 <div class="p-3 border-b border-slate-200 sticky top-0 bg-slate-50/95 backdrop-blur z-10"><input id="docFilter" autocomplete="off" class="w-full pl-3 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-sm" placeholder="Filter endpoint..." type="text"/></div>
-<nav id="sidebarBody" class="p-3 space-y-6 text-xs">
+<nav id="sidebarBody" class="p-3 space-y-6 text-xs flex-1 overflow-y-auto min-h-0">
 <div><span class="px-2 font-mono text-[10px] uppercase font-bold text-slate-400 tracking-wider">Overview &amp; Pedoman</span>
 <div class="mt-2 space-y-0.5">
 <a class="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer" onclick="goView('pedoman')"><i class="w-3.5 h-3.5 text-emerald-600" data-lucide="sparkles"></i><span>Pengenalan Layanan</span></a>
