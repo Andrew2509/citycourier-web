@@ -9,6 +9,21 @@ use Illuminate\Http\Request;
 
 class RoleController extends Controller
 {
+    /**
+     * Ensure all permissions from config exist in the database.
+     * This prevents PermissionDoesNotExist errors when saving roles.
+     */
+    private function ensurePermissionsExist(): void
+    {
+        $menus = config('admin_menus.menus');
+        foreach ($menus as $menu) {
+            foreach ($menu['actions'] as $action) {
+                $permName = "{$menu['id']}.{$action}";
+                Permission::firstOrCreate(['name' => $permName]);
+            }
+        }
+    }
+
     public function index()
     {
         $roles = Role::paginate(10);
@@ -31,6 +46,8 @@ class RoleController extends Controller
             'name' => 'required|unique:roles,name',
             'permissions' => 'required|array|min:1',
         ]);
+
+        $this->ensurePermissionsExist();
 
         $role = Role::create(['name' => $request->name]);
 
@@ -58,6 +75,8 @@ class RoleController extends Controller
             'name' => 'required|unique:roles,name,' . $role->id,
             'permissions' => 'required|array|min:1',
         ]);
+
+        $this->ensurePermissionsExist();
 
         $role->update(['name' => $request->name]);
 
