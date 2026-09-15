@@ -45,10 +45,12 @@
                 <span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
                 <span>Ekspor Data Cabang</span>
             </a>
+            @canPerm('drop_points.create')
             <button type="button" onclick="openModal('modal-tambah-droppoint')" class="inline-flex items-center gap-space-xs px-space-lg py-space-xs h-9 bg-primary-container hover:bg-primary text-on-primary font-label-md rounded-lg shadow-md transition-all">
                 <span class="material-symbols-outlined text-[18px]">add_location_alt</span>
                 <span class="font-semibold">+ Tambah Drop Point</span>
             </button>
+            @endcanPerm
         </div>
     </div>
 
@@ -321,6 +323,7 @@
                                             <span class="material-symbols-outlined text-[18px]">{{ $dp->is_active ? 'toggle_on' : 'toggle_off' }}</span>
                                         </button>
                                     </form>
+                                    @canPerm('drop_points.edit')
                                     <button type="button" onclick="openEditModal(this)"
                                         data-id="{{ $dp->id }}"
                                         data-name="{{ $dp->name }}"
@@ -344,6 +347,8 @@
                                         class="p-space-xs text-secondary hover:text-primary hover:bg-surface-container rounded-lg transition-all" title="Edit Hub">
                                         <span class="material-symbols-outlined text-[18px]">edit</span>
                                     </button>
+                                    @endcanPerm
+                                    @canPerm('drop_points.delete')
                                     <form action="{{ route('admin.drop-points.destroy', $dp->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus Drop Point ini?')">
                                         @csrf
                                         @method('DELETE')
@@ -351,6 +356,7 @@
                                             <span class="material-symbols-outlined text-[18px]">delete</span>
                                         </button>
                                     </form>
+                                    @endcanPerm
                                 </div>
                             </td>
                         </tr>

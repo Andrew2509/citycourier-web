@@ -142,6 +142,7 @@
             <nav class="flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm rounded-lg">
 
                 <!-- Menu Utama -->
+                @canPerm('dashboard.view')
                 <div class="px-space-sm pt-space-xs pb-space-2xs">
                     <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Menu Utama</span>
                 </div>
@@ -151,8 +152,10 @@
                         <span class="font-body-md text-body-md">Dashboard</span>
                     </div>
                 </a>
+                @endcanPerm
 
                 <!-- Manajemen -->
+                @canPerm('couriers.view')
                 <div class="px-space-sm pt-space-md pb-space-2xs">
                     <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Manajemen</span>
                 </div>
@@ -171,6 +174,8 @@
                         <span class="font-body-md text-body-md">Daftar Kurir</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('orders.view')
                 <a href="{{ route('admin.orders') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.orders*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">inventory_2</span>
@@ -180,20 +185,26 @@
                         <span class="px-space-xs py-space-2xs rounded-lg font-label-sm text-label-sm bg-secondary-container text-on-secondary-container font-bold">{{ $pendingOrders }}</span>
                     @endif
                 </a>
+                @endcanPerm
+                @canPerm('shipments.view')
                 <a href="{{ route('admin.shipments.index') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.shipments*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">local_shipping</span>
                         <span class="font-body-md text-body-md">Pengiriman</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('drop_points.view')
                 <a href="{{ route('admin.drop-points.index') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.drop-points*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">warehouse</span>
                         <span class="font-body-md text-body-md">Drop Point</span>
                     </div>
                 </a>
+                @endcanPerm
 
                 <!-- City-Work Operasional -->
+                @canPerm('ci_work.view')
                 <div class="px-space-sm pt-space-md pb-space-2xs">
                     <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">City-Work Operasional</span>
                 </div>
@@ -203,26 +214,34 @@
                         <span class="font-body-md text-body-md">Dashboard Kerja</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('ci_work_attendance.view')
                 <a href="{{ route('admin.ci-work.attendance') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.ci-work.attendance*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">badge</span>
                         <span class="font-body-md text-body-md">Presensi Kurir</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('ci_work_tasks.view')
                 <a href="{{ route('admin.ci-work.tasks') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.ci-work.tasks*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">assignment</span>
                         <span class="font-body-md text-body-md">Manajemen Tugas</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('ci_work_finance.view')
                 <a href="{{ route('admin.ci-work.finance') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.ci-work.finance*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">payments</span>
                         <span class="font-body-md text-body-md">Keuangan &amp; Setoran</span>
                     </div>
                 </a>
+                @endcanPerm
 
                 <!-- Sistem & Keamanan -->
+                @canPerm('users.view')
                 <div class="px-space-sm pt-space-md pb-space-2xs">
                     <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Sistem &amp; Keamanan</span>
                 </div>
@@ -232,24 +251,32 @@
                         <span class="font-body-md text-body-md">Manajemen User</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('roles.view')
                 <a href="{{ route('admin.roles.index') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.roles*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
                         <span class="font-body-md text-body-md">Manajemen Role</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('permissions.view')
                 <a href="{{ route('admin.permissions.index') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.permissions*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">lock_person</span>
                         <span class="font-body-md text-body-md">Manajemen Permission</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('settings.view')
                 <a href="{{ route('admin.settings.providers') }}" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all {{ request()->routeIs('admin.settings.*') ? 'bg-primary-container text-on-primary font-bold shadow-sm rounded-lg' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">hub</span>
                         <span class="font-body-md text-body-md">Provider &amp; Integrasi</span>
                     </div>
                 </a>
+                @endcanPerm
+                @canPerm('documentation.view')
                 <a href="{{ route('api.documentation') }}" target="_blank" rel="noopener" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">
                     <div class="flex items-center gap-space-sm">
                         <span class="material-symbols-outlined text-[18px]">code</span>
@@ -257,8 +284,10 @@
                     </div>
                     <span class="material-symbols-outlined text-[14px] text-secondary">open_in_new</span>
                 </a>
+                @endcanPerm
 
                 <!-- Unduh Aplikasi -->
+                @canPerm('app_download.view')
                 @php
                     $activeApk = \App\Models\AppDownload::getActive();
                 @endphp
@@ -278,6 +307,7 @@
                     </div>
                     <span class="px-space-xs py-space-2xs rounded-lg font-label-sm text-label-sm bg-primary-container text-on-primary font-bold">v{{ $activeApk->version ?? '1.0.0' }}</span>
                 </a>
+                @endcanPerm
             </nav>
         </div>
 

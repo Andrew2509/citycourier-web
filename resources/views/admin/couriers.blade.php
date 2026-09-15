@@ -92,10 +92,12 @@
                 <span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
                 <span>Export Data Kurir</span>
             </a>
+            @canPerm('couriers.create')
             <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary shadow-sm flex items-center gap-space-xs font-label-md text-label-md font-semibold transition-colors" onclick="openAddCourierModal()" type="button">
                 <span class="material-symbols-outlined text-[18px]">person_add</span>
                 <span>+ Tambah Kurir Baru</span>
             </button>
+            @endcanPerm
         </div>
     </div>
 

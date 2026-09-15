@@ -47,6 +47,7 @@
     @endif
 
     <!-- Add New Version Form -->
+    @canPerm('app_download.create')
     <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
         <div class="px-space-xl py-space-md border-b border-surface-container-high">
             <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
@@ -102,6 +103,7 @@
             </form>
         </div>
     </div>
+    @endcanPerm
 
     <!-- Version History Table -->
     <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">

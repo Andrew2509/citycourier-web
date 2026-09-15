@@ -20,10 +20,12 @@
                 <span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
                 <span>Ekspor Akun</span>
             </a>
+            @canPerm('users.create')
             <a href="{{ route('admin.users.create') }}" class="flex items-center gap-space-xs px-space-md py-space-xs h-9 bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md rounded-lg shadow-sm transition-all">
                 <span class="material-symbols-outlined text-[18px]">person_add</span>
                 <span>+ Tambah Pengguna Baru</span>
             </a>
+            @endcanPerm
         </div>
     </div>
 
@@ -217,9 +219,12 @@
                         <td class="py-space-md px-space-md text-secondary text-sm">{{ $user->created_at->format('d M Y') }}</td>
                         <td class="py-space-md px-space-lg text-right">
                             <div class="flex items-center justify-end gap-space-xs">
+                                @canPerm('users.edit')
                                 <a href="{{ route('admin.users.edit', $user->id) }}" class="p-space-xs text-secondary hover:text-primary hover:bg-surface-container rounded-lg transition-colors" title="Edit Pengguna">
                                     <span class="material-symbols-outlined text-[18px]">edit</span>
                                 </a>
+                                @endcanPerm
+                                @canPerm('users.delete')
                                 <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus user ini?')">
                                     @csrf
                                     @method('DELETE')
@@ -227,6 +232,7 @@
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
+                                @endcanPerm
                             </div>
                         </td>
                     </tr>

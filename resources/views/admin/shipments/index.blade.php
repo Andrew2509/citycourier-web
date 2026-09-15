@@ -143,6 +143,7 @@
                                 <a href="{{ route('admin.shipments.show', $shipment->id) }}" class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Lihat Detail">
                                     <span class="material-symbols-outlined text-[18px]">visibility</span>
                                 </a>
+                                @canPerm('shipments.delete')
                                 <form action="{{ route('admin.shipments.destroy', $shipment->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus pengiriman #{{ $shipment->shipment_number }}?')">
                                     @csrf
                                     @method('DELETE')
@@ -150,6 +151,7 @@
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
+                                @endcanPerm
                             </div>
                         </td>
                     </tr>

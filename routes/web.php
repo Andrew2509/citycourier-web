@@ -49,10 +49,8 @@ Route::get('/download/app', function () {
 
 // ─── Auth Routes ─────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-    // Admin Panel
-    Route::prefix('admin')->name('admin.')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');        // Admin Panel
+        Route::prefix('admin')->name('admin.')->middleware('menu.permission')->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard.index');
 

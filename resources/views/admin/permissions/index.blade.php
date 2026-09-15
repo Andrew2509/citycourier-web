@@ -21,10 +21,12 @@
                 <span class="material-symbols-outlined text-[18px]">sync</span>
                 <span>Sinkronisasi</span>
             </a>
+            @canPerm('permissions.create')
             <a href="{{ route('admin.permissions.create') }}" class="flex items-center gap-space-xs px-space-md py-space-xs h-9 bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md rounded-lg shadow-sm transition-all">
                 <span class="material-symbols-outlined text-[18px]">add</span>
                 <span>Tambah Permission</span>
             </a>
+            @endcanPerm
         </div>
     </div>
 
@@ -123,9 +125,12 @@
                         <td class="py-space-md px-space-md text-secondary">{{ $permission->created_at->format('d M Y') }}</td>
                         <td class="py-space-md px-space-lg text-right">
                             <div class="inline-flex items-center gap-space-2xs text-secondary">
+                                @canPerm('permissions.edit')
                                 <a href="{{ route('admin.permissions.edit', $permission) }}" class="p-space-2xs hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors" title="Edit Permission">
                                     <span class="material-symbols-outlined text-[18px]">edit</span>
                                 </a>
+                                @endcanPerm
+                                @canPerm('permissions.delete')
                                 <form action="{{ route('admin.permissions.destroy', $permission) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus permission ini?');">
                                     @csrf
                                     @method('DELETE')
@@ -133,6 +138,7 @@
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
+                                @endcanPerm
                             </div>
                         </td>
                     </tr>
