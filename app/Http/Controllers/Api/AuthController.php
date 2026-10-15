@@ -498,6 +498,93 @@ class AuthController extends Controller
     }
 
     /**
+     * Request OTP for courier phone verification (6 digits).
+     * POST /api/courier/request-phone-otp
+     */
+    public function requestCourierPhoneOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $phone = $request->phone;
+
+        // Generate 6-digit OTP for courier registration
+        $otp = (string) random_int(100000, 999999);
+
+        // Store in cache for 10 minutes (different key from login OTP)
+        Cache::put('courier_phone_otp_' . $phone, $otp, now()->addMinutes(10));
+
+        // Send OTP via WhatsApp
+        $message = "Kode verifikasi pendaftaran kurir City Courier Anda adalah: *{$otp}*\n\nJangan sebarkan kode ini kepada siapapun.\n\n_Pesan ini dikirim otomatis oleh sistem City Courier._";
+
+        $waResult = $this->whatsappManager->sendMessage($phone, $message);
+
+        if (!$waResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim OTP via WhatsApp. ' . ($waResult['message'] ?? ''),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode verifikasi berhasil dikirim ke WhatsApp.',
+        ]);
+    }
+
+    /**
+     * Verify OTP for courier phone verification.
+     * POST /api/courier/verify-phone-otp
+     */
+    public function verifyCourierPhoneOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string|max:20',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $phone = $request->phone;
+        $otp = $request->otp;
+
+        $cachedOtp = Cache::get('courier_phone_otp_' . $phone);
+
+        if (!$cachedOtp || $cachedOtp !== $otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kode OTP salah atau telah kadaluarsa.',
+            ], 401);
+        }
+
+        // Clear OTP after successful verification
+        Cache::forget('courier_phone_otp_' . $phone);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nomor HP berhasil diverifikasi.',
+            'data' => [
+                'phone_verified' => true,
+            ],
+        ]);
+    }
+
+    /**
      * Update user profile (name and email).
      * POST /api/profile/update
      */

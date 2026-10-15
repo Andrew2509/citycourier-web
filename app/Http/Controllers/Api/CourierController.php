@@ -18,6 +18,40 @@ class CourierController extends Controller
     }
 
     /**
+     * Get public list of verified couriers.
+     * GET /api/couriers
+     */
+    public function index(Request $request)
+    {
+        $couriers = Courier::with('user')
+            ->where('is_verified', true)
+            ->where('is_active', true)
+            ->get()
+            ->map(function ($courier) {
+                return [
+                    'id' => $courier->id,
+                    'name' => $courier->user->name ?? '',
+                    'photo' => $courier->photo,
+                    'vehicle_type' => $courier->vehicle_type,
+                    'vehicle_brand' => $courier->vehicle_brand,
+                    'vehicle_model' => $courier->vehicle_model,
+                    'vehicle_plate' => $courier->vehicle_plate,
+                    'city' => $courier->city,
+                    'rating_avg' => $courier->rating_avg,
+                    'rating_count' => $courier->rating_count,
+                    'is_active' => $courier->is_active,
+                    'latitude' => $courier->latitude,
+                    'longitude' => $courier->longitude,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $couriers,
+        ]);
+    }
+
+    /**
      * Get courier details and status.
      * GET /api/courier/details
      */
@@ -40,6 +74,46 @@ class CourierController extends Controller
                 'latitude' => $courier->latitude,
                 'longitude' => $courier->longitude,
                 'is_verified' => $courier->is_verified,
+            ],
+        ]);
+    }
+
+    /**
+     * Get courier registration status.
+     * GET /api/courier/registration-status
+     *
+     * Returns:
+     * - not_registered: User has no courier profile yet
+     * - pending: Courier profile exists but not yet verified by admin
+     * - verified: Courier is verified and active
+     */
+    public function registrationStatus(Request $request)
+    {
+        $courier = $request->user()->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'not_registered',
+                    'is_verified' => false,
+                    'is_active' => false,
+                    'message' => 'Anda belum terdaftar sebagai kurir.',
+                ],
+            ]);
+        }
+
+        $status = $courier->is_verified ? 'verified' : 'pending';
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'status' => $status,
+                'is_verified' => $courier->is_verified,
+                'is_active' => $courier->is_active,
+                'message' => $courier->is_verified
+                    ? 'Pendaftaran telah disetujui.'
+                    : 'Pendaftaran sedang menunggu verifikasi admin.',
             ],
         ]);
     }
