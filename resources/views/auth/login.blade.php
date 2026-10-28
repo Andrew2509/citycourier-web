@@ -1,187 +1,274 @@
 <!DOCTYPE html>
-<html class="light" lang="id">
+<html lang="id">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Login - CityCourier Admin</title>
-    <link href="https://fonts.googleapis.com" rel="preconnect"/>
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <title>Masuk Admin - CityCourier</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <style>@layer base { html, body { margin: 0; padding: 0; } } ::-webkit-scrollbar { display: none; }</style>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <script id="tailwind-config">
+    <script>
     tailwind.config = {
-        darkMode: "class",
         theme: {
             extend: {
-                "colors": {
-                    "secondary-fixed": "#dae2fd",
-                    "on-primary": "#ffffff",
-                    "outline": "#8c7164",
-                    "on-secondary-fixed-variant": "#3f465c",
-                    "on-tertiary-fixed": "#0d1c2e",
-                    "on-error": "#ffffff",
-                    "on-primary-fixed": "#341100",
-                    "surface-tint": "#9d4300",
-                    "primary": "#9d4300",
-                    "surface-container-high": "#dce9ff",
-                    "primary-fixed": "#ffdbca",
-                    "surface-variant": "#d3e4fe",
-                    "on-surface": "#0b1c30",
-                    "surface-container-highest": "#d3e4fe",
-                    "on-secondary-container": "#5c647a",
-                    "primary-fixed-dim": "#ffb690",
-                    "inverse-surface": "#213145",
-                    "on-tertiary": "#ffffff",
-                    "tertiary-container": "#8d9bb2",
-                    "on-surface-variant": "#584237",
-                    "error-container": "#ffdad6",
-                    "secondary": "#565e74",
-                    "on-background": "#0b1c30",
-                    "on-primary-container": "#582200",
-                    "on-secondary": "#ffffff",
-                    "secondary-container": "#dae2fd",
-                    "tertiary-fixed-dim": "#b9c7df",
-                    "inverse-on-surface": "#eaf1ff",
-                    "on-tertiary-container": "#253345",
-                    "primary-container": "#f97316",
-                    "on-secondary-fixed": "#131b2e",
-                    "surface-container-lowest": "#ffffff",
-                    "surface-bright": "#f8f9ff",
-                    "tertiary": "#515f74",
-                    "outline-variant": "#e0c0b1",
-                    "on-tertiary-fixed-variant": "#3a485b",
-                    "surface": "#f8f9ff",
-                    "background": "#f8f9ff",
-                    "on-primary-fixed-variant": "#783200",
-                    "surface-container": "#e5eeff",
-                    "error": "#ba1a1a",
-                    "secondary-fixed-dim": "#bec6e0",
-                    "tertiary-fixed": "#d5e3fc",
-                    "on-error-container": "#93000a",
-                    "inverse-primary": "#ffb690",
-                    "surface-container-low": "#eff4ff",
-                    "surface-dim": "#cbdbf5"
+                colors: {
+                    brand: {
+                        50: '#fff7ed',
+                        100: '#ffedd5',
+                        200: '#fed7aa',
+                        500: '#f97316',
+                        600: '#ec5b13',
+                        700: '#c2410c',
+                        800: '#9a3412',
+                        900: '#7c2d12',
+                    },
+                    navy: {
+                        800: '#1e293b',
+                        900: '#0f172a',
+                        950: '#0b132b',
+                    }
                 },
-                "fontFamily": {
-                    "display-lg": ["Inter"],
-                    "headline-sm": ["Inter"],
-                    "data-mono": ["Inter"],
-                    "body-lg": ["Inter"],
-                    "label-sm": ["Inter"],
-                    "body-sm": ["Inter"],
-                    "body-md": ["Inter"],
-                    "label-md": ["Inter"],
-                    "headline-lg": ["Inter"],
-                    "headline-xl": ["Inter"]
-                },
-                "fontSize": {
-                    "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
-                    "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "600" }],
-                    "data-mono": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
-                    "body-lg": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
-                    "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.03em", "fontWeight": "600" }],
-                    "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.005em", "fontWeight": "400" }],
-                    "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
-                    "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
-                    "headline-lg": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
-                    "headline-xl": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" }]
+                fontFamily: {
+                    sans: ['Inter', 'sans-serif'],
+                    display: ['Plus Jakarta Sans', 'sans-serif'],
+                    mono: ['JetBrains Mono', 'monospace'],
                 }
             }
         }
     };
     </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
 </head>
-<body class="bg-background font-body-md text-body-md text-on-surface antialiased">
-    <div class="min-h-screen flex items-center justify-center p-space-xl">
-        <div class="w-full max-w-md">
-            {{-- Logo & Title --}}
-            <div class="text-center mb-space-2xl">
-                <div class="w-16 h-16 rounded-xl bg-primary-container flex items-center justify-center mx-auto mb-space-md shadow-sm">
-                    <span class="material-symbols-outlined text-on-primary text-[32px]">local_shipping</span>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <div class="min-h-screen flex w-full">
+        <!-- Left Column: Modern Hero Branding Showcase (Desktop Only) -->
+        <div class="hidden lg:flex lg:w-1/2 xl:w-5/12 bg-navy-950 flex-col justify-between p-12 relative overflow-hidden text-white border-r border-slate-800">
+            <!-- Subtle Radial Glow Background -->
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Top Brand Header -->
+            <div class="relative z-10 flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-600/30">
+                    <span class="material-symbols-outlined text-[24px]">local_shipping</span>
                 </div>
-                <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold">CityCourier</h1>
-                <p class="font-body-sm text-body-sm text-secondary mt-space-xs">Admin Panel</p>
+                <div>
+                    <span class="font-display text-xl font-bold tracking-tight text-white block">CityCourier</span>
+                    <span class="text-[11px] font-semibold uppercase tracking-widest text-brand-500 font-mono">Operations Portal</span>
+                </div>
             </div>
 
-            {{-- Login Card --}}
-            <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
-                <h2 class="font-headline-lg text-headline-lg text-on-surface font-semibold mb-space-lg">Masuk ke Akun</h2>
+            <!-- Middle Value Pitch -->
+            <div class="relative z-10 my-auto py-12 max-w-lg">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-medium text-slate-300 mb-6">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Sistem Logistik Instan &amp; On-Demand Dalam Kota</span>
+                </div>
 
-                @if ($errors->any())
-                    <div class="mb-space-md p-space-md rounded-lg bg-red-50 border border-red-200">
-                        <div class="flex items-center gap-space-xs">
-                            <span class="material-symbols-outlined text-red-600 text-[18px]">error</span>
-                            <p class="font-body-sm text-body-sm text-red-700">{{ $errors->first() }}</p>
+                <h1 class="font-display text-3xl xl:text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
+                    Pantau rute, armada kurir, dan pesanan secara <span class="text-brand-500">real-time</span>.
+                </h1>
+
+                <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                    Pusat kendali operasional logistik City Courier: penugasan otomatis kurir motor &amp; mobil, estimasi ongkir akurat, notifikasi otomatis WhatsApp Fonnte, dan live tracking interaktif.
+                </p>
+
+                <!-- 3 Feature Chips -->
+                <div class="space-y-3.5">
+                    <div class="flex items-center gap-3 text-slate-300 text-xs bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                        <div class="w-8 h-8 rounded-lg bg-brand-600/10 text-brand-500 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-[18px]">two_wheeler</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-white block">Armada Motor &amp; Mobil</span>
+                            <span class="text-slate-400">Deteksi otomatis kapasitas dimensi &amp; berat pengiriman.</span>
                         </div>
                     </div>
+
+                    <div class="flex items-center gap-3 text-slate-300 text-xs bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-[18px]">chat</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-white block">Notifikasi WhatsApp Fonnte</span>
+                            <span class="text-slate-400">Kirim otomatis nomor resi, QR code, dan link live tracking.</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 text-slate-300 text-xs bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-[18px]">map</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-white block">Live Courier Tracking</span>
+                            <span class="text-slate-400">Peta langsung posisi kurir penjemputan hingga titik antar.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Security Footer -->
+            <div class="relative z-10 pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] text-slate-400">lock</span>
+                    <span>Enkripsi Sesi TLS 256-Bit</span>
+                </div>
+                <span>City Courier v2.4</span>
+            </div>
+        </div>
+
+        <!-- Right Column: Clean, Structured Login Form Card -->
+        <div class="w-full lg:w-1/2 xl:w-7/12 flex items-center justify-center p-6 sm:p-12 lg:p-16">
+            <div class="w-full max-w-md">
+
+                <!-- Mobile Only Brand Header -->
+                <div class="lg:hidden flex items-center gap-3 mb-8">
+                    <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-600/20">
+                        <span class="material-symbols-outlined text-[22px]">local_shipping</span>
+                    </div>
+                    <div>
+                        <span class="font-display text-lg font-bold text-slate-900 block">CityCourier</span>
+                        <span class="text-[11px] font-semibold text-brand-600 font-mono">Operations Portal</span>
+                    </div>
+                </div>
+
+                <!-- Form Box Header -->
+                <div class="mb-8">
+                    <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Masuk ke Portal</h2>
+                    <p class="text-slate-500 text-sm mt-1.5">
+                        Masukkan email dan kata sandi akun administrator Anda.
+                    </p>
+                </div>
+
+                <!-- Error Alert -->
+                @if ($errors->any())
+                <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-start gap-3 shadow-sm animate-shake">
+                    <span class="material-symbols-outlined text-red-600 text-[20px] shrink-0 mt-0.5">error</span>
+                    <div class="text-sm">
+                        <p class="font-semibold">Gagal Masuk</p>
+                        <p class="text-red-700 mt-0.5 text-xs leading-relaxed">{{ $errors->first() }}</p>
+                    </div>
+                </div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}">
+                <!-- Form -->
+                <form method="POST" action="{{ route('login') }}" class="space-y-5">
                     @csrf
 
-                    {{-- Email --}}
-                    <div class="mb-space-md">
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Email</label>
+                    <!-- Email Input -->
+                    <div>
+                        <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                            Alamat Email
+                        </label>
                         <div class="relative">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-space-md">
-                                <span class="material-symbols-outlined text-secondary text-[18px]">mail</span>
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <span class="material-symbols-outlined text-[20px]">mail</span>
                             </span>
                             <input
                                 type="email"
                                 id="email"
                                 name="email"
                                 value="{{ old('email') }}"
-                                class="w-full pl-11 pr-space-md py-space-sm rounded-lg bg-surface border border-surface-container-high text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all"
-                                placeholder="admin@citycourier.com"
+                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition-all shadow-sm"
+                                placeholder="nama@citycourier.com"
                                 required
                                 autofocus
                             >
                         </div>
                     </div>
 
-                    {{-- Password --}}
-                    <div class="mb-space-md">
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Password</label>
+                    <!-- Password Input -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                                Kata Sandi
+                            </label>
+                        </div>
                         <div class="relative">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-space-md">
-                                <span class="material-symbols-outlined text-secondary text-[18px]">lock</span>
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <span class="material-symbols-outlined text-[20px]">lock</span>
                             </span>
                             <input
                                 type="password"
                                 id="password"
                                 name="password"
-                                class="w-full pl-11 pr-space-md py-space-sm rounded-lg bg-surface border border-surface-container-high text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all"
+                                class="w-full pl-11 pr-11 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition-all shadow-sm"
                                 placeholder="••••••••"
                                 required
                             >
+                            <button
+                                type="button"
+                                id="togglePasswordBtn"
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                title="Tampilkan sandi"
+                            >
+                                <span class="material-symbols-outlined text-[20px]" id="togglePasswordIcon">visibility</span>
+                            </button>
                         </div>
                     </div>
 
-                    {{-- Remember --}}
-                    <div class="flex items-center justify-between mb-space-lg">
-                        <label class="flex items-center gap-space-xs cursor-pointer">
-                            <input type="checkbox" id="remember" name="remember" class="w-4 h-4 rounded border-surface-container-high bg-surface text-primary focus:ring-primary">
-                            <span class="font-body-sm text-body-sm text-on-surface-variant">Ingat saya</span>
+                    <!-- Remember Me & Forgot Password -->
+                    <div class="flex items-center justify-between pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                id="remember"
+                                name="remember"
+                                class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 focus:ring-offset-0 transition-colors"
+                            >
+                            <span class="text-xs font-medium text-slate-600">Ingat sesi saya</span>
                         </label>
+                        <span class="text-xs text-slate-400">Hanya untuk perangkat terpercaya</span>
                     </div>
 
-                    {{-- Submit --}}
-                    <button type="submit" class="w-full py-space-sm rounded-lg bg-primary-container hover:bg-primary text-on-primary font-semibold shadow-sm transition-all flex items-center justify-center gap-space-xs">
-                        <span class="material-symbols-outlined text-[18px]">login</span>
-                        Masuk
+                    <!-- Submit Button -->
+                    <button
+                        type="submit"
+                        class="w-full py-3.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-display font-bold text-sm tracking-wide shadow-md shadow-brand-600/25 hover:shadow-lg hover:shadow-brand-600/35 transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                    >
+                        <span>Masuk ke Dashboard</span>
+                        <span class="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
                     </button>
                 </form>
-            </div>
 
-            {{-- Footer --}}
-            <p class="text-center font-label-sm text-label-sm text-secondary mt-space-lg">
-                &copy; 2024 CityCourier. All rights reserved.
-            </p>
+                <!-- Bottom Helper -->
+                <div class="mt-8 pt-6 border-t border-slate-200/80 text-center">
+                    <p class="text-xs text-slate-500">
+                        Mengalami kendala akun? Hubungi superadmin atau tim IT support City Courier.
+                    </p>
+                    <p class="text-[11px] text-slate-400 mt-2">
+                        &copy; {{ date('Y') }} CityCourier. Seluruh hak cipta dilindungi.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = document.getElementById('togglePasswordBtn');
+        const toggleIcon = document.getElementById('togglePasswordIcon');
+
+        if (toggleBtn && passwordInput && toggleIcon) {
+            toggleBtn.addEventListener('click', function () {
+                const isPassword = passwordInput.getAttribute('type') === 'password';
+                passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+                toggleIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+            });
+        }
+    });
+    </script>
 </body>
 </html>

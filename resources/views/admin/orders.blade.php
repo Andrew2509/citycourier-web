@@ -3,192 +3,200 @@
 @section('title', 'Manajemen Pesanan')
 
 @section('content')
-<div class="flex flex-col w-full gap-space-xl">
-    <!-- Header Section with Quick Stats Bento Summary -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
-        <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
-                <span class="material-symbols-outlined text-[16px]">local_shipping</span>
-                <span>Operasional Logistik Harian</span>
+<div class="space-y-6">
+    <!-- Header Section -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-brand-700 border border-orange-200">
+                    <span class="material-symbols-outlined text-[14px]">inventory_2</span>
+                    Pesanan Konsumen
+                </span>
             </div>
-            <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Manajemen Pesanan</h1>
-            <p class="font-body-md text-body-md text-secondary max-w-2xl">
-                Pantau, kelola, dan atur penugasan seluruh pesanan pengiriman pelanggan secara real-time antar titik penjemputan.
+            <h1 class="font-display text-2xl font-bold text-slate-900 mt-1">Daftar Seluruh Pesanan</h1>
+            <p class="text-sm text-slate-500 mt-0.5">
+                Pantau pesanan masuk, status penugasan kurir, dan rute pengantaran pelanggan.
             </p>
         </div>
-        <!-- Live Counter Stat Chips -->
-        <div class="flex items-center gap-space-sm shrink-0">
-            <div class="flex items-center gap-space-sm px-space-md py-space-xs rounded-lg bg-surface-container-lowest shadow-sm">
-                <div class="w-2.5 h-2.5 rounded-full bg-primary-container animate-ping"></div>
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Total Pesanan</span>
-                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold">{{ number_format($orders->total()) }}</span>
-                </div>
-            </div>
+
+        <div class="flex items-center gap-2">
+            <span class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-mono text-xs font-semibold shadow-sm">
+                Total: <strong class="text-brand-600">{{ number_format($orders->total()) }}</strong> Pesanan
+            </span>
         </div>
     </div>
 
     {{-- Status Filter Pills --}}
     @php
         $filters = [
-            'all'        => ['label' => 'Semua',              'count' => $statusCounts['all'] ?? 0],
-            'pending'    => ['label' => 'Pending',            'count' => $statusCounts['pending'] ?? 0],
-            'assigned'   => ['label' => 'Ditugaskan',         'count' => $statusCounts['assigned'] ?? 0],
-            'delivered'  => ['label' => 'Selesai',            'count' => $statusCounts['delivered'] ?? 0],
-            'cancelled'  => ['label' => 'Dibatalkan',         'count' => $statusCounts['cancelled'] ?? 0],
+            'all'        => ['label' => 'Semua',       'count' => $statusCounts['all'] ?? 0, 'icon' => 'inventory_2'],
+            'pending'    => ['label' => 'Pending',     'count' => $statusCounts['pending'] ?? 0, 'icon' => 'schedule'],
+            'assigned'   => ['label' => 'Ditugaskan',  'count' => $statusCounts['assigned'] ?? 0, 'icon' => 'two_wheeler'],
+            'delivered'  => ['label' => 'Selesai',     'count' => $statusCounts['delivered'] ?? 0, 'icon' => 'task_alt'],
+            'cancelled'  => ['label' => 'Dibatalkan',  'count' => $statusCounts['cancelled'] ?? 0, 'icon' => 'cancel'],
         ];
         $activeStatus = request('status', 'all');
     @endphp
 
-    <!-- Filter Controls & Action Bar -->
-    <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md p-space-md rounded-xl bg-surface-container-lowest shadow-sm">
+    <!-- Filter Pills & Search Bar -->
+    <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <!-- Status Filter Pills -->
-        <div class="flex items-center gap-space-xs overflow-x-auto pb-space-xs lg:pb-0" id="statusFilterPills">
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 lg:pb-0 sidebar-scroll">
             @foreach($filters as $key => $filter)
             <a href="{{ route('admin.orders', $key === 'all' ? [] : ['status' => $key]) }}"
-               class="filter-tab px-space-md py-space-xs rounded-lg font-label-md text-label-md font-semibold transition-all flex items-center gap-space-xs shrink-0
-                      {{ $activeStatus === $key ? 'bg-primary-container text-on-primary shadow-sm' : 'text-secondary hover:bg-surface-container-low hover:text-on-surface' }}">
+               class="px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shrink-0
+                      {{ $activeStatus === $key ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
+                <span class="material-symbols-outlined text-[16px]">{{ $filter['icon'] }}</span>
                 <span>{{ $filter['label'] }}</span>
-                <span class="px-1.5 py-0.5 rounded-full text-[11px] font-bold {{ $activeStatus === $key ? 'bg-on-primary/20 text-on-primary' : 'bg-surface-container text-secondary' }}">{{ $filter['count'] }}</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold {{ $activeStatus === $key ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700' }}">{{ $filter['count'] }}</span>
             </a>
             @endforeach
         </div>
-        <!-- Search & Advanced Actions -->
-        <div class="flex flex-wrap sm:flex-nowrap items-center gap-space-sm">
-            <!-- Search Input -->
-            <form method="GET" action="{{ route('admin.orders') }}" class="relative flex-1 sm:w-80">
+
+        <!-- Search Input -->
+        <div class="w-full lg:w-80 shrink-0">
+            <form method="GET" action="{{ route('admin.orders') }}" class="relative">
                 @if($activeStatus !== 'all')
                     <input type="hidden" name="status" value="{{ $activeStatus }}">
                 @endif
-                <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-secondary text-[18px] pointer-events-none">search</span>
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] pointer-events-none">search</span>
                 <input type="text"
                        name="search"
                        value="{{ request('search') }}"
-                       placeholder="Cari order ID, nama, telepon, alamat..."
-                       class="w-full bg-surface pl-9 pr-8 py-2 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:bg-surface-container-lowest transition-all shadow-sm" />
+                       placeholder="Cari resi, nama, atau HP..."
+                       class="w-full bg-slate-50 border border-slate-200/80 pl-10 pr-4 py-2 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 focus:bg-white transition-all shadow-sm" />
             </form>
-            <!-- Create Order CTA -->
-            <a href="{{ route('admin.orders') }}" class="flex items-center justify-center gap-space-xs px-space-lg py-2 rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-bold shadow-md transition-all active:scale-95 shrink-0">
-                <span class="material-symbols-outlined text-[18px]">add_circle</span>
-                <span>Buat Pesanan</span>
-            </a>
         </div>
     </div>
 
-    <!-- Primary Card Container: Order Table -->
-    <div class="flex flex-col w-full bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-        <!-- Card Header / Meta Summary -->
-        <div class="flex items-center justify-between px-space-xl py-space-md bg-surface-container-lowest">
-            <div class="flex items-center gap-space-md">
-                <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold">
+    <!-- Table Container -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+        <!-- Card Header -->
+        <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-orange-50 text-brand-600 border border-orange-100 flex items-center justify-center font-bold">
                     <span class="material-symbols-outlined text-[20px]">local_mall</span>
                 </div>
-                <div class="flex flex-col">
-                    <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Daftar Pesanan</h2>
-                    <span class="font-label-sm text-label-sm text-secondary">Menampilkan <span class="font-bold text-on-surface">{{ $orders->count() }}</span> data pengiriman</span>
+                <div>
+                    <h2 class="font-display text-base font-bold text-slate-900">Data Transaksi Pesanan</h2>
+                    <span class="text-xs text-slate-500">Menampilkan <strong class="text-slate-800">{{ $orders->count() }}</strong> data di halaman ini</span>
                 </div>
             </div>
-            <div class="flex items-center gap-space-xs">
-                <button class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Muat Ulang Data" onclick="location.reload()" type="button">
-                    <span class="material-symbols-outlined text-[20px]">refresh</span>
-                </button>
-            </div>
+            <button class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" title="Muat Ulang" onclick="location.reload()" type="button">
+                <span class="material-symbols-outlined text-[20px]">refresh</span>
+            </button>
         </div>
 
         <!-- Responsive Table Container -->
         @if($orders->count() > 0)
         <div class="w-full overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left text-sm border-collapse">
                 <thead>
-                    <tr class="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary">
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Nomor Resi</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Customer</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Pengirim & Pickup</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Penerima & Tujuan</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Harga</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
-                        <th class="py-3.5 px-4 font-bold text-right whitespace-nowrap">Aksi</th>
+                    <tr class="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono">
+                        <th class="py-3 px-4">Nomor Resi</th>
+                        <th class="py-3 px-4">Pelanggan</th>
+                        <th class="py-3 px-4">Titik Jemput &amp; Antar</th>
+                        <th class="py-3 px-4">Kurir Bertugas</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4">Tarif</th>
+                        <th class="py-3 px-4 text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="font-body-sm text-body-sm text-on-surface divide-none">
+                <tbody class="divide-y divide-slate-100">
                     @foreach($orders as $order)
                     @php
                         $statusStyles = match($order->status) {
-                            'pending'    => 'bg-surface-container text-secondary',
-                            'assigned'   => 'bg-secondary-container text-on-secondary-fixed-variant',
-                            'picking_up' => 'bg-blue-50 text-blue-700',
-                            'delivering' => 'bg-amber-50 text-amber-700',
-                            'delivered'  => 'bg-emerald-50 text-emerald-700',
-                            'cancelled'  => 'bg-red-50 text-red-700',
-                            default      => 'bg-surface-container text-secondary',
+                            'pending'    => ['label' => 'Pending',    'bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'dot' => 'bg-slate-400'],
+                            'assigned'   => ['label' => 'Ditugaskan', 'bg' => 'bg-blue-50 text-blue-700 border-blue-200', 'dot' => 'bg-blue-500'],
+                            'picking_up' => ['label' => 'Penjemputan','bg' => 'bg-amber-50 text-amber-700 border-amber-200', 'dot' => 'bg-amber-500'],
+                            'delivering' => ['label' => 'Diantar',    'bg' => 'bg-orange-50 text-brand-700 border-orange-200', 'dot' => 'bg-brand-500'],
+                            'delivered'  => ['label' => 'Selesai',    'bg' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'dot' => 'bg-emerald-500'],
+                            'cancelled'  => ['label' => 'Batal',      'bg' => 'bg-red-50 text-red-700 border-red-200', 'dot' => 'bg-red-500'],
+                            default      => ['label' => ucfirst($order->status), 'bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'dot' => 'bg-slate-400'],
                         };
-                        $statusLabel = match($order->status) {
-                            'pending'    => 'Pending',
-                            'assigned'   => 'Assigned',
-                            'picking_up' => 'Picking Up',
-                            'delivering' => 'Delivering',
-                            'delivered'  => 'Delivered',
-                            'cancelled'  => 'Cancelled',
-                            default      => ucfirst($order->status),
-                        };
-                        $courierName = $order->courier?->user?->name ?? '-';
+                        $courierName = $order->courier?->user?->name ?? null;
                     @endphp
-                    <tr class="order-row group hover:bg-surface transition-colors cursor-pointer">
-                        <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="flex items-center gap-space-xs">
-                                <span class="font-data-mono font-bold text-primary tracking-wide">{{ $order->tracking_number }}</span>
-                                <button class="opacity-0 group-hover:opacity-100 p-space-2xs rounded hover:bg-surface-container-high text-secondary hover:text-primary transition-opacity" onclick="navigator.clipboard.writeText('{{ $order->tracking_number }}')" title="Salin Nomor Resi" type="button">
-                                    <span class="material-symbols-outlined text-[15px]">content_copy</span>
-                                </button>
-                            </div>
+                    <tr class="hover:bg-slate-50/60 transition-colors">
+                        <!-- Nomor Resi -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <a href="{{ route('admin.orders.detail', $order->id) }}" class="font-mono text-xs font-bold text-brand-600 hover:underline block">
+                                {{ $order->tracking_number ?? $order->order_number }}
+                            </a>
+                            <span class="text-[11px] text-slate-400 font-mono block mt-0.5">
+                                {{ $order->created_at ? $order->created_at->format('d M Y, H:i') : '-' }}
+                            </span>
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="flex items-center gap-space-sm">
-                                <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
-                                    {{ strtoupper(substr($order->customer_name, 0, 1)) }}
+
+                        <!-- Pelanggan -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                    {{ strtoupper(substr($order->customer_name ?? 'C', 0, 1)) }}
                                 </div>
-                                <div class="flex flex-col">
-                                    <span class="font-headline-sm text-body-md font-semibold text-on-surface">{{ $order->customer_name }}</span>
-                                    <a class="font-data-mono text-secondary hover:text-primary transition-colors text-xs flex items-center gap-0.5" href="tel:{{ $order->customer_phone }}">
-                                        <span class="material-symbols-outlined text-[12px]">phone</span>
-                                        <span>{{ $order->customer_phone }}</span>
-                                    </a>
+                                <div>
+                                    <span class="font-semibold text-slate-900 block text-xs">{{ $order->customer_name ?? 'Pelanggan' }}</span>
+                                    <span class="text-[11px] text-slate-400 font-mono">{{ $order->customer_phone ?? '-' }}</span>
                                 </div>
                             </div>
                         </td>
-                        <td class="py-4 px-4 max-w-xs">
-                            <div class="flex flex-col">
-                                <span class="font-medium text-on-surface truncate">{{ $order->pickup_name ?? '-' }}</span>
-                                <span class="font-label-sm text-label-sm text-secondary line-clamp-1">{{ $order->pickup_address }}</span>
+
+                        <!-- Rute Alamat -->
+                        <td class="py-3.5 px-4 max-w-xs">
+                            <div class="space-y-1 text-xs">
+                                <div class="truncate text-slate-700">
+                                    <span class="text-slate-400 font-bold uppercase text-[10px]">Pickup:</span>
+                                    <span class="font-medium">{{ $order->pickup_address ?? '-' }}</span>
+                                </div>
+                                <div class="truncate text-slate-700">
+                                    <span class="text-slate-400 font-bold uppercase text-[10px]">Dropoff:</span>
+                                    <span class="font-medium">{{ $order->delivery_address ?? '-' }}</span>
+                                </div>
                             </div>
                         </td>
-                        <td class="py-4 px-4 max-w-xs">
-                            <div class="flex flex-col">
-                                <span class="font-medium text-on-surface truncate">{{ $order->customer_name }}</span>
-                                <span class="font-label-sm text-label-sm text-secondary line-clamp-1">{{ $order->delivery_address }}</span>
+
+                        <!-- Kurir -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            @if($courierName)
+                            <div class="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
+                                <span class="material-symbols-outlined text-[16px] text-emerald-600">two_wheeler</span>
+                                <span>{{ $courierName }}</span>
                             </div>
+                            @else
+                            <span class="text-xs text-slate-400 italic">Menunggu kurir</span>
+                            @endif
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap">
-                            <span class="font-data-mono font-bold text-emerald-600 text-sm">Rp {{ number_format($order->price, 0, ',', '.') }}</span>
+
+                        <!-- Status -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border {{ $statusStyles['bg'] }}">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $statusStyles['dot'] }}"></span>
+                                {{ $statusStyles['label'] }}
+                            </span>
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-full {{ $statusStyles }}">
-                                <span class="w-1.5 h-1.5 rounded-full {{ $order->status === 'delivered' ? 'bg-emerald-600' : ($order->status === 'assigned' ? 'bg-blue-500' : 'bg-current') }}"></span>
-                                <span class="font-label-sm text-xs font-bold">{{ $statusLabel }}</span>
-                            </div>
+
+                        <!-- Tarif -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="font-mono font-bold text-slate-900 text-xs">
+                                Rp {{ number_format($order->price, 0, ',', '.') }}
+                            </span>
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap text-right">
-                            <div class="inline-flex items-center gap-space-2xs">
-                                <a href="{{ route('admin.orders.detail', $order->id) }}" class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Lihat Detail Pesanan">
-                                    <span class="material-symbols-outlined text-[18px]">visibility</span>
+
+                        <!-- Aksi -->
+                        <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1.5">
+                                @if($order->tracking_number)
+                                <a href="{{ route('tracking.show', $order->tracking_number) }}"
+                                   target="_blank"
+                                   rel="noopener"
+                                   class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-200"
+                                   title="Buka Live Tracking Web">
+                                    <span class="material-symbols-outlined text-[18px]">map</span>
                                 </a>
-                                <form action="{{ route('admin.orders.destroy', $order->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pesanan {{ $order->tracking_number }}?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-space-xs rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="Hapus Pesanan">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
-                                </form>
+                                @endif
+                                <a href="{{ route('admin.orders.detail', $order->id) }}"
+                                   class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-semibold rounded-lg transition-colors">
+                                    Detail
+                                </a>
                             </div>
                         </td>
                     </tr>
@@ -196,58 +204,23 @@
                 </tbody>
             </table>
         </div>
-        @else
-        <!-- Empty State -->
-        <div class="py-space-2xl px-space-md flex flex-col items-center justify-center text-center">
-            <div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center text-secondary mb-space-md shadow-inner">
-                <span class="material-symbols-outlined text-[32px] text-secondary">manage_search</span>
+
+        <!-- Pagination Footer -->
+        <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <div>
+                Menampilkan <strong>{{ $orders->firstItem() ?? 0 }}</strong> - <strong>{{ $orders->lastItem() ?? 0 }}</strong> dari <strong>{{ $orders->total() }}</strong> pesanan
             </div>
-            <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Tidak Ada Pesanan Ditemukan</h3>
-            <p class="font-body-sm text-body-sm text-secondary max-w-sm mt-space-xs">
-                @if(request('search'))
-                    Tidak ditemukan pesanan yang sesuai dengan pencarian "{{ request('search') }}".
-                @else
-                    Belum ada pesanan masuk saat ini.
-                @endif
-            </p>
-            <a href="{{ route('admin.orders') }}" class="mt-space-lg px-space-md py-space-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md rounded-lg font-medium transition-colors">
-                Reset Filter Pencarian
-            </a>
+            <div>
+                {{ $orders->links() }}
+            </div>
+        </div>
+        @else
+        <div class="py-16 text-center text-slate-400">
+            <span class="material-symbols-outlined text-4xl mb-2 text-slate-300">inventory_2</span>
+            <p class="text-sm font-medium text-slate-600">Tidak ada pesanan ditemukan</p>
+            <p class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter status Anda.</p>
         </div>
         @endif
-
-        <!-- Table Pagination Footer -->
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-space-sm px-space-xl py-3.5 bg-surface-container-lowest">
-            <div class="flex items-center gap-space-md">
-                <span class="font-body-sm text-body-sm text-secondary">
-                    Menampilkan <span class="font-semibold text-on-surface">{{ $orders->firstItem() ?? 0 }} - {{ $orders->lastItem() ?? 0 }}</span> dari <span class="font-semibold text-on-surface">{{ $orders->total() }}</span> pesanan
-                </span>
-            </div>
-            <!-- Pagination Buttons -->
-            <div class="flex items-center gap-1">
-                {{ $orders->withQueryString()->links('pagination::tailwind') }}
-            </div>
-        </div>
     </div>
 </div>
-
-<!-- Toast Notification -->
-<div class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-space-sm px-space-md py-space-xs bg-inverse-surface text-inverse-on-surface rounded-xl shadow-xl" id="copyToast">
-    <span class="material-symbols-outlined text-primary-container text-[20px]">check_circle</span>
-    <span class="font-body-sm text-body-sm font-medium" id="toastMessage">Nomor resi berhasil disalin ke clipboard</span>
-</div>
-
-<script>
-function showToast(msg) {
-    const toast = document.getElementById('copyToast');
-    const toastMsg = document.getElementById('toastMessage');
-    toastMsg.textContent = msg;
-    toast.classList.remove('translate-y-20', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
-    setTimeout(() => {
-        toast.classList.add('translate-y-20', 'opacity-0');
-        toast.classList.remove('translate-y-0', 'opacity-100');
-    }, 2500);
-}
-</script>
 @endsection

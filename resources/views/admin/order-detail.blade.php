@@ -1,252 +1,269 @@
 @extends('layouts.admin')
 
-@section('title', 'Detail Pesanan')
+@section('title', 'Detail Pesanan #' . ($order->tracking_number ?? $order->order_number))
 
 @section('content')
-<div class="flex flex-col gap-space-xl">
-    {{-- Page Header --}}
-    <div class="flex items-center gap-space-md">
-        <a href="{{ route('admin.orders') }}" class="w-9 h-9 rounded-lg bg-surface-container-lowest border border-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors shadow-sm">
-            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
-        </a>
-        <div class="flex-1">
-            <div class="flex items-center gap-space-sm">
-                <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Detail Pesanan</h1>
-                @php
-                    $statusColors = [
-                        'created' => 'bg-surface-container-high text-on-surface-variant',
-                        'confirmed' => 'bg-blue-100 text-blue-700',
-                        'assigned' => 'bg-indigo-100 text-indigo-700',
-                        'picked_up' => 'bg-amber-100 text-amber-700',
-                        'in_transit' => 'bg-purple-100 text-purple-700',
-                        'delivered' => 'bg-emerald-100 text-emerald-700',
-                        'cancelled' => 'bg-red-100 text-red-700',
-                    ];
-                @endphp
-                <span class="inline-flex items-center px-space-sm py-space-2xs rounded-full font-label-sm text-label-sm font-semibold {{ $statusColors[$order->status] ?? 'bg-surface-container-high text-on-surface-variant' }}">
-                    {{ ucfirst(str_replace('_', ' ', $order->status)) }}
-                </span>
+<div class="space-y-6">
+    {{-- Header --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('admin.orders') }}" class="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center transition-colors shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            </a>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-display text-xl font-bold text-slate-900">Detail Pesanan</h1>
+                    @php
+                        $statusMap = [
+                            'pending'    => ['label' => 'Pending',    'bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'dot' => 'bg-slate-400'],
+                            'assigned'   => ['label' => 'Ditugaskan', 'bg' => 'bg-blue-50 text-blue-700 border-blue-200', 'dot' => 'bg-blue-500'],
+                            'picking_up' => ['label' => 'Penjemputan','bg' => 'bg-amber-50 text-amber-700 border-amber-200', 'dot' => 'bg-amber-500'],
+                            'delivering' => ['label' => 'Diantar',    'bg' => 'bg-orange-50 text-brand-700 border-orange-200', 'dot' => 'bg-brand-500'],
+                            'delivered'  => ['label' => 'Selesai',    'bg' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'dot' => 'bg-emerald-500'],
+                            'cancelled'  => ['label' => 'Dibatalkan', 'bg' => 'bg-red-50 text-red-700 border-red-200', 'dot' => 'bg-red-500'],
+                        ];
+                        $st = $statusMap[$order->status] ?? ['label' => ucfirst($order->status), 'bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'dot' => 'bg-slate-400'];
+                    @endphp
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border {{ $st['bg'] }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $st['dot'] }}"></span>
+                        {{ $st['label'] }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 font-mono mt-0.5">
+                    Resi: <strong class="text-brand-600">{{ $order->tracking_number ?? $order->order_number }}</strong>
+                </p>
             </div>
-            <p class="font-body-sm text-body-sm text-secondary mt-space-2xs">No. Resi: <span class="font-data-mono text-primary font-semibold">{{ $order->tracking_number ?? $order->order_number }}</span></p>
         </div>
+
+        @if($order->tracking_number)
+        <div class="flex items-center gap-2">
+            <a href="{{ route('tracking.show', $order->tracking_number) }}"
+               target="_blank"
+               rel="noopener"
+               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-sm transition-all">
+                <span class="material-symbols-outlined text-[16px]">map</span>
+                <span>Buka Live Tracking Web ↗</span>
+            </a>
+        </div>
+        @endif
     </div>
 
-    {{-- Main Content Grid --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-space-xl">
-        {{-- Left Column: Order Info --}}
-        <div class="lg:col-span-2 flex flex-col gap-space-xl">
-            {{-- Order Information --}}
-            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-                <div class="px-space-xl py-space-md border-b border-surface-container-high">
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                        <span class="material-symbols-outlined text-primary">package_2</span>
-                        Informasi Pesanan
-                    </h3>
-                </div>
-                <div class="p-space-xl">
-                    <div class="grid grid-cols-2 gap-space-lg">
-                        <div class="flex flex-col gap-space-lg">
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Nomor Resi</p>
-                                <p class="font-data-mono text-headline-lg text-primary font-bold">{{ $order->tracking_number ?? $order->order_number }}</p>
-                            </div>
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">No. Ref Internal</p>
-                                <p class="font-body-sm text-body-sm text-on-surface font-medium">{{ $order->order_number }}</p>
-                            </div>
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Deskripsi Paket</p>
-                                <p class="font-body-sm text-body-sm text-on-surface">{{ $order->package_description ?? '-' }}</p>
-                            </div>
+    {{-- Main 2-Column Grid --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {{-- Left Column (2 Cols) --}}
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Detail Paket Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-orange-50 text-brand-600 border border-orange-100 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[18px]">package_2</span>
                         </div>
-                        <div class="flex flex-col gap-space-lg">
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Berat</p>
-                                <p class="font-body-sm text-body-sm text-on-surface font-medium">{{ $order->package_weight }} kg</p>
-                            </div>
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Harga</p>
-                                <p class="font-headline-lg text-headline-lg text-emerald-600 font-bold">Rp {{ number_format($order->price, 0, ',', '.') }}</p>
-                            </div>
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Catatan</p>
-                                <p class="font-body-sm text-body-sm text-on-surface">{{ $order->notes ?? '-' }}</p>
-                            </div>
+                        <h2 class="font-display text-sm font-bold text-slate-900">Informasi Paket &amp; Transaksi</h2>
+                    </div>
+                    <span class="font-mono text-sm font-extrabold text-slate-900">
+                        Rp {{ number_format($order->price ?? 0, 0, ',', '.') }}
+                    </span>
+                </div>
+
+                <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                    <div>
+                        <span class="text-slate-400 font-bold uppercase tracking-wider block mb-1">Nomor Resi</span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono font-bold text-slate-900 text-sm">{{ $order->tracking_number ?? $order->order_number }}</span>
+                            <button onclick="navigator.clipboard.writeText('{{ $order->tracking_number ?? $order->order_number }}'); alert('Nomor resi disalin!')"
+                                    class="text-slate-400 hover:text-brand-600" title="Salin Resi">
+                                <span class="material-symbols-outlined text-[16px]">content_copy</span>
+                            </button>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {{-- Addresses --}}
-            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-                <div class="px-space-xl py-space-md border-b border-surface-container-high">
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                        <span class="material-symbols-outlined text-primary">location_on</span>
-                        Alamat Pengiriman
-                    </h3>
-                </div>
-                <div class="p-space-xl">
-                    <div class="flex flex-col gap-space-md">
-                        {{-- Pickup --}}
-                        <div class="flex items-start gap-space-md p-space-lg rounded-xl bg-blue-50 border border-blue-100">
-                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-blue-600 text-[18px]">upload</span>
-                            </div>
-                            <div>
-                                <p class="font-label-sm text-label-sm text-blue-600 uppercase tracking-wider font-semibold mb-space-2xs">Lokasi Jemput (Pickup)</p>
-                                <p class="font-body-sm text-body-sm text-on-surface">{{ $order->pickup_address }}</p>
-                            </div>
-                        </div>
-                        {{-- Delivery --}}
-                        <div class="flex items-start gap-space-md p-space-lg rounded-xl bg-emerald-50 border border-emerald-100">
-                            <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-emerald-600 text-[18px]">download</span>
-                            </div>
-                            <div>
-                                <p class="font-label-sm text-label-sm text-emerald-600 uppercase tracking-wider font-semibold mb-space-2xs">Tujuan Pengiriman</p>
-                                <p class="font-body-sm text-body-sm text-on-surface">{{ $order->delivery_address }}</p>
-                            </div>
-                        </div>
+                    <div>
+                        <span class="text-slate-400 font-bold uppercase tracking-wider block mb-1">Berat Paket</span>
+                        <span class="font-medium text-slate-800">{{ $order->package_weight ?? 1 }} kg</span>
                     </div>
-                </div>
-            </div>
 
-            {{-- Timeline --}}
-            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-                <div class="px-space-xl py-space-md border-b border-surface-container-high">
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                        <span class="material-symbols-outlined text-primary">timeline</span>
-                        Timeline Pengiriman
-                    </h3>
-                </div>
-                <div class="p-space-xl">
-                    <div class="flex flex-col gap-space-lg">
-                        <div class="flex items-center gap-space-md">
-                            <div class="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-primary text-[18px]">add_circle</span>
-                            </div>
-                            <div class="flex-1">
-                                <p class="font-body-sm text-body-sm text-on-surface font-semibold">Pesanan Dibuat</p>
-                                <p class="font-label-sm text-label-sm text-secondary">{{ $order->created_at->format('d M Y, H:i') }}</p>
-                            </div>
-                        </div>
-                        @if($order->picked_up_at)
-                            <div class="flex items-center gap-space-md">
-                                <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-amber-600 text-[18px]">inventory_2</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-body-sm text-body-sm text-on-surface font-semibold">Paket Diambil Kurir</p>
-                                    <p class="font-label-sm text-label-sm text-secondary">{{ $order->picked_up_at->format('d M Y, H:i') }}</p>
-                                </div>
-                            </div>
-                        @endif
-                        @if($order->delivered_at)
-                            <div class="flex items-center gap-space-md">
-                                <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-body-sm text-body-sm text-emerald-600 font-semibold">Paket Berhasil Dikirim</p>
-                                    <p class="font-label-sm text-label-sm text-secondary">{{ $order->delivered_at->format('d M Y, H:i') }}</p>
-                                </div>
-                            </div>
-                        @endif
+                    <div>
+                        <span class="text-slate-400 font-bold uppercase tracking-wider block mb-1">Deskripsi Barang</span>
+                        <span class="font-medium text-slate-800">{{ $order->package_description ?? 'Peralatan / Paket' }}</span>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        {{-- Right Column: Customer & Courier --}}
-        <div class="flex flex-col gap-space-xl">
-            {{-- Customer --}}
-            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-                <div class="px-space-xl py-space-md border-b border-surface-container-high">
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                        <span class="material-symbols-outlined text-primary">person</span>
-                        Informasi Customer
-                    </h3>
-                </div>
-                <div class="p-space-xl">
-                    <div class="flex flex-col gap-space-md">
-                        <div>
-                            <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Nama</p>
-                            <p class="font-body-sm text-body-sm text-on-surface font-medium">{{ $order->customer_name }}</p>
-                        </div>
-                        <div>
-                            <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Telepon</p>
-                            <p class="font-body-sm text-body-sm text-on-surface font-medium">{{ $order->customer_phone }}</p>
-                        </div>
+                    <div>
+                        <span class="text-slate-400 font-bold uppercase tracking-wider block mb-1">Waktu Dibuat</span>
+                        <span class="font-mono text-slate-600">{{ $order->created_at ? $order->created_at->format('d M Y, H:i:s') : '-' }}</span>
                     </div>
-                </div>
-            </div>
 
-            {{-- Courier --}}
-            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-                <div class="px-space-xl py-space-md border-b border-surface-container-high">
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                        <span class="material-symbols-outlined text-primary">delivery_dining</span>
-                        Kurir
-                    </h3>
-                </div>
-                <div class="p-space-xl">
-                    @if($order->courier && $order->courier->user)
-                        <div class="flex items-center gap-space-md mb-space-md">
-                            <div class="w-12 h-12 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-lg shadow-sm">
-                                {{ strtoupper(substr($order->courier->user->name, 0, 1)) }}
-                            </div>
-                            <div>
-                                <p class="font-body-md text-body-md text-on-surface font-semibold">{{ $order->courier->user->name }}</p>
-                                <p class="font-body-sm text-body-sm text-secondary">{{ $order->courier->phone }}</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-space-md pt-space-md border-t border-surface-container-high">
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Kendaraan</p>
-                                <span class="inline-flex items-center px-space-sm py-space-2xs rounded-full font-label-sm text-label-sm font-semibold bg-primary-container/10 text-primary">
-                                    {{ ucfirst($order->courier->vehicle_type) }}
-                                </span>
-                            </div>
-                            <div>
-                                <p class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-2xs">Plat Nomor</p>
-                                <p class="font-data-mono text-body-sm text-on-surface font-semibold">{{ $order->courier->vehicle_plate ?? '-' }}</p>
-                            </div>
-                        </div>
-                    @else
-                        <div class="text-center py-space-xl">
-                            <div class="w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center mx-auto mb-space-md">
-                                <span class="material-symbols-outlined text-secondary text-[28px]">person_off</span>
-                            </div>
-                            <p class="font-body-sm text-body-sm text-secondary">Belum ada kurir yang ditugaskan</p>
-                        </div>
+                    @if($order->notes)
+                    <div class="sm:col-span-2 pt-2 border-t border-slate-100">
+                        <span class="text-slate-400 font-bold uppercase tracking-wider block mb-1">Catatan Pengiriman</span>
+                        <p class="text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200/80">{{ $order->notes }}</p>
+                    </div>
                     @endif
                 </div>
             </div>
 
-            {{-- Quick Actions --}}
-            <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-                <div class="px-space-xl py-space-md border-b border-surface-container-high">
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                        <span class="material-symbols-outlined text-primary">bolt</span>
-                        Aksi Cepat
-                    </h3>
+            <!-- Alamat Pickup & Dropoff -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[18px]">route</span>
+                    </div>
+                    <h2 class="font-display text-sm font-bold text-slate-900">Rute Pengiriman</h2>
                 </div>
-                <div class="p-space-xl flex flex-col gap-space-sm">
-                    <button class="w-full flex items-center gap-space-md px-space-md py-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high transition-colors text-left">
-                        <span class="material-symbols-outlined text-primary text-[18px]">print</span>
-                        <span class="font-body-sm text-body-sm text-on-surface font-medium">Cetak Resi</span>
-                    </button>
-                    <button class="w-full flex items-center gap-space-md px-space-md py-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high transition-colors text-left">
-                        <span class="material-symbols-outlined text-primary text-[18px]">share</span>
-                        <span class="font-body-sm text-body-sm text-on-surface font-medium">Bagikan Status</span>
-                    </button>
-                    <button class="w-full flex items-center gap-space-md px-space-md py-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high transition-colors text-left">
-                        <span class="material-symbols-outlined text-primary text-[18px]">map</span>
-                        <span class="font-body-sm text-body-sm text-on-surface font-medium">Lacak di Peta</span>
-                    </button>
+
+                <div class="p-6 space-y-4 text-xs">
+                    <!-- Pickup -->
+                    <div class="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
+                            <span class="material-symbols-outlined text-[18px]">upload</span>
+                        </div>
+                        <div class="flex-1">
+                            <span class="font-bold uppercase tracking-wider text-[10px] text-emerald-700 block mb-0.5">Titik Penjemputan (Pickup)</span>
+                            <span class="font-semibold text-slate-900 block text-sm">{{ $order->pickup_name ?? 'Lokasi Pengirim' }}</span>
+                            <p class="text-slate-600 mt-0.5 leading-relaxed">{{ $order->pickup_address ?? '-' }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Dropoff -->
+                    <div class="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div class="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center shrink-0 font-bold">
+                            <span class="material-symbols-outlined text-[18px]">download</span>
+                        </div>
+                        <div class="flex-1">
+                            <span class="font-bold uppercase tracking-wider text-[10px] text-brand-700 block mb-0.5">Titik Tujuan (Dropoff)</span>
+                            <span class="font-semibold text-slate-900 block text-sm">{{ $order->customer_name ?? 'Penerima' }}</span>
+                            <p class="text-slate-600 mt-0.5 leading-relaxed">{{ $order->delivery_address ?? '-' }}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Timeline Status -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[18px]">timeline</span>
+                    </div>
+                    <h2 class="font-display text-sm font-bold text-slate-900">Perjalanan Status Pesanan</h2>
+                </div>
+
+                <div class="p-6">
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                                <span class="material-symbols-outlined text-[16px]">check</span>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-slate-900 text-xs block">Pesanan Berhasil Dibuat</span>
+                                <span class="text-[11px] text-slate-400 font-mono">{{ $order->created_at ? $order->created_at->format('d M Y, H:i') : '-' }}</span>
+                            </div>
+                        </div>
+
+                        @if($order->picked_up_at)
+                        <div class="flex items-start gap-3">
+                            <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                                <span class="material-symbols-outlined text-[16px]">check</span>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-slate-900 text-xs block">Paket Diambil oleh Kurir</span>
+                                <span class="text-[11px] text-slate-400 font-mono">{{ $order->picked_up_at->format('d M Y, H:i') }}</span>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->delivered_at)
+                        <div class="flex items-start gap-3">
+                            <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                                <span class="material-symbols-outlined text-[16px]">task_alt</span>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-slate-900 text-xs block">Paket Telah Tiba di Penerima</span>
+                                <span class="text-[11px] text-slate-400 font-mono">{{ $order->delivered_at->format('d M Y, H:i') }}</span>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
         </div>
+
+        {{-- Right Column (1 Col) --}}
+        <div class="space-y-6">
+
+            <!-- Customer Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono block">Customer / Penerima</span>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-sm shrink-0">
+                        {{ strtoupper(substr($order->customer_name ?? 'C', 0, 1)) }}
+                    </div>
+                    <div>
+                        <span class="font-semibold text-slate-900 text-sm block">{{ $order->customer_name ?? 'Pelanggan' }}</span>
+                        <a href="tel:{{ $order->customer_phone }}" class="text-xs text-brand-600 font-mono hover:underline flex items-center gap-1 mt-0.5">
+                            <span class="material-symbols-outlined text-[14px]">phone</span>
+                            <span>{{ $order->customer_phone ?? '-' }}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kurir Assignment Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono block">Kurir Lapangan</span>
+                @if($order->courier && $order->courier->user)
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-600 text-white font-bold flex items-center justify-center text-sm shrink-0">
+                        {{ strtoupper(substr($order->courier->user->name ?? 'K', 0, 1)) }}
+                    </div>
+                    <div>
+                        <span class="font-semibold text-slate-900 text-sm block">{{ $order->courier->user->name }}</span>
+                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $order->courier->phone ?? '') }}" target="_blank" class="text-xs text-emerald-600 font-mono hover:underline flex items-center gap-1 mt-0.5">
+                            <span class="material-symbols-outlined text-[14px]">chat</span>
+                            <span>{{ $order->courier->phone ?? '-' }}</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                    <span>Kendaraan: <strong class="text-slate-900">{{ ucfirst($order->courier->vehicle_type ?? 'Motor') }}</strong></span>
+                    <span class="font-mono text-slate-500">{{ $order->courier->vehicle_plate ?? '-' }}</span>
+                </div>
+                @else
+                <div class="py-4 text-center text-slate-400">
+                    <span class="material-symbols-outlined text-2xl mb-1 text-slate-300">person_off</span>
+                    <p class="text-xs">Belum ada kurir ditugaskan.</p>
+                </div>
+                @endif
+            </div>
+
+            <!-- Quick Action Links -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-2.5">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono block mb-2">Aksi Pengiriman</span>
+
+                @if($order->tracking_number)
+                <a href="{{ route('tracking.show', $order->tracking_number) }}" target="_blank" rel="noopener"
+                   class="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-brand-600">map</span>
+                    <span>Buka Live Tracking Peta</span>
+                </a>
+                <a href="{{ route('tracking.qrcode', $order->tracking_number) }}" target="_blank" rel="noopener"
+                   class="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-slate-600">qr_code_2</span>
+                    <span>Lihat Gambar QR Code Resi</span>
+                </a>
+                @endif
+
+                <button onclick="window.print()"
+                   class="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-slate-600">print</span>
+                    <span>Cetak Lembar Pesanan</span>
+                </button>
+            </div>
+
+        </div>
+
     </div>
 </div>
 @endsection
