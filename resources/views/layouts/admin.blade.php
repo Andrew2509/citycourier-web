@@ -274,9 +274,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-sidebar-width -translate-x-full flex-col bg-navy-900 transition-transform duration-200 lg:translate-x-0">
         <div class="flex h-header-height shrink-0 items-center gap-2.5 border-b border-white/10 px-4">
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white">
-                <span class="material-symbols-outlined text-[18px]">local_shipping</span>
-            </div>
+            <img src="{{ asset('images/Logo_City_Courier.png') }}" alt="City Courier" class="h-8 w-auto max-w-[44px] object-contain shrink-0">
             <div class="min-w-0 leading-tight">
                 <div class="text-sm font-semibold text-white">CityCourier</div>
                 <div class="text-[11px] text-slate-400">Admin Panel</div>

@@ -60,9 +60,7 @@
 
             <!-- Top Brand Header -->
             <div class="relative z-10 flex items-center gap-3">
-                <div class="w-11 h-11 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-600/30">
-                    <span class="material-symbols-outlined text-[24px]">local_shipping</span>
-                </div>
+                <img src="{{ asset('images/Logo_City_Courier.png') }}" alt="City Courier" class="h-12 w-auto max-w-[64px] object-contain shrink-0">
                 <div>
                     <span class="font-display text-xl font-bold tracking-tight text-white block">CityCourier</span>
                     <span class="text-[11px] font-semibold uppercase tracking-widest text-brand-500 font-mono">Operations Portal</span>
@@ -134,9 +132,7 @@
 
                 <!-- Mobile Only Brand Header -->
                 <div class="lg:hidden flex items-center gap-3 mb-8">
-                    <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-600/20">
-                        <span class="material-symbols-outlined text-[22px]">local_shipping</span>
-                    </div>
+                    <img src="{{ asset('images/Logo_City_Courier.png') }}" alt="City Courier" class="h-10 w-auto max-w-[56px] object-contain shrink-0">
                     <div>
                         <span class="font-display text-lg font-bold text-slate-900 block">CityCourier</span>
                         <span class="text-[11px] font-semibold text-brand-600 font-mono">Operations Portal</span>

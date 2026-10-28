@@ -97,9 +97,7 @@
                     </svg>
                 </button>
                 <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-orange-600 text-white flex items-center justify-center font-bold text-sm shadow-sm tracking-tight">
-                        CC
-                    </div>
+                    <img src="{{ asset('images/Logo_City_Courier.png') }}" alt="City Courier" class="h-9 w-auto max-w-[52px] object-contain">
                     <div>
                         <h1 class="text-sm font-bold text-slate-900 leading-tight">City Courier</h1>
                         <p class="text-[11px] text-slate-500 font-medium">Live Delivery Tracking</p>
