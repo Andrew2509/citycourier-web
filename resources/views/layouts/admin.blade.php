@@ -274,9 +274,8 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-sidebar-width -translate-x-full flex-col bg-navy-900 transition-transform duration-200 lg:translate-x-0">
         <div class="flex h-header-height shrink-0 items-center gap-2.5 border-b border-white/10 px-4">
-            <img src="{{ asset('images/Logo_City_Courier.png') }}" alt="City Courier" class="h-8 w-auto max-w-[44px] object-contain shrink-0">
+            <img src="{{ asset('images/logo-city-courier.png') }}" alt="City Courier" class="h-8 w-auto max-w-[120px] object-contain shrink-0">
             <div class="min-w-0 leading-tight">
-                <div class="text-sm font-semibold text-white">CityCourier</div>
                 <div class="text-[11px] text-slate-400">Admin Panel</div>
             </div>
             <button type="button" class="btn-icon ml-auto text-slate-400 hover:bg-white/10 hover:text-white lg:hidden" onclick="toggleSidebar()" aria-label="Tutup menu">

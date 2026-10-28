@@ -60,11 +60,8 @@
 
             <!-- Top Brand Header -->
             <div class="relative z-10 flex items-center gap-3">
-                <img src="{{ asset('images/Logo_City_Courier.png') }}" alt="City Courier" class="h-12 w-auto max-w-[64px] object-contain shrink-0">
-                <div>
-                    <span class="font-display text-xl font-bold tracking-tight text-white block">CityCourier</span>
-                    <span class="text-[11px] font-semibold uppercase tracking-widest text-brand-500 font-mono">Operations Portal</span>
-                </div>
+                <img src="{{ asset('images/logo-city-courier.png') }}" alt="City Courier" class="h-10 w-auto max-w-[160px] object-contain shrink-0">
+                <span class="text-[11px] font-semibold uppercase tracking-widest text-brand-500 font-mono">Operations Portal</span>
             </div>
 
             <!-- Middle Value Pitch -->
@@ -132,11 +129,8 @@
 
                 <!-- Mobile Only Brand Header -->
                 <div class="lg:hidden flex items-center gap-3 mb-8">
-                    <img src="{{ asset('images/Logo_City_Courier.png') }}" alt="City Courier" class="h-10 w-auto max-w-[56px] object-contain shrink-0">
-                    <div>
-                        <span class="font-display text-lg font-bold text-slate-900 block">CityCourier</span>
-                        <span class="text-[11px] font-semibold text-brand-600 font-mono">Operations Portal</span>
-                    </div>
+                    <img src="{{ asset('images/logo-city-courier.png') }}" alt="City Courier" class="h-9 w-auto max-w-[140px] object-contain shrink-0">
+                    <span class="text-[11px] font-semibold text-brand-600 font-mono">Operations Portal</span>
                 </div>
 
                 <!-- Form Box Header -->
