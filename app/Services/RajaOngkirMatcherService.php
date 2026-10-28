@@ -64,7 +64,27 @@ class RajaOngkirMatcherService
                 $searchQuery = trim(($cleanDistrict ?: $cleanVillage) . ' ' . $cleanCity);
                 $apiRes = $this->rajaOngkir->searchDestination($searchQuery);
                 if (!empty($apiRes['data']) && is_array($apiRes['data'])) {
-                    $first = $apiRes['data'][0];
+                    $selected = null;
+                    // Filter candidate that matches city or province or full address
+                    foreach ($apiRes['data'] as $cand) {
+                        $candCity = $this->cleanName($cand['city_name'] ?? '');
+                        $candProv = $this->cleanName($cand['province_name'] ?? '');
+
+                        if (!empty($cleanCity) && (stripos($candCity, $cleanCity) !== false || stripos($cleanCity, $candCity) !== false)) {
+                            $selected = $cand;
+                            break;
+                        }
+                        if (!empty($cleanProvince) && (stripos($candProv, $cleanProvince) !== false || stripos($cleanProvince, $candProv) !== false)) {
+                            $selected = $cand;
+                            break;
+                        }
+                        if (!empty($formatted) && (stripos($formatted, $cand['city_name'] ?? '~~~') !== false || stripos($formatted, $cand['province_name'] ?? '~~~') !== false)) {
+                            $selected = $cand;
+                            break;
+                        }
+                    }
+
+                    $first = $selected ?: $apiRes['data'][0];
                     $subId = $first['subdistrict_id'] ?? ($first['district_id'] ?? ($first['id'] ?? null));
                     $cityId = $first['city_id'] ?? null;
                     if ($subId || $cityId) {
