@@ -3,138 +3,143 @@
 @section('title', 'Manajemen Permission')
 
 @section('content')
-<div class="flex flex-col w-full gap-space-xl">
-    <!-- Header & Action Ribbon -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-        <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-secondary font-label-md">
-                <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
-                <span>Sistem &amp; Keamanan</span>
-                <span class="text-[12px] opacity-60">/</span>
-                <span class="text-on-surface font-semibold">Manajemen Permission</span>
+@php
+    $totalPermissions = $permissions->total();
+    $roleCount = \Spatie\Permission\Models\Role::count();
+@endphp
+
+<div class="space-y-5">
+    {{-- Header Halaman --}}
+    <div class="page-header">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="page-title">Manajemen Permission</h1>
+                <span class="badge badge-gray text-xs">
+                    {{ $totalPermissions }} Permission Terdaftar
+                </span>
             </div>
-            <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">Manajemen Permission &amp; Hak Akses</h1>
-            <p class="font-body-sm text-body-sm text-secondary">Kelola wewenang granular spatie/laravel-permission, guard tokens, dan matriks hak akses antar peran.</p>
+            <p class="page-subtitle">Daftar kunci wewenang sistem granular yang dapat dipasangkan ke setiap role pengguna.</p>
         </div>
-        <div class="flex items-center gap-space-sm self-start md:self-auto">
-            <a href="{{ route('admin.permissions.index') }}" class="flex items-center gap-space-xs px-space-md py-space-xs h-9 bg-surface-container-lowest text-on-surface hover:bg-surface-container-high font-label-md text-label-md rounded-lg shadow-sm transition-all">
-                <span class="material-symbols-outlined text-[18px]">sync</span>
-                <span>Sinkronisasi</span>
-            </a>
+
+        <div class="page-actions">
             @canPerm('permissions.create')
-            <a href="{{ route('admin.permissions.create') }}" class="flex items-center gap-space-xs px-space-md py-space-xs h-9 bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md rounded-lg shadow-sm transition-all">
-                <span class="material-symbols-outlined text-[18px]">add</span>
+            <a href="{{ route('admin.permissions.create') }}" class="btn btn-primary">
+                <span class="material-symbols-outlined">add</span>
                 <span>Tambah Permission</span>
             </a>
             @endcanPerm
         </div>
     </div>
 
-    <!-- KPI Summary Banner -->
-    @php
-        $totalPermissions = $permissions->total();
-        $roleCount = \Spatie\Permission\Models\Role::count();
-    @endphp
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-md">
-        <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
-            <div class="flex flex-col gap-space-2xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Total Permission</span>
-                <div class="flex items-baseline gap-space-xs">
-                    <span class="font-display-lg text-display-lg font-bold text-on-surface">{{ $totalPermissions }}</span>
-                    <span class="font-label-sm text-label-sm text-secondary">Hak Akses</span>
+    {{-- Tabs Navigasi Sub-Modul --}}
+    <div class="card p-3 sm:p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="filter-tabs">
+                <a href="{{ route('admin.users.index') }}" class="filter-tab">
+                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    <span>Daftar Pengguna</span>
+                </a>
+                <a href="{{ route('admin.roles.index') }}" class="filter-tab">
+                    <span class="material-symbols-outlined text-[16px]">security</span>
+                    <span>Role &amp; Jabatan</span>
+                </a>
+                <a href="{{ route('admin.permissions.index') }}" class="filter-tab is-active">
+                    <span class="material-symbols-outlined text-[16px]">key</span>
+                    <span>Permissions</span>
+                    <span class="filter-count">{{ $totalPermissions }}</span>
+                </a>
+            </div>
+
+            <form method="GET" action="{{ route('admin.permissions.index') }}" class="flex items-center gap-2">
+                <div class="search-box w-full sm:w-64">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text"
+                           name="search"
+                           value="{{ request('search') }}"
+                           placeholder="Cari permission..."
+                           class="form-input">
                 </div>
-            </div>
-            <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-[22px]">vpn_key</span>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
-            <div class="flex flex-col gap-space-2xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Role Aktif</span>
-                <div class="flex items-baseline gap-space-xs">
-                    <span class="font-display-lg text-display-lg font-bold text-on-surface">{{ $roleCount }}</span>
-                    <span class="font-label-sm text-label-sm text-secondary">Kelompok</span>
-                </div>
-            </div>
-            <div class="w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center text-on-secondary-container">
-                <span class="material-symbols-outlined text-[22px]">groups</span>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
-            <div class="flex flex-col gap-space-2xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Metode Otentikasi</span>
-                <div class="flex items-center gap-space-xs">
-                    <span class="font-headline-sm text-headline-sm font-bold text-on-surface">Sanctum Token</span>
-                </div>
-                <span class="font-label-sm text-label-sm text-emerald-700 font-semibold flex items-center gap-space-2xs">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> RBAC Enforcement
-                </span>
-            </div>
-            <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-[22px]">verified_user</span>
-            </div>
+                <button type="submit" class="btn btn-secondary">Cari</button>
+            </form>
         </div>
     </div>
 
-    <!-- Primary Workspace with Tabs -->
-    <div class="flex flex-col bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-        <!-- Tab Controls -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between p-space-md gap-space-md bg-surface-container-low/50">
-            <div class="inline-flex p-space-2xs bg-surface-container-high rounded-xl gap-space-2xs">
-                <button class="px-space-md py-space-xs rounded-lg font-label-md text-label-md font-semibold transition-all bg-surface-container-lowest text-on-surface shadow-sm flex items-center gap-space-xs" id="tab-btn-list" onclick="switchTab('list')">
-                    <span class="material-symbols-outlined text-[16px] text-primary">key</span>
-                    <span>Daftar Permission</span>
-                    <span class="px-space-xs py-space-2xs rounded-full text-[10px] bg-primary-fixed text-on-primary-fixed-variant font-bold">{{ $totalPermissions }}</span>
-                </button>
-            </div>
-            <div class="flex items-center gap-space-sm">
-                <div class="relative w-full sm:w-64">
-                    <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-secondary text-[18px]">search</span>
-                    <input class="w-full bg-surface-container-lowest pl-9 pr-space-md py-1.5 h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none shadow-sm" id="permission-search" placeholder="Cari izin / modul..." type="text" onkeyup="filterPermTable()"/>
-                </div>
-            </div>
-        </div>
-
-        <!-- Permission Table -->
-        <div class="overflow-x-auto w-full">
-            <table class="w-full text-left border-collapse" id="permTable">
+    {{-- Tabel Permission --}}
+    <div class="card overflow-hidden">
+        @if($permissions->count() > 0)
+        <div class="table-wrap">
+            <table class="data-table">
                 <thead>
-                    <tr class="bg-surface-container-low text-secondary font-label-sm text-label-sm uppercase tracking-wider select-none">
-                        <th class="py-space-sm px-space-lg w-16">ID</th>
-                        <th class="py-space-sm px-space-md">NAMA PERMISSION</th>
-                        <th class="py-space-sm px-space-md">KODE</th>
-                        <th class="py-space-sm px-space-md">Dibuat</th>
-                        <th class="py-space-sm px-space-lg text-right w-24">AKSI</th>
+                    <tr>
+                        <th>Nama Permission (Key)</th>
+                        <th>Guard</th>
+                        <th>Digunakan Oleh Role</th>
+                        <th>Dibuat Pada</th>
+                        <th class="text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-container-high font-body-sm text-body-sm text-on-surface">
-                    @forelse ($permissions as $permission)
-                    <tr class="hover:bg-surface-container-low/70 transition-colors group">
-                        <td class="py-space-md px-space-lg font-data-mono text-secondary">{{ $loop->iteration }}</td>
-                        <td class="py-space-md px-space-md">
-                            <div class="flex items-center gap-space-sm">
-                                <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-[16px]">key</span>
-                                </div>
-                                <span class="font-data-mono font-semibold text-on-surface">{{ $permission->name }}</span>
+                <tbody>
+                    @foreach ($permissions as $perm)
+                    @php
+                        $parts = explode('.', $perm->name);
+                        $module = $parts[0] ?? 'system';
+                        $action = $parts[1] ?? 'action';
+                    @endphp
+                    <tr>
+                        {{-- Nama Key --}}
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <span class="badge badge-indigo text-xs font-mono">
+                                    {{ $module }}
+                                </span>
+                                <span class="font-mono text-[13px] font-semibold text-slate-900">
+                                    {{ $perm->name }}
+                                </span>
                             </div>
                         </td>
-                        <td class="py-space-md px-space-md">
-                            <span class="px-space-xs py-space-2xs rounded-lg font-label-sm text-label-sm bg-surface-container-high text-on-surface-variant font-data-mono">{{ Str::slug($permission->name) }}</span>
+
+                        {{-- Guard --}}
+                        <td class="whitespace-nowrap font-mono text-xs text-slate-500">
+                            {{ $perm->guard_name }}
                         </td>
-                        <td class="py-space-md px-space-md text-secondary">{{ $permission->created_at->format('d M Y') }}</td>
-                        <td class="py-space-md px-space-lg text-right">
-                            <div class="inline-flex items-center gap-space-2xs text-secondary">
+
+                        {{-- Digunakan Oleh Role --}}
+                        <td>
+                            <div class="flex flex-wrap gap-1">
+                                @forelse($perm->roles as $r)
+                                    <span class="badge badge-gray text-[11px]">
+                                        {{ $r->name }}
+                                    </span>
+                                @empty
+                                    <span class="text-xs text-slate-400 italic">Belum dipasangkan</span>
+                                @endforelse
+                            </div>
+                        </td>
+
+                        {{-- Dibuat --}}
+                        <td class="whitespace-nowrap font-mono text-xs text-slate-500">
+                            {{ $perm->created_at ? $perm->created_at->format('d/m/Y') : '-' }}
+                        </td>
+
+                        {{-- Aksi --}}
+                        <td class="text-right whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1">
                                 @canPerm('permissions.edit')
-                                <a href="{{ route('admin.permissions.edit', $permission) }}" class="p-space-2xs hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors" title="Edit Permission">
+                                <a href="{{ route('admin.permissions.edit', $perm) }}"
+                                   class="btn-icon"
+                                   title="Edit Permission">
                                     <span class="material-symbols-outlined text-[18px]">edit</span>
                                 </a>
                                 @endcanPerm
+
                                 @canPerm('permissions.delete')
-                                <form action="{{ route('admin.permissions.destroy', $permission) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus permission ini?');">
+                                <form action="{{ route('admin.permissions.destroy', $perm) }}"
+                                      method="POST"
+                                      class="inline-block"
+                                      onsubmit="return confirm('Hapus permission {{ $perm->name }}?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-space-2xs hover:text-error hover:bg-error-container/40 rounded-lg transition-colors" title="Hapus Permission">
+                                    <button type="submit" class="btn-icon btn-icon-danger" title="Hapus Permission">
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
@@ -142,43 +147,26 @@
                             </div>
                         </td>
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="py-space-2xl px-space-lg text-center">
-                            <div class="flex flex-col items-center gap-space-xs text-secondary">
-                                <span class="material-symbols-outlined text-[32px]">vpn_key</span>
-                                <span class="font-body-sm text-body-sm">Belum ada permission terdaftar</span>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
 
-        <!-- Pagination -->
-        @if ($permissions->hasPages())
-        <div class="px-space-xl py-3.5 border-t border-surface-container-high flex items-center justify-between">
-            <span class="font-label-sm text-label-sm text-secondary">Menampilkan {{ $permissions->firstItem() }}–{{ $permissions->lastItem() }} dari {{ $permissions->total() }}</span>
-            <div>{{ $permissions->links() }}</div>
+        <div class="card-footer">
+            <div>
+                Menampilkan <strong>{{ $permissions->firstItem() ?? 0 }}</strong> - <strong>{{ $permissions->lastItem() ?? 0 }}</strong> dari <strong>{{ $permissions->total() }}</strong> permission
+            </div>
+            <div>
+                {{ $permissions->withQueryString()->links() }}
+            </div>
+        </div>
+        @else
+        <div class="empty-state">
+            <span class="material-symbols-outlined">key</span>
+            <div class="empty-title">Tidak ada permission ditemukan</div>
+            <div class="empty-text">Buat permission baru untuk memperluas sistem wewenang peran.</div>
         </div>
         @endif
     </div>
 </div>
-
-@push('scripts')
-<script>
-function filterPermTable() {
-    const input = document.getElementById('permission-search');
-    const filter = input.value.toLowerCase();
-    const table = document.getElementById('permTable');
-    if (!table) return;
-    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-    for (let i = 0; i < rows.length; i++) {
-        const text = rows[i].textContent.toLowerCase();
-        rows[i].style.display = text.indexOf(filter) > -1 ? '' : 'none';
-    }
-}
-</script>
-@endpush
 @endsection

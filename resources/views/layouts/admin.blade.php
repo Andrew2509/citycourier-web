@@ -5,13 +5,10 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin Panel') - CityCourier</title>
-
-    <!-- Google Fonts: Plus Jakarta Sans & Inter & JetBrains Mono -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script id="tailwind-config">
     tailwind.config = {
@@ -19,38 +16,39 @@
         theme: {
             extend: {
                 colors: {
-                    // City Courier Brand Colors
+                    /* Identitas City Courier: navy + oranye */
                     brand: {
-                        50: '#fff7ed',
-                        100: '#ffedd5',
-                        200: '#fed7aa',
-                        300: '#fdba74',
-                        400: '#fb923c',
-                        500: '#f97316',
-                        600: '#ec5b13',
-                        700: '#c2410c',
-                        800: '#9a3412',
-                        900: '#7c2d12',
+                        50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c',
+                        500: '#f97316', 600: '#ec5b13', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12',
                     },
-                    navy: {
-                        800: '#1e293b',
-                        900: '#0f172a',
-                        950: '#0b132b',
-                    },
-                    // Backward Compatibility Aliases for Views
-                    "primary": "#ec5b13",
+                    navy: { 800: '#1e293b', 900: '#0f172a', 950: '#0b132b' },
+
+                    /* Token lama (dipakai di seluruh view) dipetakan ke palet yang sama */
+                    "primary": "#c2410c",
                     "primary-container": "#ec5b13",
                     "on-primary": "#ffffff",
+                    "on-primary-container": "#ffffff",
                     "primary-fixed": "#ffedd5",
+                    "primary-fixed-dim": "#fed7aa",
+                    "on-primary-fixed": "#7c2d12",
                     "on-primary-fixed-variant": "#9a3412",
+                    "inverse-primary": "#fdba74",
+                    "surface-tint": "#ec5b13",
                     "secondary": "#64748b",
                     "on-secondary": "#ffffff",
                     "secondary-container": "#f1f5f9",
                     "on-secondary-container": "#334155",
                     "secondary-fixed": "#e2e8f0",
-                    "on-secondary-fixed-variant": "#1e293b",
-                    "surface": "#f8fafc",
+                    "secondary-fixed-dim": "#cbd5e1",
+                    "on-secondary-fixed": "#0f172a",
+                    "on-secondary-fixed-variant": "#334155",
+                    "tertiary": "#475569",
                     "background": "#f8fafc",
+                    "on-background": "#0f172a",
+                    "surface": "#f8fafc",
+                    "surface-bright": "#ffffff",
+                    "surface-dim": "#e2e8f0",
+                    "surface-variant": "#f1f5f9",
                     "on-surface": "#0f172a",
                     "on-surface-variant": "#475569",
                     "surface-container-lowest": "#ffffff",
@@ -58,21 +56,31 @@
                     "surface-container": "#f1f5f9",
                     "surface-container-high": "#e2e8f0",
                     "surface-container-highest": "#cbd5e1",
-                    "outline": "#cbd5e1",
+                    "inverse-surface": "#1e293b",
+                    "inverse-on-surface": "#f1f5f9",
+                    "outline": "#94a3b8",
                     "outline-variant": "#e2e8f0",
-                    "error": "#ef4444",
-                    "error-container": "#fee2e2",
+                    "error": "#dc2626",
                     "on-error": "#ffffff",
+                    "error-container": "#fee2e2",
                     "on-error-container": "#991b1b"
                 },
                 borderRadius: {
-                    "DEFAULT": "0.375rem",
-                    "sm": "0.25rem",
+                    "DEFAULT": "0.25rem",
                     "md": "0.375rem",
-                    "lg": "0.5rem",
-                    "xl": "0.75rem",
-                    "2xl": "1rem",
+                    "lg": "0.375rem",
+                    "xl": "0.5rem",
+                    "2xl": "0.625rem",
+                    "3xl": "0.75rem",
                     "full": "9999px"
+                },
+                boxShadow: {
+                    "sm": "0 1px 2px 0 rgba(15, 23, 42, 0.04)",
+                    "DEFAULT": "0 1px 3px 0 rgba(15, 23, 42, 0.06)",
+                    "md": "0 2px 6px -1px rgba(15, 23, 42, 0.07)",
+                    "lg": "0 8px 20px -4px rgba(15, 23, 42, 0.10)",
+                    "xl": "0 12px 28px -6px rgba(15, 23, 42, 0.14)",
+                    "2xl": "0 16px 36px -8px rgba(15, 23, 42, 0.18)"
                 },
                 spacing: {
                     "space-2xs": "0.125rem",
@@ -80,414 +88,390 @@
                     "space-sm": "0.5rem",
                     "space-md": "0.75rem",
                     "space-lg": "1rem",
-                    "space-xl": "1.5rem",
-                    "space-2xl": "2rem",
-                    "sidebar-width": "16.5rem",
-                    "header-height": "4rem"
+                    "space-xl": "1.25rem",
+                    "space-2xl": "1.75rem",
+                    "space-base": "1rem",
+                    "gutter-table": "0.75rem",
+                    "sidebar-width": "15rem",
+                    "sidebar-collapsed": "4.5rem",
+                    "header-height": "3.5rem"
                 },
                 fontFamily: {
-                    sans: ['Inter', 'sans-serif'],
-                    display: ['Plus Jakarta Sans', 'sans-serif'],
-                    mono: ['JetBrains Mono', 'monospace'],
-                    "headline-xl": ['Plus Jakarta Sans', 'sans-serif'],
-                    "headline-lg": ['Plus Jakarta Sans', 'sans-serif'],
-                    "headline-sm": ['Plus Jakarta Sans', 'sans-serif'],
-                    "display-lg": ['Plus Jakarta Sans', 'sans-serif'],
+                    sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                    display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                    mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'Menlo', 'monospace'],
+                    "display-lg": ['Inter', 'sans-serif'],
+                    "headline-xl": ['Inter', 'sans-serif'],
+                    "headline-lg": ['Inter', 'sans-serif'],
+                    "headline-sm": ['Inter', 'sans-serif'],
                     "body-lg": ['Inter', 'sans-serif'],
                     "body-md": ['Inter', 'sans-serif'],
                     "body-sm": ['Inter', 'sans-serif'],
                     "label-md": ['Inter', 'sans-serif'],
                     "label-sm": ['Inter', 'sans-serif'],
-                    "data-mono": ['JetBrains Mono', 'monospace']
+                    "label-xs": ['Inter', 'sans-serif'],
+                    "data-mono": ['ui-monospace', 'SFMono-Regular', 'Consolas', 'Menlo', 'monospace']
+                },
+                /* Skala tipografi proporsional untuk dashboard operasional */
+                fontSize: {
+                    "display-lg":  ["22px", { lineHeight: "30px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                    "headline-xl": ["19px", { lineHeight: "26px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                    "headline-lg": ["16px", { lineHeight: "24px", fontWeight: "600" }],
+                    "headline-sm": ["14px", { lineHeight: "20px", fontWeight: "600" }],
+                    "body-lg":     ["14px", { lineHeight: "22px" }],
+                    "body-md":     ["13.5px", { lineHeight: "20px" }],
+                    "body-sm":     ["13px", { lineHeight: "18px" }],
+                    "label-md":    ["12.5px", { lineHeight: "16px", fontWeight: "500" }],
+                    "label-sm":    ["11.5px", { lineHeight: "15px", fontWeight: "500" }],
+                    "label-xs":    ["10.5px", { lineHeight: "14px", fontWeight: "500" }],
+                    "data-mono":   ["12.5px", { lineHeight: "18px", fontWeight: "500" }]
                 }
             }
         }
     };
     </script>
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* Custom scrollbar for sidebar */
-        .sidebar-scroll::-webkit-scrollbar {
-            width: 4px;
+
+    {{-- Komponen UI bersama untuk seluruh halaman admin --}}
+    <style type="text/tailwindcss">
+        @layer base {
+            html, body { margin: 0; padding: 0; }
+            body { @apply bg-slate-50 text-slate-800 text-[13.5px] antialiased; overscroll-behavior: none; }
+            .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
         }
-        .sidebar-scroll::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.4);
-        }
-        .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: rgba(100, 116, 139, 0.4);
-            border-radius: 4px;
-        }
-        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(100, 116, 139, 0.7);
+        @layer components {
+            /* Header halaman */
+            .page-header   { @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
+            .page-title    { @apply text-[19px] leading-7 font-semibold text-slate-900; }
+            .page-subtitle { @apply text-[13px] text-slate-500 mt-0.5; }
+            .page-actions  { @apply flex flex-wrap items-center gap-2; }
+            .back-link     { @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors; }
+
+            /* Card */
+            .card          { @apply bg-white border border-slate-200 rounded-lg; }
+            .card-header   { @apply flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200; }
+            .card-title    { @apply text-sm font-semibold text-slate-900; }
+            .card-subtitle { @apply text-xs text-slate-500 mt-0.5; }
+            .card-body     { @apply p-4; }
+            .card-footer   { @apply flex flex-col gap-2 px-4 py-3 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500; }
+
+            /* Statistik ringkas */
+            .stat-label    { @apply text-xs font-medium text-slate-500; }
+            .stat-value    { @apply mt-1 text-xl font-semibold text-slate-900 tabular-nums; }
+            .stat-meta     { @apply mt-1 text-xs text-slate-500; }
+
+            /* Tombol */
+            .btn           { @apply inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-md text-[13px] font-medium whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:opacity-50 disabled:cursor-not-allowed; }
+            .btn .material-symbols-outlined { @apply text-[18px]; }
+            .btn-sm        { @apply h-8 px-2.5 text-xs; }
+            .btn-sm .material-symbols-outlined { @apply text-[16px]; }
+            .btn-primary   { @apply bg-brand-600 text-white hover:bg-brand-700; }
+            .btn-secondary { @apply bg-white text-slate-700 border border-slate-300 hover:bg-slate-50; }
+            .btn-dark      { @apply bg-navy-900 text-white hover:bg-navy-800; }
+            .btn-danger    { @apply bg-red-600 text-white hover:bg-red-700; }
+            .btn-success   { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
+            .btn-ghost     { @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900; }
+            .btn-icon      { @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors; }
+            .btn-icon .material-symbols-outlined { @apply text-[18px]; }
+            .btn-icon-danger { @apply hover:bg-red-50 hover:text-red-600; }
+
+            /* Form */
+            .form-label    { @apply block mb-1.5 text-[13px] font-medium text-slate-700; }
+            .form-input, .form-select, .form-textarea {
+                @apply block w-full rounded-md border border-slate-300 bg-white px-3 text-[13.5px] text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 disabled:text-slate-500;
+            }
+            .form-input, .form-select { @apply h-9; }
+            .form-select   { @apply pr-8; }
+            .form-textarea { @apply py-2 min-h-[80px]; }
+            .form-help     { @apply mt-1 text-xs text-slate-500; }
+            .form-error    { @apply mt-1 text-xs text-red-600; }
+            .form-invalid  { @apply border-red-500 focus:border-red-500 focus:ring-red-500/20; }
+            .form-check    { @apply h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500; }
+            .form-section  { @apply text-xs font-semibold uppercase tracking-wide text-slate-500; }
+
+            /* Pencarian & filter */
+            .search-box    { @apply relative; }
+            .search-box > .material-symbols-outlined { @apply pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-400; }
+            .search-box > input { @apply pl-9; }
+            .filter-tabs   { @apply flex items-center gap-1 overflow-x-auto; }
+            .filter-tab    { @apply inline-flex shrink-0 items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors; }
+            .filter-tab.is-active { @apply bg-navy-900 text-white hover:bg-navy-900 hover:text-white; }
+            .filter-count  { @apply rounded px-1.5 text-[11px] font-semibold tabular-nums bg-slate-200/80 text-slate-600; }
+            .filter-tab.is-active .filter-count { @apply bg-white/15 text-white; }
+
+            /* Tabel data */
+            .table-wrap    { @apply w-full overflow-x-auto; }
+            .data-table    { @apply w-full text-left border-collapse; }
+            .data-table thead th { @apply px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500 whitespace-nowrap; }
+            .data-table tbody td { @apply px-4 py-3 border-b border-slate-100 text-[13px] text-slate-700 align-middle; }
+            .data-table tbody tr:last-child td { @apply border-b-0; }
+            .data-table tbody tr:hover td { @apply bg-slate-50/70; }
+            .cell-primary  { @apply font-medium text-slate-900; }
+            .cell-muted    { @apply text-xs text-slate-500; }
+            .cell-mono     { @apply font-mono text-[12.5px]; }
+            .link          { @apply text-brand-700 hover:text-brand-800 hover:underline; }
+
+            /* Badge status */
+            .badge         { @apply inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium whitespace-nowrap; }
+            .badge-dot     { @apply h-1.5 w-1.5 rounded-full bg-current; }
+            .badge-gray    { @apply bg-slate-100 text-slate-700; }
+            .badge-blue    { @apply bg-blue-50 text-blue-700; }
+            .badge-indigo  { @apply bg-indigo-50 text-indigo-700; }
+            .badge-amber   { @apply bg-amber-50 text-amber-700; }
+            .badge-orange  { @apply bg-brand-50 text-brand-700; }
+            .badge-green   { @apply bg-emerald-50 text-emerald-700; }
+            .badge-red     { @apply bg-red-50 text-red-700; }
+
+            /* Avatar inisial */
+            .avatar        { @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600; }
+
+            /* Empty state */
+            .empty-state   { @apply flex flex-col items-center justify-center px-4 py-12 text-center; }
+            .empty-state > .material-symbols-outlined { @apply mb-2 text-[32px] text-slate-300; }
+            .empty-title   { @apply text-sm font-medium text-slate-700; }
+            .empty-text    { @apply mt-1 max-w-sm text-xs text-slate-500; }
+
+            /* Alert */
+            .alert         { @apply flex items-start gap-2.5 rounded-md border px-3.5 py-2.5 text-[13px]; }
+            .alert > .material-symbols-outlined { @apply mt-px text-[18px]; }
+            .alert-success { @apply border-emerald-200 bg-emerald-50 text-emerald-800; }
+            .alert-error   { @apply border-red-200 bg-red-50 text-red-800; }
+            .alert-warning { @apply border-amber-200 bg-amber-50 text-amber-800; }
+            .alert-info    { @apply border-blue-200 bg-blue-50 text-blue-800; }
+
+            /* Modal */
+            .modal-backdrop { @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4; }
+            .modal-panel   { @apply w-full max-w-md max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl; }
+            .modal-header  { @apply flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-200; }
+            .modal-title   { @apply text-sm font-semibold text-slate-900; }
+            .modal-body    { @apply p-5 space-y-4; }
+            .modal-footer  { @apply flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 bg-slate-50; }
+
+            /* Daftar detail (label : nilai) */
+            .dl-grid       { @apply grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2; }
+            .dl-label      { @apply text-xs text-slate-500; }
+            .dl-value      { @apply mt-0.5 text-[13.5px] font-medium text-slate-900; }
+
+            /* Navigasi sidebar */
+            .nav-group     { @apply px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500; }
+            .nav-item      { @apply relative flex items-center justify-between gap-2 rounded-md px-3 h-9 text-[13px] text-slate-300 hover:bg-white/5 hover:text-white transition-colors; }
+            .nav-item .material-symbols-outlined { @apply text-[19px] text-slate-400; }
+            .nav-item.is-active { @apply bg-white/10 text-white font-medium; }
+            .nav-item.is-active::before { content: ''; @apply absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-brand-500; }
+            .nav-item.is-active .material-symbols-outlined { @apply text-brand-400; }
+            .nav-badge     { @apply rounded px-1.5 py-px text-[11px] font-semibold tabular-nums; }
         }
     </style>
     @stack('styles')
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+<body>
+    @php
+        $navActive = fn (bool $active) => $active ? 'nav-item is-active' : 'nav-item';
+    @endphp
 
-    <!-- Mobile Sidebar Backdrop Overlay -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity" onclick="toggleSidebar()"></div>
+    <!-- Overlay sidebar (mobile) -->
+    <div id="sidebarOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/50 lg:hidden" onclick="toggleSidebar()"></div>
 
-    <!-- Master Sidebar -->
-    <aside id="adminSidebar" class="fixed left-0 top-0 h-full w-[16.5rem] bg-navy-950 text-slate-300 z-50 flex flex-col border-r border-slate-800 shadow-xl -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
-        <!-- Brand Header -->
-        <div class="h-16 flex items-center justify-between px-5 bg-navy-950/90 border-b border-slate-800/80 shrink-0">
-            <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 group">
-                <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-600/30 group-hover:scale-105 transition-transform">
-                    <span class="material-symbols-outlined text-[20px]">local_shipping</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="font-display font-bold text-white text-base tracking-tight leading-tight">CityCourier</span>
-                    <span class="font-mono text-[10px] font-semibold uppercase tracking-wider text-brand-500">Ops Console</span>
-                </div>
-            </a>
-            <button class="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors" onclick="toggleSidebar()">
-                <span class="material-symbols-outlined text-[20px]">close</span>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-sidebar-width -translate-x-full flex-col bg-navy-900 transition-transform duration-200 lg:translate-x-0">
+        <div class="flex h-header-height shrink-0 items-center gap-2.5 border-b border-white/10 px-4">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white">
+                <span class="material-symbols-outlined text-[18px]">local_shipping</span>
+            </div>
+            <div class="min-w-0 leading-tight">
+                <div class="text-sm font-semibold text-white">CityCourier</div>
+                <div class="text-[11px] text-slate-400">Admin Panel</div>
+            </div>
+            <button type="button" class="btn-icon ml-auto text-slate-400 hover:bg-white/10 hover:text-white lg:hidden" onclick="toggleSidebar()" aria-label="Tutup menu">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 
-        <!-- Navigation Scroll Area -->
-        <div class="flex-1 overflow-y-auto px-3.5 py-4 sidebar-scroll">
-            <nav class="space-y-6">
+        <nav class="flex-1 overflow-y-auto px-2.5 pb-4">
+            @canPerm('dashboard.view')
+            <div class="nav-group">Menu Utama</div>
+            <a href="{{ route('admin.dashboard') }}" class="{{ $navActive(request()->routeIs('admin.dashboard*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">dashboard</span>Dashboard</span>
+            </a>
+            @endcanPerm
 
-                <!-- GRUP 1: OPERASIONAL -->
-                <div>
-                    <div class="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                        Operasional
-                    </div>
-                    <div class="space-y-1">
-                        @canPerm('dashboard.view')
-                        <a href="{{ route('admin.dashboard') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.dashboard*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.dashboard*') ? 'text-brand-500' : 'text-slate-400' }}">dashboard</span>
-                                <span>Dashboard Utama</span>
-                            </div>
-                        </a>
-                        @endcanPerm
+            <div class="nav-group">Manajemen</div>
+            @canPerm('couriers.view')
+            <a href="{{ route('admin.couriers', ['filter' => 'unverified']) }}" class="{{ $navActive(request()->routeIs('admin.couriers*') && request('filter') === 'unverified') }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">how_to_reg</span>Verifikasi Kurir</span>
+                @if(($unverified ?? 0) > 0)
+                    <span class="nav-badge bg-brand-600 text-white">{{ $unverified }}</span>
+                @endif
+            </a>
+            <a href="{{ route('admin.couriers', ['filter' => 'verified']) }}" class="{{ $navActive(request()->routeIs('admin.couriers*') && request('filter') !== 'unverified') }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">two_wheeler</span>Daftar Kurir</span>
+            </a>
+            @endcanPerm
+            @canPerm('orders.view')
+            <a href="{{ route('admin.orders') }}" class="{{ $navActive(request()->routeIs('admin.orders*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">inventory_2</span>Pesanan</span>
+                @if(($pendingOrders ?? 0) > 0)
+                    <span class="nav-badge bg-white/15 text-slate-200">{{ $pendingOrders }}</span>
+                @endif
+            </a>
+            @endcanPerm
+            @canPerm('shipments.view')
+            <a href="{{ route('admin.shipments.index') }}" class="{{ $navActive(request()->routeIs('admin.shipments*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">local_shipping</span>Pengiriman</span>
+            </a>
+            @endcanPerm
+            @canPerm('drop_points.view')
+            <a href="{{ route('admin.drop-points.index') }}" class="{{ $navActive(request()->routeIs('admin.drop-points*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">warehouse</span>Drop Point</span>
+            </a>
+            @endcanPerm
 
-                        @canPerm('orders.view')
-                        <a href="{{ route('admin.orders') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.orders*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.orders*') ? 'text-brand-500' : 'text-slate-400' }}">inventory_2</span>
-                                <span>Pesanan Masuk</span>
-                            </div>
-                            @if(($pendingOrders ?? 0) > 0)
-                                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-brand-500/20 text-brand-400 border border-brand-500/30">{{ $pendingOrders }}</span>
-                            @endif
-                        </a>
-                        @endcanPerm
+            <div class="nav-group">City-Work Operasional</div>
+            @canPerm('ci_work.view')
+            <a href="{{ route('admin.ci-work.index') }}" class="{{ $navActive(request()->routeIs('admin.ci-work.index*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">monitoring</span>Dashboard Kerja</span>
+            </a>
+            @endcanPerm
+            @canPerm('ci_work_attendance.view')
+            <a href="{{ route('admin.ci-work.attendance') }}" class="{{ $navActive(request()->routeIs('admin.ci-work.attendance*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">badge</span>Presensi Kurir</span>
+            </a>
+            @endcanPerm
+            @canPerm('ci_work_tasks.view')
+            <a href="{{ route('admin.ci-work.tasks') }}" class="{{ $navActive(request()->routeIs('admin.ci-work.tasks*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">assignment</span>Manajemen Tugas</span>
+            </a>
+            @endcanPerm
+            @canPerm('ci_work_finance.view')
+            <a href="{{ route('admin.ci-work.finance') }}" class="{{ $navActive(request()->routeIs('admin.ci-work.finance*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">payments</span>Keuangan &amp; Setoran</span>
+            </a>
+            @endcanPerm
 
-                        @canPerm('shipments.view')
-                        <a href="{{ route('admin.shipments.index') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.shipments*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.shipments*') ? 'text-brand-500' : 'text-slate-400' }}">local_shipping</span>
-                                <span>Pengiriman Real-time</span>
-                            </div>
-                        </a>
-                        @endcanPerm
+            <div class="nav-group">Sistem &amp; Keamanan</div>
+            @canPerm('users.view')
+            <a href="{{ route('admin.users.index') }}" class="{{ $navActive(request()->routeIs('admin.users*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">group</span>Manajemen User</span>
+            </a>
+            @endcanPerm
+            @canPerm('roles.view')
+            <a href="{{ route('admin.roles.index') }}" class="{{ $navActive(request()->routeIs('admin.roles*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">admin_panel_settings</span>Manajemen Role</span>
+            </a>
+            @endcanPerm
+            @canPerm('permissions.view')
+            <a href="{{ route('admin.permissions.index') }}" class="{{ $navActive(request()->routeIs('admin.permissions*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">lock_person</span>Manajemen Permission</span>
+            </a>
+            @endcanPerm
+            @canPerm('settings.view')
+            <a href="{{ route('admin.settings.providers') }}" class="{{ $navActive(request()->routeIs('admin.settings.*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">hub</span>Provider &amp; Integrasi</span>
+            </a>
+            @endcanPerm
+            @canPerm('documentation.view')
+            <a href="{{ route('api.documentation') }}" target="_blank" rel="noopener" class="nav-item">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">code</span>Dokumentasi API</span>
+                <span class="material-symbols-outlined !text-[15px]">open_in_new</span>
+            </a>
+            @endcanPerm
 
-                        @canPerm('drop_points.view')
-                        <a href="{{ route('admin.drop-points.index') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.drop-points*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.drop-points*') ? 'text-brand-500' : 'text-slate-400' }}">warehouse</span>
-                                <span>Drop Points</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-                    </div>
+            @canPerm('app_download.view')
+            @php $activeApk = \App\Models\AppDownload::getActive(); @endphp
+            <div class="nav-group">Unduh Aplikasi</div>
+            <a href="{{ route('admin.app-download') }}" class="{{ $navActive(request()->routeIs('admin.app-download*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">install_mobile</span>Kelola APK</span>
+            </a>
+            <a href="{{ route('download.app') }}" class="nav-item">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">android</span>Download App</span>
+                <span class="nav-badge bg-white/10 text-slate-300">v{{ $activeApk->version ?? '1.0.0' }}</span>
+            </a>
+            @endcanPerm
+        </nav>
+    </aside>
+
+    <!-- Konten utama -->
+    <div class="flex min-h-screen flex-col lg:pl-sidebar-width">
+        <header class="sticky top-0 z-30 flex h-header-height items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 sm:px-6">
+            <div class="flex min-w-0 items-center gap-3">
+                <button id="hamburgerBtn" type="button" class="btn-icon lg:hidden" aria-label="Buka menu">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <div class="flex min-w-0 items-center gap-1.5 text-[13px]">
+                    <span class="hidden text-slate-400 sm:inline">Admin</span>
+                    <span class="material-symbols-outlined hidden text-[16px] text-slate-300 sm:inline">chevron_right</span>
+                    <span class="truncate font-medium text-slate-800">@yield('title', 'Dashboard')</span>
                 </div>
+            </div>
 
-                <!-- GRUP 2: ARMADA KURIR -->
-                @canPerm('couriers.view')
-                <div>
-                    <div class="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                        Armada Kurir
-                    </div>
-                    <div class="space-y-1">
-                        <a href="{{ route('admin.couriers', ['filter' => 'unverified']) }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request('filter') === 'unverified' ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request('filter') === 'unverified' ? 'text-brand-500' : 'text-slate-400' }}">how_to_reg</span>
-                                <span>Verifikasi Berkas</span>
-                            </div>
-                            @if(($unverified ?? 0) > 0)
-                                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">{{ $unverified }}</span>
-                            @endif
-                        </a>
-
-                        <a href="{{ route('admin.couriers', ['filter' => 'verified']) }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ (request()->routeIs('admin.couriers*') && request('filter') !== 'unverified') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ (request()->routeIs('admin.couriers*') && request('filter') !== 'unverified') ? 'text-brand-500' : 'text-slate-400' }}">two_wheeler</span>
-                                <span>Daftar Armada Kurir</span>
-                            </div>
-                        </a>
-                    </div>
-                </div>
-                @endcanPerm
-
-                <!-- GRUP 3: CITY-WORK OPERASIONAL -->
-                @canPerm('ci_work.view')
-                <div>
-                    <div class="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                        City-Work Lapangan
-                    </div>
-                    <div class="space-y-1">
-                        <a href="{{ route('admin.ci-work.index') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.ci-work.index*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.ci-work.index*') ? 'text-brand-500' : 'text-slate-400' }}">monitoring</span>
-                                <span>Dashboard Lapangan</span>
-                            </div>
-                        </a>
-
-                        @canPerm('ci_work_attendance.view')
-                        <a href="{{ route('admin.ci-work.attendance') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.ci-work.attendance*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.ci-work.attendance*') ? 'text-brand-500' : 'text-slate-400' }}">badge</span>
-                                <span>Presensi &amp; Posisi</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-
-                        @canPerm('ci_work_tasks.view')
-                        <a href="{{ route('admin.ci-work.tasks') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.ci-work.tasks*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.ci-work.tasks*') ? 'text-brand-500' : 'text-slate-400' }}">assignment</span>
-                                <span>Manajemen Tugas</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-
-                        @canPerm('ci_work_finance.view')
-                        <a href="{{ route('admin.ci-work.finance') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.ci-work.finance*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.ci-work.finance*') ? 'text-brand-500' : 'text-slate-400' }}">payments</span>
-                                <span>Keuangan &amp; Setoran</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-                    </div>
-                </div>
-                @endcanPerm
-
-                <!-- GRUP 4: SISTEM & PENGATURAN -->
-                <div>
-                    <div class="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                        Sistem &amp; Integrasi
-                    </div>
-                    <div class="space-y-1">
-                        @canPerm('settings.view')
-                        <a href="{{ route('admin.settings.providers') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.settings.*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.settings.*') ? 'text-brand-500' : 'text-slate-400' }}">hub</span>
-                                <span>Provider &amp; WhatsApp</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-
-                        @canPerm('users.view')
-                        <a href="{{ route('admin.users.index') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.users*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.users*') ? 'text-brand-500' : 'text-slate-400' }}">group</span>
-                                <span>Manajemen User</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-
-                        @canPerm('roles.view')
-                        <a href="{{ route('admin.roles.index') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.roles*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.roles*') ? 'text-brand-500' : 'text-slate-400' }}">admin_panel_settings</span>
-                                <span>Role &amp; Hak Akses</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-
-                        @canPerm('app_download.view')
-                        <a href="{{ route('admin.app-download') }}"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('admin.app-download*') ? 'bg-slate-800/90 text-white font-semibold border-l-4 border-brand-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] {{ request()->routeIs('admin.app-download*') ? 'text-brand-500' : 'text-slate-400' }}">install_mobile</span>
-                                <span>Kelola Rilis APK</span>
-                            </div>
-                        </a>
-                        @endcanPerm
-
-                        @canPerm('documentation.view')
-                        <a href="{{ route('api.documentation') }}" target="_blank" rel="noopener"
-                           class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-[20px] text-slate-400">code</span>
-                                <span>Dokumentasi API</span>
-                            </div>
-                            <span class="material-symbols-outlined text-[16px] text-slate-400">open_in_new</span>
-                        </a>
-                        @endcanPerm
-                    </div>
-                </div>
-
-            </nav>
-        </div>
-
-        <!-- Sidebar Profile & Logout Footer -->
-        <div class="p-3.5 bg-navy-950 border-t border-slate-800/80 shrink-0">
-            <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/80">
-                <div class="flex items-center gap-3 overflow-hidden">
-                    <div class="w-9 h-9 rounded-xl bg-brand-600 text-white font-bold flex items-center justify-center text-sm shadow-sm shrink-0">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="{{ route('download.app') }}" class="btn btn-secondary btn-sm hidden sm:inline-flex">
+                    <span class="material-symbols-outlined">download</span>
+                    Download App
+                </a>
+                <div class="hidden h-6 w-px bg-slate-200 sm:block"></div>
+                <div class="flex items-center gap-2.5">
+                    <div class="avatar bg-navy-900 text-white">
                         {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
                     </div>
-                    <div class="flex flex-col truncate">
-                        <span class="text-xs font-semibold text-white truncate">{{ auth()->user()->name ?? 'Administrator' }}</span>
-                        <span class="text-[11px] text-slate-400 truncate">{{ auth()->user()->email ?? 'admin@citycourier.com' }}</span>
+                    <div class="hidden flex-col leading-tight md:flex">
+                        <span class="text-[13px] font-medium text-slate-800">{{ auth()->user()->name ?? 'Admin City Courier' }}</span>
+                        <span class="text-[11.5px] text-slate-500">{{ auth()->user()?->roles?->first()?->name ? ucwords(str_replace('-', ' ', auth()->user()->roles->first()->name)) : 'Administrator' }}</span>
                     </div>
                 </div>
-
-                <form action="{{ route('logout') }}" method="POST" class="m-0" onsubmit="return confirm('Apakah Anda yakin ingin keluar dari Admin Panel?')">
+                <form action="{{ route('logout') }}" method="POST" class="m-0">
                     @csrf
-                    <button type="submit" class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Keluar">
-                        <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <button type="submit" class="btn-icon btn-icon-danger" title="Keluar">
+                        <span class="material-symbols-outlined">logout</span>
                     </button>
                 </form>
             </div>
-        </div>
-    </aside>
-
-    <!-- Main Content Area -->
-    <div class="lg:pl-[16.5rem] flex flex-col min-h-screen">
-
-        <!-- Top Header Bar -->
-        <header class="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between shadow-sm">
-            <div class="flex items-center gap-3 sm:gap-4 flex-1">
-                <!-- Mobile Hamburger Toggle -->
-                <button class="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" onclick="toggleSidebar()" aria-label="Buka Menu">
-                    <span class="material-symbols-outlined text-[24px]">menu</span>
-                </button>
-
-                <!-- Page / Context Breadcrumb -->
-                <div class="flex items-center gap-2 text-xs sm:text-sm text-slate-500">
-                    <span class="font-semibold text-slate-800 font-display">City Courier</span>
-                    <span class="text-slate-300">/</span>
-                    <span class="text-slate-600 font-medium">@yield('title', 'Admin Console')</span>
-                </div>
-            </div>
-
-            <!-- Header Right Actions -->
-            <div class="flex items-center gap-2.5 sm:gap-3">
-                <!-- Real-time Clock / Date (Desktop) -->
-                <div class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200/80 text-xs text-slate-600 font-medium">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="currentDateDisplay">Live Ops</span>
-                </div>
-
-                @php
-                    $activeApk = \App\Models\AppDownload::getActive();
-                @endphp
-                @if($activeApk)
-                <a href="{{ route('download.app') }}"
-                   class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-semibold transition-colors border border-slate-200/80">
-                    <span class="material-symbols-outlined text-[16px] text-brand-600">android</span>
-                    <span>APK v{{ $activeApk->version }}</span>
-                </a>
-                @endif
-
-                <!-- User Badge -->
-                <div class="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-                    <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                        {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
-                    </div>
-                    <span class="hidden xl:inline text-xs font-semibold text-slate-700">{{ auth()->user()->name ?? 'Admin' }}</span>
-                </div>
-            </div>
         </header>
 
-        <!-- Main Body Container -->
-        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-            <!-- Flash Message Success -->
-            @if(session('success'))
-                <div id="flashSuccess" class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between shadow-sm transition-all duration-300">
-                    <div class="flex items-center gap-3">
-                        <span class="material-symbols-outlined text-emerald-600 text-[22px]">check_circle</span>
-                        <span class="text-sm font-semibold">{{ session('success') }}</span>
+        <main class="w-full flex-1 px-4 py-5 sm:px-6 lg:px-8">
+            <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
+                @if(session('success'))
+                    <div id="flashSuccess" class="alert alert-success">
+                        <span class="material-symbols-outlined">check_circle</span>
+                        <span class="flex-1">{{ session('success') }}</span>
+                        <button type="button" class="text-emerald-700 hover:text-emerald-900" onclick="this.parentElement.remove()" aria-label="Tutup">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
                     </div>
-                    <button type="button" onclick="this.parentElement.remove()" class="text-emerald-700 hover:text-emerald-900">
-                        <span class="material-symbols-outlined text-[18px]">close</span>
-                    </button>
-                </div>
-            @endif
-
-            <!-- Flash Message Error -->
-            @if(session('error'))
-                <div id="flashError" class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 flex items-center justify-between shadow-sm transition-all duration-300">
-                    <div class="flex items-center gap-3">
-                        <span class="material-symbols-outlined text-red-600 text-[22px]">error</span>
-                        <span class="text-sm font-semibold">{{ session('error') }}</span>
+                @endif
+                @if(session('error'))
+                    <div id="flashError" class="alert alert-error">
+                        <span class="material-symbols-outlined">error</span>
+                        <span class="flex-1">{{ session('error') }}</span>
+                        <button type="button" class="text-red-700 hover:text-red-900" onclick="this.parentElement.remove()" aria-label="Tutup">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
                     </div>
-                    <button type="button" onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900">
-                        <span class="material-symbols-outlined text-[18px]">close</span>
-                    </button>
-                </div>
-            @endif
+                @endif
 
-            <!-- View Yield -->
-            @yield('content')
+                @yield('content')
+            </div>
         </main>
-
-        <!-- Footer -->
-        <footer class="mt-auto py-5 px-6 sm:px-8 border-t border-slate-200/80 bg-white text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div>
-                &copy; {{ date('Y') }} <strong class="text-slate-600 font-semibold">City Courier Indonesia</strong>. Seluruh hak cipta dilindungi.
-            </div>
-            <div class="flex items-center gap-4 text-slate-400">
-                <span>Versi 2.4-stable</span>
-                <span>&bull;</span>
-                <span>Fonnte WhatsApp Integrated</span>
-                <span>&bull;</span>
-                <span>GoSend Instant Model</span>
-            </div>
-        </footer>
-
     </div>
 
-    <!-- Core Scripts -->
     <script>
     function toggleSidebar() {
-        const sidebar = document.getElementById('adminSidebar');
+        const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
         if (sidebar) sidebar.classList.toggle('-translate-x-full');
         if (overlay) overlay.classList.toggle('hidden');
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Date display
-        const dateEl = document.getElementById('currentDateDisplay');
-        if (dateEl) {
-            const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
-            dateEl.textContent = new Date().toLocaleDateString('id-ID', options);
-        }
+    document.addEventListener('DOMContentLoaded', function () {
+        const hamburger = document.getElementById('hamburgerBtn');
+        if (hamburger) hamburger.addEventListener('click', toggleSidebar);
 
-        // Auto dismiss flash
-        ['flashSuccess', 'flashError'].forEach(id => {
+        ['flashSuccess', 'flashError'].forEach(function (id) {
             const el = document.getElementById(id);
-            if (el) {
-                setTimeout(() => {
-                    el.style.opacity = '0';
-                    setTimeout(() => el.remove(), 300);
-                }, 4000);
-            }
+            if (el) setTimeout(function () {
+                el.style.transition = 'opacity .3s';
+                el.style.opacity = '0';
+                setTimeout(function () { el.remove(); }, 300);
+            }, 5000);
         });
     });
     </script>

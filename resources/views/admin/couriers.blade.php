@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Manajemen Armada Kurir')
+@section('title', 'Manajemen & Verifikasi Kurir')
 
 @section('content')
 @php
@@ -16,7 +16,7 @@
     ];
 
     $courierData = [];
-    foreach ($verified as $c) {
+    foreach ($all as $c) {
         $phoneRaw = preg_replace('/[^0-9]/', '', $c->phone ?? '');
         $wa = (str_starts_with($phoneRaw, '0')) ? '62' . substr($phoneRaw, 1)
             : ((str_starts_with($phoneRaw, '62')) ? $phoneRaw : '62' . $phoneRaw);
@@ -55,860 +55,673 @@
             'ktpUrl' => $c->id_card_photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($c->id_card_photo) : null,
             'simUrl' => $c->driving_license_photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($c->driving_license_photo) : null,
             'skckUrl' => $c->skck_photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($c->skck_photo) : null,
-            'recapCount' => $c->orders->count(),
-            'recapTotal' => $c->orders->sum('price'),
+            'recapCount' => $c->orders ? $c->orders->count() : 0,
+            'recapTotal' => $c->orders ? $c->orders->sum('price') : 0,
         ];
     }
 @endphp
-<div class="flex flex-col w-full gap-space-xl">
 
-    <!-- Flash Messages -->
-    @if(session('success'))
-        <div id="flashSuccess" class="p-space-md rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-space-sm">
-            <span class="material-symbols-outlined text-[20px] text-emerald-600">check_circle</span>
-            <span class="font-body-sm text-body-sm text-emerald-800 font-semibold">{{ session('success') }}</span>
-        </div>
-    @endif
-    @if(session('error'))
-        <div id="flashError" class="p-space-md rounded-xl bg-red-50 border border-red-200 flex items-center gap-space-sm">
-            <span class="material-symbols-outlined text-[20px] text-red-600">error</span>
-            <span class="font-body-sm text-body-sm text-red-800 font-semibold">{{ session('error') }}</span>
-        </div>
-    @endif
-
-    <!-- Page Header & Action Bar -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
-        <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Mitra Lapangan</span>
-                <span class="text-secondary font-bold text-[11px]">•</span>
-                <span class="font-label-sm text-label-sm text-secondary">Fleet Operations Hub</span>
+<div class="space-y-5">
+    {{-- Header Halaman --}}
+    <div class="page-header">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="page-title">Manajemen &amp; Verifikasi Kurir</h1>
+                @if(count($pending) > 0)
+                <span class="badge badge-amber">
+                    <span class="badge-dot"></span>
+                    {{ count($pending) }} Menunggu Persetujuan
+                </span>
+                @endif
             </div>
-            <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Manajemen Armada Kurir</h1>
-            <p class="font-body-md text-body-md text-secondary">Kelola data mitra kurir, status verifikasi dokumen, kendaraan, dan performa lapangan.</p>
+            <p class="page-subtitle">Kelola armada kurir, validasi kelengkapan dokumen KTP/SIM/SKCK, dan pantau status keaktifan.</p>
         </div>
-        <div class="flex items-center gap-space-sm self-start md:self-auto">
-            <a href="{{ route('admin.couriers.export') }}" class="h-9 px-space-md rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container shadow-sm flex items-center gap-space-xs font-label-md text-label-md transition-colors">
-                <span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
-                <span>Export Data Kurir</span>
+
+        <div class="page-actions">
+            <button type="button" onclick="shareRegistrationLink()" class="btn btn-secondary" title="Salin tautan pendaftaran kurir baru">
+                <span class="material-symbols-outlined">share</span>
+                <span>Bagikan Link Daftar</span>
+            </button>
+            <a href="{{ route('admin.couriers.export') }}" class="btn btn-secondary">
+                <span class="material-symbols-outlined">download</span>
+                <span>Ekspor CSV</span>
             </a>
-            @canPerm('couriers.create')
-            <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary shadow-sm flex items-center gap-space-xs font-label-md text-label-md font-semibold transition-colors" onclick="openAddCourierModal()" type="button">
-                <span class="material-symbols-outlined text-[18px]">person_add</span>
-                <span>+ Tambah Kurir Baru</span>
-            </button>
-            @endcanPerm
-        </div>
-    </div>
-
-    <!-- Operational Stat Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Total Mitra Terdaftar</span>
-                <span class="p-space-xs rounded-lg bg-surface-container-high text-primary flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">two_wheeler</span>
-                </span>
-            </div>
-            <div class="flex items-baseline gap-space-xs mt-space-sm">
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $stats['total'] }}</span>
-                <span class="font-label-sm text-label-sm text-secondary">Kurir Terdata</span>
-            </div>
-            <div class="flex items-center gap-space-xs mt-space-xs">
-                <span class="material-symbols-outlined text-[14px] text-primary font-bold">arrow_upward</span>
-                <span class="font-label-sm text-label-sm text-primary font-semibold">Aktif dalam sistem operasional</span>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Kurir Siap Kerja / Online</span>
-                <span class="p-space-xs rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">online_prediction</span>
-                </span>
-            </div>
-            <div class="flex items-baseline gap-space-xs mt-space-sm">
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $stats['active'] }}</span>
-                <span class="font-label-sm text-label-sm text-secondary">Aktif Bertugas</span>
-            </div>
-            <div class="flex items-center gap-space-xs mt-space-xs">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="font-label-sm text-label-sm text-secondary font-semibold">{{ $stats['total'] > 0 ? round($stats['active'] / $stats['total'] * 100) : 0 }}% Rasio Kesiapan Armada</span>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Menunggu Verifikasi</span>
-                <span class="p-space-xs rounded-lg bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">pending_actions</span>
-                </span>
-            </div>
-            <div class="flex items-baseline gap-space-xs mt-space-sm">
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $stats['unverified'] }}</span>
-                <span class="font-label-sm text-label-sm text-secondary">Antrian Berkas</span>
-            </div>
-            <div class="flex items-center gap-space-xs mt-space-xs">
-                <span class="material-symbols-outlined text-[14px] text-secondary font-bold">{{ $stats['unverified'] > 0 ? 'schedule' : 'check_circle' }}</span>
-                <span class="font-label-sm text-label-sm text-secondary font-semibold">{{ $stats['unverified'] > 0 ? 'Ada pengajuan yang perlu ditinjau' : 'Semua pengajuan telah diproses' }}</span>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Rata-rata Rating Kurir</span>
-                <span class="p-space-xs rounded-lg bg-surface-container-high text-primary flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">hotel_class</span>
-                </span>
-            </div>
-            <div class="flex items-baseline gap-space-xs mt-space-sm">
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">4.9</span>
-                <span class="font-label-sm text-label-sm text-secondary">/ 5.0 (Bintang)</span>
-            </div>
-            <div class="flex items-center gap-space-xs mt-space-xs">
-                <span class="material-symbols-outlined text-[14px] text-primary">sentiment_satisfied</span>
-                <span class="font-label-sm text-label-sm text-secondary font-semibold">Kepuasan Pelanggan Prima</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filter Toolbar & Tabs -->
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-md flex flex-col lg:flex-row lg:items-center lg:justify-between gap-space-md">
-        <!-- Status Filter Pills -->
-        <div class="flex items-center gap-space-2xs bg-surface p-space-2xs rounded-lg overflow-x-auto" id="kurirFilterTabs">
-            <button class="tab-btn px-space-md py-space-xs rounded-lg font-label-md text-label-md font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors whitespace-nowrap" onclick="setActiveTab(this, 'all')" type="button">
-                Semua
-            </button>
-            <button class="tab-btn px-space-md py-space-xs rounded-lg font-label-md text-label-md font-bold {{ request('filter') === 'unverified' ? '' : 'bg-primary-container text-on-primary shadow-sm' }} transition-colors whitespace-nowrap flex items-center gap-space-xs" onclick="setActiveTab(this, 'verified')" type="button">
-                <span>Terverifikasi</span>
-                <span class="px-space-xs py-space-2xs rounded font-data-mono text-[11px]">{{ $stats['verified'] }}</span>
-            </button>
-            <button class="tab-btn px-space-md py-space-xs rounded-lg font-label-md text-label-md font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors whitespace-nowrap flex items-center gap-space-xs" onclick="setActiveTab(this, 'unverified')" type="button">
-                <span>Belum Verifikasi</span>
-                <span class="px-space-xs py-space-2xs bg-surface-container-highest text-secondary rounded font-data-mono text-[11px]">{{ $stats['unverified'] }}</span>
-            </button>
-            <button class="tab-btn px-space-md py-space-xs rounded-lg font-label-md text-label-md font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors whitespace-nowrap flex items-center gap-space-xs" onclick="setActiveTab(this, 'active')" type="button">
-                <span>Aktif Online</span>
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            </button>
-        </div>
-        <!-- Live Search & Control -->
-        <div class="flex items-center gap-space-sm flex-1 lg:max-w-md">
-            <div class="relative w-full flex items-center">
-                <span class="material-symbols-outlined absolute left-space-md text-secondary pointer-events-none text-[18px]">search</span>
-                <input class="w-full bg-surface pl-9 pr-space-md py-space-xs h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary-container shadow-sm transition-all" id="searchInput" onkeyup="filterKurirTable()" placeholder="Cari nama, email, nomor telepon, atau plat kendaraan..." type="text"/>
-            </div>
-            <button class="p-space-xs h-9 w-9 rounded-lg bg-surface hover:bg-surface-container text-secondary hover:text-on-surface flex items-center justify-center transition-colors" title="Refresh data" onclick="location.reload()" type="button">
-                <span class="material-symbols-outlined text-[18px]">refresh</span>
+            <button type="button" onclick="openAddCourierModal()" class="btn btn-primary">
+                <span class="material-symbols-outlined">person_add</span>
+                <span>Tambah Kurir</span>
             </button>
         </div>
     </div>
 
-    <!-- Primary Content Area: Table & Verification Panel -->
-    <div class="flex flex-col gap-space-xl">
+    {{-- Ringkasan Armada Kurir --}}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="card p-3.5">
+            <div class="stat-label">Total Armada</div>
+            <div class="stat-value">{{ $all->count() }}</div>
+            <div class="stat-meta">Semua kurir terdaftar</div>
+        </div>
+        <div class="card p-3.5">
+            <div class="stat-label">Menunggu Verifikasi</div>
+            <div class="stat-value text-amber-600">{{ count($pending) }}</div>
+            <div class="stat-meta">Perlu review berkas</div>
+        </div>
+        <div class="card p-3.5">
+            <div class="stat-label">Terverifikasi Aktif</div>
+            <div class="stat-value text-emerald-600">{{ $all->where('is_verified', true)->where('is_active', true)->count() }}</div>
+            <div class="stat-meta">Siap menerima order</div>
+        </div>
+        <div class="card p-3.5">
+            <div class="stat-label">Nonaktif / Suspend</div>
+            <div class="stat-value text-slate-500">{{ $all->where('is_active', false)->count() }}</div>
+            <div class="stat-meta">Akses dinonaktifkan</div>
+        </div>
+    </div>
 
-        <!-- SECTION 1: Verified Courier Fleet Table -->
-        <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col" id="verifiedSection">
-            <!-- Section Header -->
-            <div class="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between border-b border-surface-container-high">
-                <div class="flex items-center gap-space-sm">
-                    <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-on-primary-fixed-variant">
-                        <span class="material-symbols-outlined text-[20px]">two_wheeler</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="font-headline-sm text-headline-sm text-on-surface font-bold leading-tight">Daftar Kurir Terverifikasi</span>
-                        <span class="font-label-sm text-label-sm text-secondary" id="activeCountLabel">Menampilkan {{ count($verified) }} kurir terverifikasi &amp; aktif</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-space-xs">
-                    <span class="px-space-xs py-space-2xs rounded-lg font-label-sm text-label-sm bg-surface-container text-secondary font-data-mono">Sync: Live Socket</span>
+    {{-- Bagian 1: Kurir Menunggu Verifikasi --}}
+    <div id="pendingSection" class="card overflow-hidden {{ count($pending) === 0 ? 'hidden' : '' }}">
+        <div class="card-header bg-amber-50/50 border-amber-200/80">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-700">how_to_reg</span>
+                <div>
+                    <div class="card-title text-amber-900">Kurir Menunggu Verifikasi ({{ count($pending) }})</div>
+                    <div class="card-subtitle text-amber-700">Periksa dokumen kelengkapan sebelum menyetujui akun kurir</div>
                 </div>
             </div>
+            <button type="button" class="btn btn-sm btn-ghost text-amber-800" onclick="location.reload()">
+                <span class="material-symbols-outlined text-[16px]">refresh</span>
+                Refresh
+            </button>
+        </div>
 
-            <!-- High-Density Courier Table -->
-            <div class="overflow-x-auto w-full">
-                <table class="w-full text-left" id="courierTable">
+        <div class="divide-y divide-slate-100">
+            @forelse ($pending as $courier)
+            @php
+                $data = $courierData[$courier->id] ?? null;
+            @endphp
+            <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-amber-50/20 transition-colors">
+                <div class="flex items-start gap-3">
+                    <div class="avatar bg-amber-100 text-amber-800 font-bold">
+                        {{ strtoupper(substr($courier->user?->name ?? 'K', 0, 1)) }}
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-slate-900">{{ $courier->user?->name ?? 'Kurir' }}</span>
+                            <span class="badge badge-amber text-[11px]">Pending Review</span>
+                        </div>
+                        <div class="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 font-mono">
+                            <span>{{ $courier->phone ?? '-' }}</span>
+                            <span>&bull;</span>
+                            <span>{{ $courier->user?->email ?? '-' }}</span>
+                            <span>&bull;</span>
+                            <span>Plat: <strong>{{ $courier->vehicle_plate ?? '-' }}</strong> ({{ ucfirst($courier->vehicle_type ?? 'Motor') }})</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="text-[11px] font-medium text-slate-500">Berkas Terunggah:</span>
+                            <span class="badge {{ $courier->id_card_photo ? 'badge-green' : 'badge-gray' }} text-[10px]">
+                                KTP: {{ $courier->id_card_photo ? 'Ada' : 'Belum' }}
+                            </span>
+                            <span class="badge {{ $courier->driving_license_photo ? 'badge-green' : 'badge-gray' }} text-[10px]">
+                                SIM: {{ $courier->driving_license_photo ? 'Ada' : 'Belum' }}
+                            </span>
+                            <span class="badge {{ $courier->skck_photo ? 'badge-green' : 'badge-gray' }} text-[10px]">
+                                SKCK: {{ $courier->skck_photo ? 'Ada' : 'Belum' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button"
+                            onclick="openDriverModal({{ $courier->id }})"
+                            class="btn btn-sm btn-secondary">
+                        <span class="material-symbols-outlined text-[16px]">visibility</span>
+                        <span>Lihat Berkas</span>
+                    </button>
+
+                    <form action="{{ route('admin.couriers.verify', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirmSteer()">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-sm btn-success">
+                            <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                            <span>Verifikasi Sekarang</span>
+                        </button>
+                    </form>
+
+                    <form action="{{ route('admin.couriers.toggle-active', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Tolak pendaftaran kurir ini?')">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-sm btn-ghost text-red-600 hover:bg-red-50" title="Tolak Pendaftaran">
+                            <span class="material-symbols-outlined text-[16px]">block</span>
+                            <span>Tolak</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @empty
+            <div class="empty-state py-8">
+                <span class="material-symbols-outlined text-slate-300">verified</span>
+                <div class="empty-title">Semua pendaftaran kurir sudah diverifikasi</div>
+            </div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- Bagian 2: Daftar Kurir Utama --}}
+    <div id="verifiedSection" class="space-y-4">
+        {{-- Filter & Search Bar --}}
+        <div class="card p-3 sm:p-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                {{-- Tabs Filter Client-side --}}
+                <div id="kurirFilterTabs" class="filter-tabs">
+                    <button type="button" class="tab-btn filter-tab is-active" onclick="setActiveTab('all', this)">
+                        <span>Semua Armada</span>
+                        <span class="filter-count">{{ $all->count() }}</span>
+                    </button>
+                    <button type="button" class="tab-btn filter-tab" onclick="setActiveTab('pending', this)">
+                        <span>Menunggu</span>
+                        @if(count($pending) > 0)
+                            <span class="filter-count bg-amber-200 text-amber-900">{{ count($pending) }}</span>
+                        @else
+                            <span class="filter-count">0</span>
+                        @endif
+                    </button>
+                    <button type="button" class="tab-btn filter-tab" onclick="setActiveTab('verified', this)">
+                        <span>Terverifikasi</span>
+                        <span class="filter-count">{{ count($verified) }}</span>
+                    </button>
+                    <button type="button" class="tab-btn filter-tab" onclick="setActiveTab('inactive', this)">
+                        <span>Nonaktif</span>
+                        <span class="filter-count">{{ $all->where('is_active', false)->count() }}</span>
+                    </button>
+                </div>
+
+                {{-- Search Box --}}
+                <div class="search-box w-full sm:w-72">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text"
+                           id="searchInput"
+                           onkeyup="filterKurirTable()"
+                           placeholder="Cari kurir, plat nomor, nomor HP..."
+                           class="form-input">
+                </div>
+            </div>
+        </div>
+
+        {{-- Tabel Kurir --}}
+        <div class="card overflow-hidden">
+            <div class="table-wrap">
+                <table class="data-table" id="courierTable">
                     <thead>
-                        <tr class="bg-surface text-secondary font-label-sm text-label-sm uppercase tracking-wider">
-                            <th class="py-space-sm px-space-lg font-semibold" scope="col">Kurir</th>
-                            <th class="py-space-sm px-space-md font-semibold" scope="col">Telepon / WhatsApp</th>
-                            <th class="py-space-sm px-space-md font-semibold" scope="col">Kendaraan</th>
-                            <th class="py-space-sm px-space-md font-semibold" scope="col">Plat Nomor</th>
-                            <th class="py-space-sm px-space-md font-semibold" scope="col">Verifikasi</th>
-                            <th class="py-space-sm px-space-md font-semibold" scope="col">Status Kerja</th>
-                            <th class="py-space-sm px-space-md font-semibold" scope="col">Rekap Hari Ini</th>
-                            <th class="py-space-sm px-space-lg font-semibold text-right" scope="col">Aksi</th>
+                        <tr>
+                            <th>Kurir &amp; Kontak</th>
+                            <th>Kendaraan &amp; Plat</th>
+                            <th>Status Verifikasi</th>
+                            <th>Status Akun</th>
+                            <th>Drop Point</th>
+                            <th>Performa</th>
+                            <th class="text-right">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-surface-container font-body-sm text-body-sm text-on-surface">
-                    @forelse ($verified as $courier)
-                        <tr class="hover:bg-surface-container-low transition-colors group">
-                            <!-- Courier Profile -->
-                            <td class="py-space-md px-space-lg">
-                                <div class="flex items-center gap-space-sm">
-                                    <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm font-bold shadow-sm shrink-0">
-                                        {{ strtoupper(substr($courierData[$courier->id]['name'], 0, 1)) }}
+                    <tbody>
+                        @forelse($all as $courier)
+                        @php
+                            $d = $courierData[$courier->id] ?? null;
+                            $isVerified = (bool) $courier->is_verified;
+                            $isActive = (bool) $courier->is_active;
+                            $rowStatus = !$isVerified ? 'pending' : ($isActive ? 'verified' : 'inactive');
+                        @endphp
+                        <tr data-status="{{ $rowStatus }}" data-name="{{ strtolower($courier->user?->name ?? '') }}" data-phone="{{ $courier->phone }}" data-plate="{{ strtolower($courier->vehicle_plate ?? '') }}">
+                            {{-- Info Kurir --}}
+                            <td>
+                                <div class="flex items-center gap-2.5">
+                                    <div class="avatar bg-slate-100 text-slate-700 font-bold shrink-0">
+                                        @if($courier->photo)
+                                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($courier->photo) }}"
+                                                 alt="{{ $courier->user?->name }}"
+                                                 class="h-full w-full object-cover rounded-full">
+                                        @else
+                                            {{ strtoupper(substr($courier->user?->name ?? 'K', 0, 1)) }}
+                                        @endif
                                     </div>
-                                    <div class="flex flex-col min-w-0">
-                                        <span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">{{ $courierData[$courier->id]['name'] }}</span>
-                                        <span class="font-body-sm text-body-sm text-secondary truncate font-data-mono">{{ $courierData[$courier->id]['email'] }}</span>
-                                        <span class="font-label-sm text-label-sm text-secondary">Bergabung: {{ $courierData[$courier->id]['joined'] }}</span>
+                                    <div class="min-w-0">
+                                        <button type="button"
+                                                onclick="openDriverModal({{ $courier->id }})"
+                                                class="text-left font-semibold text-slate-900 hover:text-brand-700 text-[13px] block truncate">
+                                            {{ $courier->user?->name ?? 'Kurir' }}
+                                        </button>
+                                        <div class="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
+                                            <span>{{ $courier->phone ?? '-' }}</span>
+                                            <span>&bull;</span>
+                                            <span class="truncate">{{ $courier->user?->email ?? '-' }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
-                            <!-- Phone / Quick WhatsApp -->
-                            <td class="py-space-md px-space-md">
-                                <div class="flex items-center gap-space-xs">
-                                    <span class="font-data-mono text-data-mono text-on-surface font-medium">{{ $courierData[$courier->id]['phone'] }}</span>
-                                    <a class="p-space-2xs rounded text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center" href="https://wa.me/{{ $courierData[$courier->id]['wa'] }}" target="_blank" title="Kirim Pesan WhatsApp">
-                                        <span class="material-symbols-outlined text-[16px]">chat</span>
-                                    </a>
+
+                            {{-- Kendaraan & Plat --}}
+                            <td class="whitespace-nowrap">
+                                <div class="flex items-center gap-1.5 text-xs font-medium text-slate-800">
+                                    <span class="material-symbols-outlined text-[16px] text-slate-500">
+                                        {{ match(strtolower($courier->vehicle_type ?? 'motor')) { 'mobil' => 'directions_car', default => 'two_wheeler' } }}
+                                    </span>
+                                    <span>{{ ucfirst($courier->vehicle_type ?? 'Motor') }}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-600 font-mono font-semibold mt-0.5">
+                                    {{ $courier->vehicle_plate ?? 'Tanpa Plat' }}
                                 </div>
                             </td>
-                            <!-- Vehicle Badge -->
-                            <td class="py-space-md px-space-md">
-                                <div class="inline-flex items-center gap-space-2xs px-space-sm py-0.5 rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-medium">
-                                    <span class="material-symbols-outlined text-[16px]">{{ $courierData[$courier->id]['vehicleIcon'] }}</span>
-                                    <span>{{ $courierData[$courier->id]['vehicleLabel'] }}</span>
-                                </div>
-                            </td>
-                            <!-- Vehicle License Plate (Indonesian Style) -->
-                            <td class="py-space-md px-space-md">
-                                <div class="inline-flex items-center px-space-sm py-0.5 rounded bg-surface-container-high text-on-surface font-data-mono text-data-mono font-bold tracking-wider uppercase">
-                                    {{ $courierData[$courier->id]['plate'] }}
-                                </div>
-                            </td>
-                            <!-- Verification Badge -->
-                            <td class="py-space-md px-space-md">
-                                @if ($courierData[$courier->id]['verified'])
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-label-md text-label-md font-semibold">
-                                    <span class="material-symbols-outlined text-[15px] font-bold">check_circle</span>
-                                    <span>Terverifikasi</span>
-                                </span>
+
+                            {{-- Verifikasi Dokumen --}}
+                            <td class="whitespace-nowrap">
+                                @if($isVerified)
+                                    <span class="badge badge-green">
+                                        <span class="badge-dot"></span>
+                                        Terverifikasi
+                                    </span>
                                 @else
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-0.5 rounded-lg bg-surface-container-highest text-secondary font-label-md text-label-md font-semibold">
-                                    <span class="material-symbols-outlined text-[15px] font-bold">hourglass_top</span>
-                                    <span>Menunggu</span>
-                                </span>
+                                    <span class="badge badge-amber">
+                                        <span class="badge-dot"></span>
+                                        Menunggu Review
+                                    </span>
                                 @endif
                             </td>
-                            <!-- Online/Duty Status -->
-                            <td class="py-space-md px-space-md">
-                                @if ($courierData[$courier->id]['active'])
-                                <div class="inline-flex items-center gap-space-2xs px-space-sm py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-label-md text-label-md font-semibold">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                                    <span>Aktif</span>
-                                </div>
-                                @else
-                                <div class="inline-flex items-center gap-space-2xs px-space-sm py-0.5 rounded-lg bg-surface-container text-secondary font-label-md text-label-md font-medium">
-                                    <span class="w-2 h-2 rounded-full bg-outline"></span>
-                                    <span>Nonaktif</span>
-                                </div>
-                                @endif
+
+                            {{-- Keaktifan Akun & Toggle --}}
+                            <td class="whitespace-nowrap">
+                                <form action="{{ route('admin.couriers.toggle-active', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Ubah status keaktifan kurir {{ $courier->user?->name }}?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit"
+                                            class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold transition-colors {{ $isActive ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-red-50 text-red-700 hover:bg-red-100' }}"
+                                            title="Klik untuk mengubah status aktif/nonaktif">
+                                        <span class="h-1.5 w-1.5 rounded-full {{ $isActive ? 'bg-emerald-500' : 'bg-red-500' }}"></span>
+                                        {{ $isActive ? 'Aktif' : 'Nonaktif' }}
+                                    </button>
+                                </form>
                             </td>
-                            <!-- Daily Summary Metric -->
-                            <td class="py-space-md px-space-md">
-                                <div class="flex flex-col">
-                                    <div class="flex items-center gap-space-2xs">
-                                        <span class="material-symbols-outlined text-[15px] text-primary">task_alt</span>
-                                        <span class="font-label-md text-label-md font-semibold text-on-surface">{{ $courierData[$courier->id]['recapCount'] }} Tugas Selesai</span>
-                                    </div>
-                                    <span class="font-label-sm text-label-sm text-secondary font-data-mono">Omzet Rp {{ number_format($courierData[$courier->id]['recapTotal'], 0, ',', '.') }}</span>
-                                </div>
+
+                            {{-- Drop Point --}}
+                            <td class="whitespace-nowrap text-xs text-slate-600">
+                                {{ $courier->dropPoint?->name ?? 'Pusat / Operasional' }}
                             </td>
-                            <!-- Quick Actions -->
-                            <td class="py-space-md px-space-lg text-right">
-                                <div class="inline-flex items-center justify-end gap-space-2xs">
-                                    <button class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors" onclick="openDriverModal({{ $courier->id }})" title="Lihat Profil &amp; Dokumen" type="button">
+
+                            {{-- Performa Pesanan --}}
+                            <td class="whitespace-nowrap font-mono text-xs text-slate-700">
+                                <strong>{{ $courier->orders ? $courier->orders->count() : 0 }}</strong> order
+                            </td>
+
+                            {{-- Aksi --}}
+                            <td class="text-right whitespace-nowrap">
+                                <div class="inline-flex items-center gap-1">
+                                    <button type="button"
+                                            onclick="openDriverModal({{ $courier->id }})"
+                                            class="btn-icon"
+                                            title="Lihat Detail Profil & Dokumen">
                                         <span class="material-symbols-outlined text-[18px]">visibility</span>
                                     </button>
-                                    <button class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors" onclick="openEditModal({{ $courier->id }})" title="Edit Data Armada" type="button">
+
+                                    <button type="button"
+                                            onclick="openEditModal({{ $courier->id }})"
+                                            class="btn-icon"
+                                            title="Edit Data Kurir">
                                         <span class="material-symbols-outlined text-[18px]">edit</span>
                                     </button>
-                                    <form action="{{ route('admin.couriers.toggle-active', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirmSuspend('{{ addslashes($courierData[$courier->id]['name']) }}')">
+
+                                    @if(!$isVerified)
+                                    <form action="{{ route('admin.couriers.verify', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirmSteer()">
                                         @csrf
                                         @method('PATCH')
-                                        <button class="p-space-xs rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors" title="{{ $courierData[$courier->id]['active'] ? 'Nonaktifkan / Suspend Akun' : 'Aktifkan Akun' }}" type="submit">
-                                            <span class="material-symbols-outlined text-[18px]">{{ $courierData[$courier->id]['active'] ? 'block' : 'check_circle' }}</span>
+                                        <button type="submit" class="btn btn-sm btn-success" title="Verifikasi Kurir">
+                                            <span class="material-symbols-outlined text-[16px]">verified</span>
+                                            Verifikasi
                                         </button>
                                     </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
-                    @empty
+                        @empty
                         <tr>
-                            <td colspan="8" class="py-space-2xl text-center">
-                                <div class="flex flex-col items-center justify-center text-center">
-                                    <span class="material-symbols-outlined text-[36px] text-secondary">two_wheeler</span>
-                                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold mt-space-sm">Belum ada kurir terverifikasi</span>
-                                    <span class="font-body-sm text-body-sm text-secondary">Kurir yang telah diverifikasi akan tampil di sini.</span>
-                                </div>
+                            <td colspan="7" class="text-center py-12 text-slate-400">
+                                <span class="material-symbols-outlined text-[36px] text-slate-300 mb-1">two_wheeler</span>
+                                <div class="text-sm font-medium text-slate-600">Belum ada kurir terdaftar</div>
                             </td>
                         </tr>
-                    @endforelse
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
-            <!-- Table Footer / Pagination -->
-            <div class="p-space-md bg-surface flex flex-col sm:flex-row items-center justify-between gap-space-sm">
-                <span class="font-label-sm text-label-sm text-secondary">
-                    Menampilkan {{ $couriers->firstItem() ?? 0 }}-{{ $couriers->lastItem() ?? 0 }} dari {{ $couriers->total() }} total kurir
-                </span>
-                <div class="flex items-center gap-space-xs">
-                    @if ($couriers->previousPageUrl())
-                        <a href="{{ $couriers->previousPageUrl() }}" class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary font-label-sm text-label-sm">Sebelumnya</a>
-                    @else
-                        <button class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary opacity-50 cursor-not-allowed font-label-sm text-label-sm" disabled type="button">Sebelumnya</button>
-                    @endif
-                    @for ($i = 1; $i <= $couriers->lastPage(); $i++)
-                        @if ($i === $couriers->currentPage())
-                            <span class="px-space-sm py-space-xs rounded bg-primary-container text-on-primary font-data-mono text-data-mono font-bold">{{ $i }}</span>
-                        @else
-                            <a href="{{ $couriers->url($i) }}" class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary font-data-mono text-data-mono">{{ $i }}</a>
-                        @endif
-                    @endfor
-                    @if ($couriers->nextPageUrl())
-                        <a href="{{ $couriers->nextPageUrl() }}" class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary font-label-sm text-label-sm">Selanjutnya</a>
-                    @else
-                        <button class="px-space-sm py-space-xs rounded bg-surface-container-high text-secondary opacity-50 cursor-not-allowed font-label-sm text-label-sm" disabled type="button">Selanjutnya</button>
-                    @endif
+            <div class="card-footer">
+                <div>
+                    Menampilkan <strong>{{ $couriers->firstItem() ?? 0 }}</strong> - <strong>{{ $couriers->lastItem() ?? 0 }}</strong> dari <strong>{{ $couriers->total() }}</strong> kurir
+                </div>
+                <div>
+                    {{ $couriers->withQueryString()->links() }}
                 </div>
             </div>
-        </div>
-
-        <!-- SECTION 2: Courier Pending Verification -->
-        <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl flex flex-col {{ count($pending) === 0 ? '' : 'gap-space-md' }}" id="pendingSection">
-            <div class="flex items-center justify-between pb-space-md border-b border-surface-container-high mb-space-lg">
-                <div class="flex items-center gap-space-sm">
-                    <div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
-                        <span class="material-symbols-outlined text-[20px]">how_to_reg</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="font-headline-sm text-headline-sm text-on-surface font-bold leading-tight">Kurir Menunggu Verifikasi</span>
-                        <span class="font-label-sm text-label-sm text-secondary">Total: {{ count($pending) }} kurir dalam antrean persetujuan berkas</span>
-                    </div>
-                </div>
-                <button class="flex items-center gap-space-2xs text-secondary hover:text-primary font-label-md text-label-md transition-colors" onclick="location.reload()" type="button">
-                    <span class="material-symbols-outlined text-[16px]">sync</span>
-                    <span>Periksa Pendaftaran Baru</span>
-                </button>
-            </div>
-
-            @forelse ($pending as $courier)
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md p-space-md rounded-xl bg-surface-container-low border border-surface-container-high">
-                    <div class="flex items-center gap-space-md min-w-0">
-                        <div class="w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-headline-sm text-headline-sm font-bold shrink-0">
-                            {{ strtoupper(substr($courier->user?->name ?? 'K', 0, 1)) }}
-                        </div>
-                        <div class="flex flex-col min-w-0">
-                            <span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">{{ $courier->user?->name ?? 'Kurir' }}</span>
-                            <span class="font-body-sm text-body-sm text-secondary truncate font-data-mono">{{ $courier->user?->email ?? '-' }}</span>
-                            <span class="font-label-sm text-label-sm text-secondary">Mendaftar: {{ $courier->created_at?->format('d M Y') ?? '-' }} &bull; {{ ucfirst($courier->vehicle_type ?? 'Kendaraan') }} &bull; {{ $courier->vehicle_plate ?? '-' }}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-space-sm shrink-0">
-                        <form action="{{ route('admin.couriers.verify', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirmSteer()">
-                            @csrf
-                            @method('PATCH')
-                            <button class="h-9 px-space-md rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-label-md text-label-md shadow-sm flex items-center gap-space-xs" type="submit">
-                                <span class="material-symbols-outlined text-[16px]">verified</span>
-                                <span>Verifikasi Sekarang</span>
-                            </button>
-                        </form>
-                        <form action="{{ route('admin.couriers.toggle-active', $courier->id) }}" method="POST" class="inline-block" onsubmit="return confirmSuspend('{{ addslashes($courier->user?->name ?? 'Kurir') }}')">
-                            @csrf
-                            @method('PATCH')
-                            <button class="h-9 px-space-md rounded-lg bg-surface-container-high text-secondary font-label-md text-label-md flex items-center gap-space-xs hover:text-error transition-colors" type="submit">
-                                <span class="material-symbols-outlined text-[16px]">block</span>
-                                <span>Tolak</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            @empty
-                <!-- Empty State Card -->
-                <div class="py-space-2xl px-space-lg flex flex-col items-center justify-center text-center max-w-lg mx-auto">
-                    <div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center text-secondary mb-space-md shadow-inner">
-                        <span class="material-symbols-outlined text-[32px] text-secondary">group_off</span>
-                    </div>
-                    <h3 class="font-headline-lg text-headline-lg text-on-surface font-bold">Belum ada kurir</h3>
-                    <p class="font-body-md text-body-md text-secondary mt-space-xs leading-relaxed">
-                        Kurir yang mendaftar dari aplikasi CityCourier akan otomatis muncul di sini untuk peninjauan KTP, SIM, dan STNK.
-                    </p>
-                    <div class="flex items-center gap-space-sm mt-space-lg">
-                        <button class="h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors flex items-center gap-space-xs" onclick="shareRegistrationLink()" type="button">
-                            <span class="material-symbols-outlined text-[16px]">share</span>
-                            <span>Bagikan Link Pendaftaran Kurir</span>
-                        </button>
-                    </div>
-                </div>
-            @endforelse
-        </div>
-
-        <!-- Quick Operations Insights & Live Verification Checklist Info -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-space-md">
-            <!-- Standard Operational Policy -->
-            <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
-                <div class="flex flex-col gap-space-2xs">
-                    <div class="flex items-center gap-space-xs text-primary">
-                        <span class="material-symbols-outlined text-[20px]">verified_user</span>
-                        <span class="font-headline-sm text-headline-sm font-bold text-on-surface">Protokol Verifikasi</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-secondary mt-space-xs">
-                        Setiap mitra wajib mengunggah KTP aktif, SIM C / SIM A yang masih berlaku, serta STNK kendaraan yang cocok dengan nomor plat yang tertera di sistem.
-                    </p>
-                </div>
-                <div class="pt-space-md border-t border-surface-container-high flex items-center justify-between text-secondary font-label-sm text-label-sm">
-                    <span>SLA Validasi: &lt; 15 Menit</span>
-                    <span class="text-primary font-semibold">Lihat SOP &rarr;</span>
-                </div>
-            </div>
-            <!-- Vehicle Dispatch Split -->
-            <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
-                <div class="flex flex-col gap-space-2xs">
-                    <div class="flex items-center gap-space-xs text-secondary">
-                        <span class="material-symbols-outlined text-[20px]">commute</span>
-                        <span class="font-headline-sm text-headline-sm font-bold text-on-surface">Komposisi Armada</span>
-                    </div>
-                    @if ($fleetTypes->isNotEmpty())
-                        @foreach ($fleetTypes->take(3) as $type => $count)
-                            <div class="flex items-center justify-between mt-space-md">
-                                <div class="flex items-center gap-space-sm">
-                                    <span class="w-3 h-3 rounded-full bg-primary-container"></span>
-                                    <span class="font-body-sm text-body-sm text-on-surface">{{ $fleetTypeLabels[$type] ?? ucfirst($type) }}</span>
-                                </div>
-                                <span class="font-data-mono text-data-mono font-bold text-on-surface">{{ $count }} Unit ({{ round($count / $fleetTypes->sum() * 100) }}%)</span>
-                            </div>
-                            <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden mt-space-xs">
-                                <div class="bg-primary-container h-full" style="width: {{ round($count / $fleetTypes->sum() * 100) }}%"></div>
-                            </div>
-                        @endforeach
-                    @else
-                        <div class="flex items-center justify-between mt-space-md">
-                            <span class="font-body-sm text-body-sm text-secondary">Belum ada data kendaraan</span>
-                        </div>
-                        <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden mt-space-xs"></div>
-                    @endif
-                </div>
-                <div class="pt-space-md border-t border-surface-container-high flex items-center justify-between text-secondary font-label-sm text-label-sm">
-                    <span>Kapasitas Muat Reguler</span>
-                    <span class="font-data-mono">Max 25kg / rider</span>
-                </div>
-            </div>
-            <!-- Instant Support Quick Card -->
-            <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
-                <div class="flex flex-col gap-space-2xs">
-                    <div class="flex items-center gap-space-xs text-primary">
-                        <span class="material-symbols-outlined text-[20px]">support_agent</span>
-                        <span class="font-headline-sm text-headline-sm font-bold text-on-surface">Bantuan Operasional</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-secondary mt-space-xs">
-                        Pusat kontak langsung dispatcher ke tim pengawas lapangan untuk penanganan kendala penjemputan barang atau insiden teknis kendaraan.
-                    </p>
-                </div>
-                <div class="pt-space-md border-t border-surface-container-high flex items-center justify-between">
-                    <span class="font-label-sm text-label-sm text-emerald-600 font-semibold flex items-center gap-space-2xs">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Hotline Siaga
-                    </span>
-                    <a class="h-8 px-space-sm rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-space-2xs transition-colors" href="tel:081343323155">
-                        <span class="material-symbols-outlined text-[15px]">call</span>
-                        <span>Hubungi Lapangan</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Detail Driver Modal -->
-    <div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="driverDetailModal" onclick="if(event.target === this) closeDriverModal()">
-        <div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            <!-- Modal Header -->
-            <div class="px-space-xl py-space-md bg-surface-container flex items-center justify-between">
-                <div class="flex items-center gap-space-sm">
-                    <span class="material-symbols-outlined text-[22px] text-primary">badge</span>
-                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Detail Dokumen Mitra Kurir</span>
-                </div>
-                <button class="text-secondary hover:text-on-surface p-space-2xs rounded transition-colors" onclick="closeDriverModal()" type="button">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
-                </button>
-            </div>
-            <!-- Modal Body -->
-            <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
-                <div class="flex items-center gap-space-md">
-                    <div class="w-14 h-14 rounded-full bg-primary-container text-on-primary border border-outline-variant overflow-hidden flex items-center justify-center font-display-lg text-display-lg font-bold shrink-0" id="modalDriverAvatar">
-                        <span id="modalDriverAvatarLetter">P</span>
-                        <img id="modalDriverAvatarImg" class="w-full h-full object-cover hidden" alt="Foto profil kurir"/>
-                    </div>
-                    <div class="flex flex-col gap-space-2xs">
-                        <div class="flex items-center gap-space-xs">
-                            <h4 class="font-headline-lg text-headline-lg font-bold text-on-surface" id="modalDriverName">Princeton</h4>
-                            <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold" id="modalDriverBadge">
-                                <span class="material-symbols-outlined text-[13px]">verified</span> Terverifikasi
-                            </span>
-                        </div>
-                        <span class="font-body-sm text-body-sm text-secondary" id="modalDriverEmailPhone">masbrightly@gmail.com &bull; 081343323155</span>
-                        <span class="font-label-sm text-label-sm text-secondary font-data-mono" id="modalDriverId">ID Kurir: CC-KRR-2024-001</span>
-                    </div>
-                </div>
-                <!-- Contact chips -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-                    <span class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm">
-                        <span class="material-symbols-outlined text-[16px] text-primary">mail</span>
-                        <span class="truncate" id="modalDriverEmail">mail@example.com</span>
-                    </span>
-                    <span class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm">
-                        <span class="material-symbols-outlined text-[16px] text-primary">call</span>
-                        <span id="modalDriverPhone">08xx</span>
-                    </span>
-                </div>
-                <!-- Profile Detail Box -->
-                <div class="bg-surface p-space-md rounded-lg flex flex-col gap-space-xs">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Profil Mitra Kurir</span>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm mt-space-2xs text-left">
-                        <div>
-                            <span class="font-label-sm text-label-sm text-secondary block">NIK</span>
-                            <span class="font-data-mono text-data-mono text-on-surface font-semibold" id="modalNik">-</span>
-                        </div>
-                        <div>
-                            <span class="font-label-sm text-label-sm text-secondary block">Bergabung</span>
-                            <span class="font-body-sm text-body-sm text-on-surface font-medium" id="modalJoined">-</span>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <span class="font-label-sm text-label-sm text-secondary block">Alamat</span>
-                            <span class="font-body-sm text-body-sm text-on-surface font-medium" id="modalAddress">-</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Vehicle Detail Box -->
-                <div class="bg-surface p-space-md rounded-lg flex flex-col gap-space-xs">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Spesifikasi Kendaraan</span>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm mt-space-2xs text-left">
-                        <div>
-                            <span class="font-label-sm text-label-sm text-secondary block">Jenis</span>
-                            <span class="font-headline-sm text-headline-sm text-on-surface font-semibold" id="modalVehicleType">Sepeda Motor</span>
-                        </div>
-                        <div>
-                            <span class="font-label-sm text-label-sm text-secondary block">Merk / Model</span>
-                            <span class="font-body-sm text-body-sm text-on-surface font-medium" id="modalVehicleBrand">-</span>
-                        </div>
-                        <div>
-                            <span class="font-label-sm text-label-sm text-secondary block">Tahun</span>
-                            <span class="font-data-mono text-data-mono text-on-surface font-bold" id="modalVehicleYear">-</span>
-                        </div>
-                        <div>
-                            <span class="font-label-sm text-label-sm text-secondary block">Nomor Polisi</span>
-                            <span class="font-data-mono text-data-mono text-on-surface font-bold" id="modalVehiclePlate">B 1234 ABC</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Document Photo Gallery -->
-                <div class="flex flex-col gap-space-sm">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Foto &amp; Dokumen Fisik</span>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
-                            <a id="docLinkPhoto" class="block relative" href="#" target="_blank">
-                                <div id="photoEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
-                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
-                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
-                                </div>
-                                <img id="photoImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto profil"/>
-                            </a>
-                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
-                                <div class="flex flex-col">
-                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">Foto Profil</span>
-                                </div>
-                                <span id="photoBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
-                            </div>
-                        </div>
-                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
-                            <a id="docLinkKtp" class="block relative" href="#" target="_blank">
-                                <div id="ktpEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
-                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
-                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
-                                </div>
-                                <img id="ktpImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto KTP"/>
-                            </a>
-                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
-                                <div class="flex flex-col min-w-0">
-                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">KTP Elektronik</span>
-                                    <span class="font-label-sm text-label-sm text-secondary truncate" id="ktpSub">NIK: -</span>
-                                </div>
-                                <span id="ktpBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
-                            </div>
-                        </div>
-                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
-                            <a id="docLinkSim" class="block relative" href="#" target="_blank">
-                                <div id="simEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
-                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
-                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
-                                </div>
-                                <img id="simImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto SIM"/>
-                            </a>
-                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
-                                <div class="flex flex-col">
-                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">SIM C Aktif</span>
-                                    <span class="font-label-sm text-label-sm text-secondary" id="simSub">Belum diunggah</span>
-                                </div>
-                                <span id="simBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
-                            </div>
-                        </div>
-                        <div class="bg-surface rounded-lg border border-outline-variant overflow-hidden flex flex-col">
-                            <a id="docLinkSkck" class="block relative" href="#" target="_blank">
-                                <div id="skckEmpty" class="h-36 bg-surface-container-high flex flex-col items-center justify-center gap-space-2xs">
-                                    <span class="material-symbols-outlined text-[30px] text-secondary">image_not_supported</span>
-                                    <span class="font-label-sm text-label-sm text-secondary">Belum diunggah</span>
-                                </div>
-                                <img id="skckImg" class="hidden w-full h-36 object-cover bg-surface-container-high" src="" alt="Foto kendaraan &amp; plat"/>
-                            </a>
-                            <div class="px-space-sm py-space-xs flex items-center justify-between gap-space-xs border-t border-surface-container-high">
-                                <div class="flex flex-col">
-                                    <span class="font-body-sm text-body-sm font-semibold text-on-surface">Foto Kendaraan &amp; Plat</span>
-                                    <span class="font-label-sm text-label-sm text-secondary" id="skckSub">Belum diunggah</span>
-                                </div>
-                                <span id="skckBadge" class="shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary">Belum</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Modal Actions -->
-            <div class="p-space-lg bg-surface flex items-center justify-between">
-                <button class="px-space-md py-space-xs rounded-lg bg-surface-container text-secondary hover:text-on-surface font-label-md text-label-md" onclick="closeDriverModal()" type="button">
-                    Tutup
-                </button>
-                <div class="flex items-center gap-space-xs">
-                    <a class="h-9 px-space-md rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-label-md text-label-md flex items-center gap-space-xs shadow-sm" id="modalWaLink" href="#" target="_blank">
-                        <span class="material-symbols-outlined text-[16px]">chat</span>
-                        <span>Hubungi Kurir</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Courier Modal -->
-    <div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="addCourierModal" onclick="if(event.target === this) closeAddCourierModal()">
-        <div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            <!-- Modal Header -->
-            <div class="px-space-xl py-space-md bg-surface-container flex items-center justify-between">
-                <div class="flex items-center gap-space-sm">
-                    <span class="material-symbols-outlined text-[22px] text-primary">person_add</span>
-                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Tambah Kurir Baru</span>
-                </div>
-                <button class="text-secondary hover:text-on-surface p-space-2xs rounded transition-colors" onclick="closeAddCourierModal()" type="button">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
-                </button>
-            </div>
-            <!-- Modal Body -->
-            <form action="{{ route('admin.couriers.store') }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addName">Nama Lengkap <span class="text-error">*</span></label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addName" name="name" required placeholder="Nama mitra kurir" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addEmail">Email <span class="text-error">*</span></label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addEmail" name="email" required placeholder="nama@email.com" type="email"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPassword">Password Akun</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addPassword" name="password" placeholder="Kosongkan = diacak otomatis" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPhone">Telepon / WhatsApp</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addPhone" name="phone" placeholder="08xxxxxxxxxx" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addNik">NIK</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addNik" name="nik" maxlength="16" placeholder="16 digit NIK" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addCity">Kota</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addCity" name="city" placeholder="Kota domisili" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addAddress">Alamat Domisili</label>
-                            <textarea class="w-full bg-surface px-space-md py-space-sm rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant min-h-[64px] resize-none" id="addAddress" name="address" placeholder="Alamat lengkap mitra kurir" rows="2"></textarea>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addVehicleType">Jenis Kendaraan <span class="text-error">*</span></label>
-                            <select class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addVehicleType" name="vehicle_type" required>
-                                <option value="motor">Sepeda Motor</option>
-                                <option value="mobil">Mobil</option>
-                                <option value="pickup">Pickup</option>
-                                <option value="box">Box</option>
-                                <option value="truck">Truck</option>
-                                <option value="sepeda">Sepeda</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addVehicleBrand">Merk / Model Kendaraan</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addVehicleBrand" name="vehicle_brand" placeholder="cth: Honda Vario 160" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addVehicleYear">Tahun Kendaraan</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="addVehicleYear" name="vehicle_year" maxlength="4" placeholder="cth: 2023" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPlate">Plat Nomor <span class="text-error">*</span></label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant uppercase" id="addPlate" name="vehicle_plate" required placeholder="B 1234 ABC" type="text"/>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-space-sm">
-                        <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Dokumen &amp; Foto (opsional)</span>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addPhoto">Foto Profil</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addPhoto" name="photo" type="file" accept="image/*"/>
-                            </div>
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addIdCard">Foto KTP</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addIdCard" name="id_card_photo" type="file" accept="image/*"/>
-                            </div>
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addSim">Foto SIM</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addSim" name="driving_license_photo" type="file" accept="image/*"/>
-                            </div>
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="addSkck">Foto Kendaraan / SKCK</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="addSkck" name="skck_photo" type="file" accept="image/*"/>
-                            </div>
-                        </div>
-                    </div>
-                    <label class="flex items-center gap-space-sm cursor-pointer select-none">
-                        <input class="w-4 h-4 rounded accent-[#9d4300]" id="addActivate" name="activate" value="1" checked type="checkbox"/>
-                        <span class="font-body-sm text-body-sm text-on-surface">Aktif &amp; terverifikasi langsung (bisa langsung menerima pesanan)</span>
-                    </label>
-                </div>
-                <!-- Modal Actions -->
-                <div class="p-space-lg bg-surface flex items-center justify-between border-t border-surface-container-high">
-                    <button class="px-space-md py-space-xs rounded-lg bg-surface-container text-secondary hover:text-on-surface font-label-md text-label-md" onclick="closeAddCourierModal()" type="button">
-                        Batal
-                    </button>
-                    <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-semibold shadow-sm flex items-center gap-space-xs" type="submit">
-                        <span class="material-symbols-outlined text-[16px]">person_add</span>
-                        <span>Simpan Kurir</span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Edit Courier Modal -->
-    <div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="editCourierModal" onclick="if(event.target === this) closeEditModal()">
-        <div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            <!-- Modal Header -->
-            <div class="px-space-xl py-space-md bg-surface-container flex items-center justify-between">
-                <div class="flex items-center gap-space-sm">
-                    <span class="material-symbols-outlined text-[22px] text-primary">edit</span>
-                    <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Edit Data Armada Kurir</span>
-                </div>
-                <button class="text-secondary hover:text-on-surface p-space-2xs rounded transition-colors" onclick="closeEditModal()" type="button">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
-                </button>
-            </div>
-            <!-- Modal Body -->
-            <form id="editCourierForm" action="#" method="POST" enctype="multipart/form-data">
-                @csrf
-                @method('PUT')
-                <div class="p-space-xl flex flex-col gap-space-lg max-h-[80vh] overflow-y-auto">
-                    <div class="flex items-center gap-space-sm">
-                        <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm font-bold shrink-0" id="editAvatar">P</div>
-                        <div class="flex flex-col">
-                            <span class="font-headline-sm text-headline-sm text-on-surface font-semibold" id="editIdentityLabel">Kurir</span>
-                            <span class="font-label-sm text-label-sm text-secondary font-data-mono" id="editIdLabel">ID Kurir: -</span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editName">Nama Lengkap <span class="text-error">*</span></label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editName" name="name" required type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editEmail">Email <span class="text-error">*</span></label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editEmail" name="email" required type="email"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPhone">Telepon / WhatsApp</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editPhone" name="phone" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editNik">NIK</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editNik" name="nik" maxlength="16" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editCity">Kota</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editCity" name="city" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs sm:col-span-2">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editAddress">Alamat Domisili</label>
-                            <textarea class="w-full bg-surface px-space-md py-space-sm rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant min-h-[64px] resize-none" id="editAddress" name="address" rows="2"></textarea>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editVehicleType">Jenis Kendaraan <span class="text-error">*</span></label>
-                            <select class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editVehicleType" name="vehicle_type" required>
-                                <option value="motor">Sepeda Motor</option>
-                                <option value="mobil">Mobil</option>
-                                <option value="pickup">Pickup</option>
-                                <option value="box">Box</option>
-                                <option value="truck">Truck</option>
-                                <option value="sepeda">Sepeda</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editVehicleBrand">Merk / Model Kendaraan</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editVehicleBrand" name="vehicle_brand" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editVehicleYear">Tahun Kendaraan</label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant" id="editVehicleYear" name="vehicle_year" maxlength="4" type="text"/>
-                        </div>
-                        <div class="flex flex-col gap-space-2xs">
-                            <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPlate">Plat Nomor <span class="text-error">*</span></label>
-                            <input class="w-full bg-surface px-space-md py-space-sm h-9 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary-container border border-outline-variant uppercase" id="editPlate" name="vehicle_plate" required type="text"/>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-space-sm">
-                        <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Ganti Dokumen &amp; Foto (pilih file untuk mengganti)</span>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editPhoto">Foto Profil</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editPhoto" name="photo" type="file" accept="image/*"/>
-                            </div>
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editIdCard">Foto KTP</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editIdCard" name="id_card_photo" type="file" accept="image/*"/>
-                            </div>
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editSim">Foto SIM</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editSim" name="driving_license_photo" type="file" accept="image/*"/>
-                            </div>
-                            <div class="flex flex-col gap-space-2xs">
-                                <label class="font-label-sm text-label-sm text-secondary font-semibold" for="editSkck">Foto Kendaraan / SKCK</label>
-                                <input class="w-full text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-container file:px-3 file:py-1.5 file:text-on-primary file:font-semibold" id="editSkck" name="skck_photo" type="file" accept="image/*"/>
-                            </div>
-                        </div>
-                    </div>
-                    <label class="flex items-center gap-space-sm cursor-pointer select-none">
-                        <input class="w-4 h-4 rounded accent-[#9d4300]" id="editIsActive" name="is_active" value="1" type="checkbox"/>
-                        <span class="font-body-sm text-body-sm text-on-surface">Akun Kurir Aktif</span>
-                    </label>
-                </div>
-                <!-- Modal Actions -->
-                <div class="p-space-lg bg-surface flex items-center justify-between border-t border-surface-container-high">
-                    <button class="px-space-md py-space-xs rounded-lg bg-surface-container text-secondary hover:text-on-surface font-label-md text-label-md" onclick="closeEditModal()" type="button">
-                        Batal
-                    </button>
-                    <button class="h-9 px-space-md rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-semibold shadow-sm flex items-center gap-space-xs" type="submit">
-                        <span class="material-symbols-outlined text-[16px]">save</span>
-                        <span>Simpan Perubahan</span>
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
-@endsection
+
+{{-- Modal 1: Tambah Kurir Baru --}}
+<div id="addCourierModal" class="modal-backdrop hidden">
+    <div class="modal-panel max-w-2xl">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Tambah Kurir Baru</div>
+                <div class="text-xs text-slate-500">Daftarkan akun pengemudi baru ke armada City Courier</div>
+            </div>
+            <button type="button" class="btn-icon" onclick="closeAddCourierModal()" aria-label="Tutup">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <form action="{{ route('admin.couriers.store') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="modal-body space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="form-label" for="addName">Nama Lengkap <span class="text-red-500">*</span></label>
+                        <input type="text" name="name" id="addName" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label" for="addEmail">Email Akun <span class="text-red-500">*</span></label>
+                        <input type="email" name="email" id="addEmail" required class="form-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="form-label" for="addPhone">Nomor WhatsApp / HP <span class="text-red-500">*</span></label>
+                        <input type="text" name="phone" id="addPhone" placeholder="08xxxxxxxxxx" required class="form-input font-mono">
+                    </div>
+                    <div>
+                        <label class="form-label" for="addPassword">Password Login <span class="text-red-500">*</span></label>
+                        <input type="password" name="password" id="addPassword" required class="form-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="form-label" for="addNik">Nomor Induk Kependudukan (NIK)</label>
+                        <input type="text" name="nik" id="addNik" placeholder="16 digit NIK" class="form-input font-mono">
+                    </div>
+                    <div>
+                        <label class="form-label" for="addCity">Kota Operasional</label>
+                        <input type="text" name="city" id="addCity" placeholder="Contoh: Surabaya, Sidoarjo" class="form-input">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label" for="addAddress">Alamat Domisili</label>
+                    <textarea name="address" id="addAddress" rows="2" class="form-textarea" placeholder="Alamat lengkap kurir..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div>
+                        <label class="form-label">Jenis Kendaraan</label>
+                        <select name="vehicle_type" class="form-select">
+                            <option value="motor">Sepeda Motor</option>
+                            <option value="mobil">Mobil</option>
+                            <option value="sepeda">Sepeda</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Merk / Tipe Kendaraan</label>
+                        <input type="text" name="vehicle_brand" placeholder="Contoh: Honda Vario" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Plat Nomor Kendaraan</label>
+                        <input type="text" name="vehicle_plate" placeholder="Contoh: L 1234 AB" class="form-input font-mono">
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 pt-3">
+                    <div class="text-xs font-semibold text-slate-800 mb-2">Upload Berkas Identitas (Opsional)</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="form-label text-[12px]">Foto Profil Kurir</label>
+                            <input type="file" name="photo" accept="image/*" class="form-input py-1 text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label text-[12px]">Foto KTP</label>
+                            <input type="file" name="id_card_photo" accept="image/*" class="form-input py-1 text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label text-[12px]">Foto SIM Aktif</label>
+                            <input type="file" name="driving_license_photo" accept="image/*" class="form-input py-1 text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label text-[12px]">Foto SKCK / Surat Keterangan</label>
+                            <input type="file" name="skck_photo" accept="image/*" class="form-input py-1 text-xs">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                    <input type="checkbox" name="activate" id="addActivate" value="1" checked class="form-check">
+                    <label for="addActivate" class="text-xs font-medium text-slate-700">Langsung aktifkan akun kurir</label>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddCourierModal()">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan &amp; Daftarkan Kurir</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Modal 2: Edit Data Kurir --}}
+<div id="editCourierModal" class="modal-backdrop hidden">
+    <div class="modal-panel max-w-2xl">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title" id="editIdentityLabel">Edit Kurir</div>
+                <div class="text-xs text-slate-500 font-mono" id="editIdLabel">ID Kurir: -</div>
+            </div>
+            <button type="button" class="btn-icon" onclick="closeEditModal()" aria-label="Tutup">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <form id="editCourierForm" action="#" method="POST" enctype="multipart/form-data">
+            @csrf
+            @method('PUT')
+            <div class="modal-body space-y-4">
+                <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
+                    <div class="avatar bg-brand-50 text-brand-700 text-sm font-bold" id="editAvatar">
+                        K
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold text-slate-800">Perbarui Informasi Kurir</div>
+                        <div class="text-[11px] text-slate-400">Pastikan data kontak dan identitas kendaraan valid</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="form-label">Nama Lengkap <span class="text-red-500">*</span></label>
+                        <input type="text" name="name" id="editName" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Email Akun <span class="text-red-500">*</span></label>
+                        <input type="email" name="email" id="editEmail" required class="form-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="form-label">Nomor Telepon / WhatsApp <span class="text-red-500">*</span></label>
+                        <input type="text" name="phone" id="editPhone" required class="form-input font-mono">
+                    </div>
+                    <div>
+                        <label class="form-label">NIK (KTP)</label>
+                        <input type="text" name="nik" id="editNik" class="form-input font-mono">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="form-label">Kota</label>
+                        <input type="text" name="city" id="editCity" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Alamat Lengkap</label>
+                        <input type="text" name="address" id="editAddress" class="form-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div>
+                        <label class="form-label">Tipe Kendaraan</label>
+                        <select name="vehicle_type" id="editVehicleType" class="form-select">
+                            <option value="motor">Sepeda Motor</option>
+                            <option value="mobil">Mobil</option>
+                            <option value="sepeda">Sepeda</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Merk Kendaraan</label>
+                        <input type="text" name="vehicle_brand" id="editVehicleBrand" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Tahun Kendaraan</label>
+                        <input type="text" name="vehicle_year" id="editVehicleYear" class="form-input font-mono">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Plat Nomor</label>
+                    <input type="text" name="vehicle_plate" id="editPlate" class="form-input font-mono">
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                    <input type="checkbox" name="is_active" id="editIsActive" value="1" class="form-check">
+                    <label for="editIsActive" class="text-xs font-medium text-slate-700">Akun kurir aktif menerima pesanan</label>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Modal 3: Detail Kurir & Dokumen Viewer --}}
+<div id="driverDetailModal" class="modal-backdrop hidden">
+    <div class="modal-panel max-w-2xl">
+        <div class="modal-header">
+            <div class="flex items-center gap-3">
+                <div class="avatar bg-brand-50 text-brand-700 font-bold overflow-hidden" id="modalDriverAvatarContainer">
+                    <span id="modalDriverAvatarLetter">K</span>
+                    <img id="modalDriverAvatarImg" src="" alt="" class="hidden h-full w-full object-cover">
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="modal-title" id="modalDriverName">Nama Kurir</span>
+                        <span id="modalDriverBadge" class="badge badge-gray text-[11px]">Status</span>
+                    </div>
+                    <div class="text-xs text-slate-500 font-mono" id="modalDriverEmailPhone">- &bull; -</div>
+                </div>
+            </div>
+            <button type="button" class="btn-icon" onclick="closeDriverModal()" aria-label="Tutup">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div class="modal-body space-y-4">
+            {{-- Info Kendaraan & Identitas --}}
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+                <div>
+                    <span class="text-slate-400 block text-[11px]">ID Kurir:</span>
+                    <strong class="text-slate-800 font-mono" id="modalDriverId">-</strong>
+                </div>
+                <div>
+                    <span class="text-slate-400 block text-[11px]">NIK KTP:</span>
+                    <strong class="text-slate-800 font-mono" id="modalNik">-</strong>
+                </div>
+                <div>
+                    <span class="text-slate-400 block text-[11px]">Kendaraan:</span>
+                    <strong class="text-slate-800" id="modalVehicleType">-</strong>
+                </div>
+                <div>
+                    <span class="text-slate-400 block text-[11px]">Plat Nomor:</span>
+                    <strong class="text-slate-800 font-mono" id="modalVehiclePlate">-</strong>
+                </div>
+            </div>
+
+            {{-- Dokumen Kurir (KTP, SIM, SKCK) --}}
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2.5">
+                    Dokumen Kelengkapan
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {{-- KTP --}}
+                    <div class="card p-3 text-center space-y-2">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span>KTP</span>
+                            <span id="ktpBadge" class="badge badge-gray text-[10px]">Cek</span>
+                        </div>
+                        <div class="h-28 bg-slate-100 rounded border border-slate-200 overflow-hidden flex items-center justify-center">
+                            <img id="ktpImg" src="" alt="KTP" class="hidden h-full w-full object-contain">
+                            <span id="ktpEmpty" class="text-slate-400 text-xs">Tidak ada file</span>
+                        </div>
+                        <a id="ktpLink" href="#" target="_blank" class="btn btn-sm btn-secondary w-full text-xs">
+                            Buka Foto Penuh
+                        </a>
+                    </div>
+
+                    {{-- SIM --}}
+                    <div class="card p-3 text-center space-y-2">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span>SIM</span>
+                            <span id="simBadge" class="badge badge-gray text-[10px]">Cek</span>
+                        </div>
+                        <div class="h-28 bg-slate-100 rounded border border-slate-200 overflow-hidden flex items-center justify-center">
+                            <img id="simImg" src="" alt="SIM" class="hidden h-full w-full object-contain">
+                            <span id="simEmpty" class="text-slate-400 text-xs">Tidak ada file</span>
+                        </div>
+                        <a id="simLink" href="#" target="_blank" class="btn btn-sm btn-secondary w-full text-xs">
+                            Buka Foto Penuh
+                        </a>
+                    </div>
+
+                    {{-- SKCK --}}
+                    <div class="card p-3 text-center space-y-2">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span>SKCK / Surat</span>
+                            <span id="skckBadge" class="badge badge-gray text-[10px]">Cek</span>
+                        </div>
+                        <div class="h-28 bg-slate-100 rounded border border-slate-200 overflow-hidden flex items-center justify-center">
+                            <img id="skckImg" src="" alt="SKCK" class="hidden h-full w-full object-contain">
+                            <span id="skckEmpty" class="text-slate-400 text-xs">Tidak ada file</span>
+                        </div>
+                        <a id="skckLink" href="#" target="_blank" class="btn btn-sm btn-secondary w-full text-xs">
+                            Buka Foto Penuh
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Hubungi Kurir --}}
+            <div class="flex items-center justify-between pt-2">
+                <span class="text-xs text-slate-500" id="modalJoined">Bergabung: -</span>
+                <a id="modalWaLink" href="#" target="_blank" class="btn btn-sm btn-success">
+                    <span class="material-symbols-outlined text-[16px]">chat</span>
+                    Chat WhatsApp
+                </a>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDriverModal()">Tutup</button>
+        </div>
+    </div>
+</div>
 
 @push('scripts')
 <script>
@@ -917,48 +730,47 @@
     let __initialTab = @json(request('filter'));
     if (__initialTab === 'unverified') {
         document.addEventListener('DOMContentLoaded', function () {
-            const tab = document.querySelector('#kurirFilterTabs .tab-btn[onclick*="unverified"]');
-            if (tab) setActiveTab(tab, 'unverified');
+            const tab = document.querySelector('#kurirFilterTabs .tab-btn:nth-child(2)');
+            if (tab) setActiveTab('pending', tab);
         });
     }
 
-    function setActiveTab(button, tabType) {
-        // Reset all tab buttons styling
-        const tabs = document.querySelectorAll('#kurirFilterTabs .tab-btn');
-        tabs.forEach(tab => {
-            tab.classList.remove('bg-primary-container', 'text-on-primary', 'font-bold', 'shadow-sm');
-            tab.classList.add('text-secondary', 'font-medium');
+    function setActiveTab(status, btn) {
+        document.querySelectorAll('#kurirFilterTabs .tab-btn').forEach(b => {
+            b.classList.remove('is-active');
         });
+        if (btn) btn.classList.add('is-active');
 
-        // Set active tab styling
-        button.classList.remove('text-secondary', 'font-medium');
-        button.classList.add('bg-primary-container', 'text-on-primary', 'font-bold', 'shadow-sm');
-
-        const verifiedSection = document.getElementById('verifiedSection');
-        const pendingSection = document.getElementById('pendingSection');
-
-        if (tabType === 'unverified') {
-            verifiedSection.classList.add('hidden');
-            pendingSection.classList.remove('hidden');
-        } else if (tabType === 'verified' || tabType === 'active') {
-            verifiedSection.classList.remove('hidden');
-            pendingSection.classList.add('hidden');
-        } else {
-            verifiedSection.classList.remove('hidden');
-            pendingSection.classList.remove('hidden');
-        }
+        const rows = document.querySelectorAll('#courierTable tbody tr[data-status]');
+        rows.forEach(row => {
+            const s = row.getAttribute('data-status');
+            if (status === 'all') {
+                row.style.display = '';
+            } else if (status === 'pending') {
+                row.style.display = (s === 'pending') ? '' : 'none';
+            } else if (status === 'verified') {
+                row.style.display = (s === 'verified') ? '' : 'none';
+            } else if (status === 'inactive') {
+                row.style.display = (s === 'inactive') ? '' : 'none';
+            }
+        });
     }
 
     function filterKurirTable() {
-        const input = document.getElementById('searchInput');
-        const filter = input.value.toLowerCase();
-        const table = document.getElementById('courierTable');
-        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('#courierTable tbody tr[data-status]');
 
-        for (let i = 0; i < rows.length; i++) {
-            const text = rows[i].textContent.toLowerCase();
-            rows[i].style.display = text.indexOf(filter) > -1 ? '' : 'none';
-        }
+        rows.forEach(row => {
+            const name = (row.getAttribute('data-name') || '').toLowerCase();
+            const phone = (row.getAttribute('data-phone') || '').toLowerCase();
+            const plate = (row.getAttribute('data-plate') || '').toLowerCase();
+
+            if (!query || name.includes(query) || phone.includes(query) || plate.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     }
 
     function openDriverModal(id) {
@@ -968,7 +780,11 @@
         const modal = document.getElementById('driverDetailModal');
         document.getElementById('modalDriverName').textContent = c.name;
         document.getElementById('modalDriverEmailPhone').textContent = c.email + ' • ' + c.phone;
-        document.getElementById('modalDriverId').textContent = 'ID Kurir: ' + c.idLabel;
+        document.getElementById('modalDriverId').textContent = c.idLabel;
+        document.getElementById('modalNik').textContent = c.nik;
+        document.getElementById('modalVehicleType').textContent = c.vehicleLabel;
+        document.getElementById('modalVehiclePlate').textContent = c.plate;
+        document.getElementById('modalJoined').textContent = 'Bergabung: ' + c.joined;
 
         const letter = document.getElementById('modalDriverAvatarLetter');
         const avatarImg = document.getElementById('modalDriverAvatarImg');
@@ -984,32 +800,19 @@
 
         const badge = document.getElementById('modalDriverBadge');
         if (c.verified) {
-            badge.classList.remove('bg-surface-container', 'text-secondary');
-            badge.classList.add('bg-emerald-50', 'text-emerald-700');
-            badge.innerHTML = '<span class="material-symbols-outlined text-[13px]">verified</span> Terverifikasi';
+            badge.className = 'badge badge-green text-[11px]';
+            badge.textContent = 'Terverifikasi';
         } else {
-            badge.classList.remove('bg-emerald-50', 'text-emerald-700');
-            badge.classList.add('bg-surface-container', 'text-secondary');
-            badge.innerHTML = '<span class="material-symbols-outlined text-[13px]">hourglass_top</span> Menunggu Verifikasi';
+            badge.className = 'badge badge-amber text-[11px]';
+            badge.textContent = 'Menunggu Review';
         }
 
-        document.getElementById('modalDriverEmail').textContent = c.email || '-';
-        document.getElementById('modalDriverPhone').textContent = c.phone || '-';
-        document.getElementById('modalNik').textContent = c.nikRaw || 'Belum dilengkapi';
-        document.getElementById('modalJoined').textContent = c.joined;
-        document.getElementById('modalAddress').textContent = c.address || 'Belum diisi';
-        document.getElementById('modalVehicleType').textContent = c.vehicleLabel;
-        document.getElementById('modalVehicleBrand').textContent = c.vehicleBrand || '-';
-        document.getElementById('modalVehicleYear').textContent = c.vehicleYear || '-';
-        document.getElementById('modalVehiclePlate').textContent = c.plate;
+        const waLink = document.getElementById('modalWaLink');
+        waLink.href = 'https://wa.me/' + c.wa;
 
-        setDocImage('photoImg', 'photoEmpty', 'docLinkPhoto', 'photoBadge', c.photoUrl);
-        setDocImage('ktpImg', 'ktpEmpty', 'docLinkKtp', 'ktpBadge', c.ktpUrl);
-        document.getElementById('ktpSub').textContent = 'NIK: ' + (c.nikRaw || '-');
-        setDocImage('simImg', 'simEmpty', 'docLinkSim', 'simBadge', c.simUrl);
-        setDocImage('skckImg', 'skckEmpty', 'docLinkSkck', 'skckBadge', c.skckUrl);
-
-        document.getElementById('modalWaLink').href = 'https://wa.me/' + c.wa;
+        setDocImage('ktpImg', 'ktpEmpty', 'ktpLink', 'ktpBadge', c.ktpUrl);
+        setDocImage('simImg', 'simEmpty', 'simLink', 'simBadge', c.simUrl);
+        setDocImage('skckImg', 'skckEmpty', 'skckLink', 'skckBadge', c.skckUrl);
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -1028,14 +831,14 @@
             link.href = url;
             link.classList.remove('pointer-events-none');
             badge.textContent = 'Valid';
-            badge.className = 'shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-emerald-100 text-emerald-800';
+            badge.className = 'badge badge-green text-[10px]';
         } else {
             img.classList.add('hidden');
             empty.classList.remove('hidden');
             link.href = '#';
             link.classList.add('pointer-events-none');
-            badge.textContent = 'Belum';
-            badge.className = 'shrink-0 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-secondary';
+            badge.textContent = 'Belum Ada';
+            badge.className = 'badge badge-gray text-[10px]';
         }
     }
 
@@ -1095,10 +898,6 @@
         modal.classList.remove('flex');
     }
 
-    function confirmSuspend(name) {
-        return confirm(`Apakah Anda yakin ingin menangguhkan akun kurir ${name}? Tindakan ini akan menghentikan akses kurir ke aplikasi penerimaan pesanan.`);
-    }
-
     function confirmSteer() {
         return confirm('Verifikasi berkas kurir ini sekarang? Kurir akan langsung aktif menerima pesanan.');
     }
@@ -1106,10 +905,13 @@
     function shareRegistrationLink() {
         const url = `{{ url('/register') }}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url).then(() => alert('Link pendaftaran kurir disalin: ' + url));
+            navigator.clipboard.writeText(url).then(function() {
+                alert('Link pendaftaran kurir disalin ke clipboard:\n' + url);
+            });
         } else {
-            alert('Link pendaftaran kurir: ' + url);
+            alert('Link pendaftaran kurir:\n' + url);
         }
     }
 </script>
 @endpush
+@endsection

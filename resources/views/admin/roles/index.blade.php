@@ -1,125 +1,154 @@
 @extends('layouts.admin')
 
-@section('title', 'Manajemen Role')
+@section('title', 'Manajemen Role & Hak Akses')
 
 @section('content')
-<div class="flex flex-col w-full gap-space-xl">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-        <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-secondary font-label-md">
-                <span>Sistem &amp; Keamanan</span>
-                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-                <span class="text-on-surface font-semibold">Manajemen Role</span>
+<div class="space-y-5">
+    {{-- Header Halaman --}}
+    <div class="page-header">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="page-title">Manajemen Role &amp; Hak Akses</h1>
+                <span class="badge badge-gray text-xs">
+                    {{ $roles->count() }} Role Terdaftar
+                </span>
             </div>
-            <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">Manajemen Role &amp; Hak Akses</h1>
-            <p class="font-body-sm text-body-sm text-secondary">Konfigurasi peran dan hierarki perizinan pengguna sistem CityCourier</p>
+            <p class="page-subtitle">Kelola hierarki hak akses dan izin menu untuk setiap jabatan pengguna sistem.</p>
         </div>
-        <div class="flex items-center gap-space-sm self-start md:self-auto">
+
+        <div class="page-actions">
             @canPerm('roles.create')
-            <a href="{{ route('admin.roles.create') }}" class="flex items-center gap-space-xs px-space-md py-space-xs h-9 bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md rounded-lg shadow-sm transition-all">
-                <span class="material-symbols-outlined text-[18px]">add</span>
-                <span>Tambah Role</span>
+            <a href="{{ route('admin.roles.create') }}" class="btn btn-primary">
+                <span class="material-symbols-outlined">add</span>
+                <span>Tambah Role Baru</span>
             </a>
             @endcanPerm
         </div>
     </div>
 
-    <!-- Roles Table -->
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <div class="px-space-xl py-space-md flex items-center justify-between bg-surface-container-low/50">
-            <div class="flex items-center gap-space-sm">
-                <div class="w-8 h-8 rounded-lg bg-primary-container/10 text-primary-container flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">security</span>
-                </div>
-                <div>
-                    <h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Daftar Role</h2>
-                    <p class="font-label-sm text-label-sm text-secondary">{{ $roles->count() }} role terdaftar dalam sistem</p>
-                </div>
+    {{-- Tabs Navigasi Sub-Modul --}}
+    <div class="card p-3 sm:p-4">
+        <div class="flex items-center justify-between gap-3">
+            <div class="filter-tabs">
+                <a href="{{ route('admin.users.index') }}" class="filter-tab">
+                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    <span>Daftar Pengguna</span>
+                </a>
+                <a href="{{ route('admin.roles.index') }}" class="filter-tab is-active">
+                    <span class="material-symbols-outlined text-[16px]">security</span>
+                    <span>Role &amp; Jabatan</span>
+                    <span class="filter-count">{{ $roles->count() }}</span>
+                </a>
+                <a href="{{ route('admin.permissions.index') }}" class="filter-tab">
+                    <span class="material-symbols-outlined text-[16px]">key</span>
+                    <span>Permissions</span>
+                </a>
             </div>
         </div>
+    </div>
 
-        <div class="overflow-x-auto w-full">
-            <table class="w-full text-left border-collapse">
+    {{-- Tabel Role --}}
+    <div class="card overflow-hidden">
+        <div class="table-wrap">
+            <table class="data-table">
                 <thead>
-                    <tr class="bg-surface-container-low text-secondary font-label-sm text-label-sm uppercase tracking-wider">
-                        <th class="py-space-sm px-space-lg">Role</th>
-                        <th class="py-space-sm px-space-md">Jumlah Permission</th>
-                        <th class="py-space-sm px-space-md">Dibuat</th>
-                        <th class="py-space-sm px-space-lg text-right">Aksi</th>
+                    <tr>
+                        <th>Nama Role</th>
+                        <th>Jumlah Permission</th>
+                        <th>Jumlah Pengguna</th>
+                        <th>Dibuat Pada</th>
+                        <th class="text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-container-high font-body-md text-body-md text-on-surface">
+                <tbody>
                     @forelse ($roles as $role)
                     @php
-                        $roleBadgeColors = [
-                            'super-admin' => 'bg-blue-50 text-blue-800',
-                            'admin' => 'bg-primary-fixed text-on-primary-fixed-variant',
-                            'courier' => 'bg-emerald-50 text-emerald-800',
-                            'customer' => 'bg-secondary-container text-on-secondary-container',
-                        ];
+                        $rn = strtolower($role->name);
+                        $badgeClass = match($rn) {
+                            'super-admin', 'super admin' => 'badge-red',
+                            'admin'                      => 'badge-orange',
+                            'courier', 'kurir'           => 'badge-blue',
+                            'customer', 'pelanggan'      => 'badge-gray',
+                            default                      => 'badge-indigo',
+                        };
+                        $isProtected = in_array($rn, ['super-admin', 'admin', 'courier', 'customer']);
                     @endphp
-                    <tr class="hover:bg-surface-container-low/60 transition-colors group">
-                        <td class="py-space-md px-space-lg">
-                            <div class="flex items-center gap-space-md">
-                                <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-on-primary-fixed-variant shrink-0 shadow-sm">
-                                    <span class="material-symbols-outlined text-[20px]">badge</span>
+                    <tr>
+                        {{-- Nama Role --}}
+                        <td>
+                            <div class="flex items-center gap-2.5">
+                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+                                    <span class="material-symbols-outlined text-[18px]">security</span>
                                 </div>
-                                <div class="flex flex-col min-w-0">
-                                    <span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">{{ ucfirst($role->name) }}</span>
-                                    <span class="px-space-xs py-space-2xs rounded-full text-[10px] font-label-sm font-bold {{ $roleBadgeColors[$role->name] ?? 'bg-surface-container text-secondary' }} inline-flex items-center gap-space-2xs w-fit mt-0.5">
-                                        <span class="material-symbols-outlined text-[10px]">shield</span>
-                                        {{ ucfirst($role->name) }} Role
-                                    </span>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[13px] font-semibold text-slate-900">{{ ucfirst($role->name) }}</span>
+                                        <span class="badge {{ $badgeClass }} text-[11px]">{{ $role->name }}</span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+                                        ID: #{{ $role->id }}
+                                    </div>
                                 </div>
                             </div>
                         </td>
-                        <td class="py-space-md px-space-md">
-                            <span class="inline-flex items-center gap-space-xs text-secondary font-body-sm">
-                                <span class="material-symbols-outlined text-[16px]">key</span>
-                                {{ $role->permissions->count() ?? 0 }} permission
+
+                        {{-- Jumlah Permission --}}
+                        <td class="whitespace-nowrap">
+                            <span class="badge badge-gray font-mono text-xs">
+                                <span class="material-symbols-outlined text-[14px] text-slate-400">key</span>
+                                {{ $role->permissions_count ?? $role->permissions->count() }} permissions
                             </span>
                         </td>
-                        <td class="py-space-md px-space-md text-secondary text-sm">{{ $role->created_at->format('d M Y') }}</td>
-                        <td class="py-space-md px-space-lg text-right">
-                            <div class="inline-flex items-center justify-end gap-space-xs">
+
+                        {{-- Jumlah User --}}
+                        <td class="whitespace-nowrap font-mono text-xs text-slate-700">
+                            {{ $role->users_count ?? $role->users->count() }} user
+                        </td>
+
+                        {{-- Dibuat --}}
+                        <td class="whitespace-nowrap text-xs text-slate-500 font-mono">
+                            {{ $role->created_at ? $role->created_at->format('d/m/Y') : '-' }}
+                        </td>
+
+                        {{-- Aksi --}}
+                        <td class="text-right whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1">
                                 @canPerm('roles.edit')
-                                <a href="{{ route('admin.roles.edit', $role->id) }}" class="p-space-xs text-secondary hover:text-primary hover:bg-surface-container rounded-lg transition-colors" title="Edit Role">
+                                <a href="{{ route('admin.roles.edit', $role) }}"
+                                   class="btn-icon"
+                                   title="Edit Role & Permissions">
                                     <span class="material-symbols-outlined text-[18px]">edit</span>
                                 </a>
                                 @endcanPerm
+
                                 @canPerm('roles.delete')
-                                <form action="{{ route('admin.roles.destroy', $role->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus role ini?')">
+                                @if(!$isProtected)
+                                <form action="{{ route('admin.roles.destroy', $role) }}"
+                                      method="POST"
+                                      class="inline-block"
+                                      onsubmit="return confirm('Hapus role {{ $role->name }}?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-space-xs text-secondary hover:text-error hover:bg-error-container/20 rounded-lg transition-colors" title="Hapus Role">
+                                    <button type="submit" class="btn-icon btn-icon-danger" title="Hapus Role">
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
+                                @endif
                                 @endcanPerm
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="4" class="py-space-2xl px-space-lg text-center">
-                            <div class="flex flex-col items-center gap-space-xs text-secondary">
-                                <span class="material-symbols-outlined text-[32px]">shield</span>
-                                <span class="font-body-sm text-body-sm">Belum ada role terdaftar</span>
-                            </div>
+                        <td colspan="5" class="text-center py-12 text-slate-400">
+                            <span class="material-symbols-outlined text-[36px] text-slate-300 mb-1">security</span>
+                            <div class="text-sm font-medium text-slate-600">Belum ada role terdaftar</div>
                         </td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-
-        @if ($roles->hasPages())
-        <div class="px-space-xl py-3.5 border-t border-surface-container-high flex items-center justify-between">
-            <span class="font-label-sm text-label-sm text-secondary">Menampilkan {{ $roles->firstItem() }}–{{ $roles->lastItem() }} dari {{ $roles->total() }}</span>
-            <div>{{ $roles->withQueryString()->links() }}</div>
-        </div>
-        @endif
     </div>
 </div>
 @endsection

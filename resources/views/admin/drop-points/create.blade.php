@@ -3,119 +3,140 @@
 @section('title', 'Tambah Drop Point')
 
 @section('content')
-<div class="flex flex-col gap-space-xl">
-    {{-- Page Header --}}
-    <div class="flex items-center gap-space-md">
-        <a href="{{ route('admin.drop-points.index') }}" class="w-9 h-9 rounded-lg bg-surface-container-lowest border border-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors shadow-sm">
-            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
-        </a>
-        <div class="flex items-center gap-space-md">
-            <div class="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[22px] text-primary">add_location</span>
-            </div>
+<div class="space-y-5 max-w-3xl">
+    {{-- Header Halaman --}}
+    <div class="page-header">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('admin.drop-points.index') }}" class="back-link" title="Kembali ke Daftar Drop Point">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            </a>
             <div>
-                <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Tambah Drop Point</h1>
-                <p class="font-body-sm text-body-sm text-secondary mt-space-2xs">Tambahkan lokasi kantor atau agen baru</p>
+                <h1 class="page-title">Tambah Drop Point Baru</h1>
+                <p class="page-subtitle">Daftarkan lokasi kantor cabang, gudang hub, atau gerai drop point baru.</p>
             </div>
         </div>
     </div>
 
-    {{-- Form --}}
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden max-w-3xl">
-        <div class="px-space-xl py-space-md border-b border-surface-container-high">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                <span class="material-symbols-outlined text-primary">warehouse</span>
-                Form Drop Point
-            </h2>
+    {{-- Form Tambah Drop Point --}}
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Form Data Lokasi Drop Point</div>
         </div>
-        <div class="p-space-xl">
-            <form action="{{ route('admin.drop-points.store') }}" method="POST">
+        <div class="card-body">
+            <form action="{{ route('admin.drop-points.store') }}" method="POST" class="space-y-4">
                 @csrf
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg mb-space-lg">
-                    {{-- Nama --}}
-                    <div class="md:col-span-2">
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Nama Drop Point</label>
-                        <input type="text" name="name"
-                               class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('name') border-red-500 @enderror"
-                               value="{{ old('name') }}" placeholder="Contoh: Kantor Cabang Surabaya" required>
-                        @error('name') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
-                    </div>
+                <div>
+                    <label class="form-label" for="name">
+                        Nama Drop Point <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text"
+                           name="name"
+                           id="name"
+                           value="{{ old('name') }}"
+                           placeholder="Contoh: Drop Point Waru Sidoarjo"
+                           required
+                           class="form-input @error('name') form-invalid @enderror">
+                    @error('name') <p class="form-error">{{ $message }}</p> @enderror
+                </div>
 
-                    {{-- Alamat --}}
-                    <div class="md:col-span-2">
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Alamat Lengkap</label>
-                        <textarea name="address" rows="3"
-                                  class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all resize-none @error('address') border-red-500 @enderror"
-                                  placeholder="Jl. Raya Utama No. 123..." required>{{ old('address') }}</textarea>
-                        @error('address') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
-                    </div>
+                <div>
+                    <label class="form-label" for="address">
+                        Alamat Lengkap <span class="text-red-500">*</span>
+                    </label>
+                    <textarea name="address"
+                              id="address"
+                              rows="3"
+                              placeholder="Jl. Raya Brigjend Katamso No. 12, Waru..."
+                              required
+                              class="form-textarea @error('address') form-invalid @enderror">{{ old('address') }}</textarea>
+                    @error('address') <p class="form-error">{{ $message }}</p> @enderror
+                </div>
 
-                    {{-- Telepon --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Nomor Telepon</label>
-                        <input type="text" name="phone"
-                               class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('phone') border-red-500 @enderror"
-                               value="{{ old('phone') }}" placeholder="021-xxxxxxx">
-                        @error('phone') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
+                        <label class="form-label" for="phone">Nomor Telepon / WhatsApp</label>
+                        <input type="text"
+                               name="phone"
+                               id="phone"
+                               value="{{ old('phone') }}"
+                               placeholder="Contoh: 08123456789 atau 031-866xxxx"
+                               class="form-input font-mono @error('phone') form-invalid @enderror">
+                        @error('phone') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Jam Operasional --}}
                     <div>
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Jam Operasional</label>
-                        <input type="text" name="schedule"
-                               class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('schedule') border-red-500 @enderror"
-                               value="{{ old('schedule', '08:00 - 21:00') }}" placeholder="08:00 - 21:00">
-                        @error('schedule') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
+                        <label class="form-label" for="schedule">Jam Operasional</label>
+                        <input type="text"
+                               name="schedule"
+                               id="schedule"
+                               value="{{ old('schedule', '08:00 - 21:00') }}"
+                               placeholder="Contoh: 08:00 - 21:00 WIB"
+                               class="form-input @error('schedule') form-invalid @enderror">
+                        @error('schedule') <p class="form-error">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label" for="rating">Rating (0 - 5.0)</label>
+                        <input type="number"
+                               name="rating"
+                               id="rating"
+                               step="0.1"
+                               min="0"
+                               max="5"
+                               value="{{ old('rating', '4.8') }}"
+                               class="form-input font-mono @error('rating') form-invalid @enderror">
+                        @error('rating') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Rating --}}
                     <div>
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Rating (0-5)</label>
-                        <input type="number" name="rating"
-                               class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('rating') border-red-500 @enderror"
-                               value="{{ old('rating', '5.0') }}" step="0.1" min="0" max="5">
-                        @error('rating') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
-                    </div>
-
-                    {{-- Status --}}
-                    <div>
-                        <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Status</label>
-                        <select name="is_active" class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all">
-                            <option value="1">Aktif</option>
-                            <option value="0">Non-aktif</option>
+                        <label class="form-label" for="is_active">Status Operasional</label>
+                        <select name="is_active" id="is_active" class="form-select">
+                            <option value="1" {{ old('is_active', '1') == '1' ? 'selected' : '' }}>Aktif (Menerima Paket)</option>
+                            <option value="0" {{ old('is_active') === '0' ? 'selected' : '' }}>Nonaktif (Tutup Sementara)</option>
                         </select>
                     </div>
                 </div>
 
-                {{-- Koordinat --}}
-                <div class="mb-space-lg">
-                    <h4 class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-space-md">Koordinat Lokasi (Opsional)</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
+                {{-- Koordinat GPS --}}
+                <div class="border-t border-slate-200 pt-3 space-y-3">
+                    <div class="text-xs font-semibold text-slate-800">
+                        Koordinat Lokasi Geografis (Opsional)
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Latitude</label>
-                            <input type="text" name="latitude"
-                                   class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('latitude') border-red-500 @enderror"
-                                   value="{{ old('latitude') }}" placeholder="-6.xxxxxx">
-                            @error('latitude') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
+                            <label class="form-label" for="latitude">Latitude</label>
+                            <input type="text"
+                                   name="latitude"
+                                   id="latitude"
+                                   value="{{ old('latitude') }}"
+                                   placeholder="Contoh: -7.3498032"
+                                   class="form-input font-mono text-xs @error('latitude') form-invalid @enderror">
+                            @error('latitude') <p class="form-error">{{ $message }}</p> @enderror
                         </div>
+
                         <div>
-                            <label class="block font-label-md text-label-md text-on-surface font-semibold mb-space-xs">Longitude</label>
-                            <input type="text" name="longitude"
-                                   class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('longitude') border-red-500 @enderror"
-                                   value="{{ old('longitude') }}" placeholder="106.xxxxxx">
-                            @error('longitude') <p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p> @enderror
+                            <label class="form-label" for="longitude">Longitude</label>
+                            <input type="text"
+                                   name="longitude"
+                                   id="longitude"
+                                   value="{{ old('longitude') }}"
+                                   placeholder="Contoh: 112.7498118"
+                                   class="form-input font-mono text-xs @error('longitude') form-invalid @enderror">
+                            @error('longitude') <p class="form-error">{{ $message }}</p> @enderror
                         </div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-space-md pt-space-md border-t border-surface-container-high">
-                    <button type="submit" class="px-space-lg py-space-xs rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-bold shadow-sm transition-all flex items-center gap-space-xs">
-                        <span class="material-symbols-outlined text-[18px]">save</span>
+                <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                    <a href="{{ route('admin.drop-points.index') }}" class="btn btn-secondary">
+                        Batal
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="material-symbols-outlined">save</span>
                         Simpan Drop Point
-                    </button>
-                    <button type="reset" class="px-space-lg py-space-xs rounded-lg bg-surface-container-high text-on-surface-variant hover:bg-surface-container font-label-md text-label-md font-semibold transition-all">
-                        Reset
                     </button>
                 </div>
             </form>

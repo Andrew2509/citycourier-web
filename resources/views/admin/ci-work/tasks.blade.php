@@ -1,22 +1,33 @@
 @extends('layouts.admin')
 
+@section('title', 'Manajemen Tugas Pengiriman')
+
 @section('content')
-<div class="flex flex-col w-full gap-space-xl">
+<div class="space-y-5">
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
-        <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-secondary font-label-md">
-                <span>City-Work Operasional</span>
-                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-                <span class="text-on-surface font-semibold">Manajemen Tugas Pengiriman</span>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-200">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-primary-50 text-primary-700">
+                    <span class="w-1.5 h-1.5 rounded-full bg-primary-600 animate-pulse"></span>
+                    Pipeline Pengiriman
+                </span>
+                <span class="text-xs text-slate-400">•</span>
+                <span class="text-xs text-slate-500 font-medium">Tugas Kurir Lapangan</span>
             </div>
-            <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Manajemen Tugas Pengiriman</h1>
-            <p class="font-body-md text-body-md text-secondary">Pantau dan kelola seluruh tugas pengiriman kurir secara real-time</p>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Manajemen Tugas Pengiriman</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Pantau alokasi tugas, status perjalanan kurir, dan verifikasi bukti serah terima</p>
         </div>
-        <span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded-full font-label-sm text-label-sm bg-red-50 text-red-700 font-bold animate-pulse self-start">
-            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-            LIVE DISPATCH
-        </span>
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+            <a href="{{ route('admin.ci-work.index') }}" class="btn btn-secondary text-xs h-9 px-3 gap-1.5">
+                <span class="material-symbols-outlined text-[16px] text-slate-500">dashboard</span>
+                <span>Cockpit Kerja</span>
+            </a>
+            <a href="{{ route('admin.ci-work.attendance') }}" class="btn btn-primary text-xs h-9 px-3.5 gap-1.5 shadow-sm">
+                <span class="material-symbols-outlined text-[16px]">near_me</span>
+                <span>Peta Presensi</span>
+            </a>
+        </div>
     </div>
 
     <!-- Stat Cards -->
@@ -25,100 +36,107 @@
         $completedTasks = $tasks->filter(fn($t) => $t->status === 'delivered')->count();
         $pendingPhoto = $tasks->filter(fn($t) => !$t->delivery_photo && $t->status === 'delivering')->count();
     @endphp
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
-            <div class="flex flex-col gap-space-2xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Sedang Dikerjakan</span>
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $activeTasks }}</span>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card p-4 flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sedang Dikerjakan</span>
+                <div class="text-2xl font-bold font-mono text-primary-600 mt-1">{{ $activeTasks }}</div>
+                <span class="text-[11px] text-slate-400">Aktif di jalan</span>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
-                <span class="material-symbols-outlined text-[22px]">pending_actions</span>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
-            <div class="flex flex-col gap-space-2xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Selesai Hari Ini</span>
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $completedTasks }}</span>
-            </div>
-            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
-                <span class="material-symbols-outlined text-[22px]">check_circle</span>
+            <div class="w-9 h-9 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">pending_actions</span>
             </div>
         </div>
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
-            <div class="flex flex-col gap-space-2xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Menunggu Bukti Foto</span>
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $pendingPhoto }}</span>
+
+        <div class="card p-4 flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Selesai Hari Ini</span>
+                <div class="text-2xl font-bold font-mono text-slate-900 mt-1">{{ $completedTasks }}</div>
+                <span class="text-[11px] text-emerald-600 font-semibold">Terkirim ke penerima</span>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
-                <span class="material-symbols-outlined text-[22px]">add_a_photo</span>
+            <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">check_circle</span>
             </div>
         </div>
-        <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-all">
-            <div class="flex flex-col gap-space-2xs">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Rata-rata Durasi</span>
-                <span class="font-display-lg text-display-lg text-on-surface font-bold">{{ $avgDuration }} mnt</span>
+
+        <div class="card p-4 flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Menunggu Bukti Foto</span>
+                <div class="text-2xl font-bold font-mono text-slate-900 mt-1">{{ $pendingPhoto }}</div>
+                <span class="text-[11px] text-amber-600 font-semibold">Proof of Delivery</span>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-[22px]">timer</span>
+            <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">add_a_photo</span>
+            </div>
+        </div>
+
+        <div class="card p-4 flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Rata-rata Durasi</span>
+                <div class="text-2xl font-bold font-mono text-slate-900 mt-1">{{ $avgDuration }} <span class="text-xs font-normal text-slate-400">mnt</span></div>
+                <span class="text-[11px] text-slate-400">Waktu antar paket</span>
+            </div>
+            <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">timer</span>
             </div>
         </div>
     </div>
 
-    <!-- Task Table -->
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+    <!-- Task Table Card -->
+    <div class="card overflow-hidden">
         <!-- Filter Tabs -->
-        <div class="flex border-b border-surface-container-high overflow-x-auto">
-            <a href="{{ request()->fullUrlWithQuery(['status' => '']) }}" class="px-space-lg py-3.5 text-sm font-medium transition-colors whitespace-nowrap {{ !request('status') ? 'text-primary border-b-2 border-primary font-bold' : 'text-secondary hover:text-on-surface' }}">
+        <div class="flex items-center gap-1 px-4 border-b border-slate-200 bg-slate-50/50 overflow-x-auto">
+            <a href="{{ request()->fullUrlWithQuery(['status' => '']) }}" class="filter-tab {{ !request('status') ? 'active' : '' }}">
                 Semua Tugas
             </a>
-            <a href="{{ request()->fullUrlWithQuery(['status' => 'active']) }}" class="px-space-lg py-3.5 text-sm font-medium transition-colors whitespace-nowrap {{ request('status') === 'active' ? 'text-primary border-b-2 border-primary font-bold' : 'text-secondary hover:text-on-surface' }}">
+            <a href="{{ request()->fullUrlWithQuery(['status' => 'active']) }}" class="filter-tab {{ request('status') === 'active' ? 'active' : '' }}">
                 Sedang Dikerjakan
             </a>
-            <a href="{{ request()->fullUrlWithQuery(['status' => 'completed']) }}" class="px-space-lg py-3.5 text-sm font-medium transition-colors whitespace-nowrap {{ request('status') === 'completed' ? 'text-primary border-b-2 border-primary font-bold' : 'text-secondary hover:text-on-surface' }}">
-                Selesai
+            <a href="{{ request()->fullUrlWithQuery(['status' => 'completed']) }}" class="filter-tab {{ request('status') === 'completed' ? 'active' : '' }}">
+                Selesai Terkirim
             </a>
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="data-table">
                 <thead>
-                    <tr class="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary">
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">No. Resi</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Kurir</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Lokasi Jemput</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Lokasi Tujuan</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Bukti Foto</th>
-                        <th class="py-3.5 px-4 font-bold text-right whitespace-nowrap">Aksi</th>
+                    <tr>
+                        <th>No. Resi</th>
+                        <th>Kurir</th>
+                        <th>Lokasi Jemput</th>
+                        <th>Lokasi Tujuan</th>
+                        <th>Status</th>
+                        <th>Bukti Foto</th>
+                        <th class="text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-surface-container-high/60">
+                <tbody>
                     @forelse($tasks as $task)
-                    <tr class="hover:bg-surface transition-colors group">
-                        <td class="py-4 px-4 whitespace-nowrap">
-                            <span class="font-data-mono font-bold text-primary">{{ $task->shipment->tracking_number ?? '-' }}</span>
+                    <tr>
+                        <td class="font-mono font-bold text-primary-600">
+                            {{ $task->shipment->tracking_number ?? '-' }}
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="flex items-center gap-space-xs">
-                                <div class="w-7 h-7 rounded-full bg-primary-container text-on-primary flex items-center justify-center text-xs font-bold shrink-0">
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shrink-0">
                                     {{ strtoupper(substr($task->courier->user->name ?? 'K', 0, 1)) }}
                                 </div>
-                                <span class="font-medium text-on-surface">{{ $task->courier->user->name ?? '-' }}</span>
+                                <span class="font-medium text-slate-800">{{ $task->courier->user->name ?? '-' }}</span>
                             </div>
                         </td>
-                        <td class="py-4 px-4 max-w-[160px]">
-                            <span class="text-xs text-secondary line-clamp-1" title="{{ $task->shipment->sender_address ?? '' }}">{{ $task->shipment->sender_address ?? '-' }}</span>
+                        <td class="max-w-[180px]">
+                            <span class="text-xs text-slate-600 line-clamp-1" title="{{ $task->shipment->sender_address ?? '' }}">{{ $task->shipment->sender_address ?? '-' }}</span>
                         </td>
-                        <td class="py-4 px-4 max-w-[160px]">
-                            <span class="text-xs text-secondary line-clamp-1" title="{{ $task->shipment->receiver_address ?? '' }}">{{ $task->shipment->receiver_address ?? '-' }}</span>
+                        <td class="max-w-[180px]">
+                            <span class="text-xs text-slate-600 line-clamp-1" title="{{ $task->shipment->receiver_address ?? '' }}">{{ $task->shipment->receiver_address ?? '-' }}</span>
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap">
+                        <td>
                             @php
                                 $taskStyles = [
-                                    'assigned' => 'bg-secondary-container text-on-secondary-fixed-variant',
-                                    'picking_up' => 'bg-blue-50 text-blue-700',
-                                    'delivering' => 'bg-amber-50 text-amber-700',
-                                    'delivered' => 'bg-emerald-50 text-emerald-700',
+                                    'assigned' => 'badge-neutral',
+                                    'picking_up' => 'badge-primary',
+                                    'delivering' => 'badge-warning',
+                                    'delivered' => 'badge-success',
                                 ];
                                 $taskLabels = [
                                     'assigned' => 'Ditugaskan',
@@ -127,42 +145,37 @@
                                     'delivered' => 'Selesai',
                                 ];
                             @endphp
-                            <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full {{ $taskStyles[$task->status] ?? 'bg-surface-container text-secondary' }} font-label-sm text-xs font-bold">
-                                <span class="w-1.5 h-1.5 rounded-full {{ $task->status === 'delivering' ? 'bg-amber-500' : ($task->status === 'delivered' ? 'bg-emerald-600' : 'bg-current') }}"></span>
+                            <span class="badge {{ $taskStyles[$task->status] ?? 'badge-neutral' }} text-[11px]">
                                 {{ $taskLabels[$task->status] ?? $task->status }}
                             </span>
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap">
+                        <td>
                             @if($task->delivery_photo)
-                                <a href="{{ asset('storage/' . $task->delivery_photo) }}" target="_blank" class="inline-flex items-center gap-space-2xs text-primary hover:text-primary/80 text-xs font-medium">
-                                    <span class="material-symbols-outlined text-[16px]">image</span>
-                                    Lihat
+                                <a href="{{ asset('storage/' . $task->delivery_photo) }}" target="_blank" class="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-xs font-semibold">
+                                    <span class="material-symbols-outlined text-[15px]">image</span>
+                                    <span>Lihat Foto</span>
                                 </a>
                             @else
-                                <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-amber-50 text-amber-700 font-label-sm text-xs font-bold">
-                                    <span class="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                                <span class="badge badge-neutral text-[10px] text-slate-400">
                                     Belum Ada
                                 </span>
                             @endif
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap text-right">
-                            <div class="inline-flex items-center justify-end gap-space-xs">
-                                <a href="#" class="p-space-xs rounded-lg text-secondary hover:text-primary hover:bg-surface-container-low transition-colors" title="Detail Rute">
-                                    <span class="material-symbols-outlined text-[18px]">map</span>
-                                </a>
-                                <a href="#" class="p-space-xs rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Hubungi Kurir">
-                                    <span class="material-symbols-outlined text-[18px]">phone</span>
+                        <td class="text-right">
+                            <div class="inline-flex items-center justify-end gap-1">
+                                <a href="{{ route('admin.ci-work.index') }}" class="btn btn-secondary text-xs h-7 px-2 gap-1" title="Pantau di Cockpit">
+                                    <span class="material-symbols-outlined text-[14px] text-slate-500">near_me</span>
+                                    <span>Lacak</span>
                                 </a>
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="py-space-2xl px-4 text-center">
-                            <div class="flex flex-col items-center gap-space-xs text-secondary">
-                                <span class="material-symbols-outlined text-[32px]">assignment</span>
-                                <span class="font-body-sm text-body-sm">Tidak ada tugas ditemukan</span>
-                            </div>
+                        <td colspan="7" class="p-8 text-center text-slate-400">
+                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">assignment_late</span>
+                            <p class="text-xs font-semibold text-slate-600">Tidak ada tugas ditemukan</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Tugas yang sedang berjalan akan ditampilkan di tabel ini.</p>
                         </td>
                     </tr>
                     @endforelse
@@ -170,7 +183,7 @@
             </table>
         </div>
 
-        <div class="px-space-xl py-3.5 border-t border-surface-container-high">
+        <div class="px-4 py-3 border-t border-slate-100">
             {{ $tasks->withQueryString()->links() }}
         </div>
     </div>

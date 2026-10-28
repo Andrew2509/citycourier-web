@@ -3,185 +3,200 @@
 @section('title', 'Kelola APK Distribusi')
 
 @section('content')
-<div class="flex flex-col w-full gap-space-xl">
+<div class="space-y-5">
     <!-- Header Section -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
-        <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-wider font-bold">
-                <span class="material-symbols-outlined text-[16px]">install_mobile</span>
-                <span>Unduh Aplikasi</span>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-200">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Distribusi Android
+                </span>
+                <span class="text-xs text-slate-400">•</span>
+                <span class="text-xs text-slate-500 font-medium">Driver &amp; Pelanggan APK</span>
             </div>
-            <h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Kelola APK Distribusi</h1>
-            <p class="font-body-md text-body-md text-secondary">Upload dan kelola versi aplikasi CityCourier untuk distribusi</p>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Kelola APK Distribusi</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Upload link rilis baru, kelola versi aktif, dan bagikan tautan unduh aplikasi</p>
         </div>
+        @if($active)
+        <a href="{{ route('download.app') }}" target="_blank" rel="noopener" class="btn btn-primary text-xs h-9 px-3.5 gap-1.5 shadow-sm self-start sm:self-auto">
+            <span class="material-symbols-outlined text-[16px]">download</span>
+            <span>Unduh APK Aktif</span>
+        </a>
+        @endif
     </div>
 
-    <!-- Active Release Banner -->
+    <!-- Active Release Card -->
     @if($active)
-    <div class="bg-gradient-to-r from-primary-container to-primary rounded-xl p-space-xl text-on-primary shadow-lg">
-        <div class="flex flex-col md:flex-row md:items-center gap-space-md justify-between">
-            <div class="flex items-center gap-space-md">
-                <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-[32px]">android</span>
+    <div class="card p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white border-slate-800 shadow-md">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/10">
+                    <span class="material-symbols-outlined text-[28px] text-emerald-400">android</span>
                 </div>
-                <div class="min-w-0">
-                    <span class="px-space-xs py-space-2xs bg-white/20 text-on-primary rounded-lg font-label-sm text-label-sm font-semibold uppercase tracking-wide">Rilis Aktif</span>
-                    <h3 class="font-headline-lg text-headline-lg text-on-primary font-bold mt-space-xs">CityCourier v{{ $active->version }}</h3>
-                    <p class="font-body-sm text-body-sm text-on-primary/80">{{ $active->formatted_size }}
+                <div class="space-y-0.5 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Rilis Publik Aktif</span>
+                        <span class="text-xs text-slate-400 font-mono">v{{ $active->version }}</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white tracking-tight">City Courier Driver v{{ $active->version }}</h3>
+                    <div class="flex items-center gap-2 text-xs text-slate-300 font-mono">
+                        <span>{{ $active->formatted_size }}</span>
                         @if($active->created_at)
-                            &bull; rilis {{ $active->created_at->format('d M Y') }}
+                            <span>•</span>
+                            <span>Dirilis {{ $active->created_at->format('d M Y') }}</span>
                         @endif
-                    </p>
+                    </div>
                     @if($active->release_notes)
-                    <p class="text-xs text-on-primary/70 mt-space-2xs line-clamp-2">{{ $active->release_notes }}</p>
+                        <p class="text-xs text-slate-400 mt-1 line-clamp-1 italic">"{{ $active->release_notes }}"</p>
                     @endif
                 </div>
             </div>
-            <a href="{{ route('download.app') }}" target="_blank" rel="noopener"
-               class="px-space-lg py-space-sm bg-on-primary text-primary rounded-lg font-semibold hover:bg-white/90 transition-all flex items-center justify-center gap-space-xs flex-shrink-0 shadow-md font-label-md">
-                <span class="material-symbols-outlined text-[18px]">download</span>
-                Unduh Aplikasi
-            </a>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{{ $active->google_drive_url }}" target="_blank" rel="noopener" class="btn btn-secondary text-xs h-9 px-3 gap-1.5 bg-white/10 text-white border-white/20 hover:bg-white/20">
+                    <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+                    <span>Link Drive</span>
+                </a>
+                <a href="{{ route('download.app') }}" target="_blank" rel="noopener" class="btn btn-primary text-xs h-9 px-3.5 gap-1.5 shadow-sm">
+                    <span class="material-symbols-outlined text-[16px]">download</span>
+                    <span>Unduh Sekarang</span>
+                </a>
+            </div>
         </div>
     </div>
     @endif
 
     <!-- Add New Version Form -->
     @canPerm('app_download.create')
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-        <div class="px-space-xl py-space-md border-b border-surface-container-high">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold flex items-center gap-space-xs">
-                <span class="material-symbols-outlined text-[20px] text-primary">add_link</span>
-                Tambah Versi Baru
-            </h2>
-            <p class="font-label-sm text-label-sm text-secondary mt-space-2xs">Versi baru yang ditambahkan otomatis menjadi rilis aktif.</p>
+    <div class="card overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-primary-600">add_link</span>
+            <div>
+                <h2 class="text-xs font-bold text-slate-900">Tambah Versi Rilis Baru</h2>
+                <span class="text-[11px] text-slate-500">Versi yang baru ditambahkan akan otomatis menjadi rilis aktif</span>
+            </div>
         </div>
-        <div class="p-space-xl">
-            <form action="{{ route('admin.app-download.store') }}" method="POST" class="space-y-4">
-                @csrf
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
-                    <div>
-                        <label for="version" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Versi</label>
-                        <input type="text" name="version" id="version" value="{{ old('version', $active->version ?? '1.0.0') }}"
-                               class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('version') border-red-500 @enderror"
-                               placeholder="1.0.0" required>
-                        @error('version')<p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p>@enderror
-                    </div>
-                    <div>
-                        <label for="file_size" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Ukuran File (MB)</label>
-                        <input type="number" name="file_size" id="file_size" step="0.1" min="0"
-                               value="{{ old('file_size') }}"
-                               class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('file_size') border-red-500 @enderror"
-                               placeholder="60">
-                        @error('file_size')<p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p>@enderror
-                    </div>
+        <form action="{{ route('admin.app-download.store') }}" method="POST" class="p-4 sm:p-5 space-y-4">
+            @csrf
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="version" class="block text-xs font-semibold text-slate-700 mb-1">Nomor Versi <span class="text-rose-500">*</span></label>
+                    <input type="text" name="version" id="version" value="{{ old('version', $active->version ?? '1.0.0') }}"
+                           class="form-input text-xs w-full @error('version') border-rose-500 @enderror"
+                           placeholder="Contoh: 1.0.1" required>
+                    @error('version')<p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
-                    <label for="google_drive_url" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Google Drive URL</label>
-                    <input type="url" name="google_drive_url" id="google_drive_url" value="{{ old('google_drive_url') }}"
-                           class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all @error('google_drive_url') border-red-500 @enderror"
-                           placeholder="https://drive.google.com/file/d/xxx/view?usp=sharing" required>
-                    @error('google_drive_url')<p class="text-xs text-red-500 mt-space-2xs">{{ $message }}</p>@enderror
-                    <p class="text-xs text-secondary mt-space-2xs">Upload APK ke Google Drive, setel berbagi ke publik, lalu tempel link di sini.</p>
+                    <label for="file_size" class="block text-xs font-semibold text-slate-700 mb-1">Perkiraan Ukuran File (MB)</label>
+                    <input type="number" name="file_size" id="file_size" step="0.1" min="0" value="{{ old('file_size') }}"
+                           class="form-input text-xs w-full @error('file_size') border-rose-500 @enderror"
+                           placeholder="Contoh: 45.5">
+                    @error('file_size')<p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>@enderror
                 </div>
+            </div>
 
-                <div>
-                    <label for="release_notes" class="block font-label-md text-label-md font-semibold text-on-surface mb-space-xs">Catatan Rilis <span class="text-xs font-normal text-secondary">(opsional)</span></label>
-                    <textarea name="release_notes" id="release_notes" rows="3"
-                              class="w-full px-space-md py-space-xs rounded-lg border border-surface-container-high bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all resize-none"
-                              placeholder="Apa yang baru di versi ini...">{{ old('release_notes') }}</textarea>
-                </div>
+            <div>
+                <label for="google_drive_url" class="block text-xs font-semibold text-slate-700 mb-1">Tautan File APK Google Drive <span class="text-rose-500">*</span></label>
+                <input type="url" name="google_drive_url" id="google_drive_url" value="{{ old('google_drive_url') }}"
+                       class="form-input text-xs w-full @error('google_drive_url') border-rose-500 @enderror"
+                       placeholder="https://drive.google.com/file/d/xxx/view?usp=sharing" required>
+                @error('google_drive_url')<p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>@enderror
+                <p class="text-[11px] text-slate-400 mt-1">Pastikan izin file di Google Drive diatur ke "Siapa saja yang memiliki link dapat melihat/mengunduh".</p>
+            </div>
 
-                <div class="flex justify-end">
-                    <button type="submit" class="px-space-lg py-space-xs rounded-lg bg-primary-container hover:bg-primary text-on-primary font-semibold transition-all flex items-center gap-space-xs font-label-md shadow-sm">
-                        <span class="material-symbols-outlined text-[18px]">add_link</span>
-                        Tambahkan Versi
-                    </button>
-                </div>
-            </form>
-        </div>
+            <div>
+                <label for="release_notes" class="block text-xs font-semibold text-slate-700 mb-1">Catatan Rilis (Changelog) <span class="text-[11px] font-normal text-slate-400">(opsional)</span></label>
+                <textarea name="release_notes" id="release_notes" rows="2"
+                          class="form-textarea text-xs w-full"
+                          placeholder="Perbaikan bug pada tracking live, peningkatan stabilitas notifikasi WhatsApp...">{{ old('release_notes') }}</textarea>
+            </div>
+
+            <div class="flex items-center justify-end pt-2 border-t border-slate-100">
+                <button type="submit" class="btn btn-primary text-xs h-9 px-4 gap-1.5 shadow-sm">
+                    <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+                    <span>Publikasikan Versi Ini</span>
+                </button>
+            </div>
+        </form>
     </div>
     @endcanPerm
 
     <!-- Version History Table -->
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-        <div class="px-space-xl py-space-md border-b border-surface-container-high flex items-center justify-between">
-            <div class="flex items-center gap-space-md">
-                <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold">
-                    <span class="material-symbols-outlined text-[20px]">history</span>
-                </div>
-                <div class="flex flex-col">
-                    <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Riwayat Versi</h2>
-                    @if($downloads->count() > 0)
-                    <span class="font-label-sm text-label-sm text-secondary">{{ $downloads->count() }} versi</span>
-                    @endif
+    <div class="card overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-slate-500">history</span>
+                <div>
+                    <h2 class="text-xs font-bold text-slate-900">Riwayat Versi Rilis</h2>
+                    <span class="text-[11px] text-slate-500">{{ $downloads->count() }} versi tercatat dalam database</span>
                 </div>
             </div>
         </div>
 
         @if($downloads->count() > 0)
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="data-table">
                 <thead>
-                    <tr class="bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary">
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Versi</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">File</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Ukuran</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
-                        <th class="py-3.5 px-4 font-bold whitespace-nowrap">Tanggal</th>
-                        <th class="py-3.5 px-4 font-bold text-right whitespace-nowrap">Aksi</th>
+                    <tr>
+                        <th>Versi</th>
+                        <th>Berkas APK</th>
+                        <th>Ukuran</th>
+                        <th>Status Rilis</th>
+                        <th>Tanggal Rilis</th>
+                        <th class="text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-surface-container-high/60">
+                <tbody>
                     @foreach($downloads as $download)
-                    <tr class="hover:bg-surface transition-colors group {{ $download->is_active ? 'bg-primary-fixed/20' : '' }}">
-                        <td class="py-4 px-4 whitespace-nowrap">
-                            <div class="flex items-center gap-space-sm">
-                                <div class="w-9 h-9 {{ $download->is_active ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-secondary' }} rounded-lg flex items-center justify-center flex-shrink-0">
+                    <tr class="{{ $download->is_active ? 'bg-primary-50/30' : '' }}">
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded {{ $download->is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500' }} flex items-center justify-center shrink-0">
                                     <span class="material-symbols-outlined text-[16px]">android</span>
                                 </div>
-                                <span class="font-bold text-on-surface font-data-mono">v{{ $download->version }}</span>
+                                <span class="font-bold font-mono text-slate-900 text-xs">v{{ $download->version }}</span>
                             </div>
                         </td>
-                        <td class="py-4 px-4">
-                            <p class="text-on-surface font-medium">{{ $download->filename ?: 'citycourier-v' . $download->version . '.apk' }}</p>
-                            @if($download->google_drive_url)
-                            <a href="{{ $download->google_drive_url }}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline inline-flex items-center gap-space-2xs mt-space-2xs">
-                                <span class="material-symbols-outlined text-[12px]">link</span> Google Drive
-                            </a>
-                            @endif
+                        <td>
+                            <div class="text-xs">
+                                <p class="font-medium text-slate-800">{{ $download->filename ?: 'citycourier-v' . $download->version . '.apk' }}</p>
+                                @if($download->google_drive_url)
+                                <a href="{{ $download->google_drive_url }}" target="_blank" rel="noopener" class="text-[11px] text-primary-600 hover:underline inline-flex items-center gap-0.5 mt-0.5">
+                                    <span class="material-symbols-outlined text-[12px]">link</span> Buka di Drive
+                                </a>
+                                @endif
+                            </div>
                         </td>
-                        <td class="py-4 px-4 text-secondary whitespace-nowrap">{{ $download->formatted_size }}</td>
-                        <td class="py-4 px-4 whitespace-nowrap">
+                        <td class="font-mono text-xs text-slate-600 whitespace-nowrap">{{ $download->formatted_size }}</td>
+                        <td>
                             @if($download->is_active)
-                            <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs bg-emerald-50 text-emerald-700 rounded-full font-label-sm text-xs font-semibold">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Aktif
+                            <span class="badge badge-success text-[11px]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Rilis Aktif
                             </span>
                             @else
-                            <span class="px-space-sm py-space-2xs bg-surface-container text-secondary rounded-full font-label-sm text-xs font-medium">Nonaktif</span>
+                            <span class="badge badge-neutral text-[11px]">Arsip</span>
                             @endif
                         </td>
-                        <td class="py-4 px-4 text-secondary whitespace-nowrap">
-                            @if($download->created_at)
-                                {{ $download->created_at->format('d M Y H:i') }}
-                            @else
-                                -
-                            @endif
+                        <td class="text-xs text-slate-500 font-mono whitespace-nowrap">
+                            {{ $download->created_at ? $download->created_at->format('d M Y, H:i') : '-' }}
                         </td>
-                        <td class="py-4 px-4 whitespace-nowrap text-right">
-                            <div class="inline-flex items-center justify-end gap-space-xs">
+                        <td class="text-right">
+                            <div class="inline-flex items-center justify-end gap-1">
                                 @if(!$download->is_active)
                                 <form action="{{ route('admin.app-download.set-active', $download) }}" method="POST" class="inline-block">
                                     @csrf
-                                    <button type="submit" title="Set sebagai aktif" class="p-space-xs rounded-lg text-secondary hover:text-primary hover:bg-surface-container-low transition-colors">
-                                        <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                                    <button type="submit" title="Jadikan Rilis Aktif" class="btn btn-secondary text-xs h-7 px-2 gap-1">
+                                        <span class="material-symbols-outlined text-[14px] text-emerald-600">check_circle</span>
+                                        <span>Aktifkan</span>
                                     </button>
                                 </form>
                                 @else
-                                <span class="p-space-xs text-primary cursor-not-allowed" title="Versi aktif saat ini">
-                                    <span class="material-symbols-outlined text-[18px]">verified</span>
+                                <span class="badge badge-success text-[10px] px-2 py-1">
+                                    Versi Aktif
                                 </span>
                                 @endif
 
@@ -189,8 +204,8 @@
                                       onsubmit="return confirm('Hapus versi v{{ $download->version }}? Tindakan ini tidak dapat dibatalkan.');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" title="Hapus" class="p-space-xs rounded-lg text-secondary hover:text-error hover:bg-error-container/20 transition-colors">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                    <button type="submit" title="Hapus Versi" class="btn btn-secondary text-xs h-7 w-7 p-0 text-rose-600 hover:bg-rose-50">
+                                        <span class="material-symbols-outlined text-[15px]">delete</span>
                                     </button>
                                 </form>
                             </div>
@@ -202,18 +217,16 @@
         </div>
 
         @if(method_exists($downloads, 'hasPages') && $downloads->hasPages())
-        <div class="px-space-xl py-3.5 border-t border-surface-container-high">
+        <div class="px-4 py-3 border-t border-slate-100">
             {{ $downloads->links() }}
         </div>
         @endif
 
         @else
-        <div class="py-space-2xl px-space-md text-center">
-            <div class="w-16 h-16 mx-auto rounded-xl bg-surface-container-high flex items-center justify-center">
-                <span class="material-symbols-outlined text-[32px] text-secondary">cloud_upload</span>
-            </div>
-            <p class="text-on-surface font-semibold mt-space-md">Belum ada versi APK</p>
-            <p class="font-body-sm text-body-sm text-secondary mt-space-xs">Tambahkan versi pertama lewat formulir di atas untuk mulai distribusi.</p>
+        <div class="p-8 text-center text-slate-400">
+            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">cloud_off</span>
+            <p class="text-xs font-semibold text-slate-600">Belum ada riwayat rilis APK</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Tambahkan versi perdana menggunakan formulir di atas.</p>
         </div>
         @endif
     </div>

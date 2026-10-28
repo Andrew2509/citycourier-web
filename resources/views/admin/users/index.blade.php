@@ -1,278 +1,247 @@
 @extends('layouts.admin')
 
-@section('title', 'Manajemen User')
+@section('title', 'Manajemen User & Hak Akses')
 
 @section('content')
-<div class="flex flex-col w-full gap-space-xl">
-    <!-- Top Breadcrumb & Page Action Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-        <div class="flex flex-col gap-space-2xs">
-            <div class="flex items-center gap-space-xs text-secondary font-label-md text-label-md">
-                <span>Sistem &amp; Keamanan</span>
-                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-                <span class="text-on-surface font-semibold">Manajemen User &amp; Hak Akses</span>
+@php
+    $totalUsers = $users->total();
+    $collection = $users->getCollection();
+    $adminCount = $collection->filter(fn($u) => $u->roles->contains('name', 'admin') || $u->roles->contains('name', 'super-admin'))->count();
+    $courierCount = $collection->filter(fn($u) => $u->roles->contains('name', 'courier'))->count();
+    $customerCount = $collection->filter(fn($u) => $u->roles->contains('name', 'customer'))->count();
+@endphp
+
+<div class="space-y-5">
+    {{-- Header Halaman --}}
+    <div class="page-header">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="page-title">Manajemen User &amp; Hak Akses</h1>
+                <span class="badge badge-gray text-xs">
+                    Total: <strong class="text-slate-900 ml-1">{{ $totalUsers }}</strong> akun
+                </span>
             </div>
-            <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Manajemen User &amp; Hak Akses</h1>
-            <p class="font-body-md text-body-md text-secondary">Kelola kredensial akun pengguna, status otentikasi staf, kurir armada, dan hierarki perizinan role sistem.</p>
+            <p class="page-subtitle">Kelola akun pengguna, peran administrator, kurir armada, dan kredensial akses sistem.</p>
         </div>
-        <div class="flex items-center gap-space-sm self-start md:self-auto">
-            <a href="{{ route('admin.users.index') }}" class="flex items-center gap-space-xs px-space-md py-space-xs h-9 bg-surface-container-lowest text-on-surface hover:bg-surface-container-high rounded-lg shadow-sm font-label-md text-label-md transition-all">
-                <span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
-                <span>Ekspor Akun</span>
-            </a>
+
+        <div class="page-actions">
             @canPerm('users.create')
-            <a href="{{ route('admin.users.create') }}" class="flex items-center gap-space-xs px-space-md py-space-xs h-9 bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md rounded-lg shadow-sm transition-all">
-                <span class="material-symbols-outlined text-[18px]">person_add</span>
-                <span>+ Tambah Pengguna Baru</span>
+            <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
+                <span class="material-symbols-outlined">person_add</span>
+                <span>Tambah Pengguna</span>
             </a>
             @endcanPerm
         </div>
     </div>
 
-    <!-- Operational Metrics Bento Overview -->
-    @php
-        $totalUsers = $users->total();
-        $adminCount = $users->getCollection()->filter(fn($u) => $u->roles->contains('name', 'admin') || $u->roles->contains('name', 'super-admin'))->count();
-        $courierCount = $users->getCollection()->filter(fn($u) => $u->roles->contains('name', 'courier'))->count();
-        $customerCount = $users->getCollection()->filter(fn($u) => $u->roles->contains('name', 'customer'))->count();
-    @endphp
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-base">
-        <div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md hover:shadow-md transition-all">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Total Pengguna</span>
-                    <span class="font-display-lg text-display-lg text-on-surface mt-space-2xs">{{ $totalUsers }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary-container">
-                    <span class="material-symbols-outlined text-[22px]">group</span>
-                </div>
-            </div>
-            <div class="flex items-center gap-space-xs">
-                <span class="inline-flex items-center text-label-sm font-label-sm px-space-xs py-space-2xs rounded-lg bg-emerald-50 text-emerald-700">
-                    <span class="material-symbols-outlined text-[14px] mr-0.5">verified_user</span> 100% Aktif
-                </span>
-            </div>
+    {{-- Ringkasan Pengguna (KPIs) --}}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="card p-3.5">
+            <div class="stat-label">Total Pengguna</div>
+            <div class="stat-value">{{ $totalUsers }}</div>
+            <div class="stat-meta text-emerald-700 font-medium">Terdaftar di sistem</div>
         </div>
-        <div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md hover:shadow-md transition-all">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Admin</span>
-                    <span class="font-display-lg text-display-lg text-on-surface mt-space-2xs">{{ $adminCount }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary">
-                    <span class="material-symbols-outlined text-[22px]">admin_panel_settings</span>
-                </div>
-            </div>
-            <div class="flex items-center gap-space-xs">
-                <span class="inline-flex items-center text-label-sm font-label-sm px-space-xs py-space-2xs rounded-lg bg-primary-fixed text-on-primary-fixed-variant">Root Access</span>
-            </div>
+        <div class="card p-3.5">
+            <div class="stat-label">Administrator</div>
+            <div class="stat-value text-brand-700">{{ $adminCount }}</div>
+            <div class="stat-meta">Akses penuh admin</div>
         </div>
-        <div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md hover:shadow-md transition-all">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Kurir</span>
-                    <span class="font-display-lg text-display-lg text-on-surface mt-space-2xs">{{ $courierCount }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-                    <span class="material-symbols-outlined text-[22px]">two_wheeler</span>
-                </div>
-            </div>
-            <div class="flex items-center gap-space-xs">
-                <span class="inline-flex items-center text-label-sm font-label-sm px-space-xs py-space-2xs rounded-lg bg-blue-50 text-blue-700">
-                    <span class="w-1.5 h-1.5 rounded-full bg-blue-600 mr-1 animate-ping"></span> On Duty
-                </span>
-            </div>
+        <div class="card p-3.5">
+            <div class="stat-label">Kurir Armada</div>
+            <div class="stat-value text-blue-700">{{ $courierCount }}</div>
+            <div class="stat-meta">Akun kurir aktif</div>
         </div>
-        <div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md hover:shadow-md transition-all">
-            <div class="flex items-start justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Pelanggan</span>
-                    <span class="font-display-lg text-display-lg text-on-surface mt-space-2xs">{{ $customerCount }}</span>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary">
-                    <span class="material-symbols-outlined text-[22px]">person</span>
-                </div>
+        <div class="card p-3.5">
+            <div class="stat-label">Pelanggan</div>
+            <div class="stat-value text-slate-800">{{ $customerCount }}</div>
+            <div class="stat-meta">Konsumen terdaftar</div>
+        </div>
+    </div>
+
+    {{-- Tabs Navigasi Sub-Modul & Pencarian --}}
+    <div class="card p-3 sm:p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="filter-tabs">
+                <a href="{{ route('admin.users.index') }}" class="filter-tab is-active">
+                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    <span>Daftar Pengguna</span>
+                    <span class="filter-count">{{ $totalUsers }}</span>
+                </a>
+                <a href="{{ route('admin.roles.index') }}" class="filter-tab">
+                    <span class="material-symbols-outlined text-[16px]">security</span>
+                    <span>Role &amp; Jabatan</span>
+                </a>
+                <a href="{{ route('admin.permissions.index') }}" class="filter-tab">
+                    <span class="material-symbols-outlined text-[16px]">key</span>
+                    <span>Permissions</span>
+                </a>
             </div>
-            <div class="flex items-center gap-space-xs">
-                <span class="inline-flex items-center text-label-sm font-label-sm px-space-xs py-space-2xs rounded-lg bg-emerald-50 text-emerald-800">Terverifikasi</span>
+
+            <div class="search-box w-full sm:w-72">
+                <span class="material-symbols-outlined">search</span>
+                <input type="text"
+                       id="filter-user-search"
+                       onkeyup="filterUserTable()"
+                       placeholder="Cari nama, email, hp..."
+                       class="form-input">
             </div>
         </div>
     </div>
 
-    <!-- Primary Work Surface -->
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <!-- Surface Header with Tab Strip -->
-        <div class="px-space-xl pt-space-md bg-surface-container-low/50 flex flex-col gap-space-md">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-space-sm">
-                    <div class="w-8 h-8 rounded-lg bg-primary-container/10 text-primary-container flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[20px]">manage_accounts</span>
-                    </div>
-                    <div>
-                        <h2 class="font-headline-lg text-headline-lg text-on-surface">Direktori Kredensial Pengguna</h2>
-                        <p class="font-label-sm text-label-sm text-secondary">Sinkronisasi langsung dengan auth token backend API CityCourier</p>
-                    </div>
-                </div>
-            </div>
-            <!-- Segmented Tabs -->
-            <div class="flex items-center gap-space-xs">
-                <a href="{{ route('admin.users.index') }}" class="px-space-md py-space-sm rounded-t-lg bg-surface-container-lowest text-primary font-headline-sm text-headline-sm flex items-center gap-space-xs shadow-[0_-2px_6px_rgba(0,0,0,0.02)]">
-                    <span class="material-symbols-outlined text-[18px] text-primary-container">badge</span>
-                    <span>Daftar Pengguna</span>
-                    <span class="ml-1 px-space-xs py-space-2xs text-[10px] font-data-mono rounded-full bg-primary-fixed text-on-primary-fixed-variant font-bold">{{ $totalUsers }}</span>
-                </a>
-                <a href="{{ route('admin.roles.index') }}" class="px-space-md py-space-sm rounded-t-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-all font-body-md text-body-md flex items-center gap-space-xs">
-                    <span class="material-symbols-outlined text-[18px]">security</span>
-                    <span>Definisi Role &amp; Hak Akses</span>
-                </a>
-                <a href="{{ route('admin.permissions.index') }}" class="px-space-md py-space-sm rounded-t-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-all font-body-md text-body-md flex items-center gap-space-xs">
-                    <span class="material-symbols-outlined text-[18px]">key</span>
-                    <span>Permissions</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- Filter Bar -->
-        <div class="p-space-lg bg-surface-container-lowest flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-md">
-            <div class="relative flex-1 max-w-lg">
-                <span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-secondary text-[20px] pointer-events-none">search</span>
-                <input class="w-full bg-surface-container-low pl-10 pr-space-md py-space-xs h-10 rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-secondary focus:outline-none focus:bg-surface-container-lowest shadow-sm transition-all" id="filter-user-search" placeholder="Cari nama pengguna, email, atau nomor HP..." type="text" onkeyup="filterUserTable()"/>
-            </div>
-            <div class="flex flex-wrap items-center gap-space-sm">
-                <button class="p-space-xs text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors" title="Muat ulang" onclick="location.reload()">
-                    <span class="material-symbols-outlined text-[20px]">refresh</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Data Table -->
-        <div class="overflow-x-auto w-full">
-            <table class="w-full text-left border-collapse" id="userTable">
+    {{-- Tabel User --}}
+    <div class="card overflow-hidden">
+        @if($users->count() > 0)
+        <div class="table-wrap">
+            <table class="data-table" id="userTable">
                 <thead>
-                    <tr class="bg-surface-container-low text-secondary font-label-sm text-label-sm uppercase tracking-wider">
-                        <th class="py-space-sm px-space-lg">User</th>
-                        <th class="py-space-sm px-space-md">Email</th>
-                        <th class="py-space-sm px-space-md">Telepon</th>
-                        <th class="py-space-sm px-space-md">Role Assigned</th>
-                        <th class="py-space-sm px-space-md">Status</th>
-                        <th class="py-space-sm px-space-md">Bergabung</th>
-                        <th class="py-space-sm px-space-lg text-right">Aksi</th>
+                    <tr>
+                        <th>Pengguna</th>
+                        <th>Email Akun</th>
+                        <th>No. Telepon / WhatsApp</th>
+                        <th>Role &amp; Hak Akses</th>
+                        <th>Status</th>
+                        <th>Terdaftar</th>
+                        <th class="text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-container-low font-body-md text-body-md text-on-surface">
-                    @forelse ($users as $user)
+                <tbody>
+                    @foreach($users as $user)
                     @php
-                        $roleColors = [
-                            'super-admin' => 'bg-blue-50 text-blue-800',
-                            'admin' => 'bg-blue-50 text-blue-800',
-                            'courier' => 'bg-blue-100 text-blue-900',
-                            'customer' => 'bg-emerald-50 text-emerald-800',
-                        ];
-                        $roleName = $user->roles->first()?->name ?? 'customer';
-                        $roleColor = $roleColors[$roleName] ?? 'bg-surface-container text-secondary';
-                        $roleIcons = [
-                            'super-admin' => 'shield_person',
-                            'admin' => 'admin_panel_settings',
-                            'courier' => 'directions_bike',
-                            'customer' => 'person',
-                        ];
+                        $userRoleNames = $user->roles->pluck('name')->map(fn($n) => strtolower($n))->toArray();
+                        $isSuper = in_array('super-admin', $userRoleNames) || in_array('admin', $userRoleNames);
+                        $isCourier = in_array('courier', $userRoleNames);
                     @endphp
-                    <tr class="hover:bg-surface-container-low/60 transition-colors group">
-                        <td class="py-space-md px-space-lg">
-                            <div class="flex items-center gap-space-md">
-                                <div class="relative shrink-0">
+                    <tr>
+                        {{-- Pengguna (Avatar & Nama) --}}
+                        <td>
+                            <div class="flex items-center gap-2.5">
+                                <div class="avatar bg-brand-50 text-brand-700 font-bold shrink-0">
                                     @if($user->avatar)
-                                        <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="w-10 h-10 rounded-full object-cover shadow-sm">
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar) }}"
+                                             alt="{{ $user->name }}"
+                                             class="h-full w-full object-cover rounded-full">
                                     @else
-                                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-primary-container to-amber-400 text-on-primary font-headline-sm text-headline-sm flex items-center justify-center shadow-sm">
-                                            {{ strtoupper(substr($user->name, 0, 1)) }}
-                                        </div>
+                                        {{ strtoupper(substr($user->name ?? 'U', 0, 1)) }}
                                     @endif
-                                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-surface-container-lowest"></span>
                                 </div>
-                                <div class="flex flex-col min-w-0">
-                                    <span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate group-hover:text-primary transition-colors">{{ $user->name }}</span>
-                                    <span class="font-label-sm text-label-sm text-secondary font-data-mono">UID: {{ str_pad($user->id, 3, '0', STR_PAD_LEFT) }}</span>
+                                <div class="min-w-0">
+                                    <div class="text-[13px] font-semibold text-slate-900 truncate">
+                                        {{ $user->name }}
+                                    </div>
+                                    <div class="text-[11px] text-slate-400 font-mono">
+                                        ID: #{{ $user->id }}
+                                    </div>
                                 </div>
                             </div>
                         </td>
-                        <td class="py-space-md px-space-md">
-                            <div class="flex items-center gap-space-xs font-data-mono text-body-sm">
-                                <span class="material-symbols-outlined text-[16px] text-secondary">mail</span>
-                                <span class="text-on-surface font-medium">{{ $user->email }}</span>
+
+                        {{-- Email --}}
+                        <td class="whitespace-nowrap font-mono text-xs text-slate-600">
+                            {{ $user->email }}
+                        </td>
+
+                        {{-- Telepon --}}
+                        <td class="whitespace-nowrap font-mono text-xs text-slate-600">
+                            {{ $user->phone ?? '-' }}
+                        </td>
+
+                        {{-- Roles --}}
+                        <td>
+                            <div class="flex flex-wrap gap-1">
+                                @forelse($user->roles as $role)
+                                @php
+                                    $rn = strtolower($role->name);
+                                    $roleBadge = match($rn) {
+                                        'super-admin', 'super admin' => 'badge-red',
+                                        'admin'                      => 'badge-orange',
+                                        'courier', 'kurir'           => 'badge-blue',
+                                        'customer', 'pelanggan'      => 'badge-gray',
+                                        default                      => 'badge-indigo',
+                                    };
+                                @endphp
+                                <span class="badge {{ $roleBadge }}">
+                                    {{ ucfirst($role->name) }}
+                                </span>
+                                @empty
+                                <span class="badge badge-gray text-[10px]">Tanpa Role</span>
+                                @endforelse
                             </div>
                         </td>
-                        <td class="py-space-md px-space-md">
-                            <span class="font-data-mono text-body-sm text-secondary">{{ $user->phone ?? '-' }}</span>
-                        </td>
-                        <td class="py-space-md px-space-md">
-                            <span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-lg text-label-sm font-label-sm {{ $roleColor }} font-semibold">
-                                <span class="material-symbols-outlined text-[14px]">{{ $roleIcons[$roleName] ?? 'badge' }}</span>
-                                {{ $roleName }}
+
+                        {{-- Status --}}
+                        <td class="whitespace-nowrap">
+                            <span class="badge badge-green">
+                                <span class="badge-dot"></span>
+                                Aktif
                             </span>
                         </td>
-                        <td class="py-space-md px-space-md">
-                            <span class="inline-flex items-center gap-space-xs px-space-xs py-space-2xs rounded-full bg-emerald-50 text-emerald-800 text-label-sm font-label-sm font-semibold">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Aktif
-                            </span>
+
+                        {{-- Tanggal Bergabung --}}
+                        <td class="whitespace-nowrap text-xs text-slate-500 font-mono">
+                            {{ $user->created_at ? $user->created_at->format('d/m/Y') : '-' }}
                         </td>
-                        <td class="py-space-md px-space-md text-secondary text-sm">{{ $user->created_at->format('d M Y') }}</td>
-                        <td class="py-space-md px-space-lg text-right">
-                            <div class="flex items-center justify-end gap-space-xs">
+
+                        {{-- Aksi --}}
+                        <td class="text-right whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1">
                                 @canPerm('users.edit')
-                                <a href="{{ route('admin.users.edit', $user->id) }}" class="p-space-xs text-secondary hover:text-primary hover:bg-surface-container rounded-lg transition-colors" title="Edit Pengguna">
+                                <a href="{{ route('admin.users.edit', $user) }}"
+                                   class="btn-icon"
+                                   title="Edit Pengguna">
                                     <span class="material-symbols-outlined text-[18px]">edit</span>
                                 </a>
                                 @endcanPerm
+
                                 @canPerm('users.delete')
-                                <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus user ini?')">
+                                @if(auth()->id() !== $user->id)
+                                <form action="{{ route('admin.users.destroy', $user) }}"
+                                      method="POST"
+                                      class="inline-block"
+                                      onsubmit="return confirm('Hapus akun pengguna {{ $user->name }}?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-space-xs text-secondary hover:text-error hover:bg-error-container/20 rounded-lg transition-colors" title="Hapus">
+                                    <button type="submit" class="btn-icon btn-icon-danger" title="Hapus Akun">
                                         <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
+                                @endif
                                 @endcanPerm
                             </div>
                         </td>
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
-                            <div class="flex flex-col items-center gap-space-xs text-secondary">
-                                <span class="material-symbols-outlined text-[32px]">group</span>
-                                <span class="font-body-sm text-body-sm">Belum ada pengguna terdaftar</span>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
 
-        <!-- Pagination -->
-        @if ($users->hasPages())
-        <div class="px-space-xl py-3.5 border-t border-surface-container-high flex items-center justify-between">
-            <span class="font-label-sm text-label-sm text-secondary">Menampilkan {{ $users->firstItem() }}–{{ $users->lastItem() }} dari {{ $users->total() }}</span>
-            <div>{{ $users->withQueryString()->links() }}</div>
+        <div class="card-footer">
+            <div>
+                Menampilkan <strong>{{ $users->firstItem() ?? 0 }}</strong> - <strong>{{ $users->lastItem() ?? 0 }}</strong> dari <strong>{{ $users->total() }}</strong> pengguna
+            </div>
+            <div>
+                {{ $users->withQueryString()->links() }}
+            </div>
+        </div>
+        @else
+        <div class="empty-state">
+            <span class="material-symbols-outlined">group</span>
+            <div class="empty-title">Tidak ada pengguna ditemukan</div>
+            <div class="empty-text">Tambahkan pengguna baru untuk memberikan akses sistem.</div>
         </div>
         @endif
     </div>
 </div>
 
-@push('scripts')
 <script>
 function filterUserTable() {
     const input = document.getElementById('filter-user-search');
-    const filter = input.value.toLowerCase();
-    const table = document.getElementById('userTable');
-    if (!table) return;
-    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-    for (let i = 0; i < rows.length; i++) {
-        const text = rows[i].textContent.toLowerCase();
-        rows[i].style.display = text.indexOf(filter) > -1 ? '' : 'none';
-    }
+    const filter = (input ? input.value : '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#userTable tbody tr');
+
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
 }
 </script>
-@endpush
 @endsection
