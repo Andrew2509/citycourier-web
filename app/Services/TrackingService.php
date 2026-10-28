@@ -260,10 +260,20 @@ class TrackingService
         }
 
         return [
-            'tracking_number'   => $shipment->tracking_number,
-            'shipment_number'   => $shipment->shipment_number,
-            'status'            => $shipment->status,
-            'status_label'      => $this->statusLabels[$shipment->status] ?? $shipment->status,
+            'tracking_number'    => $shipment->tracking_number,
+            'shipment_number'    => $shipment->shipment_number,
+            'status'             => $shipment->status,
+            'status_label'       => $this->statusLabels[$shipment->status] ?? $shipment->status,
+            'sender_name'        => $shipment->sender_name,
+            'sender_phone'       => $shipment->sender_phone,
+            'receiver_name'      => $shipment->receiver_name,
+            'receiver_phone'     => $shipment->receiver_phone,
+            'vehicle'            => $shipment->vehicle_type ?? $shipment->vehicle ?? 'motor',
+            'package_weight'     => (float) ($shipment->package_weight ?? 1.0),
+            'payment_method'     => $shipment->payment_method ?? 'COD',
+            'total_cost'         => (int) ($shipment->total_cost ?? 0),
+            'schedule_pickup_text' => $shipment->schedule_pickup_text ?? 'Sekarang',
+            'qr_code_url'        => $shipment->qr_code_url,
             'origin' => [
                 'address'   => $originAddress,
                 'latitude'  => $originLat,
@@ -274,10 +284,10 @@ class TrackingService
                 'latitude'  => $destLat,
                 'longitude' => $destLng,
             ],
-            'courier_location'  => $courierLocation,
-            'courier_name'      => $courierName,
-            'courier_phone'     => $courierPhone,
-            'timeline'          => $logs->toArray(),
+            'courier_location'   => $courierLocation,
+            'courier_name'       => $courierName,
+            'courier_phone'      => $courierPhone,
+            'timeline'           => $logs->toArray(),
             'estimated_delivery' => null, // Bisa ditambahkan nanti
         ];
     }
