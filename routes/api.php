@@ -49,6 +49,10 @@ Route::prefix('geocoding')->group(function () {
     Route::get('/reverse', [GeocodingController::class, 'reverse']);
 });
 
+Route::match(['get', 'post'], '/shipping/match-region', function (\Illuminate\Http\Request $request, \App\Services\RajaOngkirMatcherService $matcher) {
+    return response()->json($matcher->match($request->all()));
+});
+
 
 Route::get('/shipments/track/{number}', [\App\Http\Controllers\Api\ShipmentController::class, 'track']);
 Route::get('/shipments/{tracking_number}/tracking', [\App\Http\Controllers\Api\ShipmentController::class, 'tracking']);
