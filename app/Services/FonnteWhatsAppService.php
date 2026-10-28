@@ -44,9 +44,10 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
      *
      * @param string $to Recipient phone number (format: 628123456789)
      * @param string $message The message content
+     * @param string|null $mediaUrl Optional image/media URL (e.g. for QR Code)
      * @return array
      */
-    public function sendMessage(string $to, string $message): array
+    public function sendMessage(string $to, string $message, ?string $mediaUrl = null): array
     {
         $to = $this->formatPhoneNumber($to);
 
@@ -63,6 +64,10 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
             'message' => $message,
         ];
 
+        if ($mediaUrl) {
+            $payload['url'] = $mediaUrl;
+        }
+
         // Add send number if configured
         if ($this->sendNumber) {
             $payload['send_number'] = $this->sendNumber;
@@ -73,7 +78,7 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
             $response = Http::withHeaders([
                 'Authorization' => trim($this->token),
             ])
-                ->timeout(15)
+                ->timeout(20)
                 ->post($this->baseUrl . '/send', $payload);
 
             if ($response->successful()) {
@@ -96,11 +101,24 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
                 }
 
                 $reason = $data['reason'] ?? $data['description'] ?? $data['message'] ?? 'Unknown error';
+                
+                // If media sending failed, retry text-only
+                if ($mediaUrl) {
+                    Log::warning("Fonnte media send failed ($reason). Retrying text-only...");
+                    return $this->sendMessage($to, $message, null);
+                }
+
                 return [
                     'success' => false,
                     'message' => 'Fonnte: ' . $reason,
                     'status' => $response->status(),
                 ];
+            }
+
+            // If media sending failed with HTTP error, retry text-only
+            if ($mediaUrl) {
+                Log::warning('Fonnte media send returned status ' . $response->status() . '. Retrying text-only...');
+                return $this->sendMessage($to, $message, null);
             }
 
             Log::error('Fonnte API Error: ' . $response->body(), [
@@ -117,6 +135,11 @@ class FonnteWhatsAppService implements WhatsAppServiceInterface
                 'status' => $response->status(),
             ];
         } catch (\Exception $e) {
+            if ($mediaUrl) {
+                Log::warning('Fonnte exception on media send (' . $e->getMessage() . '). Retrying text-only...');
+                return $this->sendMessage($to, $message, null);
+            }
+
             Log::error('Fonnte Exception: ' . $e->getMessage(), [
                 'payload' => $payload,
             ]);

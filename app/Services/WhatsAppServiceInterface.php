@@ -9,9 +9,10 @@ interface WhatsAppServiceInterface
      *
      * @param string $to Recipient phone number
      * @param string $message The message content
+     * @param string|null $mediaUrl Optional media/image URL (e.g. for QR Code)
      * @return array{with success: bool, data?: array, message?: string}
      */
-    public function sendMessage(string $to, string $message): array;
+    public function sendMessage(string $to, string $message, ?string $mediaUrl = null): array;
 
     /**
      * Send OTP message

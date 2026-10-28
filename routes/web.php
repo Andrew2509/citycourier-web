@@ -47,6 +47,13 @@ Route::get('/download/app', function () {
     abort(404, 'File APK tidak ditemukan');
 })->name('download.app');
 
+// ─── Public Live Tracking & QR Code ──────────────────────────
+Route::get('/track/{number}', [\App\Http\Controllers\TrackingWebController::class, 'show'])->name('tracking.show');
+Route::get('/track/{number}/data', [\App\Http\Controllers\TrackingWebController::class, 'data'])->name('tracking.data');
+Route::get('/track/{number}/qrcode.png', [\App\Http\Controllers\TrackingWebController::class, 'qrcode'])->name('tracking.qrcode');
+Route::get('/shipments/{number}/qrcode.png', [\App\Http\Controllers\TrackingWebController::class, 'qrcode'])->name('shipments.qrcode');
+
+
 // ─── Auth Routes ─────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');        // Admin Panel
@@ -77,7 +84,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/shipments/delete-all', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroyAll'])->name('shipments.destroy-all');
         Route::get('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'show'])->name('shipments.show');
         Route::patch('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'update'])->name('shipments.update');
-        Route::post('/shipments/{shipment}/logs', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.logs.store');
+        Route::post('/shipments/{shipment}/logs', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.logs.store');
+        Route::post('/shipments/{shipment}/send-whatsapp', [\App\Http\Controllers\Admin\ShipmentController::class, 'sendWhatsapp'])->name('shipments.send-whatsapp');
         Route::delete('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroy'])->name('shipments.destroy');
 
         // Settings / Provider (Unified)

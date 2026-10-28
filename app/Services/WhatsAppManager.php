@@ -37,9 +37,9 @@ class WhatsAppManager implements WhatsAppServiceInterface
     /**
      * Send message using the configured WhatsApp service
      */
-    public function sendMessage(string $to, string $message): array
+    public function sendMessage(string $to, string $message, ?string $mediaUrl = null): array
     {
-        return $this->getService()->sendMessage($to, $message);
+        return $this->getService()->sendMessage($to, $message, $mediaUrl);
     }
 
     /**

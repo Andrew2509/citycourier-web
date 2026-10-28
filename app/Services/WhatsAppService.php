@@ -46,7 +46,7 @@ class WhatsAppService implements WhatsAppServiceInterface
         return $cleaned;
     }
 
-    public function sendMessage(string $to, string $message)
+    public function sendMessage(string $to, string $message, ?string $mediaUrl = null): array
     {
         $to = $this->formatPhoneNumber($to);
 

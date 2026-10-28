@@ -116,4 +116,17 @@ class ShipmentController extends Controller
         return redirect()->route('admin.shipments.index')
             ->with('success', 'Semua data pengiriman berhasil dihapus.');
     }
+
+
+    public function sendWhatsapp(Request $request, Shipment $shipment, \App\Services\ShipmentNotificationService $notificationService)
+    {
+        $result = $notificationService->sendOrderSuccessNotification($shipment, true);
+
+        if (!empty($result['success'])) {
+            $targetPhone = $shipment->sender_phone ?: $shipment->customer_phone;
+            return redirect()->back()->with('success', 'Notifikasi WhatsApp berhasil dikirim ke pengirim (' . $targetPhone . ').');
+        }
+
+        return redirect()->back()->with('error', 'Gagal mengirim WhatsApp: ' . ($result['message'] ?? 'Terjadi kesalahan.'));
+    }
 }

@@ -7,14 +7,19 @@ use App\Models\Shipment;
 use App\Services\TrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Services\ShipmentNotificationService;
+use Milon\Barcode\Facades\DNS2DFacade;
 
 class ShipmentController extends Controller
 {
     protected TrackingService $trackingService;
 
-    public function __construct(TrackingService $trackingService)
+    protected ShipmentNotificationService $notificationService;
+
+    public function __construct(TrackingService $trackingService, ShipmentNotificationService $notificationService)
     {
         $this->trackingService = $trackingService;
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -78,6 +83,15 @@ class ShipmentController extends Controller
             'courier_code'        => $request->courier_code,
             'courier_name'        => $request->courier_name,
             'courier_service'     => $request->courier_service,
+            'vehicle'             => $request->input('vehicle_type', $request->input('vehicle', strtolower($request->courier_code) === 'mobil' ? 'mobil' : 'motor')),
+            'length'              => $request->length,
+            'width'               => $request->width,
+            'height'              => $request->height,
+            'volume'              => $request->volume,
+            'scheduled_pickup'    => $request->boolean('scheduled_pickup'),
+            'pickup_time'         => $request->pickup_time,
+            'pickup_scheduled_at' => $request->pickup_scheduled_at,
+            'estimated_delivery'  => $request->estimated_delivery,
             'etd'                 => $request->etd,
             'shipping_cost'       => $request->shipping_cost,
             'insurance'           => $request->boolean('insurance'),
@@ -108,12 +122,18 @@ class ShipmentController extends Controller
             );
         }
 
+        // Kirim notifikasi WhatsApp otomatis ke pengirim
+        $this->notificationService->sendOrderSuccessNotification($shipment);
+
         return response()->json([
             'success' => true,
             'message' => 'Permintaan pengiriman berhasil dibuat.',
-            'data'    => $shipment,
+            'data'    => $shipment->fresh(),
         ], 201);
     }
+
+
+
 
     /**
      * Get shipment history for the authenticated user.
@@ -368,5 +388,36 @@ class ShipmentController extends Controller
             'message' => 'Pembayaran ' . $paymentMethod . ' berhasil.',
             'data'    => $shipment->fresh(),
         ]);
+    }
+
+
+    /**
+     * Get QR Code image (PNG) for a shipment.
+     * GET /api/shipments/{number}/qrcode.png
+     */
+    public function qrcode($number)
+    {
+        $shipment = Shipment::where('tracking_number', $number)
+            ->orWhere('shipment_number', $number)
+            ->first();
+
+        $code = $shipment ? $shipment->tracking_number : $number;
+        $base64 = DNS2DFacade::getBarcodePNG($code, 'QRCODE', 10, 10);
+        $image = base64_decode($base64);
+
+        return response($image, 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
+    /**
+     * Resend WhatsApp order notification manually.
+     * POST /api/shipments/{shipment}/send-whatsapp
+     */
+    public function sendWhatsapp(Request $request, Shipment $shipment)
+    {
+        $result = $this->notificationService->sendOrderSuccessNotification($shipment, true);
+        return response()->json($result);
     }
 }

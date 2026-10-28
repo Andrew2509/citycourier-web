@@ -15,10 +15,12 @@ class Shipment extends Model
         'receiver_name', 'receiver_phone', 'receiver_address',
         'receiver_latitude', 'receiver_longitude',
         'destination_name', 'destination_id',
-        'package_description', 'package_weight',
-        'courier_code', 'courier_name', 'courier_service', 'etd',
+        'package_description', 'package_weight', 'length', 'width', 'height', 'volume',
+        'courier_code', 'courier_name', 'courier_service', 'vehicle', 'etd',
         'shipping_cost', 'insurance', 'wood_packing', 'total_cost', 'payment_method',
+        'scheduled_pickup', 'pickup_time', 'pickup_scheduled_at', 'estimated_delivery',
         'status', 'tracking_number', 'notes',
+        'whatsapp_notification', 'whatsapp_sent_at',
     ];
 
     protected function casts(): array
@@ -29,14 +31,22 @@ class Shipment extends Model
             'receiver_latitude' => 'decimal:8',
             'receiver_longitude'=> 'decimal:8',
             'package_weight'    => 'decimal:2',
+            'length'            => 'decimal:2',
+            'width'             => 'decimal:2',
+            'height'            => 'decimal:2',
+            'volume'            => 'decimal:2',
             'shipping_cost'     => 'integer',
             'total_cost'        => 'integer',
             'insurance'         => 'boolean',
             'wood_packing'      => 'boolean',
+            'scheduled_pickup'  => 'boolean',
+            'pickup_scheduled_at' => 'datetime',
+            'estimated_delivery'  => 'datetime',
+            'whatsapp_sent_at'  => 'datetime',
         ];
     }
 
-    protected $appends = ['status_label', 'status_color', 'payment_info'];
+    protected $appends = ['status_label', 'status_color', 'payment_info', 'tracking_url', 'qrcode_url', 'vehicle_display_name'];
 
     public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
@@ -148,6 +158,52 @@ class Shipment extends Model
             case 'cancelled':  return 'danger';
             default:           return 'secondary';
         }
+    }
+
+    public function getTrackingUrlAttribute(): string
+    {
+        $baseUrl = rtrim(\App\Models\Setting::get('app_url', config('app.url')), '/');
+        if (empty($baseUrl) || $baseUrl === 'http://localhost') {
+            $baseUrl = 'https://citycourier.pabm.space';
+        }
+        return $baseUrl . '/track/' . ($this->tracking_number ?? $this->shipment_number);
+    }
+
+    public function getQrCodeUrlAttribute(): string
+    {
+        $baseUrl = rtrim(\App\Models\Setting::get('app_url', config('app.url')), '/');
+        if (empty($baseUrl) || $baseUrl === 'http://localhost') {
+            $baseUrl = 'https://citycourier.pabm.space';
+        }
+        return $baseUrl . '/track/' . ($this->tracking_number ?? $this->shipment_number) . '/qrcode.png';
+    }
+
+    public function getVehicleDisplayNameAttribute(): string
+    {
+        $v = strtolower($this->vehicle ?? $this->courier_code ?? $this->courier_name ?? '');
+        if (str_contains($v, 'mobil') || str_contains($v, 'car')) {
+            return 'Mobil';
+        }
+        return 'Motor';
+    }
+
+    public function getSchedulePickupTextAttribute(): string
+    {
+        if ($this->scheduled_pickup && $this->pickup_scheduled_at) {
+            $dt = $this->pickup_scheduled_at;
+            $day = $dt->isToday() ? 'Hari ini' : ($dt->isTomorrow() ? 'Besok' : $dt->format('d/m/Y'));
+            $time = $this->pickup_time ?: $dt->format('H:i');
+            return "{$day}, {$time}";
+        }
+        if (!empty($this->pickup_time)) {
+            return $this->pickup_time;
+        }
+        return 'Sekarang';
+    }
+
+    public function getFormattedTotalCostAttribute(): string
+    {
+        return 'Rp' . number_format($this->total_cost ?: 0, 0, ',', '.');
     }
 }
 

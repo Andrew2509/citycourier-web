@@ -24,13 +24,14 @@ class MockWhatsAppService implements WhatsAppServiceInterface
     /**
      * Send a WhatsApp message (mock - logs only)
      */
-    public function sendMessage(string $to, string $message): array
+    public function sendMessage(string $to, string $message, ?string $mediaUrl = null): array
     {
         $to = $this->formatPhoneNumber($to);
         
         Log::info('[MOCK WhatsApp] Message sent', [
             'to' => $to,
             'message' => $message,
+            'media_url' => $mediaUrl,
         ]);
         
         return [

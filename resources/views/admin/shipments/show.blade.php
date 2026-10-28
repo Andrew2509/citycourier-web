@@ -194,6 +194,33 @@
                     <p>ID: <strong class="text-on-surface">{{ $shipment->shipment_number }}</strong></p>
                     <p>Dibuat: {{ $shipment->created_at->format('d M Y H:i') }}</p>
                 </div>
+
+                {{-- Live Tracking & WhatsApp Actions --}}
+                <div class="mt-space-md pt-space-md border-t border-surface-container-high space-y-space-sm text-left">
+                    <a href="{{ $shipment->tracking_url }}" target="_blank" class="w-full inline-flex items-center justify-center gap-space-xs px-space-md py-space-xs rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-label-sm text-xs font-bold border border-emerald-200 transition">
+                        <span class="material-symbols-outlined text-[16px]">travel_explore</span>
+                        Buka Live Tracking ↗
+                    </a>
+
+                    <div class="p-space-sm rounded-lg bg-surface border border-surface-container-high">
+                        <div class="flex items-center justify-between text-xs mb-space-2xs">
+                            <span class="text-secondary font-semibold">Status WA:</span>
+                            <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ $shipment->whatsapp_notification === 'sent' ? 'bg-emerald-100 text-emerald-700' : ($shipment->whatsapp_notification === 'failed' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600') }}">
+                                {{ ucfirst($shipment->whatsapp_notification ?? 'unsent') }}
+                            </span>
+                        </div>
+                        @if($shipment->whatsapp_sent_at)
+                            <p class="text-[10px] text-secondary">Terkirim: {{ $shipment->whatsapp_sent_at->format('d M Y H:i') }}</p>
+                        @endif
+                        <form method="POST" action="{{ route('admin.shipments.send-whatsapp', $shipment) }}" class="mt-space-xs">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center justify-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white font-label-sm text-xs font-semibold shadow-xs transition">
+                                <span class="material-symbols-outlined text-[14px]">send</span>
+                                Kirim Ulang WA Resi
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             {{-- Update Status --}}
