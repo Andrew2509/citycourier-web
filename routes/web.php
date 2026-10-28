@@ -81,6 +81,12 @@ Route::middleware('auth')->group(function () {
 
         // Shipments (Request Pickup dari Flutter)
         Route::get('/shipments', [\App\Http\Controllers\Admin\ShipmentController::class, 'index'])->name('shipments.index');
+        Route::get('/shipments/create', [\App\Http\Controllers\Admin\ShipmentController::class, 'create'])->name('shipments.create');
+        Route::post('/shipments', [\App\Http\Controllers\Admin\ShipmentController::class, 'store'])->name('shipments.store');
+        Route::post('/shipments/match-region', [\App\Http\Controllers\Admin\ShipmentController::class, 'matchRegion'])->name('shipments.match-region');
+        Route::get('/shipments/regions/provinces', [\App\Http\Controllers\Admin\ShipmentController::class, 'getProvinces'])->name('shipments.regions.provinces');
+        Route::get('/shipments/regions/cities', [\App\Http\Controllers\Admin\ShipmentController::class, 'getCities'])->name('shipments.regions.cities');
+        Route::get('/shipments/regions/districts', [\App\Http\Controllers\Admin\ShipmentController::class, 'getDistricts'])->name('shipments.regions.districts');
         Route::delete('/shipments/delete-all', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroyAll'])->name('shipments.destroy-all');
         Route::get('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'show'])->name('shipments.show');
         Route::patch('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'update'])->name('shipments.update');

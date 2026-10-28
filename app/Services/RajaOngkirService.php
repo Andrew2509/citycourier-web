@@ -35,6 +35,14 @@ class RajaOngkirService
     }
 
     /**
+     * Check if a valid non-placeholder API key is configured.
+     */
+    public function hasValidKey(): bool
+    {
+        return !empty($this->apiKey) && $this->apiKey !== 'YOUR_API_KEY_HERE';
+    }
+
+    /**
      * Get headers for the request.
      */
     public function getProvider()
@@ -63,12 +71,16 @@ class RajaOngkirService
      */
     public function getProvinces()
     {
-        $url = $this->provider === 'komerce' 
-            ? $this->baseUrl . '/destination/province' 
-            : $this->baseUrl . '/province';
-            
-        $response = Http::withHeaders($this->getHeaders())->get($url);
-        return $response->json();
+        try {
+            $url = $this->provider === 'komerce' 
+                ? $this->baseUrl . '/destination/province' 
+                : $this->baseUrl . '/province';
+                
+            $response = Http::timeout(5)->withHeaders($this->getHeaders())->get($url);
+            return $response->json();
+        } catch (\Exception $e) {
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
     }
 
     /**
@@ -76,21 +88,24 @@ class RajaOngkirService
      */
     public function getCities($provinceId = null)
     {
-        if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/destination/city';
-            if ($provinceId) {
-                $url .= '/' . $provinceId;
+        try {
+            if ($this->provider === 'komerce') {
+                $url = $this->baseUrl . '/destination/city';
+                if ($provinceId) {
+                    $url .= '/' . $provinceId;
+                }
+            } else {
+                $url = $this->baseUrl . '/city';
+                if ($provinceId) {
+                    $url .= '?province=' . $provinceId;
+                }
             }
-        } else {
-            $url = $this->baseUrl . '/city';
-            if ($provinceId) {
-                $url .= '?province=' . $provinceId;
-            }
+
+            $response = Http::timeout(5)->withHeaders($this->getHeaders())->get($url);
+            return $response->json();
+        } catch (\Exception $e) {
+            return ['status' => false, 'message' => $e->getMessage()];
         }
-
-        $response = Http::withHeaders($this->getHeaders())->get($url);
-
-        return $response->json();
     }
 
     /**
@@ -103,29 +118,33 @@ class RajaOngkirService
      */
     public function calculateCost($origin, $destination, $weight, $courier)
     {
-        if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/calculate/district/domestic-cost';
-            $data = [
-                'origin' => $origin,
-                'destination' => $destination,
-                'weight' => $weight,
-                'courier' => $courier,
-                'price' => 'lowest'
-            ];
-            
-            $response = Http::withHeaders($this->getHeaders())
-                ->asForm()
-                ->post($url, $data);
-        } else {
-            $response = Http::withHeaders($this->getHeaders())->post($this->baseUrl . '/cost', [
-                'origin' => $origin,
-                'destination' => $destination,
-                'weight' => $weight,
-                'courier' => $courier
-            ]);
-        }
+        try {
+            if ($this->provider === 'komerce') {
+                $url = $this->baseUrl . '/calculate/district/domestic-cost';
+                $data = [
+                    'origin' => $origin,
+                    'destination' => $destination,
+                    'weight' => $weight,
+                    'courier' => $courier,
+                    'price' => 'lowest'
+                ];
+                
+                $response = Http::timeout(5)->withHeaders($this->getHeaders())
+                    ->asForm()
+                    ->post($url, $data);
+            } else {
+                $response = Http::timeout(5)->withHeaders($this->getHeaders())->post($this->baseUrl . '/cost', [
+                    'origin' => $origin,
+                    'destination' => $destination,
+                    'weight' => $weight,
+                    'courier' => $courier
+                ]);
+            }
 
-        return $response->json();
+            return $response->json();
+        } catch (\Exception $e) {
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
     }
 
     /**
@@ -133,15 +152,18 @@ class RajaOngkirService
      */
     public function getDistricts($cityId)
     {
-        if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/destination/district/' . $cityId;
-        } else {
-            $url = $this->baseUrl . '/subdistrict?city=' . $cityId;
+        try {
+            if ($this->provider === 'komerce') {
+                $url = $this->baseUrl . '/destination/district/' . $cityId;
+            } else {
+                $url = $this->baseUrl . '/subdistrict?city=' . $cityId;
+            }
+
+            $response = Http::timeout(5)->withHeaders($this->getHeaders())->get($url);
+            return $response->json();
+        } catch (\Exception $e) {
+            return ['status' => false, 'message' => $e->getMessage()];
         }
-
-        $response = Http::withHeaders($this->getHeaders())->get($url);
-
-        return $response->json();
     }
 
     /**
@@ -150,24 +172,31 @@ class RajaOngkirService
      */
     public function getSubdistricts($districtId)
     {
-        if ($this->provider === 'komerce') {
-            $url = $this->baseUrl . '/destination/sub-district/' . $districtId;
-            $response = Http::withHeaders($this->getHeaders())->get($url);
-            return $response->json();
-        }
+        try {
+            if ($this->provider === 'komerce') {
+                $url = $this->baseUrl . '/destination/sub-district/' . $districtId;
+                $response = Http::timeout(5)->withHeaders($this->getHeaders())->get($url);
+                return $response->json();
+            }
 
-        return ['status' => false, 'message' => 'Not supported by this provider'];
+            return ['status' => false, 'message' => 'Not supported by this provider'];
+        } catch (\Exception $e) {
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
     }
 
     public function searchDestination($keyword)
     {
-        if ($this->provider === 'komerce') {
-            // Updated search endpoint for the new RajaOngkir-by-Komerce platform
-            $url = $this->baseUrl . '/destination/domestic-destination?search=' . urlencode($keyword);
-            $response = Http::withHeaders($this->getHeaders())->get($url);
-            return $response->json();
+        try {
+            if ($this->provider === 'komerce') {
+                $url = $this->baseUrl . '/destination/domestic-destination?search=' . urlencode($keyword);
+                $response = Http::timeout(5)->withHeaders($this->getHeaders())->get($url);
+                return $response->json();
+            }
+            
+            return ['status' => false, 'message' => 'Pencarian hanya didukung untuk provider Komerce.'];
+        } catch (\Exception $e) {
+            return ['status' => false, 'message' => $e->getMessage()];
         }
-        
-        return ['status' => false, 'message' => 'Pencarian hanya didukung untuk provider Komerce.'];
     }
 }

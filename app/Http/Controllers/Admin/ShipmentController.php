@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shipment;
+use App\Services\RajaOngkirMatcherService;
+use App\Services\ShipmentNotificationService;
+use App\Services\TrackingService;
 use Illuminate\Http\Request;
 
 class ShipmentController extends Controller
@@ -41,6 +44,151 @@ class ShipmentController extends Controller
         ];
 
         return view('admin.shipments.index', compact('shipments', 'statusCounts'));
+    }
+
+    /**
+     * Show form to create a new shipment.
+     */
+    public function create(RajaOngkirMatcherService $matcher)
+    {
+        $dropPoints = \App\Models\DropPoint::all();
+        $provinces = $matcher->getProvincesList();
+
+        return view('admin.shipments.create', compact('dropPoints', 'provinces'));
+    }
+
+    /**
+     * Reverse geocode / match location against RajaOngkir region data.
+     */
+    public function matchRegion(Request $request, RajaOngkirMatcherService $matcher)
+    {
+        $result = $matcher->match($request->all());
+        return response()->json($result);
+    }
+
+    /**
+     * Get provinces for manual dropdown selection.
+     */
+    public function getProvinces(RajaOngkirMatcherService $matcher)
+    {
+        return response()->json([
+            'success' => true,
+            'data'    => $matcher->getProvincesList()
+        ]);
+    }
+
+    /**
+     * Get cities for manual dropdown selection.
+     */
+    public function getCities(Request $request, RajaOngkirMatcherService $matcher)
+    {
+        return response()->json([
+            'success' => true,
+            'data'    => $matcher->getCitiesList($request->query('province_id'))
+        ]);
+    }
+
+    /**
+     * Get districts (kecamatan) for manual dropdown selection.
+     */
+    public function getDistricts(Request $request, RajaOngkirMatcherService $matcher)
+    {
+        return response()->json([
+            'success' => true,
+            'data'    => $matcher->getDistrictsList($request->query('city_id'))
+        ]);
+    }
+
+    /**
+     * Store a newly created shipment.
+     */
+    public function store(Request $request, TrackingService $trackingService, ShipmentNotificationService $notificationService)
+    {
+        $validated = $request->validate([
+            'sender_name'         => 'required|string|max:255',
+            'sender_phone'        => 'required|string|max:20',
+            'sender_address'      => 'required|string',
+            'sender_latitude'     => 'nullable|numeric',
+            'sender_longitude'    => 'nullable|numeric',
+            'origin_id'           => 'required|string|max:50',
+            'origin_name'         => 'required|string|max:255',
+
+            'receiver_name'       => 'required|string|max:255',
+            'receiver_phone'      => 'required|string|max:20',
+            'receiver_address'    => 'required|string',
+            'receiver_latitude'   => 'nullable|numeric',
+            'receiver_longitude'  => 'nullable|numeric',
+            'destination_id'      => 'required|string|max:50',
+            'destination_name'    => 'required|string|max:255',
+
+            'package_description' => 'required|string|max:255',
+            'package_weight'      => 'required|numeric|min:0.01',
+            'vehicle'             => 'required|in:motor,mobil',
+            'courier_service'     => 'nullable|string|max:100',
+            'shipping_cost'       => 'required|integer|min:0',
+            'total_cost'          => 'required|integer|min:0',
+            'payment_method'      => 'required|in:TUNAI,COD',
+            'notes'               => 'nullable|string',
+        ]);
+
+        $vehicle = $validated['vehicle'];
+        $courierCode = $vehicle === 'mobil' ? 'MOBIL' : 'MOTOR';
+        $courierName = 'City Courier ' . ucfirst($vehicle);
+        $courierService = $validated['courier_service'] ?: 'Instant';
+
+        $shipment = Shipment::create([
+            'user_id'             => auth()->id(),
+            'customer_name'       => $validated['sender_name'],
+            'customer_phone'      => $validated['sender_phone'],
+            'sender_name'         => $validated['sender_name'],
+            'sender_phone'        => $validated['sender_phone'],
+            'sender_address'      => $validated['sender_address'],
+            'sender_latitude'     => $validated['sender_latitude'] ?? null,
+            'sender_longitude'    => $validated['sender_longitude'] ?? null,
+            'origin_name'         => $validated['origin_name'],
+            'origin_id'           => $validated['origin_id'],
+
+            'receiver_name'       => $validated['receiver_name'],
+            'receiver_phone'      => $validated['receiver_phone'],
+            'receiver_address'    => $validated['receiver_address'],
+            'receiver_latitude'   => $validated['receiver_latitude'] ?? null,
+            'receiver_longitude'  => $validated['receiver_longitude'] ?? null,
+            'destination_name'    => $validated['destination_name'],
+            'destination_id'      => $validated['destination_id'],
+
+            'package_description' => $validated['package_description'],
+            'package_weight'      => $validated['package_weight'],
+            'vehicle'             => $vehicle,
+            'courier_code'        => $courierCode,
+            'courier_name'        => $courierName,
+            'courier_service'     => $courierService,
+            'shipping_cost'       => $validated['shipping_cost'],
+            'total_cost'          => $validated['total_cost'],
+            'payment_method'      => $validated['payment_method'],
+            'status'              => 'confirmed', // Admin creation is confirmed and ready for pickup
+            'notes'               => $validated['notes'] ?? null,
+        ]);
+
+        // Create tracking history
+        $trackingService->createStatusHistory(
+            $shipment,
+            'confirmed',
+            null,
+            isset($validated['sender_latitude']) ? (float)$validated['sender_latitude'] : null,
+            isset($validated['sender_longitude']) ? (float)$validated['sender_longitude'] : null,
+            null,
+            'Pesanan pengiriman baru dibuat oleh Admin City Courier. Menunggu penugasan kurir.'
+        );
+
+        // Optionally send WhatsApp notification
+        try {
+            $notificationService->sendOrderSuccessNotification($shipment);
+        } catch (\Exception $e) {
+            \Log::warning('Failed auto-sending WA from admin create shipment: ' . $e->getMessage());
+        }
+
+        return redirect()->route('admin.shipments.show', $shipment)
+            ->with('success', "Pengiriman baru berhasil dibuat dengan nomor resi {$shipment->tracking_number}.");
     }
 
     public function show(Shipment $shipment)
@@ -116,7 +264,6 @@ class ShipmentController extends Controller
         return redirect()->route('admin.shipments.index')
             ->with('success', 'Semua data pengiriman berhasil dihapus.');
     }
-
 
     public function sendWhatsapp(Request $request, Shipment $shipment, \App\Services\ShipmentNotificationService $notificationService)
     {

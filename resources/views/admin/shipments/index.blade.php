@@ -11,6 +11,10 @@
             <p class="page-subtitle">Kelola seluruh resi pengiriman operasional kurir instan City Courier.</p>
         </div>
         <div class="page-actions">
+            <a href="{{ route('admin.shipments.create') }}" class="btn btn-primary">
+                <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                <span>Tambah Pengiriman Baru</span>
+            </a>
             <span class="badge badge-gray text-xs">
                 Total: <strong class="text-slate-900 ml-1">{{ $shipments->total() }}</strong> pengiriman
             </span>
