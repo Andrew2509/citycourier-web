@@ -96,12 +96,9 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                <div class="flex items-center gap-2.5">
-                    <img src="{{ asset('images/logo-city-courier.png') }}" alt="City Courier" class="h-8 w-auto max-w-[120px] object-contain">
-                    <div>
-                        <h1 class="text-sm font-bold text-slate-900 leading-tight">City Courier</h1>
-                        <p class="text-[11px] text-slate-500 font-medium">Live Delivery Tracking</p>
-                    </div>
+                <div class="flex flex-col items-start">
+                    <img src="{{ asset('images/logo-city-courier.png') }}" alt="City Courier" class="h-7 w-auto max-w-[120px] object-contain">
+                    <p class="text-[11px] text-slate-500 font-medium mt-0.5">Live Delivery Tracking</p>
                 </div>
             </div>
 
