@@ -58,57 +58,112 @@ class RajaOngkirMatcherService
         $cleanCity     = $this->cleanName($city);
         $cleanProvince = $this->cleanName($province);
 
+        // Clue refinement from formatted address
+        if (!empty($formatted)) {
+            $fmtLower = mb_strtolower($formatted, 'UTF-8');
+            if (empty($cleanProvince)) {
+                if (str_contains($fmtLower, 'jawa timur')) $cleanProvince = 'jawa timur';
+                elseif (str_contains($fmtLower, 'jawa tengah')) $cleanProvince = 'jawa tengah';
+                elseif (str_contains($fmtLower, 'jawa barat')) $cleanProvince = 'jawa barat';
+                elseif (str_contains($fmtLower, 'dki jakarta') || str_contains($fmtLower, 'jakarta')) $cleanProvince = 'dki jakarta';
+                elseif (str_contains($fmtLower, 'banten')) $cleanProvince = 'banten';
+                elseif (str_contains($fmtLower, 'di yogyakarta') || str_contains($fmtLower, 'yogyakarta')) $cleanProvince = 'di yogyakarta';
+            }
+            if (empty($cleanCity) || $cleanCity === $cleanDistrict) {
+                if (str_contains($fmtLower, 'sidoarjo')) $cleanCity = 'sidoarjo';
+                elseif (str_contains($fmtLower, 'surabaya')) $cleanCity = 'surabaya';
+                elseif (str_contains($fmtLower, 'gresik')) $cleanCity = 'gresik';
+                elseif (str_contains($fmtLower, 'malang')) $cleanCity = 'malang';
+                elseif (str_contains($fmtLower, 'pasuruan')) $cleanCity = 'pasuruan';
+                elseif (str_contains($fmtLower, 'mojokerto')) $cleanCity = 'mojokerto';
+            }
+        }
+
         // Attempt 1: Try live Komerce / RajaOngkir API if configured
         if ($this->rajaOngkir->getProvider() === 'komerce' && (!empty($cleanDistrict) || !empty($cleanCity))) {
             try {
                 $searchQuery = trim(($cleanDistrict ?: $cleanVillage) . ' ' . $cleanCity);
                 $apiRes = $this->rajaOngkir->searchDestination($searchQuery);
                 if (!empty($apiRes['data']) && is_array($apiRes['data'])) {
-                    $selected = null;
-                    // Filter candidate that matches city or province or full address
+                    $bestCandidate = null;
+                    $bestScore = 0;
+
                     foreach ($apiRes['data'] as $cand) {
                         $candCity = $this->cleanName($cand['city_name'] ?? '');
+                        $candDist = $this->cleanName($cand['district_name'] ?? '');
                         $candProv = $this->cleanName($cand['province_name'] ?? '');
 
-                        if (!empty($cleanCity) && (stripos($candCity, $cleanCity) !== false || stripos($cleanCity, $candCity) !== false)) {
-                            $selected = $cand;
-                            break;
+                        // STRICT HIERARCHY RULE: Province must match if detected or present in address
+                        if (!empty($cleanProvince)) {
+                            $provMatch = str_contains($candProv, $cleanProvince) || str_contains($cleanProvince, $candProv);
+                            if (!$provMatch && !empty($formatted) && !str_contains(mb_strtolower($formatted), $candProv)) {
+                                continue; // Reject candidate from wrong province!
+                            }
                         }
-                        if (!empty($cleanProvince) && (stripos($candProv, $cleanProvince) !== false || stripos($cleanProvince, $candProv) !== false)) {
-                            $selected = $cand;
-                            break;
+
+                        $score = 0;
+                        if (!empty($cleanProvince) && (str_contains($candProv, $cleanProvince) || str_contains($cleanProvince, $candProv))) {
+                            $score += 20;
                         }
-                        if (!empty($formatted) && (stripos($formatted, $cand['city_name'] ?? '~~~') !== false || stripos($formatted, $cand['province_name'] ?? '~~~') !== false)) {
-                            $selected = $cand;
-                            break;
+
+                        // City matching
+                        if (!empty($cleanCity) && (str_contains($candCity, $cleanCity) || str_contains($cleanCity, $candCity))) {
+                            $score += 35;
+                        } elseif (!empty($formatted) && str_contains(mb_strtolower($formatted), $candCity)) {
+                            $score += 30;
+                        }
+
+                        // District matching
+                        if (!empty($cleanDistrict) && (str_contains($candDist, $cleanDistrict) || str_contains($cleanDistrict, $candDist))) {
+                            $score += 35;
+                        } elseif (!empty($formatted) && str_contains(mb_strtolower($formatted), $candDist)) {
+                            $score += 25;
+                        }
+
+                        // Village clue matching
+                        if (!empty($cleanVillage)) {
+                            $subName = $this->cleanName($cand['subdistrict_name'] ?? '');
+                            if (!empty($subName) && (str_contains($subName, $cleanVillage) || str_contains($cleanVillage, $subName))) {
+                                $score += 25;
+                            }
+                        }
+
+                        if ($score > $bestScore && $score >= 50) {
+                            $bestScore = $score;
+                            $bestCandidate = $cand;
                         }
                     }
 
-                    $first = $selected ?: $apiRes['data'][0];
-                    $subId = $first['subdistrict_id'] ?? ($first['district_id'] ?? ($first['id'] ?? null));
-                    $cityId = $first['city_id'] ?? null;
-                    if ($subId || $cityId) {
-                        return [
-                            'matched'                   => true,
-                            'rajaongkir_region_id'      => (string)($subId ?: $cityId),
-                            'rajaongkir_subdistrict_id' => (string)($subId ?? ''),
-                            'rajaongkir_city_id'        => (string)($cityId ?? ''),
-                            'province_id'               => (string)($first['province_id'] ?? ''),
-                            'subdistrict_name'          => $first['subdistrict_name'] ?? ($first['district_name'] ?? $district),
-                            'district_name'             => $first['district_name'] ?? $district,
-                            'city_name'                 => $first['city_name'] ?? $city,
-                            'province_name'             => $first['province_name'] ?? $province,
-                            'full_label'                => implode(', ', array_filter([
-                                $village ?: null,
-                                $first['district_name'] ?? $district,
-                                $first['city_name'] ?? $city
-                            ])),
-                            'formatted_address'         => $formatted,
-                            'latitude'                  => $lat,
-                            'longitude'                 => $lng,
-                            'status_badge'              => '✓ Wilayah terdeteksi otomatis',
-                            'source'                    => 'komerce_api',
-                        ];
+                    if ($bestCandidate !== null) {
+                        $subId = $bestCandidate['subdistrict_id'] ?? ($bestCandidate['district_id'] ?? ($bestCandidate['id'] ?? null));
+                        $cityId = $bestCandidate['city_id'] ?? null;
+                        if ($subId || $cityId) {
+                            $verifiedZip = $bestCandidate['zip_code'] ?? ($bestCandidate['postal_code'] ?? null);
+                            return [
+                                'matched'                   => true,
+                                'rajaongkir_region_id'      => (string)($subId ?: $cityId),
+                                'rajaongkir_subdistrict_id' => (string)($subId ?? ''),
+                                'rajaongkir_city_id'        => (string)($cityId ?? ''),
+                                'province_id'               => (string)($bestCandidate['province_id'] ?? ''),
+                                'subdistrict_name'          => $bestCandidate['subdistrict_name'] ?? ($bestCandidate['district_name'] ?? $district),
+                                'district_name'             => $bestCandidate['district_name'] ?? $district,
+                                'city_name'                 => $bestCandidate['city_name'] ?? $city,
+                                'province_name'             => $bestCandidate['province_name'] ?? $province,
+                                'postal_code'               => $verifiedZip,
+                                'postal_code_verified'      => !empty($verifiedZip),
+                                'full_label'                => implode(', ', array_filter([
+                                    $village ?: null,
+                                    $bestCandidate['district_name'] ?? $district,
+                                    $bestCandidate['city_name'] ?? $city
+                                ])),
+                                'formatted_address'         => $formatted,
+                                'latitude'                  => $lat,
+                                'longitude'                 => $lng,
+                                'status_badge'              => '✓ Wilayah terdeteksi otomatis',
+                                'source'                    => 'komerce_api',
+                                'confidence_score'          => $bestScore,
+                            ];
+                        }
                     }
                 }
             } catch (\Exception $e) {

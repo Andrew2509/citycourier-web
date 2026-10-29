@@ -192,6 +192,25 @@ class GeocodingController extends Controller
     private function mapNominatim(array $data): array
     {
         $addr = $data['address'] ?? [];
+
+        // Accurate Indonesian administrative hierarchy mapping:
+        // Province = state / province
+        // City / Kabupaten = county (Kabupaten) or city / town (Kota)
+        // District / Kecamatan = municipality / city_district / district / suburb
+        // Village / Kelurahan = village / hamlet / quarter / neighbourhood
+        $province = $addr['state'] ?? $addr['province'] ?? null;
+        $county   = $addr['county'] ?? null;
+        $city     = $addr['city'] ?? $addr['town'] ?? $county ?? null;
+        $district = $addr['municipality'] ?? $addr['city_district'] ?? $addr['district'] ?? $addr['suburb'] ?? null;
+
+        // If county exists and city was incorrectly mapped to district (e.g. Waru), county is the actual Regency/City (e.g. Sidoarjo)
+        if (!empty($county) && (!empty($district) && strcasecmp((string)$city, (string)$district) === 0)) {
+            $city = $county;
+        }
+        if (empty($city) && !empty($county)) {
+            $city = $county;
+        }
+
         return [
             'place_id'          => $data['place_id'] ?? null,
             'osm_type'          => $data['osm_type'] ?? null,
@@ -201,9 +220,9 @@ class GeocodingController extends Controller
             'street_name'       => $addr['road'] ?? $addr['pedestrian'] ?? $addr['path'] ?? null,
             'neighbourhood'     => $addr['neighbourhood'] ?? null,
             'village'           => $addr['village'] ?? $addr['hamlet'] ?? $addr['quarter'] ?? null,
-            'district'          => $addr['city_district'] ?? $addr['municipality'] ?? $addr['suburb'] ?? $addr['county'] ?? null,
-            'city'              => $addr['city'] ?? $addr['town'] ?? (!empty($addr['city_district']) ? $addr['city_district'] : null) ?? (!empty($addr['municipality']) && !empty($addr['village']) ? $addr['municipality'] : null),
-            'province'          => $addr['state'] ?? $addr['province'] ?? null,
+            'district'          => $district,
+            'city'              => $city,
+            'province'          => $province,
             'postal_code'       => $addr['postcode'] ?? null,
             'country'           => $addr['country'] ?? null,
             'latitude'          => (float) ($data['lat'] ?? 0),
