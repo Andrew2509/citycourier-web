@@ -188,6 +188,13 @@ class TrackingService
         $courierLocation = null;
         $courierName = null;
         $courierPhone = null;
+        $courierPhoto = null;
+        $courierVehicleBrand = null;
+        $courierVehicleModel = null;
+        $courierVehiclePlate = null;
+        $courierVehicleType = null;
+        $courierDetails = null;
+        $courierVehicleDesc = null;
 
         if ($shipment->status !== 'pending' && $shipment->status !== 'confirmed') {
             // Cari order yang terkait dengan shipment ini
@@ -195,9 +202,17 @@ class TrackingService
                 ->whereNotNull('courier_id')
                 ->first();
 
-            if ($order && $order->courier_id) {
+            $courierId = $order ? $order->courier_id : null;
+            if (!$courierId) {
+                $lastLogWithCourier = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
+                if ($lastLogWithCourier) {
+                    $courierId = $lastLogWithCourier->courier_id;
+                }
+            }
+
+            if ($courierId) {
                 // 1. Coba ambil dari courier_locations (GPS real-time)
-                $latestLocation = $this->getLatestCourierLocation($order->courier_id, $shipment->id);
+                $latestLocation = $this->getLatestCourierLocation($courierId, $shipment->id);
                 if ($latestLocation) {
                     $courierLocation = [
                         'latitude'  => $latestLocation->latitude,
@@ -207,7 +222,7 @@ class TrackingService
 
                 // 2. Fallback: ambil lokasi terakhir dari tabel couriers
                 if (!$courierLocation) {
-                    $courier = Courier::find($order->courier_id);
+                    $courier = Courier::find($courierId);
                     if ($courier && $courier->latitude && $courier->longitude) {
                         $courierLocation = [
                             'latitude'  => $courier->latitude,
@@ -224,11 +239,38 @@ class TrackingService
                     ];
                 }
 
-                // Ambil info kurir
-                $courier = Courier::find($order->courier_id);
+                // Ambil info kurir lengkap
+                $courier = Courier::with('user')->find($courierId);
                 if ($courier) {
-                    $courierName = $courier->user->name ?? 'Kurir';
-                    $courierPhone = $courier->phone;
+                    $courierName = $courier->user->name ?? $courier->name ?? 'Kurir';
+                    $courierPhone = $courier->phone ?? $courier->user?->phone;
+                    $courierPhoto = $courier->photo
+                        ? (str_starts_with($courier->photo, 'http') ? $courier->photo : url('storage/' . $courier->photo))
+                        : null;
+                    $courierVehicleBrand = $courier->vehicle_brand;
+                    $courierVehicleModel = $courier->vehicle_model;
+                    $courierVehiclePlate = $courier->vehicle_plate;
+                    $courierVehicleType  = $courier->vehicle_type ?? 'motor';
+
+                    $brandModel = trim(($courierVehicleBrand ?? '') . ' ' . ($courierVehicleModel ?? ''));
+                    $courierVehicleDesc = !empty($brandModel) && !empty($courierVehiclePlate)
+                        ? "{$brandModel} • {$courierVehiclePlate}"
+                        : (!empty($brandModel) ? $brandModel : ($courierVehiclePlate ?? ''));
+
+                    $courierDetails = [
+                        'id'                  => $courier->id,
+                        'name'                => $courierName,
+                        'phone'               => $courierPhone,
+                        'photo'               => $courierPhoto,
+                        'photo_url'           => $courierPhoto,
+                        'avatar'              => $courierPhoto,
+                        'vehicle_type'        => $courierVehicleType,
+                        'vehicle_brand'       => $courierVehicleBrand,
+                        'vehicle_model'       => $courierVehicleModel,
+                        'vehicle_plate'       => $courierVehiclePlate,
+                        'plate_number'        => $courierVehiclePlate,
+                        'vehicle_description' => $courierVehicleDesc,
+                    ];
                 }
             }
         }
@@ -284,11 +326,21 @@ class TrackingService
                 'latitude'  => $destLat,
                 'longitude' => $destLng,
             ],
-            'courier_location'   => $courierLocation,
-            'courier_name'       => $courierName,
-            'courier_phone'      => $courierPhone,
-            'timeline'           => $logs->toArray(),
-            'estimated_delivery' => null, // Bisa ditambahkan nanti
+            'courier_location'      => $courierLocation,
+            'courier_name'          => $courierName,
+            'courier_phone'         => $courierPhone,
+            'courier_photo'         => $courierPhoto,
+            'courier_avatar'        => $courierPhoto,
+            'courier_vehicle_brand' => $courierVehicleBrand,
+            'courier_vehicle_model' => $courierVehicleModel,
+            'courier_vehicle_plate' => $courierVehiclePlate,
+            'vehicle_brand'         => $courierVehicleBrand,
+            'vehicle_model'         => $courierVehicleModel,
+            'vehicle_plate'         => $courierVehiclePlate,
+            'courier'               => $courierDetails,
+            'vehicle'               => !empty($courierVehicleDesc) ? $courierVehicleDesc : ($shipment->vehicle_type ?? $shipment->vehicle ?? 'motor'),
+            'timeline'              => $logs->toArray(),
+            'estimated_delivery'    => null, // Bisa ditambahkan nanti
         ];
     }
 

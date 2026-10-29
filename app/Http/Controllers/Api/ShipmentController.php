@@ -231,6 +231,60 @@ class ShipmentController extends Controller
         $data['receiver_latitude']  = $destLat;
         $data['receiver_longitude'] = $destLng;
 
+        // Perkaya info kurir jika pesanan sudah diambil kurir
+        $courierId = null;
+        $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
+        if ($order && $order->courier_id) {
+            $courierId = $order->courier_id;
+        } else {
+            $lastLog = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
+            if ($lastLog) {
+                $courierId = $lastLog->courier_id;
+            }
+        }
+
+        if ($courierId) {
+            $courier = \App\Models\Courier::with('user')->find($courierId);
+            if ($courier) {
+                $cPhoto = $courier->photo
+                    ? (str_starts_with($courier->photo, 'http') ? $courier->photo : url('storage/' . $courier->photo))
+                    : null;
+                $cName = $courier->user->name ?? $courier->name ?? 'Kurir';
+                $brandModel = trim(($courier->vehicle_brand ?? '') . ' ' . ($courier->vehicle_model ?? ''));
+                $vDesc = !empty($brandModel) && !empty($courier->vehicle_plate)
+                    ? "{$brandModel} • {$courier->vehicle_plate}"
+                    : (!empty($brandModel) ? $brandModel : ($courier->vehicle_plate ?? ''));
+
+                $data['courier_name'] = $cName;
+                $data['courier_phone'] = $courier->phone ?? $courier->user?->phone;
+                $data['courier_photo'] = $cPhoto;
+                $data['courier_avatar'] = $cPhoto;
+                $data['courier_vehicle_brand'] = $courier->vehicle_brand;
+                $data['courier_vehicle_model'] = $courier->vehicle_model;
+                $data['courier_vehicle_plate'] = $courier->vehicle_plate;
+                $data['vehicle_brand'] = $courier->vehicle_brand;
+                $data['vehicle_model'] = $courier->vehicle_model;
+                $data['vehicle_plate'] = $courier->vehicle_plate;
+                $data['courier'] = [
+                    'id'                  => $courier->id,
+                    'name'                => $cName,
+                    'phone'               => $courier->phone ?? $courier->user?->phone,
+                    'photo'               => $cPhoto,
+                    'photo_url'           => $cPhoto,
+                    'avatar'              => $cPhoto,
+                    'vehicle_type'        => $courier->vehicle_type ?? 'motor',
+                    'vehicle_brand'       => $courier->vehicle_brand,
+                    'vehicle_model'       => $courier->vehicle_model,
+                    'vehicle_plate'       => $courier->vehicle_plate,
+                    'plate_number'        => $courier->vehicle_plate,
+                    'vehicle_description' => $vDesc,
+                ];
+                if (!empty($vDesc)) {
+                    $data['vehicle'] = $vDesc;
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data'    => $data,
