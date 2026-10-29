@@ -189,8 +189,9 @@ class OrderController extends Controller
                 }
 
                 $order->update([
-                    'courier_id' => $courier->id,
-                    'status'     => 'assigned',
+                    'courier_id'            => $courier->id,
+                    'status'                => 'assigned',
+                    'courier_cancel_status' => null,
                 ]);
 
                 if ($shipment) {
@@ -222,7 +223,16 @@ class OrderController extends Controller
             });
         }
 
-        // 2. Operasi pada pesanan yang sudah dimiliki kurir (dengan DB Transaction & Row Locking)
+        // 2. Jika kurir meminta status 'cancelled', arahkan ke mekanisme pembatalan penugasan kurir
+        if ($newStatus === 'cancelled') {
+            $request->merge([
+                'reason' => $request->input('reason') ?: ($request->input('issue_reason') ?: 'Tidak dapat menjemput pada jadwal yang ditentukan.'),
+                'notes'  => $request->input('notes') ?: $request->input('issue_notes'),
+            ]);
+            return $this->cancelAssignment($request, $request->order_id);
+        }
+
+        // 3. Operasi pada pesanan yang sudah dimiliki kurir (dengan DB Transaction & Row Locking)
         return DB::transaction(function () use ($request, $courier, $newStatus) {
             $order = Order::where('id', $request->order_id)->lockForUpdate()->first();
 
@@ -448,5 +458,278 @@ class OrderController extends Controller
             'message' => 'Laporan kendala berhasil dicatat.',
             'data'    => $order->fresh(['shipment']),
         ]);
+    }
+
+    /**
+     * Pembatalan / Pelepasan Penugasan Pesanan oleh Kurir.
+     * POST /api/orders/cancel-assignment
+     * POST /api/orders/{order}/cancel-assignment
+     */
+    public function cancelAssignment(Request $request, $orderParam = null)
+    {
+        $orderId = $orderParam instanceof Order
+            ? $orderParam->id
+            : ($orderParam ?? $request->input('order_id'));
+
+        $rawReason = trim((string) ($request->input('reason') ?: $request->input('issue_reason') ?: ''));
+        $rawNotes  = trim((string) ($request->input('notes') ?: $request->input('issue_notes') ?: ''));
+
+        if (empty($orderId)) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'missing_order_id',
+                'title'      => 'Pembatalan Tidak Dapat Diproses',
+                'message'    => 'ID pesanan wajib disertakan.',
+            ], 422);
+        }
+
+        if ($rawReason === '') {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'missing_reason',
+                'title'      => 'Pembatalan Tidak Dapat Diproses',
+                'message'    => 'Alasan pembatalan penugasan wajib dipilih.',
+            ], 422);
+        }
+
+        // Pemetaan kode alasan ke teks standar bahasa Indonesia
+        $reasonMap = [
+            'schedule_conflict'      => 'Tidak dapat menjemput pada jadwal yang ditentukan.',
+            'vehicle_issue'          => 'Kendala kendaraan.',
+            'location_hard_to_reach' => 'Lokasi pickup sulit dijangkau.',
+            'personal_emergency'     => 'Kendala pribadi atau keadaan darurat.',
+            'other'                  => 'Alasan lainnya.',
+        ];
+        $resolvedReason = $reasonMap[$rawReason] ?? $rawReason;
+        $isOtherReason  = in_array(strtolower($rawReason), ['other', 'alasan lainnya', 'alasan lainnya.'], true);
+
+        if ($isOtherReason && $rawNotes === '') {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'missing_other_notes',
+                'title'      => 'Pembatalan Tidak Dapat Diproses',
+                'message'    => 'Keterangan tambahan wajib diisi jika memilih alasan lainnya.',
+            ], 422);
+        }
+
+        $courier = $request->user()?->courier;
+        if (!$courier) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'courier_not_found',
+                'title'      => 'Pembatalan Tidak Dapat Diproses',
+                'message'    => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        return DB::transaction(function () use ($request, $courier, $orderId, $resolvedReason, $rawNotes) {
+            $order = Order::where('id', $orderId)->lockForUpdate()->first();
+
+            if (!$order) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'order_not_found',
+                    'title'      => 'Pembatalan Tidak Dapat Diproses',
+                    'message'    => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
+
+            $shipment = Shipment::where('shipment_number', $order->order_number)->lockForUpdate()->first();
+
+            // 1. Idempotensi: jika kurir yang sama menekan tombol dua kali setelah pelepasan berhasil
+            if (
+                $order->status === 'pending' &&
+                $order->courier_id === null &&
+                (int) $order->courier_cancelled_by_id === (int) $courier->id &&
+                in_array($order->courier_cancel_status, ['released', 'approved'], true)
+            ) {
+                return response()->json([
+                    'success'           => true,
+                    'already_processed' => true,
+                    'action_taken'      => 'released',
+                    'priority'          => $order->courier_cancel_priority ?? 'normal',
+                    'title'             => 'Penugasan Berhasil Dibatalkan',
+                    'message'           => 'Penugasan pesanan ini sudah dilepas dari akun kamu.',
+                    'data'              => $order->fresh(['shipment']),
+                ], 200);
+            }
+
+            // 2. Idempotensi: jika kurir yang sama sudah mengajukan pembatalan dan sedang menunggu persetujuan admin
+            if (
+                (int) $order->courier_id === (int) $courier->id &&
+                $order->courier_cancel_status === 'pending_approval'
+            ) {
+                return response()->json([
+                    'success'           => true,
+                    'already_processed' => true,
+                    'action_taken'      => 'pending_approval',
+                    'priority'          => $order->courier_cancel_priority ?? 'normal',
+                    'title'             => 'Permintaan Pembatalan Terkirim',
+                    'message'           => 'Permintaan kamu sedang diperiksa oleh admin. Status penugasan akan diperbarui setelah keputusan diberikan.',
+                    'data'              => $order->fresh(['shipment']),
+                ], 200);
+            }
+
+            // 3. Validasi otorisasi kepemilikan penugasan kurir
+            if ((int) $order->courier_id !== (int) $courier->id) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'forbidden_not_assigned_courier',
+                    'title'      => 'Pembatalan Tidak Dapat Diproses',
+                    'message'    => 'Anda tidak memiliki hak untuk membatalkan penugasan pesanan milik kurir lain atau yang belum ditugaskan kepada Anda.',
+                ], 403);
+            }
+
+            // 4. Validasi status: pesanan sudah dibatalkan oleh pelanggan/admin
+            if ($order->status === 'cancelled' || ($shipment && $shipment->status === 'cancelled')) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'order_cancelled',
+                    'title'      => 'Pembatalan Tidak Dapat Diproses',
+                    'message'    => 'Pesanan ini telah dibatalkan sebelumnya dan tidak dapat diproses lagi.',
+                ], 422);
+            }
+
+            // 5. Validasi status: pesanan sudah selesai (delivered)
+            if ($order->status === 'delivered' || ($shipment && $shipment->status === 'delivered')) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'order_already_completed',
+                    'title'      => 'Pembatalan Tidak Dapat Diproses',
+                    'message'    => 'Pesanan yang sudah selesai dikirim tidak dapat dibatalkan penugasannya.',
+                ], 422);
+            }
+
+            // 6. Validasi status: barang sudah diambil atau sedang dikirim (picked_up / delivering / in_transit)
+            if (
+                in_array($order->status, ['picked_up', 'delivering', 'in_transit'], true) ||
+                $order->picked_up_at !== null ||
+                ($shipment && in_array($shipment->status, ['picked_up', 'delivering', 'in_transit'], true))
+            ) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'item_already_picked_up',
+                    'title'      => 'Pembatalan Tidak Dapat Diproses',
+                    'message'    => 'Barang sudah diambil atau sedang dalam pengiriman. Pembatalan penugasan secara langsung tidak diizinkan. Silakan laporkan kendala kepada admin City Courier.',
+                ], 422);
+            }
+
+            $now = Carbon::now('Asia/Jakarta');
+
+            // 7. Evaluasi apakah waktu pickup tersisa <= 2 jam (120 menit) untuk penandaan prioritas tinggi ke admin
+            // Penting: Kurir TIDAK diblokir oleh aturan 2 jam pelanggan, namun diberi prioritas tinggi ke admin.
+            $scheduledAt = $order->getPickupScheduledAtJakarta()
+                ?? ($shipment ? $shipment->getPickupScheduledAtJakarta($order) : null);
+            $isScheduled = (bool) $order->scheduled_pickup
+                || ($shipment && (bool) $shipment->scheduled_pickup)
+                || $scheduledAt !== null;
+
+            $isWithinTwoHours = false;
+            $minutesUntilPickup = null;
+            if ($isScheduled && $scheduledAt !== null) {
+                $diffSeconds = $now->diffInSeconds($scheduledAt, false);
+                $minutesUntilPickup = $diffSeconds >= 0
+                    ? (int) floor($diffSeconds / 60)
+                    : (int) ceil($diffSeconds / 60);
+
+                if ($diffSeconds <= (Shipment::CUSTOMER_CANCEL_CUTOFF_MINUTES * 60)) {
+                    $isWithinTwoHours = true;
+                }
+            }
+
+            $priority = $isWithinTwoHours ? 'urgent' : 'normal';
+            $courierName = $courier->user?->name ?? $courier->name ?? "Kurir #{$courier->id}";
+            $fullReasonDisplay = $resolvedReason . ($rawNotes !== '' ? " ({$rawNotes})" : '');
+            $priorityPrefix = $isWithinTwoHours ? '[PRIORITAS TINGGI - Pickup <= 2 Jam] ' : '';
+
+            // 8. Tentukan apakah memerlukan persetujuan admin atau pelepasan penugasan langsung:
+            // - Jika proses pickup sudah dimulai (status 'picking_up' atau pickup_started_at != null) -> WAJIB persetujuan admin
+            // - Jika kebijakan sistem mengharuskan persetujuan admin -> WAJIB persetujuan admin
+            $policyRequiresApproval = \App\Models\Setting::get('courier_cancel_require_admin_approval', '0') === '1'
+                || $request->boolean('require_admin_approval', false);
+            $pickupStarted = $order->status === 'picking_up' || $order->pickup_started_at !== null;
+            $requiresAdminApproval = $pickupStarted || $policyRequiresApproval;
+
+            if ($requiresAdminApproval) {
+                $order->update([
+                    'courier_cancel_status'   => 'pending_approval',
+                    'courier_cancel_reason'   => $resolvedReason,
+                    'courier_cancel_notes'    => $rawNotes !== '' ? $rawNotes : null,
+                    'courier_cancelled_at'    => $now,
+                    'courier_cancelled_by_id' => $courier->id,
+                    'courier_cancel_priority' => $priority,
+                    'issue_reason'            => $resolvedReason,
+                    'issue_notes'             => $rawNotes !== '' ? $rawNotes : null,
+                ]);
+
+                if ($shipment) {
+                    $logDesc = "{$priorityPrefix}Permintaan pembatalan penugasan diajukan oleh kurir {$courierName} (Menunggu Persetujuan Admin). Alasan: {$fullReasonDisplay}";
+                    $this->trackingService->createStatusHistory(
+                        $shipment,
+                        $shipment->status,
+                        $courier->id,
+                        $request->latitude,
+                        $request->longitude,
+                        null,
+                        $logDesc
+                    );
+                }
+
+                return response()->json([
+                    'success'              => true,
+                    'already_processed'    => false,
+                    'action_taken'         => 'pending_approval',
+                    'priority'             => $priority,
+                    'is_within_2_hours'    => $isWithinTwoHours,
+                    'minutes_until_pickup' => $minutesUntilPickup,
+                    'title'                => 'Permintaan Pembatalan Terkirim',
+                    'message'              => 'Permintaan kamu sedang diperiksa oleh admin. Status penugasan akan diperbarui setelah keputusan diberikan.',
+                    'data'                 => $order->fresh(['shipment']),
+                ], 200);
+            }
+
+            // 9. Pelepasan penugasan langsung (sebelum pickup dimulai / status 'assigned')
+            // Pesanan dikembalikan ke antrean ('pending' pada Order, 'confirmed' pada Shipment)
+            $order->update([
+                'courier_id'              => null,
+                'status'                  => 'pending',
+                'pickup_started_at'       => null,
+                'courier_cancel_status'   => 'released',
+                'courier_cancel_reason'   => $resolvedReason,
+                'courier_cancel_notes'    => $rawNotes !== '' ? $rawNotes : null,
+                'courier_cancelled_at'    => $now,
+                'courier_cancelled_by_id' => $courier->id,
+                'courier_cancel_priority' => $priority,
+                'issue_reason'            => $resolvedReason,
+                'issue_notes'             => $rawNotes !== '' ? $rawNotes : null,
+            ]);
+
+            if ($shipment) {
+                $shipment->update(['status' => 'confirmed']);
+
+                $logDesc = "{$priorityPrefix}Penugasan dilepas oleh kurir {$courierName}. Alasan: {$fullReasonDisplay}. Pesanan dikembalikan ke antrean penugasan kurir.";
+                $this->trackingService->createStatusHistory(
+                    $shipment,
+                    'confirmed',
+                    $courier->id,
+                    $request->latitude,
+                    $request->longitude,
+                    null,
+                    $logDesc
+                );
+            }
+
+            return response()->json([
+                'success'              => true,
+                'already_processed'    => false,
+                'action_taken'         => 'released',
+                'priority'             => $priority,
+                'is_within_2_hours'    => $isWithinTwoHours,
+                'minutes_until_pickup' => $minutesUntilPickup,
+                'title'                => 'Penugasan Berhasil Dibatalkan',
+                'message'              => 'Penugasan pesanan ini sudah dilepas dari akun kamu.',
+                'data'                 => $order->fresh(['shipment']),
+            ], 200);
+        });
     }
 }

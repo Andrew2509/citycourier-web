@@ -318,8 +318,57 @@ class AdminController extends Controller
      */
     public function orderDetail(Order $order)
     {
-        $order->load(['courier.user', 'shipment']);
+        $order->load(['courier.user', 'lastCancelledCourier.user', 'shipment']);
         return view('admin.order-detail', compact('order'));
+    }
+
+    /**
+     * Keputusan Admin atas Permintaan Pembatalan Penugasan Kurir (Setujui / Tolak).
+     */
+    public function handleCourierCancelDecision(Request $request, Order $order, \App\Services\TrackingService $trackingService)
+    {
+        $request->validate([
+            'decision' => 'required|in:approve,reject',
+            'admin_notes' => 'nullable|string|max:500',
+        ]);
+
+        $decision = $request->input('decision');
+        $adminNotes = trim((string) $request->input('admin_notes', ''));
+        $shipment = \App\Models\Shipment::where('shipment_number', $order->order_number)->first();
+        $courier = $order->courier ?? $order->lastCancelledCourier;
+        $courierName = $courier?->user?->name ?? $courier?->name ?? 'Kurir';
+
+        if ($decision === 'approve') {
+            $order->update([
+                'courier_id'              => null,
+                'status'                  => 'pending',
+                'pickup_started_at'       => null,
+                'courier_cancel_status'   => 'approved',
+                'courier_cancelled_by_id' => $courier?->id ?? $order->courier_cancelled_by_id,
+            ]);
+
+            if ($shipment) {
+                $shipment->update(['status' => 'confirmed']);
+                $desc = "Permintaan pembatalan penugasan kurir {$courierName} disetujui oleh Admin City Courier. Pesanan dikembalikan ke antrean penugasan."
+                    . ($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
+                $trackingService->createStatusHistory($shipment, 'confirmed', $courier?->id, null, null, null, $desc);
+            }
+
+            return back()->with('success', "Permintaan pembatalan penugasan kurir {$courierName} telah disetujui. Pesanan dikembalikan ke antrean.");
+        }
+
+        // Jika ditolak: kurir tetap bertugas
+        $order->update([
+            'courier_cancel_status' => 'rejected',
+        ]);
+
+        if ($shipment) {
+            $desc = "Permintaan pembatalan penugasan kurir {$courierName} ditolak oleh Admin City Courier. Kurir tetap melanjutkan penugasan."
+                . ($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
+            $trackingService->createStatusHistory($shipment, $shipment->status, $courier?->id, null, null, null, $desc);
+        }
+
+        return back()->with('success', "Permintaan pembatalan penugasan kurir {$courierName} telah ditolak. Penugasan tetap aktif.");
     }
 
     /**

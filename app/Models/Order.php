@@ -42,6 +42,12 @@ class Order extends Model
         'cancelled_by',
         'cancellation_reason',
         'cancelled_from_status',
+        'courier_cancel_status',
+        'courier_cancel_reason',
+        'courier_cancel_notes',
+        'courier_cancelled_at',
+        'courier_cancelled_by_id',
+        'courier_cancel_priority',
     ];
 
     protected $appends = [
@@ -50,7 +56,7 @@ class Order extends Model
         'pickup_photo_url', 'delivery_photo_url',
         'vehicle_display_name', 'is_pickup_ready', 'is_pickup_overdue',
         'pickup_countdown_minutes', 'pickup_countdown_text',
-        'cancelled_by_label',
+        'cancelled_by_label', 'courier_cancel_status_label',
     ];
 
     public function getTrackingNumberAttribute()
@@ -93,6 +99,21 @@ class Order extends Model
             'admin', 'administrator'        => 'Admin City Courier',
             'courier', 'kurir'              => 'Kurir',
             default                         => ucfirst($this->cancelled_by),
+        };
+    }
+
+    public function getCourierCancelStatusLabelAttribute(): ?string
+    {
+        if (!$this->courier_cancel_status) {
+            return null;
+        }
+
+        return match (strtolower($this->courier_cancel_status)) {
+            'pending_approval' => 'Menunggu Persetujuan Admin',
+            'released'         => 'Penugasan Dilepas Kurir',
+            'approved'         => 'Disetujui Admin (Penugasan Dilepas)',
+            'rejected'         => 'Ditolak Admin (Kurir Tetap Bertugas)',
+            default            => ucfirst($this->courier_cancel_status),
         };
     }
 
@@ -236,12 +257,18 @@ class Order extends Model
             'delivering_at' => 'datetime',
             'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'courier_cancelled_at' => 'datetime',
         ];
     }
 
     public function courier()
     {
         return $this->belongsTo(Courier::class);
+    }
+
+    public function lastCancelledCourier()
+    {
+        return $this->belongsTo(Courier::class, 'courier_cancelled_by_id');
     }
 
     public static function generateOrderNumber(): string

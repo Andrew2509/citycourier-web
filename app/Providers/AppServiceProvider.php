@@ -43,8 +43,8 @@ class AppServiceProvider extends ServiceProvider
             $user = auth()->user();
             if (!$user) return false;
             // Super-admin bypasses all permission checks
-            if ($user->hasRole('super-admin')) return true;
-            return $user->hasPermissionTo($permission);
+            if ($user->hasRole('super-admin') || $user->role === 'admin') return true;
+            return $user->checkPermissionTo($permission);
         });
     }
 }

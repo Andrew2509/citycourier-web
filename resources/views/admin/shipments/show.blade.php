@@ -126,6 +126,93 @@
             </div>
             @endif
 
+            {{-- Informasi Pembatalan Penugasan Kurir (jika kurir pernah melepas / mengajukan pembatalan) --}}
+            @if($shipment->order && ($shipment->order->courier_cancel_reason || $shipment->order->courier_cancel_status))
+            @php
+                $ordCancel = $shipment->order;
+                $cancelledCourier = $ordCancel->lastCancelledCourier ?? $ordCancel->courier;
+                $cancelledCourierName = $cancelledCourier?->user?->name ?? $cancelledCourier?->name ?? 'Kurir';
+                $isUrgentCancel = ($ordCancel->courier_cancel_priority ?? 'normal') === 'urgent';
+                $isPendingApproval = $ordCancel->courier_cancel_status === 'pending_approval';
+            @endphp
+            <div class="card border {{ $isPendingApproval ? 'border-amber-300 bg-amber-50/40' : 'border-orange-200 bg-orange-50/30' }}">
+                <div class="card-header {{ $isPendingApproval ? 'bg-amber-50 border-b border-amber-200' : 'bg-orange-50 border-b border-orange-200' }} flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined {{ $isPendingApproval ? 'text-amber-600' : 'text-orange-600' }}">person_cancel</span>
+                        <div>
+                            <div class="card-title text-sm text-slate-900">Informasi Pembatalan Penugasan Kurir</div>
+                            <div class="card-subtitle text-xs text-slate-600">Detail alasan pelepasan atau pengajuan pembatalan tugas oleh kurir</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if($isUrgentCancel)
+                            <span class="badge badge-red text-xs">
+                                <span class="badge-dot"></span>
+                                PRIORITAS TINGGI (Pickup ≤ 2 Jam)
+                            </span>
+                        @endif
+                        <span class="badge {{ $isPendingApproval ? 'badge-amber' : 'badge-gray' }} text-xs">
+                            {{ $ordCancel->courier_cancel_status_label ?? 'Penugasan Dilepas Kurir' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="p-3 rounded-lg border border-slate-200 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Kurir</div>
+                            <div class="text-sm font-bold text-slate-800 mt-1">{{ $cancelledCourierName }}</div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-slate-200 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Waktu Pembatalan Kurir</div>
+                            <div class="text-sm font-bold text-slate-800 font-mono mt-1">
+                                {{ $ordCancel->courier_cancelled_at ? $ordCancel->courier_cancelled_at->timezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' : '-' }}
+                            </div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-slate-200 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status Penugasan</div>
+                            <div class="text-sm font-bold text-slate-800 mt-1">{{ $ordCancel->courier_cancel_status_label ?? 'Penugasan Dilepas' }}</div>
+                        </div>
+                    </div>
+                    <div class="p-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 space-y-1">
+                        <div>
+                            <span class="font-semibold text-slate-900">Alasan Pembatalan Kurir:</span>
+                            <span class="ml-1 text-slate-700">{{ $ordCancel->courier_cancel_reason ?? '-' }}</span>
+                        </div>
+                        @if($ordCancel->courier_cancel_notes)
+                        <div>
+                            <span class="font-semibold text-slate-900">Keterangan Tambahan:</span>
+                            <span class="ml-1 text-slate-700">{{ $ordCancel->courier_cancel_notes }}</span>
+                        </div>
+                        @endif
+                    </div>
+
+                    @if($isPendingApproval)
+                    <div class="p-3 rounded-lg border border-amber-300 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div class="text-xs text-amber-900">
+                            <strong>Menunggu Persetujuan Admin:</strong> Kurir mengajukan pembatalan penugasan. Setujui untuk melepas penugasan dan mengembalikan pesanan ke antrean.
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <form method="POST" action="{{ route('admin.orders.courier-cancel-decision', $ordCancel) }}">
+                                @csrf
+                                <input type="hidden" name="decision" value="reject">
+                                <button type="submit" class="btn btn-sm btn-secondary">
+                                    Tolak Permintaan
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ route('admin.orders.courier-cancel-decision', $ordCancel) }}">
+                                @csrf
+                                <input type="hidden" name="decision" value="approve">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    Setujui &amp; Kembalikan ke Antrean
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
             {{-- Jadwal & Preferensi Penjemputan --}}
             <div class="card bg-white border border-slate-200">
                 <div class="card-header bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
