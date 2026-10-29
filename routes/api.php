@@ -29,6 +29,7 @@ Route::match(['get', 'post'], '/courier/dana/callback', [DanaController::class, 
 Route::match(['get', 'post'], '/dana/callback', [DanaController::class, 'callback']);
 
 Route::post('/dana/webhook', [DanaController::class, 'webhookCallback']);
+Route::post('/ovo/webhook', [\App\Http\Controllers\Api\OvoController::class, 'webhook']);
 
 Route::post('/test-wa', function (\Illuminate\Http\Request $request, \App\Services\WhatsAppManager $whatsapp) {
     return $whatsapp->sendMessage($request->phone, $request->message ?? 'Test message from City Courier');
@@ -146,6 +147,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/courier/withdrawals', [WithdrawalController::class, 'store']);
     Route::get('/courier/withdrawals', [WithdrawalController::class, 'index']);
     Route::get('/courier/withdrawals/{id}', [WithdrawalController::class, 'show']);
+    Route::get('/courier/withdrawals/{id}/status', [WithdrawalController::class, 'syncStatus']);
+
+    // OVO Digital Wallet Routes
+    Route::prefix('courier/ovo')->group(function () {
+        Route::get('/status', [\App\Http\Controllers\Api\OvoController::class, 'status']);
+        Route::post('/connect', [\App\Http\Controllers\Api\OvoController::class, 'connect']);
+        Route::post('/binding', [\App\Http\Controllers\Api\OvoController::class, 'connect']);
+        Route::post('/update', [\App\Http\Controllers\Api\OvoController::class, 'update']);
+        Route::post('/unbind', [\App\Http\Controllers\Api\OvoController::class, 'disconnect']);
+        Route::post('/disconnect', [\App\Http\Controllers\Api\OvoController::class, 'disconnect']);
+        Route::post('/withdraw', [\App\Http\Controllers\Api\OvoController::class, 'withdraw']);
+        Route::get('/withdrawals/{id}/status', [\App\Http\Controllers\Api\OvoController::class, 'syncStatus']);
+    });
 
 });
 

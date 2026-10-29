@@ -51,6 +51,19 @@ return [
             : 'https://api-sandbox.collaborator.komerce.id/user',
     ],
 
+    // OVO integration. Sourced from Settings (DB) or fallback to env.
+    'ovo' => [
+        'mode'          => env('OVO_MODE', 'mock'), // mock | sandbox | production
+        'api_base_url'  => env('OVO_API_BASE_URL', 'https://api.ovo.id'),
+        'client_id'     => env('OVO_CLIENT_ID', ''),
+        'client_secret' => env('OVO_CLIENT_SECRET', ''),
+        'partner_id'    => env('OVO_PARTNER_ID', ''),
+        'merchant_id'   => env('OVO_MERCHANT_ID', ''),
+        'public_key'    => env('OVO_PUBLIC_KEY', ''),
+        'private_key'   => env('OVO_PRIVATE_KEY', ''),
+        'webhook_secret'=> env('OVO_WEBHOOK_SECRET', ''),
+    ],
+
     // DANA integration. Kredensial dikelola dari Admin > Pengaturan Provider DANA
     // (disimpan di tabel settings) — tidak dibaca dari env.
     'dana' => [

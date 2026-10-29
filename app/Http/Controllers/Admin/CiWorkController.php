@@ -669,9 +669,9 @@ class CiWorkController extends Controller
             ->paginate(10, ['*'], 'withdrawals_page');
 
         $withdrawalCounts = [
-            'pending'   => Withdrawal::where('status', 'pending')->count(),
-            'completed' => Withdrawal::whereIn('status', ['approved', 'completed'])->count(),
-            'rejected'  => Withdrawal::where('status', 'rejected')->count(),
+            'pending'   => Withdrawal::whereIn('status', ['pending', 'reserved', 'processing'])->count(),
+            'completed' => Withdrawal::whereIn('status', ['approved', 'completed', 'success'])->count(),
+            'rejected'  => Withdrawal::whereIn('status', ['rejected', 'failed', 'cancelled'])->count(),
         ];
 
         return view('admin.ci-work.finance', compact('recaps', 'withdrawals', 'stats', 'withdrawalCounts', 'minWithdraw', 'adminFee'));

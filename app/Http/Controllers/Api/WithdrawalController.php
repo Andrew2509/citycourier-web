@@ -189,23 +189,68 @@ class WithdrawalController extends Controller
     }
 
     /**
+     * GET /api/courier/withdrawals/{id}/status
+     * Sync and check latest withdrawal status with payment provider.
+     */
+    public function syncStatus(Request $request, $id)
+    {
+        $courier = $request->user()->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        $withdrawal = $this->withdrawalService->getWithdrawal($courier->id, (int) $id);
+        if (!$withdrawal) {
+            $withdrawal = $this->withdrawalService->getWithdrawalByKey($courier->id, $id);
+        }
+
+        if (!$withdrawal) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Penarikan tidak ditemukan.',
+            ], 404);
+        }
+
+        $updated = $this->withdrawalService->checkAndSyncStatus($withdrawal);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $this->formatWithdrawal($updated),
+        ]);
+    }
+
+    /**
      * Format withdrawal for API response.
      */
     private function formatWithdrawal(Withdrawal $withdrawal): array
     {
+        $provider = strtoupper((string) ($withdrawal->provider ?? 'OVO'));
+        $conn = $withdrawal->danaConnection;
+        $maskedAccount = $withdrawal->account_number ?: ($conn?->masked_phone ?? '-');
+        $accountName = $withdrawal->account_name ?: ($conn?->account_name ?? '-');
+
         return [
-            'withdrawal_id'     => $withdrawal->id,
-            'idempotency_key'   => $withdrawal->idempotency_key,
-            'amount'            => (float) $withdrawal->amount,
-            'fee'               => (float) $withdrawal->fee,
-            'net_amount'        => (float) $withdrawal->net_amount,
-            'status'            => $withdrawal->status,
-            'destination'       => 'DANA',
-            'masked_account'    => $withdrawal->danaConnection?->masked_phone ?? '-',
+            'id'                 => $withdrawal->id,
+            'withdrawal_id'      => $withdrawal->id,
+            'idempotency_key'    => $withdrawal->idempotency_key,
+            'amount'             => (float) $withdrawal->amount,
+            'fee'                => (float) $withdrawal->fee,
+            'net_amount'         => (float) $withdrawal->net_amount,
+            'status'             => $withdrawal->status,
+            'provider'           => $provider,
+            'destination'        => $provider,
+            'bank_name'          => $withdrawal->bank_name ?? $provider,
+            'account_number'     => $maskedAccount,
+            'account_name'       => $accountName,
+            'masked_account'     => $maskedAccount,
             'provider_reference' => $withdrawal->provider_reference,
-            'failure_reason'    => $withdrawal->failure_reason,
-            'created_at'        => $withdrawal->created_at,
-            'processed_at'      => $withdrawal->processed_at,
+            'failure_reason'     => $withdrawal->failure_reason,
+            'created_at'         => $withdrawal->created_at,
+            'processed_at'       => $withdrawal->processed_at,
         ];
     }
 }

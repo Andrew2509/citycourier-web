@@ -13,6 +13,7 @@ class Withdrawal extends Model
         'courier_id',
         'wallet_id',
         'dana_connection_id',
+        'provider',
         'bank_name',
         'account_number',
         'account_name',

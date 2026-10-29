@@ -339,14 +339,21 @@ $financeData = $recaps->map(function ($c) {
                     <tr>
                         <th>Kurir</th>
                         <th>Jumlah Penarikan</th>
-                        <th>Rekening Tujuan</th>
+                        <th>Metode & Akun</th>
+                        <th>No. Referensi</th>
                         <th>Status</th>
                         <th class="text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($withdrawals as $wd)
-                    <tr class="wd-row" data-status="{{ in_array($wd->status, ['approved', 'completed']) ? 'completed' : $wd->status }}">
+                    @php
+                        $wdTabStatus = in_array($wd->status, ['approved', 'completed', 'success']) 
+                            ? 'completed' 
+                            : (in_array($wd->status, ['rejected', 'failed', 'cancelled']) ? 'rejected' : 'pending');
+                        $providerName = strtoupper($wd->provider ?? $wd->bank_name ?? 'OVO');
+                    @endphp
+                    <tr class="wd-row" data-status="{{ $wdTabStatus }}">
                         <td>
                             <div class="flex items-center gap-2">
                                 <div class="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -359,27 +366,47 @@ $financeData = $recaps->map(function ($c) {
                             </div>
                         </td>
                         <td class="font-mono font-bold text-slate-900 text-xs whitespace-nowrap">
-                            {{ fin($wd->amount) }}
+                            <div>{{ fin($wd->amount) }}</div>
+                            @if($wd->fee > 0)
+                                <div class="text-[10px] text-slate-400 font-normal">Bersih: {{ fin($wd->net_amount) }}</div>
+                            @endif
                         </td>
                         <td>
                             <div class="text-xs">
-                                <p class="font-semibold text-slate-800">{{ $wd->bank_name }}</p>
-                                <p class="text-[11px] text-slate-500 font-mono">{{ $wd->account_number }} a.n {{ $wd->account_name }}</p>
+                                <span class="inline-flex items-center gap-1 font-semibold text-slate-800">
+                                    @if($providerName === 'OVO')
+                                        <span class="w-2 h-2 rounded-full bg-[#4c3494] inline-block"></span>
+                                        <span>OVO</span>
+                                    @else
+                                        <span class="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>
+                                        <span>{{ $providerName }}</span>
+                                    @endif
+                                </span>
+                                <p class="text-[11px] text-slate-600 font-mono">{{ $wd->account_number ?: ($wd->danaConnection?->masked_phone ?? '-') }}</p>
+                                <p class="text-[10px] text-slate-400">a.n {{ $wd->account_name ?: ($wd->danaConnection?->account_name ?? 'Kurir') }}</p>
                             </div>
                         </td>
                         <td>
-                            @if($wd->status === 'pending')
+                            <span class="text-[11px] font-mono text-slate-600 block">{{ $wd->provider_reference ?: ($wd->idempotency_key ?: '-') }}</span>
+                        </td>
+                        <td>
+                            @if(in_array($wd->status, ['pending', 'reserved']))
                                 <span class="badge badge-warning text-[11px]">Menunggu</span>
+                            @elseif($wd->status === 'processing')
+                                <span class="badge badge-info text-[11px]">Diproses</span>
                             @elseif($wd->status === 'approved')
                                 <span class="badge badge-success text-[11px]">Disetujui</span>
-                            @elseif($wd->status === 'completed')
-                                <span class="badge badge-primary text-[11px]">Selesai</span>
-                            @elseif($wd->status === 'rejected')
-                                <span class="badge badge-danger text-[11px]">Ditolak</span>
+                            @elseif(in_array($wd->status, ['completed', 'success']))
+                                <span class="badge badge-primary text-[11px]">Berhasil</span>
+                            @elseif(in_array($wd->status, ['rejected', 'failed', 'cancelled']))
+                                <span class="badge badge-danger text-[11px]">Gagal</span>
+                                @if($wd->failure_reason)
+                                    <p class="text-[10px] text-rose-500 mt-0.5 max-w-[180px] truncate" title="{{ $wd->failure_reason }}">{{ $wd->failure_reason }}</p>
+                                @endif
                             @endif
                         </td>
                         <td class="text-right">
-                            @if($wd->status === 'pending')
+                            @if(in_array($wd->status, ['pending', 'reserved']))
                                 <div class="inline-flex items-center justify-end gap-1.5">
                                     <form action="{{ route('admin.ci-work.finance.withdrawal.update', $wd->id) }}" method="POST" class="inline-block"
                                         onsubmit="return confirm('Setujui penarikan {{ fin($wd->amount) }} untuk {{ $wd->courier->user->name ?? 'kurir' }}?')">

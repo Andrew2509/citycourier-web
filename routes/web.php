@@ -119,6 +119,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/dana', [\App\Http\Controllers\Admin\SettingController::class, 'updateDana'])->name('settings.dana.update');
         Route::post('/settings/dana/test', [\App\Http\Controllers\Admin\SettingController::class, 'testDana'])->name('settings.dana.test');
 
+        Route::get('/settings/ovo', [\App\Http\Controllers\Admin\SettingController::class, 'ovo'])->name('settings.ovo');
+        Route::post('/settings/ovo', [\App\Http\Controllers\Admin\SettingController::class, 'updateOvo'])->name('settings.ovo.update');
+        Route::post('/settings/ovo/test', [\App\Http\Controllers\Admin\SettingController::class, 'testOvo'])->name('settings.ovo.test');
+
 
         // Drop Points
         Route::get('drop-points/export', [\App\Http\Controllers\Admin\DropPointController::class, 'exportCsv'])->name('drop-points.export');

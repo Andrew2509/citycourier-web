@@ -50,7 +50,18 @@ class SettingController extends Controller
             'callback_url'  => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
         ];
 
-        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana'));
+        $ovo = [
+            'mode'          => Setting::get('ovo_mode', 'mock'),
+            'api_base_url'  => Setting::get('ovo_api_base_url', 'https://api.ovo.id'),
+            'client_id'     => Setting::get('ovo_client_id', ''),
+            'client_secret' => Setting::get('ovo_client_secret', ''),
+            'partner_id'    => Setting::get('ovo_partner_id', ''),
+            'merchant_id'   => Setting::get('ovo_merchant_id', ''),
+            'public_key'    => Setting::get('ovo_public_key', ''),
+            'private_key'   => Setting::get('ovo_private_key', ''),
+        ];
+
+        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo'));
     }
 
     /**
@@ -458,6 +469,87 @@ class SettingController extends Controller
                 'data'    => $result,
             ], 400);
         } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // OVO SNAP Provider Settings
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Show OVO SNAP provider settings form.
+     */
+    public function ovo()
+    {
+        $settings = [
+            'mode'          => Setting::get('ovo_mode', 'mock'),
+            'api_base_url'  => Setting::get('ovo_api_base_url', 'https://api.ovo.id'),
+            'client_id'     => Setting::get('ovo_client_id', ''),
+            'client_secret' => Setting::get('ovo_client_secret', ''),
+            'partner_id'    => Setting::get('ovo_partner_id', ''),
+            'merchant_id'   => Setting::get('ovo_merchant_id', ''),
+            'public_key'    => Setting::get('ovo_public_key', ''),
+            'private_key'   => Setting::get('ovo_private_key', ''),
+        ];
+
+        return view('admin.settings.ovo', compact('settings'));
+    }
+
+    /**
+     * Update OVO provider settings.
+     */
+    public function updateOvo(Request $request)
+    {
+        $request->validate([
+            'ovo_mode'         => 'required|in:mock,sandbox,production',
+            'ovo_api_base_url' => 'required|url',
+            'ovo_client_id'    => 'nullable|string|max:100',
+            'ovo_client_secret'=> 'nullable|string',
+            'ovo_partner_id'   => 'nullable|string|max:100',
+            'ovo_merchant_id'  => 'nullable|string|max:100',
+            'ovo_public_key'   => 'nullable|string',
+            'ovo_private_key'  => 'nullable|string',
+        ]);
+
+        Setting::set('ovo_mode', $request->ovo_mode, 'ovo');
+        Setting::set('ovo_api_base_url', $request->ovo_api_base_url, 'ovo');
+        Setting::set('ovo_client_id', $request->ovo_client_id ?? '', 'ovo');
+        Setting::set('ovo_client_secret', $request->ovo_client_secret ?? '', 'ovo');
+        Setting::set('ovo_partner_id', $request->ovo_partner_id ?? '', 'ovo');
+        Setting::set('ovo_merchant_id', $request->ovo_merchant_id ?? '', 'ovo');
+        Setting::set('ovo_public_key', $request->ovo_public_key ?? '', 'ovo');
+        Setting::set('ovo_private_key', $request->ovo_private_key ?? '', 'ovo');
+
+        return redirect()->back()->with('success', 'Pengaturan Provider OVO SNAP berhasil diperbarui.');
+    }
+
+    /**
+     * Test OVO provider connection (B2B Balance Inquiry).
+     */
+    public function testOvo()
+    {
+        try {
+            $service = new \App\Services\OvoService();
+            $provider = $service->activeProvider();
+            $result = $provider->balanceInquiry();
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Koneksi OVO SNAP Berhasil! Saldo deposit mitra terverifikasi: Rp ' . number_format($result['balance'] ?? 0, 0, ',', '.'),
+                    'data'    => $result,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi OVO Gagal: ' . ($result['error'] ?? 'Tidak dapat terhubung ke server OVO.'),
+                'data'    => $result,
+            ], 400);
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),

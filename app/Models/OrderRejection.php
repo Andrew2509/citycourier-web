@@ -40,3 +40,4 @@ class OrderRejection extends Model
         return $this->belongsTo(Courier::class);
     }
 }
+

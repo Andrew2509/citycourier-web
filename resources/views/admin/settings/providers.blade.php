@@ -148,75 +148,73 @@
             </div>
         </div>
 
-        {{-- KARTU 3: Pembayaran DANA & E-Wallet --}}
-        <div class="card flex flex-col justify-between">
+        {{-- KARTU 3: OVO SNAP (Pencairan Dompet Kurir) --}}
+        <div class="card flex flex-col justify-between border-purple-200">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
-                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-sky-50 text-sky-700">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-purple-50 text-purple-700">
                             <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
                         </div>
                         <div>
-                            <div class="card-title">DANA Payment Gateway</div>
-                            <div class="card-subtitle">Pembayaran non-tunai dompet digital DANA Indonesia</div>
+                            <div class="card-title">OVO SNAP (Pencairan Kurir)</div>
+                            <div class="card-subtitle">Integrasi disbursement OVO SNAP B2B untuk dompet kurir</div>
                         </div>
                     </div>
-                    <span class="badge {{ ($dana['mode'] ?? 'mock') === 'production' ? 'badge-green' : 'badge-amber' }}">
-                        {{ strtoupper($dana['mode'] ?? 'MOCK') }}
+                    <span class="badge {{ ($ovo['mode'] ?? 'mock') === 'production' ? 'badge-green' : 'badge-amber' }}">
+                        {{ strtoupper($ovo['mode'] ?? 'MOCK') }}
                     </span>
                 </div>
 
                 <div class="card-body space-y-3">
                     <p class="text-xs text-slate-500 leading-relaxed">
-                        Memproses pembayaran instan langsung dari aplikasi konsumen melalui saldo e-wallet DANA dengan webhook konfirmasi transaksi otomatis.
+                        Memproses verifikasi akun kurir (Account Inquiry) dan pencairan saldo pendapatan langsung ke akun OVO kurir via API OVO SNAP.
                     </p>
 
-                    <form method="POST" action="{{ route('admin.settings.dana.update') }}" class="space-y-3 pt-1">
+                    <form method="POST" action="{{ route('settings.ovo.update') }}" class="space-y-3 pt-1">
                         @csrf
-                        @method('PUT')
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="form-label text-xs">Mode Lingkungan</label>
-                                <select name="dana_mode" class="form-select text-xs">
-                                    <option value="mock" {{ ($dana['mode'] ?? '') === 'mock' ? 'selected' : '' }}>Mock / Simulasi</option>
-                                    <option value="sandbox" {{ ($dana['mode'] ?? '') === 'sandbox' ? 'selected' : '' }}>Sandbox DANA</option>
-                                    <option value="production" {{ ($dana['mode'] ?? '') === 'production' ? 'selected' : '' }}>Production Live</option>
+                                <select name="ovo_mode" class="form-select text-xs">
+                                    <option value="mock" {{ ($ovo['mode'] ?? '') === 'mock' ? 'selected' : '' }}>Mock / Simulasi</option>
+                                    <option value="sandbox" {{ ($ovo['mode'] ?? '') === 'sandbox' ? 'selected' : '' }}>Sandbox OVO</option>
+                                    <option value="production" {{ ($ovo['mode'] ?? '') === 'production' ? 'selected' : '' }}>Production Live</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="form-label text-xs">Merchant ID</label>
+                                <label class="form-label text-xs">API Base URL</label>
                                 <input type="text"
-                                       name="dana_merchant_id"
-                                       value="{{ $dana['merchant_id'] ?? '' }}"
-                                       placeholder="Contoh: 2166..."
+                                       name="ovo_api_base_url"
+                                       value="{{ $ovo['api_base_url'] ?? 'https://api.ovo.id' }}"
                                        class="form-input font-mono text-xs">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="form-label text-xs">Client ID</label>
+                                <label class="form-label text-xs">Client ID / Key</label>
                                 <input type="text"
-                                       name="dana_client_id"
-                                       value="{{ $dana['client_id'] ?? '' }}"
+                                       name="ovo_client_id"
+                                       value="{{ $ovo['client_id'] ?? '' }}"
                                        class="form-input font-mono text-xs">
                             </div>
                             <div>
-                                <label class="form-label text-xs">Client Secret</label>
-                                <input type="password"
-                                       name="dana_client_secret"
-                                       value="{{ $dana['client_secret'] ?? '' }}"
+                                <label class="form-label text-xs">Partner ID</label>
+                                <input type="text"
+                                       name="ovo_partner_id"
+                                       value="{{ $ovo['partner_id'] ?? '' }}"
                                        class="form-input font-mono text-xs">
                             </div>
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
-                            <a href="{{ route('admin.settings.dana') }}" class="text-xs text-brand-700 hover:underline font-medium inline-flex items-center gap-1">
-                                Konfigurasi Lengkap &rarr;
+                            <a href="{{ route('settings.ovo') }}" class="text-xs text-purple-700 hover:underline font-medium inline-flex items-center gap-1">
+                                Konfigurasi Lengkap OVO &rarr;
                             </a>
                             <button type="submit" class="btn btn-sm btn-primary">
-                                Simpan DANA
+                                Simpan OVO
                             </button>
                         </div>
                     </form>

@@ -13,6 +13,10 @@ class DanaConnection extends Model
 
     protected $fillable = [
         'courier_id',
+        'provider',              // ovo, dana
+        'account_name',          // Nama pemilik akun (OVO / DANA)
+        'phone_encrypted',       // Nomor HP terenkripsi at-rest
+        'consent_at',            // Waktu persetujuan pemakaian akun
         'status',                // not_connected, pending, connected, expired, revoked, failed
         'external_id',
         'state_hash',
@@ -40,6 +44,7 @@ class DanaConnection extends Model
         'session_expires_at' => 'datetime',
         'token_expires_at'   => 'datetime',
         'bound_at'           => 'datetime',
+        'consent_at'         => 'datetime',
     ];
 
     /**
@@ -47,6 +52,7 @@ class DanaConnection extends Model
      */
     protected $hidden = [
         'state_hash',
+        'phone_encrypted',
         'access_token',
         'refresh_token',
         'access_token_encrypted',

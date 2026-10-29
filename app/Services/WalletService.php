@@ -35,10 +35,30 @@ class WalletService
     public function getBalance(int $courierId): array
     {
         $wallet = $this->getOrCreateWallet($courierId);
+        $available = (float) $wallet->available_balance;
+        $pending   = (float) $wallet->pending_balance;
+        $total     = $available + $pending;
+
+        $todayStart = now()->startOfDay();
+        $todayEarnings = (float) WalletTransaction::where('courier_id', $courierId)
+            ->where('created_at', '>=', $todayStart)
+            ->where(function ($q) {
+                $q->where('type', 'earning')->orWhere('amount', '>', 0);
+            })
+            ->sum('amount');
+
+        $totalEarnings = (float) WalletTransaction::where('courier_id', $courierId)
+            ->where(function ($q) {
+                $q->where('type', 'earning')->orWhere('amount', '>', 0);
+            })
+            ->sum('amount');
 
         return [
-            'available_balance' => (float) $wallet->available_balance,
-            'pending_balance'   => (float) $wallet->pending_balance,
+            'total_balance'     => $total,
+            'available_balance' => $available,
+            'pending_balance'   => $pending,
+            'today_earnings'    => $todayEarnings,
+            'total_earnings'    => $totalEarnings,
             'currency'          => $wallet->currency,
             'status'            => $wallet->status,
         ];
@@ -126,9 +146,9 @@ class WalletService
      *
      * Returns true on success, throws on insufficient balance.
      */
-    public function reserve(int $courierId, float $amount, string $withdrawalReference): bool
+    public function reserve(int $courierId, float $amount, string $withdrawalReference, ?string $description = null): bool
     {
-        return DB::transaction(function () use ($courierId, $amount, $withdrawalReference) {
+        return DB::transaction(function () use ($courierId, $amount, $withdrawalReference, $description) {
             // PRD §28: Lock wallet row (SELECT FOR UPDATE)
             $wallet = Wallet::where('courier_id', $courierId)
                 ->lockForUpdate()
@@ -161,7 +181,7 @@ class WalletService
                 'net_amount'   => -$amount,
                 'status'       => 'pending',
                 'reference'    => $withdrawalReference,
-                'description'  => 'Penarikan DANA - dana ditahan',
+                'description'  => $description ?? 'Penarikan OVO - dana ditahan',
             ]);
 
             Log::info('[WalletService] Reserved balance', [
