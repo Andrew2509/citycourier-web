@@ -301,21 +301,36 @@ class TrackingService
             }
         }
 
+        $cancelEval = $shipment->evaluateCustomerCancellation();
+        $pickupScheduledAt = $shipment->getPickupScheduledAtJakarta();
+
         return [
-            'tracking_number'    => $shipment->tracking_number,
-            'shipment_number'    => $shipment->shipment_number,
-            'status'             => $shipment->status,
-            'status_label'       => $this->statusLabels[$shipment->status] ?? $shipment->status,
-            'sender_name'        => $shipment->sender_name,
-            'sender_phone'       => $shipment->sender_phone,
-            'receiver_name'      => $shipment->receiver_name,
-            'receiver_phone'     => $shipment->receiver_phone,
-            'vehicle'            => $shipment->vehicle_type ?? $shipment->vehicle ?? 'motor',
-            'package_weight'     => (float) ($shipment->package_weight ?? 1.0),
-            'payment_method'     => $shipment->payment_method ?? 'COD',
-            'total_cost'         => (int) ($shipment->total_cost ?? 0),
-            'schedule_pickup_text' => $shipment->schedule_pickup_text ?? 'Sekarang',
-            'qr_code_url'        => $shipment->qr_code_url,
+            'tracking_number'           => $shipment->tracking_number,
+            'shipment_number'           => $shipment->shipment_number,
+            'status'                    => $shipment->status,
+            'status_label'              => $this->statusLabels[$shipment->status] ?? $shipment->status,
+            'sender_name'               => $shipment->sender_name,
+            'sender_phone'              => $shipment->sender_phone,
+            'receiver_name'             => $shipment->receiver_name,
+            'receiver_phone'            => $shipment->receiver_phone,
+            'vehicle'                   => $shipment->vehicle_type ?? $shipment->vehicle ?? 'motor',
+            'package_weight'            => (float) ($shipment->package_weight ?? 1.0),
+            'payment_method'            => $shipment->payment_method ?? 'COD',
+            'total_cost'                => (int) ($shipment->total_cost ?? 0),
+            'scheduled_pickup'          => (bool) $shipment->scheduled_pickup,
+            'pickup_scheduled_at'       => $pickupScheduledAt?->toIso8601String(),
+            'pickup_time'               => $shipment->pickup_time,
+            'schedule_pickup_text'      => $shipment->schedule_pickup_text ?? 'Sekarang',
+            'can_customer_cancel'       => $cancelEval['allowed'],
+            'cancellation_block_reason' => $cancelEval['reason_code'],
+            'cancellation_block_message'=> $cancelEval['message'],
+            'minutes_until_pickup'      => $cancelEval['minutes_until_pickup'],
+            'cancelled_at'              => $shipment->cancelled_at?->toIso8601String(),
+            'cancelled_by'              => $shipment->cancelled_by,
+            'cancelled_by_label'        => $shipment->cancelled_by_label,
+            'cancellation_reason'       => $shipment->cancellation_reason,
+            'cancelled_from_status'     => $shipment->cancelled_from_status,
+            'qr_code_url'               => $shipment->qr_code_url,
             'origin' => [
                 'address'   => $originAddress,
                 'latitude'  => $originLat,
@@ -340,7 +355,7 @@ class TrackingService
             'courier'               => $courierDetails,
             'vehicle'               => !empty($courierVehicleDesc) ? $courierVehicleDesc : ($shipment->vehicle_type ?? $shipment->vehicle ?? 'motor'),
             'timeline'              => $logs->toArray(),
-            'estimated_delivery'    => null, // Bisa ditambahkan nanti
+            'estimated_delivery'    => $shipment->estimated_delivery?->toIso8601String(),
         ];
     }
 

@@ -37,6 +37,7 @@
                         };
                         $resi = $order->tracking_number ?? $order->order_number ?? ('ORD#' . $order->id);
                         $courier = $order->courier ?? $order->shipment?->courier ?? null;
+                        $shipment = $order->shipment;
                     @endphp
                     <span class="badge {{ $badgeClass }}">
                         <span class="badge-dot"></span>
@@ -52,6 +53,14 @@
         </div>
 
         <div class="page-actions">
+            @if($shipment)
+            <a href="{{ route('admin.shipments.show', $shipment) }}"
+               class="btn btn-secondary"
+               title="Kelola Status & Pembatalan Pengiriman">
+                <span class="material-symbols-outlined">settings</span>
+                Kelola Pengiriman
+            </a>
+            @endif
             @if($order->tracking_number)
             <a href="{{ route('tracking.show', $order->tracking_number) }}"
                target="_blank"
@@ -76,6 +85,72 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {{-- Kolom Kiri / Utama (2 Kolom) --}}
         <div class="lg:col-span-2 space-y-5">
+
+            {{-- Informasi Pembatalan Pesanan (Tampil bila status = cancelled) --}}
+            @if($st === 'cancelled')
+            @php
+                $cancelledAt = $order->cancelled_at ?? $shipment?->cancelled_at ?? $order->updated_at;
+                $cancelledByLabel = $order->cancelled_by_label ?? $shipment?->cancelled_by_label ?? 'Pelanggan';
+                $cancelReason = $order->cancellation_reason ?? $shipment?->cancellation_reason ?? $order->issue_notes ?? 'Pesanan dibatalkan melalui aplikasi.';
+                $prevStatus = $order->cancelled_from_status ?? $shipment?->cancelled_from_status;
+                $schedAt = $order->pickup_scheduled_at ?? $shipment?->pickup_scheduled_at;
+                $schedTime = $order->pickup_time ?? $shipment?->pickup_time;
+                $isSched = (bool) ($order->scheduled_pickup || $shipment?->scheduled_pickup || $schedAt);
+            @endphp
+            <div class="card border border-red-200 bg-red-50/40">
+                <div class="card-header bg-red-50 border-b border-red-200 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-red-600">cancel</span>
+                        <div>
+                            <div class="card-title text-sm text-red-900">Informasi Pembatalan Pesanan</div>
+                            <div class="card-subtitle text-xs text-red-700">Detail pembatalan dan jadwal pickup awal</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-red text-xs">
+                        <span class="badge-dot"></span>
+                        Status: Dibatalkan
+                    </span>
+                </div>
+                <div class="card-body space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status Pembatalan</div>
+                            <div class="text-sm font-bold text-red-700 mt-1">Dibatalkan</div>
+                            @if($prevStatus)
+                                <div class="text-[11px] text-slate-500 mt-0.5">Status sebelumnya: <strong class="uppercase">{{ $prevStatus }}</strong></div>
+                            @endif
+                        </div>
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Waktu Pembatalan</div>
+                            <div class="text-sm font-bold text-slate-800 font-mono mt-1">
+                                {{ $cancelledAt ? $cancelledAt->timezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' : '-' }}
+                            </div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Dibatalkan Oleh</div>
+                            <div class="text-sm font-bold text-slate-800 mt-1">{{ $cancelledByLabel }}</div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Jadwal Pickup Awal</div>
+                            <div class="text-xs font-bold text-slate-800 mt-1">
+                                @if($isSched)
+                                    {{ $schedAt ? $schedAt->timezone('Asia/Jakarta')->format('d M Y') : '-' }}
+                                    &bull;
+                                    {{ $schedTime ?: ($schedAt ? $schedAt->timezone('Asia/Jakarta')->format('h:i A') : '-') }}
+                                @else
+                                    Pickup Instan (Langsung)
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 rounded-lg border border-red-200/80 bg-white text-xs text-slate-800">
+                        <span class="font-semibold text-red-800">Alasan Pembatalan:</span>
+                        <p class="mt-1 text-slate-700">{{ $cancelReason }}</p>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Rute Pengiriman --}}
             <div class="card">
                 <div class="card-header">
@@ -84,7 +159,7 @@
                         <div class="card-subtitle">Titik penjemputan dan tujuan pengiriman kurir</div>
                     </div>
                     <span class="badge badge-gray text-xs">
-                        {{ ucfirst($order->vehicle_type ?? 'Motor') }} &bull; {{ $order->service_type ?? 'Instant' }}
+                        {{ ucfirst($order->vehicle ?? $order->vehicle_type ?? 'Motor') }} &bull; {{ $order->scheduled_pickup ? ('Terjadwal: ' . ($order->pickup_time ?? '-')) : ($order->service_type ?? 'Instant') }}
                     </span>
                 </div>
                 <div class="card-body">
@@ -210,15 +285,19 @@
                     <div class="flex items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
                             <div class="avatar bg-brand-50 text-brand-700 text-sm font-bold">
-                                {{ strtoupper(substr($courier->name ?? 'K', 0, 1)) }}
+                                {{ strtoupper(substr($courier->user?->name ?? $courier->name ?? 'K', 0, 1)) }}
                             </div>
                             <div>
-                                <div class="text-sm font-semibold text-slate-900">{{ $courier->name }}</div>
+                                <div class="text-sm font-semibold text-slate-900">{{ $courier->user?->name ?? $courier->name }}</div>
                                 <div class="text-xs text-slate-500 font-mono mt-0.5">{{ $courier->phone ?? '-' }}</div>
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="badge badge-green text-xs">Aktif Bertugas</span>
+                            @if($st === 'cancelled')
+                                <span class="badge badge-gray text-xs">Penugasan Dibatalkan (Riwayat)</span>
+                            @else
+                                <span class="badge badge-green text-xs">Aktif Bertugas</span>
+                            @endif
                             <div class="text-xs text-slate-400 mt-1">
                                 Plat: <strong class="text-slate-700">{{ $courier->vehicle_plate ?? '-' }}</strong>
                             </div>
@@ -276,11 +355,23 @@
                 </div>
                 <div class="flex items-center justify-between text-slate-600">
                     <span>Waktu Dibuat:</span>
-                    <span class="font-mono text-slate-900">{{ $order->created_at ? $order->created_at->format('d/m/Y H:i') : '-' }}</span>
+                    <span class="font-mono text-slate-900">{{ $order->created_at ? $order->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-' }}</span>
                 </div>
+                @if($order->scheduled_pickup && $order->pickup_scheduled_at)
+                <div class="flex items-center justify-between text-slate-600">
+                    <span>Jadwal Pickup:</span>
+                    <span class="font-mono text-brand-700 font-semibold">{{ $order->pickup_scheduled_at->timezone('Asia/Jakarta')->format('d/m/Y h:i A') }}</span>
+                </div>
+                @endif
+                @if($order->cancelled_at)
+                <div class="flex items-center justify-between text-red-700 font-semibold">
+                    <span>Waktu Dibatalkan:</span>
+                    <span class="font-mono">{{ $order->cancelled_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') }}</span>
+                </div>
+                @endif
                 <div class="flex items-center justify-between text-slate-600">
                     <span>Pembaruan Terakhir:</span>
-                    <span class="font-mono text-slate-900">{{ $order->updated_at ? $order->updated_at->format('d/m/Y H:i') : '-' }}</span>
+                    <span class="font-mono text-slate-900">{{ $order->updated_at ? $order->updated_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') : '-' }}</span>
                 </div>
             </div>
         </div>

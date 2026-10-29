@@ -18,7 +18,7 @@
                         $badgeClass = match($stKey) {
                             'pending', 'draft'        => 'badge-amber',
                             'confirmed', 'assigned'   => 'badge-blue',
-                            'picked_up', 'in_transit' => 'badge-indigo',
+                            'picking_up', 'picked_up', 'in_transit', 'delivering' => 'badge-indigo',
                             'delivered', 'completed'  => 'badge-green',
                             'cancelled', 'rejected'   => 'badge-red',
                             default                   => 'badge-gray',
@@ -27,15 +27,16 @@
                             'pending'    => 'Pending',
                             'confirmed'  => 'Confirmed',
                             'assigned'   => 'Assigned',
+                            'picking_up' => 'Picking Up',
                             'picked_up'  => 'Picked Up',
-                            'in_transit' => 'In Transit',
-                            'delivered'  => 'Delivered',
-                            'completed'  => 'Delivered',
-                            'cancelled'  => 'Cancelled',
+                            'delivering', 'in_transit' => 'In Transit',
+                            'delivered', 'completed'  => 'Delivered',
+                            'cancelled'  => 'Dibatalkan (Cancelled)',
                             'rejected'   => 'Rejected',
                             default      => ucfirst($stKey),
                         };
                         $trackingNum = $shipment->tracking_number ?? $shipment->shipment_number;
+                        $logsList = $shipment->logs ?? $shipment->trackingLogs ?? collect();
                     @endphp
                     <span class="badge {{ $badgeClass }}">
                         <span class="badge-dot"></span>
@@ -66,6 +67,65 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {{-- Kolom Kiri / Utama (2 Kolom) --}}
         <div class="lg:col-span-2 space-y-5">
+
+            {{-- Informasi Pembatalan Pesanan (Tampil bila status = cancelled) --}}
+            @if($stKey === 'cancelled')
+            <div class="card border border-red-200 bg-red-50/40">
+                <div class="card-header bg-red-50 border-b border-red-200 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-red-600">cancel</span>
+                        <div>
+                            <div class="card-title text-sm text-red-900">Informasi Pembatalan Pesanan</div>
+                            <div class="card-subtitle text-xs text-red-700">Detail riwayat pembatalan pengiriman</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-red text-xs">
+                        <span class="badge-dot"></span>
+                        Status: Dibatalkan
+                    </span>
+                </div>
+                <div class="card-body space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status Pembatalan</div>
+                            <div class="text-sm font-bold text-red-700 mt-1">Dibatalkan</div>
+                            @if($shipment->cancelled_from_status)
+                                <div class="text-[11px] text-slate-500 mt-0.5">Status sebelumnya: <strong class="uppercase">{{ $shipment->cancelled_from_status }}</strong></div>
+                            @endif
+                        </div>
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Waktu Pembatalan</div>
+                            <div class="text-sm font-bold text-slate-800 font-mono mt-1">
+                                {{ $shipment->cancelled_at ? $shipment->cancelled_at->timezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' : ($shipment->updated_at ? $shipment->updated_at->timezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' : '-') }}
+                            </div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Dibatalkan Oleh</div>
+                            <div class="text-sm font-bold text-slate-800 mt-1">
+                                {{ $shipment->cancelled_by_label ?? 'Pelanggan' }}
+                            </div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-red-200/80 bg-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Jadwal Pickup Awal</div>
+                            <div class="text-xs font-bold text-slate-800 mt-1">
+                                @if($shipment->scheduled_pickup || $shipment->pickup_scheduled_at)
+                                    {{ $shipment->pickup_scheduled_at ? $shipment->pickup_scheduled_at->timezone('Asia/Jakarta')->format('d M Y') : '-' }}
+                                    &bull;
+                                    {{ $shipment->pickup_time ?: ($shipment->pickup_scheduled_at ? $shipment->pickup_scheduled_at->timezone('Asia/Jakarta')->format('h:i A') : '-') }}
+                                @else
+                                    Pickup Instan (Langsung)
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 rounded-lg border border-red-200/80 bg-white text-xs text-slate-800">
+                        <span class="font-semibold text-red-800">Alasan Pembatalan:</span>
+                        <p class="mt-1 text-slate-700">{{ $shipment->cancellation_reason ?: 'Pesanan dibatalkan melalui aplikasi.' }}</p>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Jadwal & Preferensi Penjemputan --}}
             <div class="card bg-white border border-slate-200">
                 <div class="card-header bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
@@ -119,6 +179,7 @@
                     @endif
                 </div>
             </div>
+
             {{-- Rute Pengiriman (Pickup & Dropoff) --}}
             <div class="card">
                 <div class="card-header">
@@ -247,11 +308,11 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    @if(isset($shipment->trackingLogs) && $shipment->trackingLogs->count() > 0)
+                    @if($logsList && $logsList->count() > 0)
                     <div class="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                        @foreach($shipment->trackingLogs->sortByDesc('created_at') as $log)
+                        @foreach($logsList->sortByDesc('created_at') as $log)
                         <div class="relative group">
-                            <span class="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-white bg-brand-600 ring-2 ring-brand-100"></span>
+                            <span class="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-white {{ $log->status === 'cancelled' ? 'bg-red-600 ring-red-100' : 'bg-brand-600 ring-brand-100' }} ring-2"></span>
                             <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
                                 <span class="text-xs font-semibold text-slate-900 uppercase tracking-wide">
                                     {{ $log->status }}
@@ -260,7 +321,7 @@
                                     @endif
                                 </span>
                                 <span class="text-[11px] text-slate-400 font-mono">
-                                    {{ $log->created_at ? $log->created_at->format('d M Y, H:i') : '-' }} WIB
+                                    {{ $log->created_at ? $log->created_at->timezone('Asia/Jakarta')->format('d M Y, H:i') : '-' }} WIB
                                 </span>
                             </div>
                             <p class="text-xs text-slate-600 mt-0.5">
@@ -352,12 +413,24 @@
                 </div>
             </div>
 
-            {{-- Form Update Status Pengiriman --}}
+            {{-- Form Update Status Pengiriman & Kewenangan Pembatalan Admin --}}
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">Perbarui Status</div>
+                    <div class="card-title">Perbarui Status &amp; Pembatalan Admin</div>
                 </div>
                 <div class="card-body">
+                    @if($stKey !== 'cancelled' && $stKey !== 'delivered')
+                        @php
+                            $cancelEval = $shipment->evaluateCustomerCancellation();
+                        @endphp
+                        @if(!$cancelEval['allowed'])
+                        <div class="mb-3 p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-[11.5px] text-amber-900">
+                            <strong>Batas Pembatalan Mandiri Terkunci:</strong>
+                            Pelanggan sudah tidak dapat membatalkan pesanan secara mandiri ({{ $cancelEval['reason_code'] === 'pickup_already_started' ? 'proses pickup sudah dimulai' : 'sisa waktu pickup ≤ 2 jam' }}). Admin tetap memiliki kewenangan khusus untuk membatalkan pesanan ini.
+                        </div>
+                        @endif
+                    @endif
+
                     <form method="POST" action="{{ route('admin.shipments.update', $shipment) }}" class="space-y-3">
                         @csrf
                         @method('PUT')
@@ -390,6 +463,15 @@
                                    name="location"
                                    value="{{ old('location') }}"
                                    placeholder="Contoh: Surabaya Hub, Waru Drop Point..."
+                                   class="form-input text-xs">
+                        </div>
+
+                        <div>
+                            <label class="form-label">Alasan Pembatalan (Jika Dibatalkan Admin)</label>
+                            <input type="text"
+                                   name="cancellation_reason"
+                                   value="{{ old('cancellation_reason', $shipment->cancellation_reason) }}"
+                                   placeholder="Contoh: Permintaan pelanggan via CS WhatsApp..."
                                    class="form-input text-xs">
                         </div>
 

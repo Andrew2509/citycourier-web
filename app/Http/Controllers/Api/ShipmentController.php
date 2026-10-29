@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Shipment;
 use App\Services\TrackingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Services\ShipmentNotificationService;
 use Milon\Barcode\Facades\DNS2DFacade;
@@ -60,8 +61,13 @@ class ShipmentController extends Controller
         // VA/QRIS: status pending (tunggu pembayaran online)
         $initialStatus = in_array($paymentMethod, ['COD', 'TUNAI']) ? 'confirmed' : 'pending';
 
+        $pickupScheduledAt = null;
+        if (!empty($request->pickup_scheduled_at)) {
+            $pickupScheduledAt = \Carbon\Carbon::parse($request->pickup_scheduled_at, 'Asia/Jakarta')->timezone('Asia/Jakarta');
+        }
+
         $shipment = Shipment::create([
-            'user_id'             => $request->user()?->id,
+            'user_id'             => $request->user('sanctum')?->id ?? $request->user()?->id,
             'customer_name'       => $request->customer_name,
             'customer_phone'      => $request->customer_phone,
             'sender_name'         => $request->sender_name,
@@ -90,7 +96,7 @@ class ShipmentController extends Controller
             'volume'              => $request->volume,
             'scheduled_pickup'    => $request->boolean('scheduled_pickup'),
             'pickup_time'         => $request->pickup_time,
-            'pickup_scheduled_at' => $request->pickup_scheduled_at,
+            'pickup_scheduled_at' => $pickupScheduledAt,
             'estimated_delivery'  => $request->estimated_delivery,
             'etd'                 => $request->etd,
             'shipping_cost'       => $request->shipping_cost,
@@ -131,9 +137,6 @@ class ShipmentController extends Controller
             'data'    => $shipment->fresh(),
         ], 201);
     }
-
-
-
 
     /**
      * Get shipment history for the authenticated user.
@@ -444,7 +447,6 @@ class ShipmentController extends Controller
         ]);
     }
 
-
     /**
      * Get QR Code image (PNG) for a shipment.
      * GET /api/shipments/{number}/qrcode.png
@@ -478,104 +480,166 @@ class ShipmentController extends Controller
     /**
      * Cancel a shipment directly from mobile tracking screen or customer portal.
      * POST /api/shipments/{identifier}/cancel
+     *
+     * Membatalkan pesanan pengiriman dengan validasi:
+     * 1. Kepemilikan pesanan (user_id / nomor telepon pelanggan).
+     * 2. Status pengiriman masih 'pending', 'confirmed', atau 'assigned' (sebelum pickup dimulai).
+     * 3. Batas waktu minimal > 120 menit (2 jam) sebelum jadwal pickup di database (zona waktu Asia/Jakarta).
+     * 4. Locking transaksi database (lockForUpdate) untuk mencegah kondisi balapan (race condition).
      */
     public function cancel(Request $request, $identifier)
     {
-        // Cari shipment berdasarkan id, tracking_number, atau shipment_number
-        $shipment = Shipment::where('id', $identifier)
-            ->orWhere('tracking_number', $identifier)
-            ->orWhere('shipment_number', $identifier)
-            ->first();
+        return DB::transaction(function () use ($request, $identifier) {
+            // 1. Cari & kunci baris shipment (id, tracking_number, atau shipment_number)
+            $shipment = Shipment::where(function ($q) use ($identifier) {
+                if (is_numeric($identifier)) {
+                    $q->where('id', (int) $identifier);
+                }
+                $q->orWhere('tracking_number', $identifier)
+                  ->orWhere('shipment_number', $identifier);
+            })->lockForUpdate()->first();
 
-        if (!$shipment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Pesanan atau nomor resi pengiriman tidak ditemukan.',
-            ], 404);
-        }
-
-        // Jika pesanan sudah berstatus delivered, tidak boleh dibatalkan
-        if ($shipment->status === 'delivered') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Pesanan sudah selesai diantar dan tidak dapat dibatalkan.',
-            ], 400);
-        }
-
-        // Jika pesanan sudah berstatus cancelled sebelumnya, kembalikan respon idempoten
-        if ($shipment->status === 'cancelled') {
-            return response()->json([
-                'success' => true,
-                'message' => 'Pesanan ini sudah dibatalkan sebelumnya.',
-                'data'    => $shipment,
-            ], 200);
-        }
-
-        // Validasi kepemilikan jika user terautentikasi
-        $user = $request->user('sanctum') ?? $request->user();
-        if ($user && $shipment->user_id && $shipment->user_id !== $user->id) {
-            $userPhone = preg_replace('/[^0-9]/', '', $user->phone ?? '');
-            $customerPhone = preg_replace('/[^0-9]/', '', $shipment->customer_phone ?? '');
-            $senderPhone = preg_replace('/[^0-9]/', '', $shipment->sender_phone ?? '');
-            if (!empty($userPhone) && $userPhone !== $customerPhone && $userPhone !== $senderPhone) {
+            if (!$shipment) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Anda tidak memiliki hak akses untuk membatalkan pesanan ini.',
-                ], 403);
+                    'message' => 'Pesanan atau nomor resi pengiriman tidak ditemukan.',
+                ], 404);
             }
-        }
 
-        $reason = $request->input('reason', 'Pesanan dibatalkan oleh pengguna melalui aplikasi.');
+            // 2. Kunci baris Order terkait jika sudah terbentuk
+            $order = \App\Models\Order::where('order_number', $shipment->shipment_number)
+                ->lockForUpdate()
+                ->first();
 
-        // 1. Update status pengiriman
-        $shipment->update([
-            'status' => 'cancelled',
-        ]);
+            // 3. Validasi kepemilikan pesanan
+            $user = $request->user('sanctum') ?? $request->user();
+            $isAdmin = $user && (
+                ($user->role ?? null) === 'admin'
+                || (method_exists($user, 'hasRole') && $user->hasRole('admin'))
+            );
 
-        // 2. Update order terkait jika ada
-        \App\Models\Order::where('shipment_id', $shipment->id)
-            ->orWhere('order_number', $shipment->shipment_number)
-            ->update([
-                'status' => 'cancelled',
+            if (!$isAdmin) {
+                if ($shipment->user_id !== null) {
+                    if ($user) {
+                        if ((int) $shipment->user_id !== (int) $user->id) {
+                            return response()->json([
+                                'success'    => false,
+                                'error_code' => 'forbidden_ownership',
+                                'message'    => 'Anda tidak memiliki hak akses untuk membatalkan pesanan milik pengguna lain.',
+                            ], 403);
+                        }
+                    } else {
+                        $reqPhone = preg_replace('/[^0-9]/', '', (string) $request->input('phone', ''));
+                        $customerPhone = preg_replace('/[^0-9]/', '', (string) ($shipment->customer_phone ?? ''));
+                        $senderPhone = preg_replace('/[^0-9]/', '', (string) ($shipment->sender_phone ?? ''));
+                        if (!empty($reqPhone) && $reqPhone !== $customerPhone && $reqPhone !== $senderPhone) {
+                            return response()->json([
+                                'success'    => false,
+                                'error_code' => 'forbidden_ownership',
+                                'message'    => 'Anda tidak memiliki hak akses untuk membatalkan pesanan milik pengguna lain.',
+                            ], 403);
+                        }
+                    }
+                } elseif ($user) {
+                    $userPhone = preg_replace('/[^0-9]/', '', (string) ($user->phone ?? ''));
+                    $customerPhone = preg_replace('/[^0-9]/', '', (string) ($shipment->customer_phone ?? ''));
+                    $senderPhone = preg_replace('/[^0-9]/', '', (string) ($shipment->sender_phone ?? ''));
+                    if (!empty($userPhone) && !empty($customerPhone) && $userPhone !== $customerPhone && $userPhone !== $senderPhone) {
+                        return response()->json([
+                            'success'    => false,
+                            'error_code' => 'forbidden_ownership',
+                            'message'    => 'Anda tidak memiliki hak akses untuk membatalkan pesanan milik pengguna lain.',
+                        ], 403);
+                    }
+                }
+            }
+
+            // 4. Idempotensi: jika pesanan sudah dibatalkan sebelumnya, jangan timpa data / log
+            if (strtolower((string) $shipment->status) === 'cancelled') {
+                return response()->json([
+                    'success'           => true,
+                    'already_cancelled' => true,
+                    'message'           => 'Pesanan ini sudah dibatalkan sebelumnya.',
+                    'data'              => $shipment,
+                ], 200);
+            }
+
+            $now = \Carbon\Carbon::now('Asia/Jakarta');
+
+            // 5. Evaluasi aturan pembatalan pelanggan (status & batas waktu > 120 menit sebelum pickup)
+            if (!$isAdmin) {
+                $eval = $shipment->evaluateCustomerCancellation($now, $order);
+                if (!$eval['allowed']) {
+                    return response()->json([
+                        'success'              => false,
+                        'error_code'           => $eval['reason_code'],
+                        'minutes_until_pickup' => $eval['minutes_until_pickup'],
+                        'message'              => $eval['message'],
+                    ], 422);
+                }
+            }
+
+            $cancelledBy = $isAdmin ? 'admin' : 'customer';
+            $defaultReason = $isAdmin
+                ? 'Pesanan dibatalkan oleh Admin City Courier.'
+                : 'Pesanan dibatalkan oleh pelanggan melalui aplikasi.';
+            $reason = trim((string) $request->input('reason', '')) ?: $defaultReason;
+            $previousShipmentStatus = $shipment->status;
+
+            // 6. Update status & metadata pembatalan pada Shipment
+            $shipment->update([
+                'status'                => 'cancelled',
+                'cancelled_at'          => $now,
+                'cancelled_by'          => $cancelledBy,
+                'cancellation_reason'   => $reason,
+                'cancelled_from_status' => $previousShipmentStatus,
             ]);
 
-        // 3. Tambahkan ke log riwayat pelacakan pengiriman
-        $courierId = null;
-        $order = \App\Models\Order::where('shipment_id', $shipment->id)
-            ->orWhere('order_number', $shipment->shipment_number)
-            ->first();
-        if ($order && $order->courier_id) {
-            $courierId = $order->courier_id;
-        } else {
-            $lastLog = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
-            if ($lastLog) {
-                $courierId = $lastLog->courier_id;
+            // 7. Sinkronkan pembatalan ke Order terkait (agar hilang dari daftar aktif kurir)
+            $courierId = null;
+            if ($order) {
+                $courierId = $order->courier_id;
+                $previousOrderStatus = $order->status;
+                $order->update([
+                    'status'                => 'cancelled',
+                    'cancelled_at'          => $now,
+                    'cancelled_by'          => $cancelledBy,
+                    'cancellation_reason'   => $reason,
+                    'cancelled_from_status' => $previousOrderStatus,
+                ]);
+            } else {
+                $lastLog = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
+                if ($lastLog) {
+                    $courierId = $lastLog->courier_id;
+                }
             }
-        }
 
-        $this->trackingService->createStatusHistory(
-            $shipment,
-            'cancelled',
-            $courierId,
-            null,
-            null,
-            null,
-            "Pesanan dibatalkan: {$reason}"
-        );
+            // 8. Catat riwayat pembatalan ke shipment_logs
+            $actorLabel = $isAdmin ? 'Admin' : 'Pelanggan';
+            $this->trackingService->createStatusHistory(
+                $shipment,
+                'cancelled',
+                $courierId,
+                null,
+                null,
+                null,
+                "Pesanan dibatalkan oleh {$actorLabel} (status sebelumnya: {$previousShipmentStatus}). Alasan: {$reason}"
+            );
 
-        // 4. Batalkan transaksi payment yang masih pending jika ada
-        try {
-            \App\Models\Payment::where('shipment_id', $shipment->id)
-                ->where('status', 'pending')
-                ->update(['status' => 'cancelled']);
-        } catch (\Throwable $e) {
-            // Lewati jika Payment model belum digunakan
-        }
+            // 9. Batalkan transaksi payment yang masih pending jika ada
+            try {
+                \App\Models\Payment::where('shipment_id', $shipment->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
+            } catch (\Throwable $e) {
+                // Lewati jika Payment model belum digunakan
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Pesanan berhasil dibatalkan.',
-            'data'    => $shipment->fresh(),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesanan berhasil dibatalkan.',
+                'data'    => $shipment->fresh(),
+            ], 200);
+        });
     }
 }

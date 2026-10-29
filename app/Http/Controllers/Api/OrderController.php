@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Shipment;
 use App\Services\TrackingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -47,14 +48,15 @@ class OrderController extends Controller
             $today = Carbon::today('Asia/Jakarta');
 
             if ($tab === 'today') {
-                // Pickup terjadwal hari ini
-                $query->where(function ($q) use ($today) {
-                    $q->whereDate('pickup_scheduled_at', $today)
-                      ->orWhere(function ($sq) use ($today) {
-                          $sq->where('scheduled_pickup', true)
-                             ->whereDate('created_at', $today);
-                      });
-                })->orderBy('pickup_scheduled_at', 'asc');
+                // Pickup terjadwal hari ini (yang masih aktif, bukan dibatalkan)
+                $query->whereNotIn('status', ['cancelled'])
+                    ->where(function ($q) use ($today) {
+                        $q->whereDate('pickup_scheduled_at', $today)
+                          ->orWhere(function ($sq) use ($today) {
+                              $sq->where('scheduled_pickup', true)
+                                 ->whereDate('created_at', $today);
+                          });
+                    })->orderBy('pickup_scheduled_at', 'asc');
             } elseif ($tab === 'scheduled') {
                 // Pickup terjadwal (mendatang)
                 $query->where('status', 'assigned')
@@ -109,7 +111,7 @@ class OrderController extends Controller
             ], 404);
         }
 
-        // Active statuses: assigned, picking_up, picked_up, delivering
+        // Active statuses: assigned, picking_up, picked_up, delivering (cancelled is excluded)
         $order = Order::with('shipment')->where('courier_id', $courier->id)
             ->whereIn('status', ['assigned', 'picking_up', 'picked_up', 'delivering'])
             ->latest('updated_at')
@@ -128,12 +130,12 @@ class OrderController extends Controller
     public function updateStatus(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'order_id'   => 'required|exists:orders,id',
-            'status'     => 'required|in:assigned,picking_up,picked_up,delivering,delivered,cancelled',
-            'latitude'   => 'nullable|numeric',
-            'longitude'  => 'nullable|numeric',
-            'accuracy'   => 'nullable|numeric',
-            'notes'      => 'nullable|string',
+            'order_id'     => 'required|exists:orders,id',
+            'status'       => 'required|in:assigned,picking_up,picked_up,delivering,delivered,cancelled',
+            'latitude'     => 'nullable|numeric',
+            'longitude'    => 'nullable|numeric',
+            'accuracy'     => 'nullable|numeric',
+            'notes'        => 'nullable|string',
             'issue_reason' => 'nullable|string',
             'issue_notes'  => 'nullable|string',
         ]);
@@ -169,6 +171,16 @@ class OrderController extends Controller
                     ], 404);
                 }
 
+                $shipment = Shipment::where('shipment_number', $order->order_number)->lockForUpdate()->first();
+
+                if ($order->status === 'cancelled' || ($shipment && $shipment->status === 'cancelled')) {
+                    return response()->json([
+                        'success'    => false,
+                        'error_code' => 'order_cancelled',
+                        'message'    => 'Pesanan ini telah dibatalkan oleh pelanggan dan tidak dapat diambil.',
+                    ], 409);
+                }
+
                 if ($order->status !== 'pending') {
                     return response()->json([
                         'success' => false,
@@ -181,8 +193,8 @@ class OrderController extends Controller
                     'status'     => 'assigned',
                 ]);
 
-                if ($order->shipment) {
-                    $order->shipment->update(['status' => 'assigned']);
+                if ($shipment) {
+                    $shipment->update(['status' => 'assigned']);
 
                     $courierName = $courier->user?->name ?? $courier->name ?? 'Kurir';
                     $vehicleName = $order->vehicle_display_name;
@@ -192,7 +204,7 @@ class OrderController extends Controller
                     }
 
                     $this->trackingService->createStatusHistory(
-                        $order->shipment,
+                        $shipment,
                         'assigned',
                         $courier->id,
                         $request->latitude,
@@ -210,129 +222,158 @@ class OrderController extends Controller
             });
         }
 
-        // 2. Operasi pada pesanan yang sudah dimiliki kurir
-        $order = Order::find($request->order_id);
+        // 2. Operasi pada pesanan yang sudah dimiliki kurir (dengan DB Transaction & Row Locking)
+        return DB::transaction(function () use ($request, $courier, $newStatus) {
+            $order = Order::where('id', $request->order_id)->lockForUpdate()->first();
 
-        if (!$order) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Order tidak ditemukan.',
-            ], 404);
-        }
+            if (!$order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order tidak ditemukan.',
+                ], 404);
+            }
 
-        if ($order->courier_id !== $courier->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki hak akses untuk memperbarui order ini.',
-            ], 403);
-        }
+            $shipment = Shipment::where('shipment_number', $order->order_number)->lockForUpdate()->first();
 
-        // 3. Validasi Jadwal Pickup (Schedule Enforcement) saat Mulai Pickup (picking_up)
-        if ($newStatus === 'picking_up') {
-            if ($order->scheduled_pickup && $order->pickup_scheduled_at) {
-                $now = Carbon::now('Asia/Jakarta');
-                $scheduled = Carbon::parse($order->pickup_scheduled_at, 'Asia/Jakarta');
-                $toleranceMinutes = 30; // Toleransi awal 30 menit
-                $toleranceStart = (clone $scheduled)->subMinutes($toleranceMinutes);
+            if ($order->courier_id !== $courier->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki hak akses untuk memperbarui order ini.',
+                ], 403);
+            }
 
-                if ($now->lt($toleranceStart)) {
-                    $minsLeft = (int) ceil($now->diffInRealMinutes($toleranceStart, false));
-                    $schedStr = $scheduled->format('d M Y, h:i A');
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Penjemputan belum dapat dimulai. Jadwal pickup pelanggan adalah {$schedStr}. Anda dapat mulai 30 menit sebelum jadwal (dalam {$minsLeft} menit lagi).",
-                        'data'    => [
-                            'scheduled_at'    => $scheduled->toIso8601String(),
-                            'tolerance_start' => $toleranceStart->toIso8601String(),
-                            'minutes_left'    => $minsLeft,
-                        ],
-                    ], 422);
+            // Cek jika pesanan sudah dibatalkan oleh pelanggan atau admin
+            if ($order->status === 'cancelled' || ($shipment && $shipment->status === 'cancelled')) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'order_cancelled',
+                    'message'    => 'Pesanan ini telah dibatalkan dan tidak dapat diproses oleh kurir.',
+                ], 409);
+            }
+
+            $now = Carbon::now('Asia/Jakarta');
+
+            // 3. Validasi Jadwal Pickup (Schedule Enforcement) saat Mulai Pickup (picking_up)
+            if ($newStatus === 'picking_up') {
+                $scheduled = $order->getPickupScheduledAtJakarta() ?? ($shipment ? $shipment->getPickupScheduledAtJakarta($order) : null);
+                if (($order->scheduled_pickup || ($shipment && $shipment->scheduled_pickup)) && $scheduled) {
+                    $toleranceMinutes = 30; // Toleransi awal 30 menit
+                    $toleranceStart = $scheduled->copy()->subMinutes($toleranceMinutes);
+
+                    if ($now->lt($toleranceStart)) {
+                        $minsLeft = (int) ceil($now->diffInRealMinutes($toleranceStart, false));
+                        $schedStr = $scheduled->format('d M Y, h:i A');
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Penjemputan belum dapat dimulai. Jadwal pickup pelanggan adalah {$schedStr}. Anda dapat mulai 30 menit sebelum jadwal (dalam {$minsLeft} menit lagi).",
+                            'data'    => [
+                                'scheduled_at'    => $scheduled->toIso8601String(),
+                                'tolerance_start' => $toleranceStart->toIso8601String(),
+                                'minutes_left'    => $minsLeft,
+                            ],
+                        ], 422);
+                    }
                 }
             }
-        }
 
-        // 4. Update data dan foto sesuai transisi status
-        $updateData = ['status' => $newStatus];
+            // 4. Update data dan foto sesuai transisi status
+            $previousOrderStatus = $order->status;
+            $updateData = ['status' => $newStatus];
 
-        if ($newStatus === 'picking_up') {
-            $updateData['pickup_started_at'] = Carbon::now('Asia/Jakarta');
-        } elseif ($newStatus === 'picked_up') {
-            $updateData['picked_up_at'] = Carbon::now('Asia/Jakarta');
-            if ($request->hasFile('photo')) {
-                $updateData['pickup_photo'] = $request->file('photo')->store('orders/pickup', 'public');
+            if ($newStatus === 'picking_up') {
+                $updateData['pickup_started_at'] = $now;
+            } elseif ($newStatus === 'picked_up') {
+                $updateData['picked_up_at'] = $now;
+                if ($request->hasFile('photo')) {
+                    $updateData['pickup_photo'] = $request->file('photo')->store('orders/pickup', 'public');
+                }
+            } elseif ($newStatus === 'delivering') {
+                $updateData['delivering_at'] = $now;
+            } elseif ($newStatus === 'delivered') {
+                $updateData['delivered_at'] = $now;
+                if ($request->hasFile('photo')) {
+                    $updateData['delivery_photo'] = $request->file('photo')->store('orders/delivery', 'public');
+                }
+            } elseif ($newStatus === 'cancelled') {
+                $cancelReason = $request->issue_notes ?: ($request->issue_reason ?: ($request->notes ?: 'Dibatalkan oleh kurir'));
+                if ($request->filled('issue_reason')) {
+                    $updateData['issue_reason'] = $request->issue_reason;
+                }
+                if ($request->filled('issue_notes')) {
+                    $updateData['issue_notes'] = $request->issue_notes;
+                }
+                $updateData['cancelled_at'] = $now;
+                $updateData['cancelled_by'] = 'courier';
+                $updateData['cancellation_reason'] = $cancelReason;
+                $updateData['cancelled_from_status'] = $previousOrderStatus;
             }
-        } elseif ($newStatus === 'delivering') {
-            $updateData['delivering_at'] = Carbon::now('Asia/Jakarta');
-        } elseif ($newStatus === 'delivered') {
-            $updateData['delivered_at'] = Carbon::now('Asia/Jakarta');
-            if ($request->hasFile('photo')) {
-                $updateData['delivery_photo'] = $request->file('photo')->store('orders/delivery', 'public');
-            }
-        } elseif ($newStatus === 'cancelled') {
-            if ($request->filled('issue_reason')) {
-                $updateData['issue_reason'] = $request->issue_reason;
-            }
-            if ($request->filled('issue_notes')) {
-                $updateData['issue_notes'] = $request->issue_notes;
-            }
-        }
 
-        $order->update($updateData);
+            $order->update($updateData);
 
-        // 5. Sinkronisasi ke Shipment & pembuatan log pelacakan
-        if ($order->shipment) {
-            $shipmentStatusMap = [
-                'assigned'   => 'assigned',
-                'picking_up' => 'picking_up',
-                'picked_up'  => 'picked_up',
-                'delivering' => 'delivering',
-                'delivered'  => 'delivered',
-                'cancelled'  => 'cancelled',
-            ];
-            $shipmentStatus = $shipmentStatusMap[$newStatus] ?? null;
-
-            if ($shipmentStatus) {
-                $order->shipment->update(['status' => $shipmentStatus]);
-
-                // Deskripsi status ramah pelanggan
-                $descriptions = [
-                    'assigned'   => 'Kurir telah ditugaskan dan siap melayani penjemputan paket.',
-                    'picking_up' => 'Kurir sedang dalam perjalanan menuju lokasi penjemputan barang.',
-                    'picked_up'  => 'Paket telah berhasil diserahkan pengirim dan diterima oleh kurir.',
-                    'delivering' => 'Paket sedang dalam perjalanan menuju alamat penerima.',
-                    'delivered'  => 'Paket telah berhasil diantarkan dan diterima di tujuan.',
-                    'cancelled'  => 'Pesanan dibatalkan: ' . ($request->issue_notes ?? $request->notes ?? '-'),
+            // 5. Sinkronisasi ke Shipment & pembuatan log pelacakan
+            if ($shipment) {
+                $shipmentStatusMap = [
+                    'assigned'   => 'assigned',
+                    'picking_up' => 'picking_up',
+                    'picked_up'  => 'picked_up',
+                    'delivering' => 'delivering',
+                    'delivered'  => 'delivered',
+                    'cancelled'  => 'cancelled',
                 ];
-                $statusDesc = $descriptions[$shipmentStatus] ?? 'Status pesanan diperbarui menjadi ' . $shipmentStatus;
+                $shipmentStatus = $shipmentStatusMap[$newStatus] ?? null;
 
-                $this->trackingService->createStatusHistory(
-                    $order->shipment,
-                    $shipmentStatus,
-                    $courier->id,
-                    $request->latitude,
-                    $request->longitude,
-                    null,
-                    $statusDesc
-                );
+                if ($shipmentStatus) {
+                    $previousShipmentStatus = $shipment->status;
+                    $shipmentUpdate = ['status' => $shipmentStatus];
+                    if ($shipmentStatus === 'cancelled') {
+                        $cancelReason = $request->issue_notes ?: ($request->issue_reason ?: ($request->notes ?: 'Dibatalkan oleh kurir'));
+                        $shipmentUpdate['cancelled_at'] = $now;
+                        $shipmentUpdate['cancelled_by'] = 'courier';
+                        $shipmentUpdate['cancellation_reason'] = $cancelReason;
+                        $shipmentUpdate['cancelled_from_status'] = $previousShipmentStatus;
+                    }
+                    $shipment->update($shipmentUpdate);
 
-                // Catat telemetri lokasi kurir jika ada koordinat
-                if ($request->latitude && $request->longitude) {
-                    $this->trackingService->saveCourierLocation(
+                    // Deskripsi status ramah pelanggan
+                    $descriptions = [
+                        'assigned'   => 'Kurir telah ditugaskan dan siap melayani penjemputan paket.',
+                        'picking_up' => 'Kurir sedang dalam perjalanan menuju lokasi penjemputan barang.',
+                        'picked_up'  => 'Paket telah berhasil diserahkan pengirim dan diterima oleh kurir.',
+                        'delivering' => 'Paket sedang dalam perjalanan menuju alamat penerima.',
+                        'delivered'  => 'Paket telah berhasil diantarkan dan diterima di tujuan.',
+                        'cancelled'  => 'Pesanan dibatalkan oleh kurir (status sebelumnya: ' . $previousShipmentStatus . '). Alasan: ' . ($request->issue_notes ?? $request->notes ?? '-'),
+                    ];
+                    $statusDesc = $descriptions[$shipmentStatus] ?? 'Status pesanan diperbarui menjadi ' . $shipmentStatus;
+
+                    $this->trackingService->createStatusHistory(
+                        $shipment,
+                        $shipmentStatus,
                         $courier->id,
-                        $order->shipment->id,
                         $request->latitude,
                         $request->longitude,
-                        $request->accuracy
+                        null,
+                        $statusDesc
                     );
+
+                    // Catat telemetri lokasi kurir jika ada koordinat
+                    if ($request->latitude && $request->longitude) {
+                        $this->trackingService->saveCourierLocation(
+                            $courier->id,
+                            $shipment->id,
+                            $request->latitude,
+                            $request->longitude,
+                            $request->accuracy
+                        );
+                    }
                 }
             }
-        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status order berhasil diperbarui.',
-            'data'    => $order->fresh(['shipment']),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Status order berhasil diperbarui.',
+                'data'    => $order->fresh(['shipment']),
+            ]);
+        });
     }
 
     /**
@@ -365,6 +406,14 @@ class OrderController extends Controller
         $order = Order::find($request->order_id);
         if ($order->courier_id !== $courier->id) {
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        if ($order->status === 'cancelled' || $order->shipment?->status === 'cancelled') {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'order_cancelled',
+                'message'    => 'Pesanan ini telah dibatalkan dan tidak dapat diproses lagi.',
+            ], 409);
         }
 
         $order->update([

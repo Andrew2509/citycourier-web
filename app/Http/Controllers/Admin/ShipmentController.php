@@ -7,6 +7,7 @@ use App\Models\Shipment;
 use App\Services\RajaOngkirMatcherService;
 use App\Services\ShipmentNotificationService;
 use App\Services\TrackingService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ShipmentController extends Controller
@@ -195,51 +196,76 @@ class ShipmentController extends Controller
 
     public function show(Shipment $shipment)
     {
+        $shipment->load(['order.courier.user', 'logs']);
         return view('admin.shipments.show', compact('shipment'));
     }
 
     public function update(Request $request, Shipment $shipment)
     {
         $request->validate([
-            'status'          => 'required|in:pending,confirmed,assigned,picking_up,picked_up,in_transit,delivering,delivered,cancelled',
-            'tracking_number' => 'nullable|string|max:100',
-            'notes'           => 'nullable|string',
-            'location'        => 'nullable|string|max:255',
-            'log_description' => 'nullable|string|max:255',
+            'status'              => 'required|in:pending,confirmed,assigned,picking_up,picked_up,in_transit,delivering,delivered,cancelled',
+            'tracking_number'     => 'nullable|string|max:100',
+            'notes'               => 'nullable|string',
+            'location'            => 'nullable|string|max:255',
+            'log_description'     => 'nullable|string|max:255',
+            'cancellation_reason' => 'nullable|string|max:500',
         ]);
 
         $oldStatus = $shipment->status;
         $newStatus = in_array($request->status, ['in_transit', 'delivering']) ? 'delivering' : $request->status;
-        
-        $shipment->update([
+        $now = Carbon::now('Asia/Jakarta');
+
+        $shipmentUpdate = [
             'status'          => $newStatus,
-            'tracking_number' => $request->tracking_number,
+            'tracking_number' => $request->tracking_number ?? $shipment->tracking_number,
             'notes'           => $request->notes,
-        ]);
+        ];
+
+        $cancelReason = null;
+        if ($newStatus === 'cancelled' && $oldStatus !== 'cancelled') {
+            $cancelReason = trim((string) ($request->cancellation_reason ?: ($request->log_description ?: ($request->notes ?: 'Dibatalkan oleh Admin City Courier'))));
+            $shipmentUpdate['cancelled_at'] = $now;
+            $shipmentUpdate['cancelled_by'] = 'admin';
+            $shipmentUpdate['cancellation_reason'] = $cancelReason;
+            $shipmentUpdate['cancelled_from_status'] = $oldStatus;
+        }
+
+        $shipment->update($shipmentUpdate);
 
         // Sinkronisasi ke Order jika ada
         $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
         if ($order) {
-            $order->update(['status' => $newStatus]);
+            $orderUpdate = ['status' => $newStatus];
+            if ($newStatus === 'cancelled' && $oldStatus !== 'cancelled') {
+                $orderUpdate['cancelled_at'] = $now;
+                $orderUpdate['cancelled_by'] = 'admin';
+                $orderUpdate['cancellation_reason'] = $cancelReason;
+                $orderUpdate['cancelled_from_status'] = $order->status;
+            }
+            $order->update($orderUpdate);
         }
 
         // Auto log status change
         if ($oldStatus !== $newStatus) {
             $statusLabels = [
-                'pending'         => 'Pesanan Dibuat',
-                'confirmed'       => 'Pesanan Dikonfirmasi',
-                'assigned'        => 'Kurir Ditugaskan',
-                'picking_up'      => 'Menjemput Paket',
-                'picked_up'       => 'Paket Telah Dijemput',
-                'delivering'      => 'Paket Dalam Perjalanan',
-                'delivered'       => 'Paket Telah Diterima',
-                'cancelled'       => 'Pesanan Dibatalkan',
+                'pending'    => 'Pesanan Dibuat',
+                'confirmed'  => 'Pesanan Dikonfirmasi',
+                'assigned'   => 'Kurir Ditugaskan',
+                'picking_up' => 'Menjemput Paket',
+                'picked_up'  => 'Paket Telah Dijemput',
+                'delivering' => 'Paket Dalam Perjalanan',
+                'delivered'  => 'Paket Telah Diterima',
+                'cancelled'  => 'Pesanan Dibatalkan',
             ];
 
+            $defaultLogDesc = $newStatus === 'cancelled'
+                ? "Pesanan dibatalkan oleh Admin City Courier (status sebelumnya: {$oldStatus}). Alasan: {$cancelReason}"
+                : "Status diperbarui menjadi " . ($statusLabels[$newStatus] ?? $newStatus);
+
             $shipment->logs()->create([
-                'status'      => $request->status,
-                'location'    => $request->location ?? 'Lokasi Pickup',
-                'description' => $request->log_description ?? "Status diperbarui menjadi " . ($statusLabels[$request->status] ?? $request->status),
+                'status'      => $newStatus,
+                'location'    => $request->location ?? ($newStatus === 'cancelled' ? 'Admin Panel' : 'Lokasi Pickup'),
+                'description' => $request->log_description ?: $defaultLogDesc,
             ]);
         }
 

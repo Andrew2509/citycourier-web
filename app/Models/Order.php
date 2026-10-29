@@ -38,6 +38,10 @@ class Order extends Model
         'picked_up_at',
         'delivering_at',
         'delivered_at',
+        'cancelled_at',
+        'cancelled_by',
+        'cancellation_reason',
+        'cancelled_from_status',
     ];
 
     protected $appends = [
@@ -46,6 +50,7 @@ class Order extends Model
         'pickup_photo_url', 'delivery_photo_url',
         'vehicle_display_name', 'is_pickup_ready', 'is_pickup_overdue',
         'pickup_countdown_minutes', 'pickup_countdown_text',
+        'cancelled_by_label',
     ];
 
     public function getTrackingNumberAttribute()
@@ -77,6 +82,37 @@ class Order extends Model
         return $v === 'mobil' ? 'Mobil' : 'Motor';
     }
 
+    public function getCancelledByLabelAttribute(): ?string
+    {
+        if (!$this->cancelled_by) {
+            return $this->status === 'cancelled' ? 'Pelanggan / Sistem' : null;
+        }
+
+        return match (strtolower($this->cancelled_by)) {
+            'customer', 'pelanggan', 'user' => 'Pelanggan',
+            'admin', 'administrator'        => 'Admin City Courier',
+            'courier', 'kurir'              => 'Kurir',
+            default                         => ucfirst($this->cancelled_by),
+        };
+    }
+
+    /**
+     * Mengambil waktu jadwal pickup dalam zona waktu Asia/Jakarta secara konsisten.
+     */
+    public function getPickupScheduledAtJakarta(): ?Carbon
+    {
+        $raw = $this->getRawOriginal('pickup_scheduled_at');
+        if (!empty($raw)) {
+            return Carbon::parse($raw, 'Asia/Jakarta')->timezone('Asia/Jakarta');
+        }
+
+        if ($this->pickup_scheduled_at instanceof Carbon) {
+            return $this->pickup_scheduled_at->copy()->timezone('Asia/Jakarta');
+        }
+
+        return null;
+    }
+
     /**
      * Memeriksa apakah kurir sudah diizinkan untuk memulai penjemputan.
      * Aturan: Order instan (non-scheduled) selalu siap.
@@ -84,12 +120,13 @@ class Order extends Model
      */
     public function getIsPickupReadyAttribute(): bool
     {
-        if (!$this->scheduled_pickup || !$this->pickup_scheduled_at) {
+        $scheduled = $this->getPickupScheduledAtJakarta();
+        if (!$this->scheduled_pickup || !$scheduled) {
             return true;
         }
 
         $now = Carbon::now('Asia/Jakarta');
-        $toleranceStart = Carbon::parse($this->pickup_scheduled_at, 'Asia/Jakarta')->subMinutes(30);
+        $toleranceStart = $scheduled->copy()->subMinutes(30);
 
         return $now->gte($toleranceStart);
     }
@@ -99,12 +136,12 @@ class Order extends Model
      */
     public function getIsPickupOverdueAttribute(): bool
     {
-        if (!$this->scheduled_pickup || !$this->pickup_scheduled_at) {
+        $scheduled = $this->getPickupScheduledAtJakarta();
+        if (!$this->scheduled_pickup || !$scheduled) {
             return false;
         }
 
         $now = Carbon::now('Asia/Jakarta');
-        $scheduled = Carbon::parse($this->pickup_scheduled_at, 'Asia/Jakarta');
 
         return $now->gt($scheduled) && in_array($this->status, ['pending', 'assigned']);
     }
@@ -114,12 +151,12 @@ class Order extends Model
      */
     public function getPickupCountdownMinutesAttribute(): ?int
     {
-        if (!$this->scheduled_pickup || !$this->pickup_scheduled_at) {
+        $scheduled = $this->getPickupScheduledAtJakarta();
+        if (!$this->scheduled_pickup || !$scheduled) {
             return null;
         }
 
         $now = Carbon::now('Asia/Jakarta');
-        $scheduled = Carbon::parse($this->pickup_scheduled_at, 'Asia/Jakarta');
 
         return (int) $now->diffInMinutes($scheduled, false);
     }
@@ -198,6 +235,7 @@ class Order extends Model
             'picked_up_at' => 'datetime',
             'delivering_at' => 'datetime',
             'delivered_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
