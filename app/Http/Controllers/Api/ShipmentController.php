@@ -474,4 +474,108 @@ class ShipmentController extends Controller
         $result = $this->notificationService->sendOrderSuccessNotification($shipment, true);
         return response()->json($result);
     }
+
+    /**
+     * Cancel a shipment directly from mobile tracking screen or customer portal.
+     * POST /api/shipments/{identifier}/cancel
+     */
+    public function cancel(Request $request, $identifier)
+    {
+        // Cari shipment berdasarkan id, tracking_number, atau shipment_number
+        $shipment = Shipment::where('id', $identifier)
+            ->orWhere('tracking_number', $identifier)
+            ->orWhere('shipment_number', $identifier)
+            ->first();
+
+        if (!$shipment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan atau nomor resi pengiriman tidak ditemukan.',
+            ], 404);
+        }
+
+        // Jika pesanan sudah berstatus delivered, tidak boleh dibatalkan
+        if ($shipment->status === 'delivered') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan sudah selesai diantar dan tidak dapat dibatalkan.',
+            ], 400);
+        }
+
+        // Jika pesanan sudah berstatus cancelled sebelumnya, kembalikan respon idempoten
+        if ($shipment->status === 'cancelled') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesanan ini sudah dibatalkan sebelumnya.',
+                'data'    => $shipment,
+            ], 200);
+        }
+
+        // Validasi kepemilikan jika user terautentikasi
+        $user = $request->user('sanctum') ?? $request->user();
+        if ($user && $shipment->user_id && $shipment->user_id !== $user->id) {
+            $userPhone = preg_replace('/[^0-9]/', '', $user->phone ?? '');
+            $customerPhone = preg_replace('/[^0-9]/', '', $shipment->customer_phone ?? '');
+            $senderPhone = preg_replace('/[^0-9]/', '', $shipment->sender_phone ?? '');
+            if (!empty($userPhone) && $userPhone !== $customerPhone && $userPhone !== $senderPhone) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki hak akses untuk membatalkan pesanan ini.',
+                ], 403);
+            }
+        }
+
+        $reason = $request->input('reason', 'Pesanan dibatalkan oleh pengguna melalui aplikasi.');
+
+        // 1. Update status pengiriman
+        $shipment->update([
+            'status' => 'cancelled',
+        ]);
+
+        // 2. Update order terkait jika ada
+        \App\Models\Order::where('shipment_id', $shipment->id)
+            ->orWhere('order_number', $shipment->shipment_number)
+            ->update([
+                'status' => 'cancelled',
+            ]);
+
+        // 3. Tambahkan ke log riwayat pelacakan pengiriman
+        $courierId = null;
+        $order = \App\Models\Order::where('shipment_id', $shipment->id)
+            ->orWhere('order_number', $shipment->shipment_number)
+            ->first();
+        if ($order && $order->courier_id) {
+            $courierId = $order->courier_id;
+        } else {
+            $lastLog = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
+            if ($lastLog) {
+                $courierId = $lastLog->courier_id;
+            }
+        }
+
+        $this->trackingService->createStatusHistory(
+            $shipment,
+            'cancelled',
+            $courierId,
+            null,
+            null,
+            null,
+            "Pesanan dibatalkan: {$reason}"
+        );
+
+        // 4. Batalkan transaksi payment yang masih pending jika ada
+        try {
+            \App\Models\Payment::where('shipment_id', $shipment->id)
+                ->where('status', 'pending')
+                ->update(['status' => 'cancelled']);
+        } catch (\Throwable $e) {
+            // Lewati jika Payment model belum digunakan
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesanan berhasil dibatalkan.',
+            'data'    => $shipment->fresh(),
+        ]);
+    }
 }

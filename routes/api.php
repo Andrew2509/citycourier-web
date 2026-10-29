@@ -56,6 +56,7 @@ Route::match(['get', 'post'], '/shipping/match-region', function (\Illuminate\Ht
 
 Route::get('/shipments/track/{number}', [\App\Http\Controllers\Api\ShipmentController::class, 'track']);
 Route::get('/shipments/{tracking_number}/tracking', [\App\Http\Controllers\Api\ShipmentController::class, 'tracking']);
+Route::post('/shipments/{identifier}/cancel', [\App\Http\Controllers\Api\ShipmentController::class, 'cancel']);
 
 Route::post('/payment/callback', [PaymentController::class, 'callback']);
 

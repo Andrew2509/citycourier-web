@@ -24,24 +24,44 @@ class CourierController extends Controller
     public function index(Request $request)
     {
         $couriers = Courier::with('user')
-            ->where('is_verified', true)
-            ->where('is_active', true)
+            ->where(function ($query) {
+                $query->where('is_active', true)
+                    ->orWhereNull('is_active');
+            })
             ->get()
             ->map(function ($courier) {
+                $photo = $courier->photo;
+                if ($photo && !str_starts_with($photo, 'http://') && !str_starts_with($photo, 'https://')) {
+                    $photo = url('storage/' . ltrim($photo, '/'));
+                }
+
+                $brandModel = trim(($courier->vehicle_brand ?? '') . ' ' . ($courier->vehicle_model ?? ''));
+                $vehicleDesc = !empty($brandModel) && !empty($courier->vehicle_plate)
+                    ? "{$brandModel} • {$courier->vehicle_plate}"
+                    : (!empty($brandModel) ? $brandModel : ($courier->vehicle_plate ?? ''));
+
+                $courierName = $courier->user->name ?? $courier->name ?? 'Kurir';
+
                 return [
-                    'id' => $courier->id,
-                    'name' => $courier->user->name ?? '',
-                    'photo' => $courier->photo,
-                    'vehicle_type' => $courier->vehicle_type,
-                    'vehicle_brand' => $courier->vehicle_brand,
-                    'vehicle_model' => $courier->vehicle_model,
-                    'vehicle_plate' => $courier->vehicle_plate,
-                    'city' => $courier->city,
-                    'rating_avg' => $courier->rating_avg,
-                    'rating_count' => $courier->rating_count,
-                    'is_active' => $courier->is_active,
-                    'latitude' => $courier->latitude,
-                    'longitude' => $courier->longitude,
+                    'id'                  => $courier->id,
+                    'name'                => $courierName,
+                    'courier_name'        => $courierName,
+                    'phone'               => $courier->phone ?? $courier->user?->phone,
+                    'photo'               => $photo,
+                    'photo_url'           => $photo,
+                    'avatar'              => $photo,
+                    'vehicle_type'        => $courier->vehicle_type ?? 'motor',
+                    'vehicle_brand'       => $courier->vehicle_brand,
+                    'vehicle_model'       => $courier->vehicle_model,
+                    'vehicle_plate'       => $courier->vehicle_plate,
+                    'plate_number'        => $courier->vehicle_plate,
+                    'vehicle_description' => $vehicleDesc,
+                    'city'                => $courier->city,
+                    'rating_avg'          => $courier->rating_avg,
+                    'rating_count'        => $courier->rating_count,
+                    'is_active'           => $courier->is_active,
+                    'latitude'            => $courier->latitude,
+                    'longitude'           => $courier->longitude,
                 ];
             });
 
