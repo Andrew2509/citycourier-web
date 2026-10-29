@@ -3,6 +3,7 @@
         return match ($status) {
             'assigned'   => ['b' => 'bg-amber-50 text-amber-700 border border-amber-200/60', 'd' => 'bg-amber-500', 'pulse' => false],
             'picking_up' => ['b' => 'bg-blue-50 text-blue-700 border border-blue-200/60', 'd' => 'bg-blue-500', 'pulse' => false],
+            'picked_up'  => ['b' => 'bg-indigo-50 text-indigo-700 border border-indigo-200/60', 'd' => 'bg-indigo-500', 'pulse' => false],
             'delivering' => ['b' => 'bg-orange-50 text-orange-700 border border-orange-200/60', 'd' => 'bg-orange-500', 'pulse' => true],
             default      => ['b' => 'bg-slate-100 text-slate-600 border border-slate-200/60', 'd' => 'bg-slate-400', 'pulse' => false],
         };

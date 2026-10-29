@@ -37,8 +37,10 @@ class ShipmentController extends Controller
             'all'        => Shipment::count(),
             'pending'    => Shipment::where('status', 'pending')->count(),
             'confirmed'  => Shipment::where('status', 'confirmed')->count(),
+            'assigned'   => Shipment::where('status', 'assigned')->count(),
+            'picking_up' => Shipment::where('status', 'picking_up')->count(),
             'picked_up'  => Shipment::where('status', 'picked_up')->count(),
-            'in_transit' => Shipment::where('status', 'in_transit')->count(),
+            'delivering' => Shipment::whereIn('status', ['delivering', 'in_transit'])->count(),
             'delivered'  => Shipment::where('status', 'delivered')->count(),
             'cancelled'  => Shipment::where('status', 'cancelled')->count(),
         ];
@@ -199,7 +201,7 @@ class ShipmentController extends Controller
     public function update(Request $request, Shipment $shipment)
     {
         $request->validate([
-            'status'          => 'required|in:pending,confirmed,picked_up,in_transit,delivered,cancelled',
+            'status'          => 'required|in:pending,confirmed,assigned,picking_up,picked_up,in_transit,delivering,delivered,cancelled',
             'tracking_number' => 'nullable|string|max:100',
             'notes'           => 'nullable|string',
             'location'        => 'nullable|string|max:255',
@@ -207,15 +209,22 @@ class ShipmentController extends Controller
         ]);
 
         $oldStatus = $shipment->status;
+        $newStatus = in_array($request->status, ['in_transit', 'delivering']) ? 'delivering' : $request->status;
         
         $shipment->update([
-            'status'          => $request->status,
+            'status'          => $newStatus,
             'tracking_number' => $request->tracking_number,
             'notes'           => $request->notes,
         ]);
 
+        // Sinkronisasi ke Order jika ada
+        $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
+        if ($order) {
+            $order->update(['status' => $newStatus]);
+        }
+
         // Auto log status change
-        if ($oldStatus !== $request->status) {
+        if ($oldStatus !== $newStatus) {
             $statusLabels = [
                 'pending'         => 'Pesanan Dibuat',
                 'confirmed'       => 'Pesanan Dikonfirmasi',

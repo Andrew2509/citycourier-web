@@ -51,7 +51,7 @@ class CiWorkController extends Controller
         $deliveredToday = Order::where('status', 'delivered')->whereDate('delivered_at', today())->get();
 
         $activeOrders  = Order::with(['courier.user', 'shipment'])
-            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+            ->whereIn('status', ['assigned', 'picking_up', 'picked_up', 'delivering'])
             ->latest()
             ->get();
 

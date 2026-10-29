@@ -91,31 +91,53 @@ class Shipment extends Model
             }
         });
 
+        static::created(function ($shipment) {
+            if ($shipment->status === 'confirmed') {
+                self::syncToOrder($shipment);
+            }
+        });
+
         static::updated(function ($shipment) {
             if ($shipment->isDirty('status') && $shipment->status === 'confirmed') {
-                \App\Models\Order::firstOrCreate(
-                    ['order_number' => $shipment->shipment_number],
-                    [
-                        'customer_name'      => $shipment->customer_name,
-                        'customer_phone'     => $shipment->customer_phone,
-                        'pickup_address'     => $shipment->sender_address,
-                        'pickup_latitude'    => $shipment->sender_latitude,
-                        'pickup_longitude'   => $shipment->sender_longitude,
-                        'delivery_address'   => $shipment->receiver_address,
-                        'delivery_latitude'  => $shipment->receiver_latitude,
-                        'delivery_longitude' => $shipment->receiver_longitude,
-                        'package_description'=> $shipment->package_description,
-                        'package_weight'     => $shipment->package_weight,
-                        'price'              => $shipment->total_cost,
-                        'status'             => 'pending',
-                        'notes'              => $shipment->notes ?? '-',
-                    ]
-                );
+                self::syncToOrder($shipment);
             }
-            
-            // Sync status from Order back to Shipment when Order updates?
-            // For now, let's just make sure the Order is created.
         });
+    }
+
+    public static function syncToOrder(Shipment $shipment): ?Order
+    {
+        if (!in_array($shipment->status, ['confirmed', 'assigned', 'picking_up', 'picked_up', 'delivering', 'delivered'])) {
+            return null;
+        }
+
+        $orderData = [
+            'customer_name'       => $shipment->customer_name,
+            'customer_phone'      => $shipment->customer_phone,
+            'pickup_address'      => $shipment->sender_address,
+            'pickup_latitude'     => $shipment->sender_latitude,
+            'pickup_longitude'    => $shipment->sender_longitude,
+            'delivery_address'    => $shipment->receiver_address,
+            'delivery_latitude'   => $shipment->receiver_latitude,
+            'delivery_longitude'  => $shipment->receiver_longitude,
+            'package_description' => $shipment->package_description,
+            'package_weight'      => $shipment->package_weight,
+            'vehicle'             => $shipment->vehicle ?? (strtolower($shipment->courier_code) === 'mobil' ? 'mobil' : 'motor'),
+            'price'               => $shipment->total_cost,
+            'scheduled_pickup'    => (bool) $shipment->scheduled_pickup,
+            'pickup_time'         => $shipment->pickup_time,
+            'pickup_scheduled_at' => $shipment->pickup_scheduled_at,
+            'notes'               => $shipment->notes ?? '-',
+        ];
+
+        $order = Order::where('order_number', $shipment->shipment_number)->first();
+        if ($order) {
+            $order->update($orderData);
+            return $order;
+        }
+
+        $orderData['order_number'] = $shipment->shipment_number;
+        $orderData['status'] = 'pending';
+        return Order::create($orderData);
     }
 
     

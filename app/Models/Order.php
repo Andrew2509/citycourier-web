@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,11 +23,18 @@ class Order extends Model
         'delivery_longitude',
         'package_description',
         'package_weight',
+        'vehicle',
         'price',
         'status',
+        'scheduled_pickup',
+        'pickup_time',
+        'pickup_scheduled_at',
         'notes',
+        'issue_reason',
+        'issue_notes',
         'pickup_photo',
         'delivery_photo',
+        'pickup_started_at',
         'picked_up_at',
         'delivering_at',
         'delivered_at',
@@ -36,6 +44,8 @@ class Order extends Model
         'tracking_number', 'sender_name', 'receiver_name', 'sender_phone', 'receiver_phone', 
         'dropoff_address', 'dropoff_latitude', 'dropoff_longitude',
         'pickup_photo_url', 'delivery_photo_url',
+        'vehicle_display_name', 'is_pickup_ready', 'is_pickup_overdue',
+        'pickup_countdown_minutes', 'pickup_countdown_text',
     ];
 
     public function getTrackingNumberAttribute()
@@ -59,6 +69,93 @@ class Order extends Model
     {
         if (!$this->delivery_photo) return null;
         return url('storage/' . $this->delivery_photo);
+    }
+
+    public function getVehicleDisplayNameAttribute(): string
+    {
+        $v = strtolower($this->vehicle ?? $this->shipment?->vehicle ?? 'motor');
+        return $v === 'mobil' ? 'Mobil' : 'Motor';
+    }
+
+    /**
+     * Memeriksa apakah kurir sudah diizinkan untuk memulai penjemputan.
+     * Aturan: Order instan (non-scheduled) selalu siap.
+     * Order terjadwal: siap jika waktu sekarang >= (waktu jadwal - 30 menit).
+     */
+    public function getIsPickupReadyAttribute(): bool
+    {
+        if (!$this->scheduled_pickup || !$this->pickup_scheduled_at) {
+            return true;
+        }
+
+        $now = Carbon::now('Asia/Jakarta');
+        $toleranceStart = Carbon::parse($this->pickup_scheduled_at, 'Asia/Jakarta')->subMinutes(30);
+
+        return $now->gte($toleranceStart);
+    }
+
+    /**
+     * Memeriksa apakah waktu pickup terjadwal telah terlewati (overdue).
+     */
+    public function getIsPickupOverdueAttribute(): bool
+    {
+        if (!$this->scheduled_pickup || !$this->pickup_scheduled_at) {
+            return false;
+        }
+
+        $now = Carbon::now('Asia/Jakarta');
+        $scheduled = Carbon::parse($this->pickup_scheduled_at, 'Asia/Jakarta');
+
+        return $now->gt($scheduled) && in_array($this->status, ['pending', 'assigned']);
+    }
+
+    /**
+     * Menghitung sisa menit hingga penjemputan (negatif jika sudah lewat / overdue).
+     */
+    public function getPickupCountdownMinutesAttribute(): ?int
+    {
+        if (!$this->scheduled_pickup || !$this->pickup_scheduled_at) {
+            return null;
+        }
+
+        $now = Carbon::now('Asia/Jakarta');
+        $scheduled = Carbon::parse($this->pickup_scheduled_at, 'Asia/Jakarta');
+
+        return (int) $now->diffInMinutes($scheduled, false);
+    }
+
+    /**
+     * Label waktu ramah untuk kurir.
+     */
+    public function getPickupCountdownTextAttribute(): ?string
+    {
+        if (!$this->scheduled_pickup || !$this->pickup_scheduled_at) {
+            return null;
+        }
+
+        $mins = $this->pickup_countdown_minutes;
+        if ($mins === null) return null;
+
+        if ($mins < 0) {
+            $absMins = abs($mins);
+            if ($absMins < 60) {
+                return "Terlambat {$absMins} menit";
+            }
+            $hours = floor($absMins / 60);
+            return "Terlambat {$hours} jam";
+        }
+
+        if ($mins <= 30) {
+            return "Siap dijemput (dalam {$mins} menit)";
+        }
+
+        if ($mins < 60) {
+            return "Dapat dimulai {$mins} menit lagi";
+        }
+
+        $hours = floor($mins / 60);
+        $rem = $mins % 60;
+        return "Jadwal {$hours} jam {$rem} mnt lagi";
     }
 
     public function shipment()
@@ -95,6 +192,9 @@ class Order extends Model
             'delivery_longitude' => 'decimal:8',
             'package_weight' => 'decimal:2',
             'price' => 'decimal:0',
+            'scheduled_pickup' => 'boolean',
+            'pickup_scheduled_at' => 'datetime',
+            'pickup_started_at' => 'datetime',
             'picked_up_at' => 'datetime',
             'delivering_at' => 'datetime',
             'delivered_at' => 'datetime',

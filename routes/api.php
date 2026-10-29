@@ -71,7 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/available', [OrderController::class, 'available']);
     Route::get('/orders/active', [OrderController::class, 'active']);
-    Route::patch('/update-status-order', [OrderController::class, 'updateStatus']);
+    Route::match(['patch', 'post'], '/update-status-order', [OrderController::class, 'updateStatus']);
+    Route::post('/orders/report-issue', [OrderController::class, 'reportIssue']);
 
     Route::prefix('courier')->group(function () {
         Route::get('/details', [\App\Http\Controllers\Api\CourierController::class, 'details']);

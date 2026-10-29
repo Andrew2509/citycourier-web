@@ -66,6 +66,59 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {{-- Kolom Kiri / Utama (2 Kolom) --}}
         <div class="lg:col-span-2 space-y-5">
+            {{-- Jadwal & Preferensi Penjemputan --}}
+            <div class="card bg-white border border-slate-200">
+                <div class="card-header bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-brand-600">calendar_clock</span>
+                        <div>
+                            <div class="card-title text-sm">Jadwal &amp; Kendaraan Penjemputan</div>
+                            <div class="card-subtitle text-xs">Penjadwalan pickup pelanggan dan alokasi armada</div>
+                        </div>
+                    </div>
+                    @if($shipment->scheduled_pickup)
+                        <span class="badge badge-amber text-xs">
+                            <span class="badge-dot"></span>
+                            Pickup Terjadwal
+                        </span>
+                    @else
+                        <span class="badge badge-blue text-xs">
+                            <span class="badge-dot"></span>
+                            Pickup Instan (Langsung)
+                        </span>
+                    @endif
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="p-3 rounded-lg border border-slate-100 bg-slate-50/40">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Tanggal Pickup</div>
+                            <div class="text-sm font-bold text-slate-800 mt-1">
+                                {{ $shipment->pickup_scheduled_at ? $shipment->pickup_scheduled_at->format('d M Y') : ($shipment->created_at ? $shipment->created_at->format('d M Y') : 'Hari Ini') }}
+                            </div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-slate-100 bg-slate-50/40">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Jam Pickup (12 Jam)</div>
+                            <div class="text-sm font-bold text-brand-600 font-mono mt-1">
+                                {{ $shipment->pickup_time ?: ($shipment->pickup_scheduled_at ? $shipment->pickup_scheduled_at->format('h:i A') : 'Fleksibel / Segera') }}
+                            </div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-slate-100 bg-slate-50/40">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Jenis Kendaraan</div>
+                            <div class="text-sm font-bold text-slate-800 mt-1 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[18px] text-slate-600">
+                                    {{ strtolower($shipment->vehicle ?? '') === 'mobil' ? 'directions_car' : 'two_wheeler' }}
+                                </span>
+                                {{ ucfirst($shipment->vehicle ?? (strtolower($shipment->courier_code) === 'mobil' ? 'mobil' : 'motor')) }}
+                            </div>
+                        </div>
+                    </div>
+                    @if($shipment->notes)
+                    <div class="mt-3 p-2.5 rounded-lg border border-amber-200 bg-amber-50/60 text-xs text-amber-900">
+                        <strong class="font-semibold">Catatan Khusus Pengirim:</strong> {{ $shipment->notes }}
+                    </div>
+                    @endif
+                </div>
+            </div>
             {{-- Rute Pengiriman (Pickup & Dropoff) --}}
             <div class="card">
                 <div class="card-header">
@@ -314,8 +367,10 @@
                             <select name="status" class="form-select">
                                 <option value="pending" {{ $shipment->status === 'pending' ? 'selected' : '' }}>Pending (Menunggu)</option>
                                 <option value="confirmed" {{ $shipment->status === 'confirmed' ? 'selected' : '' }}>Confirmed (Dikonfirmasi)</option>
+                                <option value="assigned" {{ $shipment->status === 'assigned' ? 'selected' : '' }}>Assigned (Kurir Ditugaskan)</option>
+                                <option value="picking_up" {{ $shipment->status === 'picking_up' ? 'selected' : '' }}>Picking Up (Menuju Lokasi Pickup)</option>
                                 <option value="picked_up" {{ $shipment->status === 'picked_up' ? 'selected' : '' }}>Picked Up (Diambil Kurir)</option>
-                                <option value="in_transit" {{ $shipment->status === 'in_transit' ? 'selected' : '' }}>In Transit (Dalam Perjalanan)</option>
+                                <option value="delivering" {{ in_array($shipment->status, ['delivering', 'in_transit']) ? 'selected' : '' }}>Delivering (Dalam Perjalanan Antar)</option>
                                 <option value="delivered" {{ $shipment->status === 'delivered' ? 'selected' : '' }}>Delivered (Terkirim)</option>
                                 <option value="cancelled" {{ $shipment->status === 'cancelled' ? 'selected' : '' }}>Cancelled (Dibatalkan)</option>
                             </select>
