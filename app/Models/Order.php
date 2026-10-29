@@ -271,6 +271,11 @@ class Order extends Model
         return $this->belongsTo(Courier::class, 'courier_cancelled_by_id');
     }
 
+    public function rejections()
+    {
+        return $this->hasMany(OrderRejection::class)->orderByDesc('rejected_at')->orderByDesc('id');
+    }
+
     public static function generateOrderNumber(): string
     {
         return 'CC-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));

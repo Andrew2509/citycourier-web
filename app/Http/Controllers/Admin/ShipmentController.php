@@ -196,7 +196,7 @@ class ShipmentController extends Controller
 
     public function show(Shipment $shipment)
     {
-        $shipment->load(['order.courier.user', 'order.lastCancelledCourier.user', 'logs']);
+        $shipment->load(['order.courier.user', 'order.lastCancelledCourier.user', 'order.rejections.courier.user', 'logs']);
         return view('admin.shipments.show', compact('shipment'));
     }
 

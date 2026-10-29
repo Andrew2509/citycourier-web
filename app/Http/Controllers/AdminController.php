@@ -318,7 +318,7 @@ class AdminController extends Controller
      */
     public function orderDetail(Order $order)
     {
-        $order->load(['courier.user', 'lastCancelledCourier.user', 'shipment']);
+        $order->load(['courier.user', 'lastCancelledCourier.user', 'rejections.courier.user', 'shipment']);
         return view('admin.order-detail', compact('order'));
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderRejection;
 use App\Models\Shipment;
 use App\Services\TrackingService;
 use Carbon\Carbon;
@@ -82,12 +83,25 @@ class OrderController extends Controller
 
     /**
      * Get available (pending) orders for couriers to pick.
+     * Excludes orders that have already been rejected by the authenticated courier.
      * GET /api/orders/available
      */
-    public function available()
+    public function available(Request $request)
     {
-        $orders = Order::with('shipment')->where('status', 'pending')
-            ->orderByRaw('scheduled_pickup DESC, pickup_scheduled_at ASC, id DESC')
+        $courier = $request->user()?->courier;
+
+        $query = Order::with('shipment')->where('status', 'pending');
+
+        if ($courier) {
+            $query->where(function ($q) use ($courier) {
+                $q->whereNull('courier_id')
+                  ->orWhere('courier_id', $courier->id);
+            })->whereDoesntHave('rejections', function ($q) use ($courier) {
+                $q->where('courier_id', $courier->id);
+            });
+        }
+
+        $orders = $query->orderByRaw('scheduled_pickup DESC, pickup_scheduled_at ASC, id DESC')
             ->paginate(25);
 
         return response()->json([
@@ -729,6 +743,210 @@ class OrderController extends Controller
                 'title'                => 'Penugasan Berhasil Dibatalkan',
                 'message'              => 'Penugasan pesanan ini sudah dilepas dari akun kamu.',
                 'data'                 => $order->fresh(['shipment']),
+            ], 200);
+        });
+    }
+
+    /**
+     * Tolak penawaran pesanan oleh kurir sebelum pesanan diterima (status 'pending').
+     * POST /api/orders/reject atau POST /api/orders/{order}/reject
+     */
+    public function rejectOrder(Request $request, $orderParam = null)
+    {
+        $orderId = $orderParam ?? $request->input('order_id');
+        if ($orderId && !$request->has('order_id')) {
+            $request->merge(['order_id' => $orderId]);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'order_id'  => 'required',
+            'reason'    => 'required|string|max:255',
+            'notes'     => 'nullable|string|max:1000',
+            'latitude'  => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'validation_failed',
+                'title'      => 'Penolakan Tidak Dapat Diproses',
+                'message'    => 'Alasan penolakan pesanan wajib dipilih.',
+                'errors'     => $validator->errors(),
+            ], 422);
+        }
+
+        $rawReason = trim((string) $request->input('reason'));
+        $rawNotes  = trim((string) $request->input('notes', ''));
+
+        $reasonMap = [
+            'pickup_too_far'          => 'Lokasi pickup terlalu jauh.',
+            'unavailable_at_schedule' => 'Tidak tersedia pada jadwal pickup.',
+            'vehicle_issue'           => 'Kendaraan tidak sesuai atau sedang bermasalah.',
+            'capacity_mismatch'       => 'Kapasitas barang tidak sesuai.',
+            'handling_other_order'    => 'Sedang menangani pesanan lain.',
+            'other'                   => 'Alasan lainnya.',
+        ];
+        $resolvedReason = $reasonMap[$rawReason] ?? $rawReason;
+        $isOtherReason  = in_array(strtolower($rawReason), ['other', 'alasan lainnya', 'alasan lainnya.'], true);
+
+        if ($isOtherReason && $rawNotes === '') {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'missing_other_notes',
+                'title'      => 'Penolakan Tidak Dapat Diproses',
+                'message'    => 'Keterangan tambahan wajib diisi jika memilih alasan lainnya.',
+            ], 422);
+        }
+
+        $courier = $request->user()?->courier;
+        if (!$courier) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'courier_not_found',
+                'title'      => 'Penolakan Tidak Dapat Diproses',
+                'message'    => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        return DB::transaction(function () use ($request, $courier, $orderId, $resolvedReason, $rawNotes) {
+            $order = Order::where('id', $orderId)->lockForUpdate()->first();
+            if (!$order && is_string($orderId)) {
+                $order = Order::where('order_number', $orderId)->lockForUpdate()->first();
+            }
+
+            if (!$order) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'order_not_found',
+                    'title'      => 'Penolakan Tidak Dapat Diproses',
+                    'message'    => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
+
+            $shipment = Shipment::where('shipment_number', $order->order_number)->lockForUpdate()->first();
+
+            // 1. Validasi status: pesanan sudah dibatalkan oleh pelanggan/admin
+            if ($order->status === 'cancelled' || ($shipment && $shipment->status === 'cancelled')) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'order_cancelled',
+                    'title'      => 'Penolakan Tidak Dapat Diproses',
+                    'message'    => 'Pesanan ini telah dibatalkan dan tidak dapat ditolak.',
+                ], 422);
+            }
+
+            // 2. Validasi status: pesanan sudah selesai dikirim (delivered)
+            if ($order->status === 'delivered' || ($shipment && $shipment->status === 'delivered')) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'order_already_completed',
+                    'title'      => 'Penolakan Tidak Dapat Diproses',
+                    'message'    => 'Pesanan yang sudah selesai dikirim tidak dapat ditolak.',
+                ], 422);
+            }
+
+            // 3. Validasi: jika kurir yang sama SUDAH menerima pesanan ini (status != 'pending' dan courier_id == courier->id)
+            // Kurir tidak boleh menggunakan tombol Tolak Pesanan setelah menerima pesanan; harus menggunakan Batalkan Pesanan.
+            if ((int) $order->courier_id === (int) $courier->id && $order->status !== 'pending') {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'already_accepted_use_cancel_assignment',
+                    'title'      => 'Pesanan Sudah Diterima',
+                    'message'    => 'Anda sudah menerima pesanan ini. Gunakan fitur Batalkan Pesanan jika tidak dapat melanjutkan penugasan.',
+                ], 422);
+            }
+
+            // 4. Validasi: jika pesanan sudah diterima oleh kurir lain atau penawaran tidak lagi aktif
+            if (
+                ($order->courier_id !== null && (int) $order->courier_id !== (int) $courier->id) ||
+                $order->status !== 'pending'
+            ) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'already_taken_by_other_courier',
+                    'title'      => 'Penawaran Tidak Lagi Aktif',
+                    'message'    => 'Pesanan ini sudah diterima oleh kurir lain atau penawaran sudah tidak aktif.',
+                ], 409);
+            }
+
+            // 5. Idempotensi: jika kurir yang sama sudah menolak pesanan ini sebelumnya
+            $existingRejection = OrderRejection::where('order_id', $order->id)
+                ->where('courier_id', $courier->id)
+                ->first();
+
+            if ($existingRejection) {
+                return response()->json([
+                    'success'          => true,
+                    'already_rejected' => true,
+                    'title'            => 'Pesanan Telah Ditolak',
+                    'message'          => 'Pesanan berhasil ditolak dan dikembalikan ke sistem penugasan.',
+                    'data'             => [
+                        'order_id'        => $order->id,
+                        'order_number'    => $order->order_number,
+                        'tracking_number' => $order->tracking_number,
+                        'order_status'    => $order->status,
+                        'shipment_status' => $shipment?->status ?? 'confirmed',
+                        'rejection'       => $existingRejection,
+                    ],
+                ], 200);
+            }
+
+            $now = Carbon::now('Asia/Jakarta');
+
+            // 6. Simpan riwayat penolakan kurir tanpa membatalkan pesanan pelanggan dan tanpa mengubah jadwal pickup
+            $rejection = OrderRejection::create([
+                'order_id'    => $order->id,
+                'shipment_id' => $shipment?->id,
+                'courier_id'  => $courier->id,
+                'reason'      => $resolvedReason,
+                'notes'       => $rawNotes !== '' ? $rawNotes : null,
+                'rejected_at' => $now,
+            ]);
+
+            // Jika sebelumnya pesanan ditawarkan spesifik ke kurir ini dalam status 'pending', lepaskan courier_id agar tersedia bagi kurir lain
+            if ($order->courier_id !== null || $order->status !== 'pending') {
+                $order->update([
+                    'courier_id' => null,
+                    'status'     => 'pending',
+                ]);
+            }
+
+            if ($shipment) {
+                if ($shipment->status !== 'confirmed') {
+                    $shipment->update(['status' => 'confirmed']);
+                }
+
+                $courierName = $courier->user?->name ?? $courier->name ?? "Kurir #{$courier->id}";
+                $fullReasonDisplay = $resolvedReason . ($rawNotes !== '' ? " ({$rawNotes})" : '');
+                $logDesc = "Tawaran pesanan ditolak oleh kurir {$courierName}. Alasan: {$fullReasonDisplay}. Pesanan tetap dalam antrean penugasan.";
+
+                $this->trackingService->createStatusHistory(
+                    $shipment,
+                    $shipment->status,
+                    $courier->id,
+                    $request->latitude,
+                    $request->longitude,
+                    null,
+                    $logDesc
+                );
+            }
+
+            return response()->json([
+                'success'          => true,
+                'already_rejected' => false,
+                'title'            => 'Pesanan Telah Ditolak',
+                'message'          => 'Pesanan berhasil ditolak dan dikembalikan ke sistem penugasan.',
+                'data'             => [
+                    'order_id'            => $order->id,
+                    'order_number'        => $order->order_number,
+                    'tracking_number'     => $order->tracking_number,
+                    'order_status'        => $order->status,
+                    'shipment_status'     => $shipment?->status ?? 'confirmed',
+                    'pickup_scheduled_at' => $order->getRawOriginal('pickup_scheduled_at'),
+                    'pickup_time'         => $order->pickup_time,
+                    'rejection'           => $rejection,
+                ],
             ], 200);
         });
     }

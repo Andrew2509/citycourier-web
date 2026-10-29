@@ -237,6 +237,55 @@
             </div>
             @endif
 
+            {{-- Riwayat Penolakan Tawaran Kurir --}}
+            @if($order->rejections && $order->rejections->count() > 0)
+            <div class="card border border-rose-200 bg-rose-50/30">
+                <div class="card-header bg-rose-50/70 border-b border-rose-200 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-rose-600">person_cancel</span>
+                        <div>
+                            <div class="card-title text-sm text-slate-900">Riwayat Penolakan Tawaran Kurir</div>
+                            <div class="card-subtitle text-xs text-slate-600">Daftar kurir yang menolak penawaran pesanan sebelum diterima</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-gray text-xs">
+                        Status Penugasan: {{ $order->courier_id ? ('Ditugaskan ke ' . ($order->courier?->user?->name ?? 'Kurir #' . $order->courier_id)) : 'Menunggu Kurir (' . strtoupper($order->status) . ')' }}
+                    </span>
+                </div>
+                <div class="card-body space-y-2.5">
+                    @foreach($order->rejections as $rej)
+                        @php
+                            $rejCourierName = $rej->courier?->user?->name ?? $rej->courier?->name ?? ('Kurir #' . $rej->courier_id);
+                        @endphp
+                        <div class="p-3 rounded-lg border border-slate-200 bg-white text-xs space-y-1.5">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="font-bold text-slate-900">
+                                    {{ $rejCourierName }} <span class="text-slate-400 font-normal">(ID: #{{ $rej->courier_id }})</span>
+                                </div>
+                                <div class="font-mono text-slate-500">
+                                    {{ $rej->rejected_at ? $rej->rejected_at->timezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' : '-' }}
+                                </div>
+                            </div>
+                            <div class="text-slate-700">
+                                <span class="font-semibold text-slate-900">Nomor Pengiriman:</span>
+                                <span class="font-mono ml-1">{{ $order->tracking_number ?? $order->order_number }}</span>
+                            </div>
+                            <div class="text-slate-700">
+                                <span class="font-semibold text-slate-900">Alasan Penolakan:</span>
+                                <span class="ml-1">{{ $rej->reason }}</span>
+                            </div>
+                            @if($rej->notes)
+                            <div class="text-slate-700">
+                                <span class="font-semibold text-slate-900">Keterangan Tambahan:</span>
+                                <span class="ml-1">{{ $rej->notes }}</span>
+                            </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- Rute Pengiriman --}}
             <div class="card">
                 <div class="card-header">

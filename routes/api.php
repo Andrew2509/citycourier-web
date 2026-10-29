@@ -75,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/report-issue', [OrderController::class, 'reportIssue']);
     Route::post('/orders/cancel-assignment', [OrderController::class, 'cancelAssignment']);
     Route::post('/orders/{order}/cancel-assignment', [OrderController::class, 'cancelAssignment']);
+    Route::post('/orders/reject', [OrderController::class, 'rejectOrder']);
+    Route::post('/orders/{order}/reject', [OrderController::class, 'rejectOrder']);
 
     Route::prefix('courier')->group(function () {
         Route::get('/details', [\App\Http\Controllers\Api\CourierController::class, 'details']);
