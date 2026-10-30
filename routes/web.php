@@ -153,6 +153,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/finance/reconcile/{courier}', [\App\Http\Controllers\Admin\CiWorkController::class, 'reconcile'])->name('finance.reconcile');
             Route::post('/finance/withdrawal/{id}', [\App\Http\Controllers\Admin\CiWorkController::class, 'updateWithdrawalStatus'])->name('finance.withdrawal.update');
             Route::post('/finance/withdrawal/{id}/check', [\App\Http\Controllers\Admin\CiWorkController::class, 'checkWithdrawalStatus'])->name('finance.withdrawal.check');
+        Route::get('/finance/dana-transactions', [\App\Http\Controllers\Admin\CiWorkController::class, 'danaTransactions'])->name('finance.dana-transactions');
         });
     });
 });

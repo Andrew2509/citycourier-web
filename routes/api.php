@@ -128,7 +128,10 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('/courier/wallet', [WalletController::class, 'index']);
+    Route::get('/courier/wallet/history', [WalletController::class, 'history']);
+    Route::get('/courier/wallet/notifications', [WalletController::class, 'notifications']);
     Route::get('/courier/wallet/transactions', [WalletController::class, 'transactions']);
+    Route::get('/courier/wallet/transactions/{id}', [WalletController::class, 'transactionDetail']);
     Route::get('/courier/wallet/fee-config', [WalletController::class, 'feeConfig']);
 
     Route::get('/courier/dana/status', [DanaController::class, 'status']);

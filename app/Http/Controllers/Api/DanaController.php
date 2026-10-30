@@ -82,6 +82,7 @@ class DanaController extends Controller
                 'connected'      => $status === 'connected',
                 'masked_account' => $connection?->masked_phone,
                 'masked_phone'   => $connection?->masked_phone,
+                'account_name'   => $connection?->account_name,
                 'bound_at'       => $connection?->bound_at?->toIso8601String(),
                 'connected_at'   => $connection?->linked_at,
                 'external_id'    => $connection?->external_id,

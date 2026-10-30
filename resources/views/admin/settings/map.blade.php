@@ -32,7 +32,6 @@
             <div class="card-body">
                 <form action="{{ route('admin.settings.map.update') }}" method="POST" class="space-y-4">
                     @csrf
-                    @method('PUT')
 
                     <div>
                         <label class="form-label" for="map_provider">Provider Routing &amp; Peta <span class="text-red-500">*</span></label>

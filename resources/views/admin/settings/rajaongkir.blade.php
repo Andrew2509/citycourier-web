@@ -32,7 +32,6 @@
             <div class="card-body">
                 <form action="{{ route('admin.settings.rajaongkir.update') }}" method="POST" class="space-y-4">
                     @csrf
-                    @method('PUT')
 
                     <div>
                         <label class="form-label" for="rajaongkir_api_key">API Key RajaOngkir <span class="text-red-500">*</span></label>

@@ -47,7 +47,8 @@
 
                     <form method="POST" action="{{ route('admin.settings.whatsapp.update') }}" class="space-y-3 pt-1">
                         @csrf
-                        @method('PUT')
+                        {{-- Pertahankan provider yang dipilih agar simpan cepat tidak mengubahnya --}}
+                        <input type="hidden" name="whatsapp_provider" value="{{ $whatsapp['provider'] ?? 'fonnte' }}">
 
                         <div>
                             <label class="form-label text-xs">Fonnte API Token</label>
@@ -105,7 +106,6 @@
 
                     <form method="POST" action="{{ route('admin.settings.map.update') }}" class="space-y-3 pt-1">
                         @csrf
-                        @method('PUT')
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -329,7 +329,11 @@
 
                     <form method="POST" action="{{ route('admin.settings.rajaongkir.update') }}" class="space-y-3 pt-1">
                         @csrf
-                        @method('PUT')
+                        {{-- Field wajib yang tidak tampil di kartu, dipertahankan dari nilai tersimpan --}}
+                        <input type="hidden" name="rajaongkir_provider" value="{{ $rajaongkir['provider'] ?? 'rajaongkir' }}">
+                        @if(!empty($rajaongkir_sandbox))
+                            <input type="hidden" name="rajaongkir_sandbox" value="1">
+                        @endif
 
                         <div>
                             <label class="form-label text-xs">API Key RajaOngkir</label>

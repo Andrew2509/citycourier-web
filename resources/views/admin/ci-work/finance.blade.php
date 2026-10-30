@@ -351,7 +351,8 @@ $financeData = $recaps->map(function ($c) {
                         $wdTabStatus = in_array($wd->status, ['approved', 'completed', 'success']) 
                             ? 'completed' 
                             : (in_array($wd->status, ['rejected', 'failed', 'cancelled']) ? 'rejected' : 'pending');
-                        $providerName = strtoupper($wd->provider ?? $wd->bank_name ?? 'OVO');
+                        $providerName = strtoupper($wd->provider ?? $wd->bank_name ?? 'DANA');
+                        $providerHasApi = $providerName === 'DANA';
                     @endphp
                     <tr class="wd-row" data-status="{{ $wdTabStatus }}">
                         <td>
@@ -374,9 +375,9 @@ $financeData = $recaps->map(function ($c) {
                         <td>
                             <div class="text-xs">
                                 <span class="inline-flex items-center gap-1 font-semibold text-slate-800">
-                                    @if($providerName === 'OVO')
-                                        <span class="w-2 h-2 rounded-full bg-[#4c3494] inline-block"></span>
-                                        <span>OVO</span>
+                                    @if($providerName === 'DANA')
+                                        <span class="w-2 h-2 rounded-full bg-[#118EEA] inline-block"></span>
+                                        <span>DANA</span>
                                     @else
                                         <span class="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>
                                         <span>{{ $providerName }}</span>
@@ -406,6 +407,34 @@ $financeData = $recaps->map(function ($c) {
                             @endif
                         </td>
                         <td class="text-right">
+                            <button type="button"
+                                class="btn btn-secondary text-xs h-7 px-2 gap-1 align-middle"
+                                title="Lihat detail transaksi"
+                                data-withdrawal="{{ json_encode([
+                                    'id'            => $wd->id,
+                                    'courier'       => $wd->courier->user->name ?? '-',
+                                    'phone'         => $wd->courier->user->phone ?? null,
+                                    'amount'        => (float) $wd->amount,
+                                    'fee'           => (float) $wd->fee,
+                                    'net_amount'    => (float) $wd->net_amount,
+                                    'provider'      => $providerName,
+                                    'account'       => $wd->account_number ?: ($wd->danaConnection?->masked_phone ?? '-'),
+                                    'account_name'  => $wd->account_name ?: ($wd->danaConnection?->account_name ?? '-'),
+                                    'status'        => $wd->status,
+                                    'reference'     => $wd->provider_reference,
+                                    'idempotency'   => $wd->idempotency_key,
+                                    'failure'       => $wd->failure_reason,
+                                    'notes'         => $wd->admin_notes,
+                                    'created_at'    => \Carbon\Carbon::parse($wd->created_at)->format('d M Y, H:i:s'),
+                                    'processed_at'  => $wd->processed_at ? \Carbon\Carbon::parse($wd->processed_at)->format('d M Y, H:i:s') : null,
+                                    'is_terminal'   => $wd->isTerminal(),
+                                    'has_api'       => $providerHasApi,
+                                    'check_url'     => route('admin.ci-work.finance.withdrawal.check', $wd->id),
+                                ]) }}"
+                                onclick="openWithdrawalDetail(this)">
+                                <span class="material-symbols-outlined text-[14px] text-slate-500">receipt_long</span>
+                                <span>Detail</span>
+                            </button>
                             @if(in_array($wd->status, ['pending', 'reserved']))
                                 <div class="inline-flex items-center justify-end gap-1.5">
                                     <form action="{{ route('admin.ci-work.finance.withdrawal.update', $wd->id) }}" method="POST" class="inline-block"
@@ -427,7 +456,7 @@ $financeData = $recaps->map(function ($c) {
                                         </button>
                                     </form>
                                 </div>
-                            @elseif($wd->status === 'approved' && $providerName !== 'OVO')
+                            @elseif($wd->status === 'approved' && !$providerHasApi)
                                 <form action="{{ route('admin.ci-work.finance.withdrawal.update', $wd->id) }}" method="POST" class="inline-block"
                                     onsubmit="return confirm('Tandai penarikan {{ fin($wd->amount) }} telah selesai ditransfer?')">
                                     @csrf
@@ -437,12 +466,12 @@ $financeData = $recaps->map(function ($c) {
                                         <span>Tandai Selesai</span>
                                     </button>
                                 </form>
-                            @elseif($providerName === 'OVO' && !$wd->isTerminal())
+                            @elseif($providerHasApi && !$wd->isTerminal())
                                 <form action="{{ route('admin.ci-work.finance.withdrawal.check', $wd->id) }}" method="POST" class="inline-block">
                                     @csrf
-                                    <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1" title="Verifikasi status resmi transaksi via API OVO (topup-status). Hasil OVO-lah yang memfinalkan status.">
-                                        <span class="material-symbols-outlined text-[14px] text-[#4c3494]">sync</span>
-                                        <span>Cek Status OVO</span>
+                                    <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1" title="Verifikasi status resmi transaksi via API {{ $providerName }}. Hasil API-lah yang memfinalkan status.">
+                                        <span class="material-symbols-outlined text-[14px] {{ $providerName === 'DANA' ? 'text-[#118EEA]' : 'text-[#4c3494]' }}">sync</span>
+                                        <span>Cek Status {{ $providerName }}</span>
                                     </button>
                                 </form>
                             @else
@@ -695,6 +724,26 @@ $financeData = $recaps->map(function ($c) {
     </div>
 </div>
 
+<!-- Modal: Detail Penarikan Kurir -->
+<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="withdrawalDetailModal" onclick="if(event.target === this) closeWithdrawalDetail()">
+    <div class="card w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-slate-500">receipt_long</span>
+                <h4 class="text-sm font-bold text-slate-900">Detail Penarikan</h4>
+            </div>
+            <button onclick="closeWithdrawalDetail()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+        </div>
+        <div class="p-5" id="withdrawalDetailBody"></div>
+        <div class="flex items-center justify-between gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+            <div id="withdrawalDetailCheck"></div>
+            <button onclick="closeWithdrawalDetail()" type="button" class="btn btn-primary text-xs h-8 px-3.5">Tutup</button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Panduan Persetujuan -->
 <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="guideModal" onclick="if(event.target === this) closeGuideModal()">
     <div class="card w-full max-w-md overflow-hidden flex flex-col shadow-2xl">
@@ -718,11 +767,11 @@ $financeData = $recaps->map(function ($c) {
             </div>
             <div class="flex items-start gap-2">
                 <span class="font-bold text-primary-600">3.</span>
-                <p>Klik tombol <strong>Setujui</strong> lalu lakukan transfer via internet banking perusahaan.</p>
+                <p>Klik tombol <strong>Setujui</strong>, lalu klik <strong>Detail</strong> untuk melihat akun & referensi tujuan.</p>
             </div>
             <div class="flex items-start gap-2">
                 <span class="font-bold text-primary-600">4.</span>
-                <p>Setelah dana berhasil ditransfer, klik <strong>Tandai Selesai</strong>.</p>
+                <p>Untuk <strong>DANA</strong>, status akhir hanya boleh dari API resmi — gunakan <strong>Cek Status DANA</strong>. Tombol <strong>Tandai Selesai</strong> hanya untuk transfer manual luar API.</p>
             </div>
         </div>
         <div class="flex items-center justify-end px-5 py-3 border-t border-slate-100 bg-slate-50/50">
@@ -922,10 +971,99 @@ $financeData = $recaps->map(function ($c) {
         m.classList.remove('flex');
     }
 
+    // Detail penarikan — dibaca dari atribut data baris (tanpa data fiktif).
+    function openWithdrawalDetail(btn) {
+        const raw = btn.getAttribute('data-withdrawal');
+        if (!raw) return;
+
+        let w;
+        try {
+            w = JSON.parse(raw);
+        } catch (e) {
+            return;
+        }
+
+        const statusLabel = {
+            pending: 'Menunggu',
+            reserved: 'Dana ditahan',
+            processing: 'Diproses',
+            approved: 'Disetujui',
+            completed: 'Berhasil',
+            success: 'Berhasil',
+            rejected: 'Ditolak',
+            failed: 'Gagal',
+            cancelled: 'Dibatalkan',
+        }[w.status] || w.status;
+
+        const statusClass = ['completed', 'success'].includes(w.status)
+            ? 'badge-primary'
+            : (['rejected', 'failed', 'cancelled'].includes(w.status) ? 'badge-danger'
+                : (w.status === 'processing' || w.status === 'approved' ? 'badge-info' : 'badge-warning'));
+
+        const rows = [
+            ['Kurir', w.courier + (w.phone ? ' • ' + w.phone : '')],
+            ['Metode', w.provider],
+            ['Akun tujuan', w.account],
+            ['Nama penerima', w.account_name],
+            ['Nominal diminta', rupiah(w.amount)],
+            ['Biaya admin', rupiah(w.fee)],
+            ['Dana diterima kurir', rupiah(w.net_amount)],
+            ['Kode idempotency', w.idempotency || '-'],
+            ['Referensi provider', w.reference || 'belum ada'],
+            ['Diajukan', w.created_at],
+            ['Diproses', w.processed_at || '-'],
+        ];
+
+        if (w.failure) rows.push(['Alasan gagal', w.failure]);
+        if (w.notes) rows.push(['Catatan admin', w.notes]);
+
+        document.getElementById('withdrawalDetailBody').innerHTML = `
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                <div>
+                    <p class="text-[11px] text-slate-500">Penarikan #${w.id}</p>
+                    <p class="text-lg font-bold text-slate-900 font-mono">${rupiah(w.amount)}</p>
+                </div>
+                <span class="badge ${statusClass} text-[11px]">${statusLabel}</span>
+            </div>
+            <dl class="space-y-1.5 text-xs">
+                ${rows.map(([k, v]) => `
+                    <div class="flex items-start justify-between gap-3">
+                        <dt class="text-slate-500 shrink-0">${k}</dt>
+                        <dd class="text-slate-800 font-medium text-right break-all">${v}</dd>
+                    </div>`).join('')}
+            </dl>`;
+
+        // Tombol verifikasi resmi hanya untuk transaksi yang belum final
+        // DANA (provider yang punya API)
+        const checkBox = document.getElementById('withdrawalDetailCheck');
+        if (w.has_api && !w.is_terminal && w.check_url) {
+            checkBox.innerHTML = `
+                <form action="${w.check_url}" method="POST">
+                    <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.content || ''}">
+                    <button type="submit" class="btn btn-secondary text-xs h-8 px-3 gap-1">
+                        <span class="material-symbols-outlined text-[14px] text-sky-500">sync</span>
+                        <span>Cek Status ${w.provider}</span>
+                    </button>
+                </form>`;
+        } else {
+            checkBox.innerHTML = '';
+        }
+
+        const m = document.getElementById('withdrawalDetailModal');
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+    }
+
+    function closeWithdrawalDetail() {
+        const m = document.getElementById('withdrawalDetailModal');
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+    }
+
     // ESC to close modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            ['reconcileModal', 'tripModal', 'adjustModal', 'commissionModal', 'sopModal', 'guideModal'].forEach(id => {
+            ['reconcileModal', 'tripModal', 'adjustModal', 'commissionModal', 'sopModal', 'guideModal', 'withdrawalDetailModal'].forEach(id => {
                 const m = document.getElementById(id);
                 if (m && !m.classList.contains('hidden')) {
                     m.classList.add('hidden');

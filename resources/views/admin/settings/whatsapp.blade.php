@@ -48,7 +48,6 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('admin.settings.whatsapp.update') }}" class="space-y-4">
                         @csrf
-                        @method('PUT')
 
                         <div>
                             <label for="fonnte_token" class="form-label">

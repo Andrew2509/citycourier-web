@@ -678,6 +678,47 @@ class CiWorkController extends Controller
     }
 
     /**
+     * Daftar transaksi DANA untuk admin.
+     * Menampilkan daftar penarikan saldo kurir ke DANA dengan filter status dan pencarian.
+     */
+    public function danaTransactions(Request $request)
+    {
+        $statusFilter = $request->input('status') ?? null;
+        $search       = $request->input('search') ?? null;
+
+        $query = Withdrawal::with(['courier.user', 'danaConnection'])
+            ->where('provider', 'DANA');
+
+        if ($statusFilter) {
+            $query->where('status', $statusFilter);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('courier.user', function ($qq) use ($search) {
+                    $qq->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('phone', 'like', '%' . $search . '%');
+                })
+                    ->orWhere('provider_reference', 'like', '%' . $search . '%')
+                    ->orWhere('idempotency_key', 'like', '%' . $search . '%');
+            });
+        }
+
+        $withdrawals = $query->latest()->paginate(10);
+
+        $statusCounts = [
+            'pending'   => Withdrawal::where('provider', 'DANA')
+                ->whereIn('status', ['pending', 'reserved', 'processing'])->count(),
+            'completed' => Withdrawal::where('provider', 'DANA')
+                ->whereIn('status', ['approved', 'completed', 'success'])->count(),
+            'rejected'  => Withdrawal::where('provider', 'DANA')
+                ->whereIn('status', ['rejected', 'failed', 'cancelled'])->count(),
+        ];
+
+        return view('admin.ci-work.dana-transactions', compact('withdrawals', 'statusFilter', 'search', 'statusCounts'));
+    }
+
+    /**
      * Update bagi hasil (commission rate).
      */
     public function updateCommission(Request $request)
@@ -810,10 +851,12 @@ class CiWorkController extends Controller
 
         $withdrawal = \App\Models\Withdrawal::findOrFail($id);
 
-        $provider = strtolower((string) ($withdrawal->provider ?? 'ovo'));
+        $provider = strtoupper((string) ($withdrawal->provider ?? 'DANA'));
 
-        if ($request->status === 'completed' && $provider === 'ovo') {
-            return back()->with('error', 'Penarikan OVO tidak boleh ditandai selesai secara manual. Gunakan tombol "Cek Status OVO" untuk memverifikasi status resmi dari API OVO.');
+        // DANA & OVO punya API verifikasi resmi: status akhir tidak boleh
+        // ditentukan manual dari panel admin.
+        if ($request->status === 'completed' && in_array(strtolower($provider), ['dana', 'ovo'], true)) {
+            return back()->with('error', 'Penarikan ' . $provider . ' tidak boleh ditandai selesai secara manual. Gunakan tombol "Cek Status ' . $provider . '" untuk memverifikasi status resmi dari API ' . $provider . '.');
         }
 
         $wasOnHold = in_array($withdrawal->status, ['pending', 'reserved'], true);
@@ -849,20 +892,21 @@ class CiWorkController extends Controller
     }
 
     /**
-     * Verifikasi status penarikan langsung ke API penyedia (OVO).
-     * Ini satu-satunya cara untuk memfinalkan hasil transaksi OVO di panel admin.
+     * Verifikasi status penarikan langsung ke API penyedia (DANA / OVO).
+     * Ini satu-satunya cara untuk memfinalkan hasil transaksi di panel admin.
      */
     public function checkWithdrawalStatus(Request $request, $id)
     {
         $withdrawal = \App\Models\Withdrawal::findOrFail($id);
+        $provider   = strtoupper((string) ($withdrawal->provider ?? 'DANA'));
 
         $updated = (new \App\Services\WithdrawalService())->checkAndSyncStatus($withdrawal);
 
         $message = match ($updated->status) {
-            'success'   => 'Terverifikasi OVO: penarikan BERHASIL.',
-            'failed'    => 'Terverifikasi OVO: penarikan GAGAL' . ($updated->failure_reason ? ' — ' . $updated->failure_reason : '') . '. Saldo tertahan dikembalikan.',
-            'processing'=> 'Status OVO masih diproses (pending). Coba cek lagi nanti atau tunggu webhook.',
-            default     => 'Status OVO belum diketahui (unknown). Tunggu konfirmasi resmi dari OVO sebelum bertindak lanjut.',
+            'success'   => 'Terverifikasi ' . $provider . ': penarikan BERHASIL.',
+            'failed'    => 'Terverifikasi ' . $provider . ': penarikan GAGAL' . ($updated->failure_reason ? ' — ' . $updated->failure_reason : '') . '. Saldo tertahan dikembalikan.',
+            'processing'=> 'Status ' . $provider . ' masih diproses (pending). Coba cek lagi nanti atau tunggu webhook.',
+            default     => 'Status ' . $provider . ' belum diketahui (unknown). Tunggu konfirmasi resmi dari ' . $provider . ' sebelum bertindak lanjut.',
         };
 
         return back()->with('success', $message);

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Courier;
+use App\Models\DanaConnection;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\Shipment;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -49,7 +51,36 @@ class AdminController extends Controller
             ->take(5)
             ->get();
 
-        return view('admin.dashboard', compact('stats', 'recentOrders', 'activeCouriers'));
+        // Status koneksi DANA (metode pencairan aktif): mode provider, jumlah
+        // akun terhubung, sesi binding berjalan, dan akun terhubung terbaru.
+        $danaMode = (string) Setting::get('dana_mode', 'mock');
+        $danaCredentialsComplete = in_array($danaMode, ['sandbox', 'production'], true)
+            && Setting::get('dana_client_id')
+            && Setting::get('dana_private_key')
+            && Setting::get('dana_merchant_id');
+
+        $danaStatus = [
+            'mode'                 => $danaMode,
+            'provider'             => ($danaUsesOfficial = $danaCredentialsComplete) ? 'official' : 'mock',
+            'credentials_complete' => (bool) $danaCredentialsComplete,
+            'connected_count'      => DanaConnection::where('provider', 'dana')->where('status', 'connected')->count(),
+            'pending_count'        => DanaConnection::where('provider', 'dana')
+                ->where('status', 'pending')
+                ->where(function ($q) {
+                    $q->whereNull('session_expires_at')->orWhere('session_expires_at', '>', now());
+                })
+                ->count(),
+            'total_couriers'       => Courier::count(),
+            'callback_url'         => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
+            'latest'               => DanaConnection::with('courier.user')
+                ->where('provider', 'dana')
+                ->where('status', 'connected')
+                ->orderByDesc('linked_at')
+                ->take(5)
+                ->get(),
+        ];
+
+        return view('admin.dashboard', compact('stats', 'recentOrders', 'activeCouriers', 'danaStatus'));
     }
 
     /**

@@ -114,6 +114,15 @@ return [
             'route' => 'admin.ci-work.finance',
             'description' => 'Kelola keuangan dan setoran kurir',
         ],
+        [
+            'id' => 'ci_work_dana_transactions',
+            'name' => 'Transaksi DANA',
+            'icon' => 'dana',
+            'section' => 'ci_work',
+            'actions' => ['view'],
+            'route' => 'admin.ci-work.dana-transactions',
+            'description' => 'Daftar dan verifikasi penarikan saldo ke DANA',
+        ],
 
         // ─── Sistem & Keamanan ────────────────────────────────
         [

@@ -46,11 +46,11 @@ class WalletController extends Controller
         $conn = \App\Models\DanaConnection::where('courier_id', $courier->id)->first();
         $isConnected = $conn !== null && $conn->status === 'connected';
 
-        $balance['ovo'] = [
+        $balance['dana'] = [
             'status'         => $isConnected ? 'CONNECTED' : strtoupper((string) ($conn?->status ?? 'NOT_CONNECTED')),
             'status_label'   => $isConnected ? 'CONNECTED' : strtoupper((string) ($conn?->status ?? 'NOT_CONNECTED')),
             'connected'      => $isConnected,
-            'provider'       => 'OVO',
+            'provider'       => 'DANA',
             'masked_phone'   => $conn?->masked_phone,
             'account_name'   => $conn?->account_name,
             'bound_at'       => $conn?->bound_at?->toIso8601String(),
@@ -59,6 +59,59 @@ class WalletController extends Controller
         return response()->json([
             'success' => true,
             'data'    => $balance,
+        ]);
+    }
+
+    /**
+     * GET /api/courier/wallet/history
+     * Riwayat transaksi dompet yang sudah dinormalisasi + filter.
+     *
+     * Query: filter=all|earning|withdrawal, status=success|processing|pending|failed|cancelled
+     */
+    public function history(Request $request)
+    {
+        $courier = $request->user()->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        $page    = max(1, (int) $request->input('page', 1));
+        $perPage = min(50, max(5, (int) $request->input('per_page', 15)));
+        $filter  = $request->input('filter');
+        $status  = $request->input('status');
+
+        $result = $this->walletService->getHistory($courier->id, $page, $perPage, $filter, $status);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $result,
+        ]);
+    }
+
+    /**
+     * GET /api/courier/wallet/notifications
+     * Notifikasi dompet yang diturunkan dari status transaksi sebenarnya.
+     */
+    public function notifications(Request $request)
+    {
+        $courier = $request->user()->courier;
+
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil kurir tidak ditemukan.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'notifications' => $this->walletService->getNotifications($courier->id),
+            ],
         ]);
     }
 

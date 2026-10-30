@@ -32,7 +32,6 @@
             <div class="card-body">
                 <form action="{{ route('admin.settings.payment.update') }}" method="POST" class="space-y-4">
                     @csrf
-                    @method('PUT')
 
                     <div>
                         <label class="form-label" for="komerce_payment_env">Environment Mode <span class="text-red-500">*</span></label>
