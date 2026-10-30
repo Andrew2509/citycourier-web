@@ -188,11 +188,11 @@ class iPaymuService
             ];
         }
 
-        // GET {base}/api/v2/transaction?id={trx_id} — status transaksi iPaymu
-        // di-query lewat query string, bukan segmen path.
-        $path = (string) config('ipaymu.inquiry_path', '/api/v2/transaction')
-            . '?' . http_build_query(['id' => $transactionId]);
-        $raw = $this->call('GET', $path, null);
+        // Cek status transaksi iPaymu v2 adalah POST {base}/api/v2/transaction
+        // dengan body {"trx_id": "..."} — endpoint ini menolak metode GET.
+        $path = (string) config('ipaymu.inquiry_path', '/api/v2/transaction');
+        $body = json_encode(['trx_id' => $transactionId]);
+        $raw = $this->call('POST', $path, $body);
         return $this->interpretResponse($raw);
     }
 
