@@ -132,6 +132,22 @@
                         </p>
                     </div>
 
+                    <div>
+                        <label class="form-label" for="ipaymu_payment_mode">Jalur Pembayaran Masuk (Checkout)</label>
+                        <select name="ipaymu_payment_mode" id="ipaymu_payment_mode" class="form-input">
+                            @foreach ([ 'auto' => 'Auto — Direct, cadangan Redirect bila diblokir (disarankan)', 'direct' => 'Direct — VA/QRIS dibuat langsung oleh server', 'redirect' => 'Redirect — halaman pembayaran iPaymu' ] as $value => $label)
+                                <option value="{{ $value }}" {{ old('ipaymu_payment_mode', $settings['payment_mode'] ?? 'auto') === $value ? 'selected' : '' }}>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="form-help">
+                            Bila Direct ditolak sistem risiko iPaymu dengan pesan
+                            <span class="font-mono">"Suspicious buyer"</span> (Status 503), mode Auto otomatis
+                            mengalihkan checkout ke halaman pembayaran iPaymu (Redirect) yang tidak mengirim identitas buyer.
+                        </p>
+                    </div>
+
                     <div class="rounded-lg bg-slate-50 border border-slate-200 p-3">
                         <label class="flex items-center gap-3 cursor-pointer">
                             <input type="checkbox"

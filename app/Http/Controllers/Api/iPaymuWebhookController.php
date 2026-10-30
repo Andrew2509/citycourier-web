@@ -111,8 +111,29 @@ class iPaymuWebhookController extends Controller
             ->first();
 
         if (!$withdrawal) {
-            // ── Bukan penarikan — cek pembayaran checkout (VA/QRIS) ──
+            // ── Bukan penarikan — cek pembayaran checkout (VA/QRIS/Redirect) ──
             $payment = \App\Models\Payment::where('payment_id', (string) $transactionId)->first();
+
+            // Redirect Payment menyimpan SessionID sebagai payment_id, sedangkan
+            // callback membawa `trx_id` + `reference_id` milik kita. Cocokkan
+            // lewat referenceId, lalu simpan trx_id resmi supaya inquiry status
+            // berikutnya memakai TransactionId (bukan SessionID).
+            if (!$payment) {
+                $reference = $payload['reference_id'] ?? $payload['referenceId'] ?? null;
+                if (!empty($reference)) {
+                    $payment = \App\Models\Payment::where('metadata->ipaymu_reference_id', (string) $reference)->first();
+                }
+
+                if ($payment) {
+                    $meta = $payment->metadata ?? [];
+                    $meta['ipaymu_trx_id'] = (string) $transactionId;
+                    $payment->update([
+                        'payment_id' => (string) $transactionId,
+                        'metadata'   => $meta,
+                    ]);
+                }
+            }
+
             if ($payment) {
                 return $this->handlePaymentCallback($payment, $normalized, $payload, (string) $transactionId);
             }

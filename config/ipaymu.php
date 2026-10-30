@@ -73,6 +73,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Redirect Payment (halaman pembayaran iPaymu) — jalur cadangan
+    |--------------------------------------------------------------------------
+    | POST {base}/api/v2/payment → Data.SessionID + Data.Url.
+    |
+    | Dipakai ketika Direct Payment ditolak sistem risiko iPaymu dengan
+    | "Suspicious buyer" (Status 503). Body redirect TIDAK memuat identitas
+    | buyer (name/phone/email tidak wajib), sehingga tidak melewati pemeriksaan
+    | yang sama; pelanggan memilih kanal (VA/QRIS/e-wallet) di halaman iPaymu.
+    |
+    | mode: direct   → selalu Direct (VA/QRIS dibuat langsung oleh server)
+    |       redirect → selalu Redirect (halaman iPaymu)
+    |       auto     → coba Direct, jatuh ke Redirect bila diblokir (default)
+    */
+    'payment_mode'         => env('IPAYMU_PAYMENT_MODE', 'auto'),
+    'payment_redirect_path' => env('IPAYMU_PAYMENT_REDIRECT_PATH', '/api/v2/payment'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Kadaluarsa Pembayaran Masuk
     |--------------------------------------------------------------------------
     | VA   : default 24 jam (default iPaymu).

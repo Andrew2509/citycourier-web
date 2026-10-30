@@ -118,7 +118,17 @@ class PaymentController extends Controller
         $refId = $request->shipment_id ?? ($request->order_id ?? 'REQ');
         $reference = 'CC-' . $refId . '-' . now()->format('YmdHis');
 
-        $result = $this->paymentService->createPayment([
+        // Mode pembayaran iPaymu (Admin → Pengaturan → iPaymu, default "auto"):
+        //   direct   → VA/QRIS dibuat langsung oleh server (perilaku lama)
+        //   redirect → halaman pembayaran iPaymu (tanpa identitas buyer)
+        //   auto     → coba Direct, jatuh ke Redirect bila diblokir
+        //              sistem risiko iPaymu ("Suspicious buyer", 503)
+        $mode = strtolower((string) (\App\Services\iPaymuService::credentials()['payment_mode'] ?? 'auto'));
+        if (!in_array($mode, ['direct', 'redirect', 'auto'], true)) {
+            $mode = 'auto';
+        }
+
+        $payload = [
             'payment_type' => $paymentType,
             'channel_code' => $request->channel_code,
             'amount'       => (int) $request->amount,
@@ -126,7 +136,72 @@ class PaymentController extends Controller
             'customer'     => $customer,
             'items'        => $items,
             'comments'     => 'Pembayaran pengiriman City Courier (' . $refId . ')',
-        ]);
+        ];
+
+        $usedMode = 'direct';
+        $result   = null;
+
+        if ($mode !== 'redirect') {
+            $result = $this->paymentService->createPayment($payload);
+        }
+
+        // Fallback ke Redirect: hanya ketika penolakan berasal dari sistem
+        // risiko iPaymu — bukan semua kegagalan, supaya error validasi tetap
+        // terlihat apa adanya.
+        $blockedByRisk = $result && !$result['success'] && (
+            (int) ($result['http_code'] ?? 0) === 503
+            || stripos((string) ($result['error'] ?? ''), 'suspicious') !== false
+        );
+
+        if ($mode === 'redirect' || ($mode === 'auto' && $blockedByRisk)) {
+            if ($blockedByRisk) {
+                Log::warning('PaymentController: Direct Payment diblokir iPaymu, beralih ke Redirect Payment', [
+                    'reference' => $reference,
+                    'http_code' => $result['http_code'] ?? null,
+                    'error'     => $result['error'] ?? null,
+                ]);
+            }
+
+            $redirect = $this->paymentService->createRedirectPayment($payload);
+
+            if ($redirect['success']) {
+                $usedMode = 'redirect';
+                $result = [
+                    'success'     => true,
+                    'error'       => null,
+                    'payment_id'  => $redirect['session_id'],
+                    'va_number'   => null,
+                    'qr_string'   => null,
+                    'payment_url' => $redirect['payment_url'],
+                    'expired_at'  => $redirect['expired_at'],
+                    'http_code'   => $redirect['http_code'],
+                    'raw'         => $redirect['raw'],
+                ];
+            } elseif ($mode === 'redirect' || !$result) {
+                // Mode redirect murni (atau Direct belum dicoba): laporkan
+                // kegagalan redirect apa adanya.
+                $result = [
+                    'success'     => false,
+                    'error'       => $redirect['error'] ?? 'Gagal membuat halaman pembayaran iPaymu',
+                    'http_code'   => $redirect['http_code'] ?? null,
+                    'raw'         => $redirect['raw'] ?? null,
+                ];
+            } else {
+                // Redirect juga gagal → pertahankan error Direct (penyebab awal).
+                Log::error('PaymentController: Redirect Payment juga gagal', [
+                    'reference' => $reference,
+                    'error'     => $redirect['error'] ?? null,
+                    'http_code' => $redirect['http_code'] ?? null,
+                ]);
+            }
+        }
+
+        $result = $result ?? [
+            'success'   => false,
+            'error'     => 'Gagal membuat pembayaran',
+            'http_code' => null,
+            'raw'       => null,
+        ];
 
         if (!$result['success']) {
             return response()->json([
@@ -137,9 +212,10 @@ class PaymentController extends Controller
                 // Dikembalikan ke pengguna yang sama pemilik shipment, berisi
                 // data yang memang sudah dikirim ke iPaymu — bukan kredensial.
                 'debug' => [
-                    'buyer'     => $customer,
-                    'http_code' => $result['http_code'] ?? null,
-                    'provider'  => $result['raw'] ?? null,
+                    'buyer'      => $customer,
+                    'http_code'  => $result['http_code'] ?? null,
+                    'provider'   => $result['raw'] ?? null,
+                    'mode'       => $mode,
                 ],
             ], 502);
         }
@@ -152,12 +228,13 @@ class PaymentController extends Controller
             'channel_code' => $paymentType === 'va' ? strtoupper((string) $request->channel_code) : 'QRIS',
             'amount'       => (int) $request->amount,
             'status'       => 'pending',
-            'va_number'    => $result['va_number'],
-            'qr_string'    => $result['qr_string'],
-            'payment_url'  => $result['payment_url'],
-            'expired_at'   => $result['expired_at'] ? \Illuminate\Support\Carbon::parse($result['expired_at']) : null,
+            'va_number'    => $result['va_number'] ?? null,
+            'qr_string'    => $result['qr_string'] ?? null,
+            'payment_url'  => $result['payment_url'] ?? null,
+            'expired_at'   => !empty($result['expired_at']) ? \Illuminate\Support\Carbon::parse($result['expired_at']) : null,
             'metadata'     => [
                 'ipaymu_reference_id' => $reference,
+                'payment_mode'        => $usedMode,
                 'customer'            => $customer,
                 'items'               => $items,
             ],
@@ -182,6 +259,7 @@ class PaymentController extends Controller
                 'va_number'    => $payment->va_number,
                 'qr_string'    => $payment->qr_string,
                 'payment_url'  => $payment->payment_url,
+                'payment_mode' => $usedMode,
                 'expired_at'   => $payment->expired_at?->toIso8601String(),
                 'instructions' => $this->getInstructions($payment),
             ],
@@ -217,6 +295,31 @@ class PaymentController extends Controller
             ]);
         }
 
+        // Redirect Payment: `payment_id` yang tersimpan adalah SessionID iPaymu,
+        // bukan TransactionId — Check Transaction belum bisa dipanggil sampai
+        // callback resmi memberi `trx_id`. Selama itu status jujur tetap
+        // 'pending' (tanpa mengarang hasil); webhook yang akan mengubahnya.
+        $mode = (string) ($payment->metadata['payment_mode'] ?? 'direct');
+        $trxId = $payment->metadata['ipaymu_trx_id'] ?? null;
+
+        if ($mode === 'redirect' && empty($trxId)) {
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'id'           => $payment->id,
+                    'payment_id'   => $payment->payment_id,
+                    'status'       => $payment->status,
+                    'amount'       => $payment->amount,
+                    'payment_type' => $payment->payment_type,
+                    'channel_code' => $payment->channel_code,
+                    'payment_url'  => $payment->payment_url,
+                    'payment_mode' => 'redirect',
+                    'expired_at'   => $payment->expired_at?->toISOString(),
+                    'paid_at'      => $payment->paid_at?->toISOString(),
+                ],
+            ]);
+        }
+
         // Inquiry resmi iPaymu.
         $sync = $this->paymentService->syncStatus($payment);
         $newStatus = $sync['status'];
@@ -241,6 +344,8 @@ class PaymentController extends Controller
                 'channel_code' => $payment->channel_code,
                 'va_number'    => $payment->va_number,
                 'qr_string'    => $payment->qr_string,
+                'payment_url'  => $payment->payment_url,
+                'payment_mode' => $mode,
                 'expired_at'   => $payment->expired_at?->toISOString(),
                 'paid_at'      => $payment->paid_at?->toISOString(),
             ],

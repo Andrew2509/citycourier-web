@@ -92,12 +92,18 @@ class SettingController extends Controller
             'ipaymu_va'          => 'required|string|max:64',
             'ipaymu_api_key'     => 'required|string|min:8',
             'ipaymu_buyer_email' => 'nullable|email|max:150',
+            'ipaymu_payment_mode' => 'nullable|in:direct,redirect,auto',
             'ipaymu_timeout'     => 'nullable|integer|min:5|max:120',
         ]);
 
         Setting::set('ipaymu_base_url', $request->ipaymu_base_url, 'ipaymu');
         Setting::set('ipaymu_va', $request->ipaymu_va, 'ipaymu');
         Setting::set('ipaymu_api_key', trim($request->ipaymu_api_key), 'ipaymu');
+        // Form Provider ringkas tidak mengirim field ini → jangan menimpa
+        // pilihan yang sudah disimpan dari halaman Konfigurasi Lengkap.
+        if ($request->filled('ipaymu_payment_mode')) {
+            Setting::set('ipaymu_payment_mode', (string) $request->input('ipaymu_payment_mode'), 'ipaymu');
+        }
         Setting::set(
             'ipaymu_payout_enabled',
             $request->boolean('ipaymu_payout_enabled') ? '1' : '0',

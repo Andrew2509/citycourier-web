@@ -73,6 +73,7 @@ class iPaymuService
             'payout_enabled' => (bool) ($cfg['payout_enabled'] ?? false),
             'webhook_secret' => $cfg['webhook_secret'] ?? '',
             'buyer_email'    => $cfg['buyer_email'] ?? '',
+            'payment_mode'   => $cfg['payment_mode'] ?? 'auto',
             'timeout'        => (int) ($cfg['timeout'] ?? 30),
         ];
 
@@ -89,6 +90,7 @@ class iPaymuService
             'secret_key'     => $string('ipaymu_secret_key', $fallback['secret_key']),
             'webhook_secret' => $string('ipaymu_webhook_secret', $fallback['webhook_secret']),
             'buyer_email'    => $string('ipaymu_buyer_email', $fallback['buyer_email']),
+            'payment_mode'   => strtolower($string('ipaymu_payment_mode', $fallback['payment_mode'])),
             'payout_enabled' => filter_var(
                 \App\Models\Setting::get('ipaymu_payout_enabled', $fallback['payout_enabled']),
                 FILTER_VALIDATE_BOOLEAN
@@ -234,6 +236,21 @@ class iPaymuService
     public function createDirectPayment(array $payload): array
     {
         $path = (string) config('ipaymu.payment_direct_path', '/api/v2/payment/direct');
+        $body = $this->encodeBody($payload);
+        $raw = $this->call('POST', $path, $body);
+        return $this->normalizeEnvelope($raw);
+    }
+
+    /**
+     * Buat sesi Redirect Payment (docs.ipaymu.com → Payment → Redirect):
+     * POST {base}/api/v2/payment → Data.SessionID + Data.Url.
+     *
+     * Body redirect TIDAK memuat identitas buyer, sehingga jalur ini dipakai
+     * sebagai cadangan saat Direct Payment diblokir ("Suspicious buyer").
+     */
+    public function createRedirectPayment(array $payload): array
+    {
+        $path = (string) config('ipaymu.payment_redirect_path', '/api/v2/payment');
         $body = $this->encodeBody($payload);
         $raw = $this->call('POST', $path, $body);
         return $this->normalizeEnvelope($raw);

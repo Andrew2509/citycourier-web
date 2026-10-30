@@ -223,6 +223,103 @@ class IpaymuPaymentService
         ];
     }
 
+    // ─── Buat sesi Redirect Payment (halaman iPaymu) ──────────────────
+
+    /**
+     * Redirect Payment: POST /api/v2/payment → Data.SessionID + Data.Url.
+     *
+     * Dipakai bila Direct Payment diblokir sistem risiko iPaymu ("Suspicious
+     * buyer", Status 503). Body redirect TIDAK memuat name/phone/email buyer —
+     * identitas bukan parameter wajib di jalur ini — sehingga pemeriksaan yang
+     * memblokir Direct tidak ikut berjalan. Pelanggan memilih kanal pembayaran
+     * di halaman iPaymu, lalu status dikonfirmasi lewat callback + inquiry.
+     *
+     * @param array{
+     *   amount:int, reference:string, items:array, comments:?string
+     * } $input
+     * @return array{
+     *   success:bool, error:?string, session_id:?string, payment_url:?string,
+     *   expired_at:?string, http_code:?int, raw:?array
+     * }
+     */
+    public function createRedirectPayment(array $input): array
+    {
+        $none = [
+            'success' => false, 'error' => null, 'session_id' => null,
+            'payment_url' => null, 'expired_at' => null, 'http_code' => null, 'raw' => null,
+        ];
+
+        if (!iPaymuService::isConfigured()) {
+            $none['error'] = 'iPaymu belum terkonfigurasi. Set kredensial di Admin > Pengaturan.';
+            return $none;
+        }
+
+        $base     = rtrim((string) config('app.url'), '/');
+        $notify   = $base . '/api/ipaymu/callback';
+        $return   = $base . '/api/ipaymu/return';
+        $cancel   = $base . '/api/ipaymu/cancel';
+        $hours    = max(1, (int) config('ipaymu.payment_expired_hours', 24));
+
+        $product = [];
+        $qty = [];
+        $price = [];
+        $description = [];
+        foreach ((array) $input['items'] as $item) {
+            $product[]     = (string) ($item['name'] ?? 'Biaya Pengiriman City Courier');
+            $qty[]         = (int) ($item['quantity'] ?? 1);
+            $price[]       = (int) ($item['price'] ?? $input['amount']);
+            $description[] = (string) ($input['comments'] ?? 'Pengiriman City Courier');
+        }
+
+        $payload = [
+            'product'     => $product,
+            'qty'         => $qty,
+            'price'       => $price,
+            'description' => $description,
+            'returnUrl'   => $return,
+            'notifyUrl'   => $notify,
+            'cancelUrl'   => $cancel,
+            'referenceId' => (string) $input['reference'],
+            'expired'     => $hours,
+        ];
+
+        $res = $this->ipaymu->createRedirectPayment($payload);
+        if (!$res['success'] || !is_array($res['data'])) {
+            Log::warning('iPaymu payment/redirect ditolak', [
+                'reference' => $payload['referenceId'],
+                'http_code' => $res['http_code'] ?? null,
+                'error'     => $res['error'] ?? null,
+                'provider'  => $res['raw'] ?? null,
+                'payload'   => $payload,
+            ]);
+
+            $none['error']     = $res['error'] ?? 'iPaymu menolak pembuatan sesi pembayaran.';
+            $none['http_code'] = $res['http_code'] ?? null;
+            $none['raw']       = $res['raw'];
+            return $none;
+        }
+
+        $data = $res['data'];
+        $url  = (string) ($data['Url'] ?? $data['url'] ?? '');
+        $sid  = (string) ($data['SessionID'] ?? $data['SessionId'] ?? $data['session_id'] ?? '');
+
+        if ($url === '') {
+            $none['error'] = 'iPaymu tidak mengembalikan URL pembayaran.';
+            $none['raw']   = $res['raw'];
+            return $none;
+        }
+
+        return [
+            'success'    => true,
+            'error'      => null,
+            'session_id' => $sid !== '' ? $sid : null,
+            'payment_url' => $url,
+            'expired_at' => now()->addHours($hours)->toIso8601String(),
+            'http_code'  => $res['http_code'] ?? null,
+            'raw'        => $res['raw'],
+        ];
+    }
+
     // ─── Sinkronisasi status (GET /payment/status & webhook) ─────────
 
     /**

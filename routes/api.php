@@ -184,3 +184,12 @@ Route::get('/settings', [App\Http\Controllers\Api\SettingController::class, 'ind
  */
 Route::post('/ipaymu/webhook', [iPaymuWebhookController::class, 'handle'])->name('ipaymu.webhook');
 Route::post('/ipaymu/callback', [iPaymuWebhookController::class, 'handle'])->name('ipaymu.callback');
+
+/**
+ * Halaman kembali iPaymu Redirect Payment (publik, hanya informasi).
+ * Status yang mengikat tetap dari webhook ber-signature + inquiry.
+ */
+Route::get('/ipaymu/return', [\App\Http\Controllers\Api\IpaymuReturnController::class, 'completed'])
+    ->name('ipaymu.return');
+Route::get('/ipaymu/cancel', [\App\Http\Controllers\Api\IpaymuReturnController::class, 'cancelled'])
+    ->name('ipaymu.cancel');

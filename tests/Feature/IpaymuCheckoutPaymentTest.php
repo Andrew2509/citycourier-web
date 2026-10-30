@@ -262,6 +262,163 @@ class IpaymuCheckoutPaymentTest extends TestCase
         ]);
     }
 
+    // ─── 2a. Redirect Payment (cadangan saat Direct diblokir) ────
+
+    private function setPaymentMode(string $mode): void
+    {
+        Setting::updateOrCreate(
+            ['key' => 'ipaymu_payment_mode'],
+            ['value' => $mode, 'group' => 'ipaymu']
+        );
+        iPaymuService::flushCredentialsCache();
+    }
+
+    private function redirectSuccess(): array
+    {
+        return [
+            'success'     => true,
+            'error'       => null,
+            'session_id'  => 'SESS-ABC-123',
+            'payment_url' => 'https://sandbox.ipaymu.com/payment/SESS-ABC-123',
+            'expired_at'  => now()->addHours(24)->toIso8601String(),
+            'http_code'   => 200,
+            'raw'         => ['Status' => 200, 'Success' => true],
+        ];
+    }
+
+    public function test_create_redirect_mode_returns_hosted_payment_url(): void
+    {
+        $this->makeConfigured();
+        $this->setPaymentMode('redirect');
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->redirectResult = $this->redirectSuccess();
+
+        $response = $this->postJson('/api/payment/create', [
+            'shipment_id'  => 'SHIP-R1',
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bni',
+            'amount'       => 13300,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+                'data'    => [
+                    'payment_mode' => 'redirect',
+                    'payment_id'   => 'SESS-ABC-123',
+                    'payment_url'  => 'https://sandbox.ipaymu.com/payment/SESS-ABC-123',
+                    'va_number'    => null,
+                ],
+            ]);
+
+        // Direct Payment tidak boleh dipanggil pada mode redirect.
+        $this->assertSame([], $this->fakePayment->lastInput);
+        $this->assertNotNull($this->fakePayment->lastRedirectInput);
+        $this->assertSame('13300', (string) $this->fakePayment->lastRedirectInput['amount']);
+
+        $payment = Payment::where('payment_id', 'SESS-ABC-123')->firstOrFail();
+        $this->assertSame('redirect', $payment->metadata['payment_mode']);
+        $this->assertNull($payment->va_number);
+    }
+
+    public function test_create_auto_falls_back_to_redirect_when_direct_blocked(): void
+    {
+        $this->makeConfigured();
+        $this->setPaymentMode('auto');
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->createResult = [
+            'success'     => false,
+            'error'       => 'Suspicious buyer',
+            'payment_id'  => null,
+            'va_number'   => null,
+            'qr_string'   => null,
+            'payment_url' => null,
+            'expired_at'  => null,
+            'http_code'   => 503,
+            'raw'         => ['Status' => 503, 'Success' => false, 'Message' => 'Suspicious buyer'],
+        ];
+        $this->fakePayment->redirectResult = $this->redirectSuccess();
+
+        $response = $this->postJson('/api/payment/create', [
+            'shipment_id'  => 'SHIP-R2',
+            'payment_type' => 'qris',
+            'channel_code' => 'qris',
+            'amount'       => 13300,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+                'data'    => ['payment_mode' => 'redirect'],
+            ]);
+
+        // Direct dicoba lebih dulu, lalu redirect.
+        $this->assertNotEmpty($this->fakePayment->lastInput);
+        $this->assertNotNull($this->fakePayment->lastRedirectInput);
+    }
+
+    public function test_create_auto_does_not_fallback_on_validation_error(): void
+    {
+        $this->makeConfigured();
+        $this->setPaymentMode('auto');
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->createResult = [
+            'success'     => false,
+            'error'       => "Saluran VA tidak dikenal: 'foo'.",
+            'payment_id'  => null,
+            'va_number'   => null,
+            'qr_string'   => null,
+            'payment_url' => null,
+            'expired_at'  => null,
+            'http_code'   => 400,
+            'raw'         => ['Status' => 400, 'Success' => false],
+        ];
+        $this->fakePayment->redirectResult = $this->redirectSuccess();
+
+        $response = $this->postJson('/api/payment/create', [
+            'shipment_id'  => 'SHIP-R3',
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'foo',
+            'amount'       => 13300,
+        ]);
+
+        $response->assertStatus(502)
+            ->assertJson(['success' => false, 'message' => "Saluran VA tidak dikenal: 'foo'."]);
+        $this->assertNull($this->fakePayment->lastRedirectInput);
+    }
+
+    public function test_redirect_payment_status_stays_pending_without_trx_id(): void
+    {
+        $this->makeConfigured();
+        $this->setPaymentMode('redirect');
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->redirectResult = $this->redirectSuccess();
+
+        $this->postJson('/api/payment/create', [
+            'shipment_id'  => 'SHIP-R4',
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bni',
+            'amount'       => 13300,
+        ])->assertStatus(201);
+
+        // SessionID bukan TransactionId → inquiry belum bisa dipakai, jadi
+        // status jujur tetap pending (tidak ada hasil karangan).
+        $this->fakePayment->syncResult = ['status' => 'paid', 'known' => true, 'error' => null];
+
+        $this->getJson('/api/payment/status?payment_id=SESS-ABC-123')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.payment_mode', 'redirect');
+    }
+
     // ─── 2b. Identitas buyer (anti "Suspicious buyer") ──────────
 
     /**
@@ -630,6 +787,57 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->assertDatabaseHas('payments', ['payment_id' => '99003', 'status' => 'paid']);
     }
 
+    /**
+     * Redirect Payment menyimpan SessionID sebagai payment_id, sedangkan
+     * callback membawa trx_id + reference_id kita. Payment harus dikenali
+     * lewat referenceId, lalu trx_id resmi disimpan untuk inquiry berikutnya.
+     */
+    public function test_webhook_matches_redirect_payment_by_reference(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+
+        Payment::create([
+            'user_id' => $user->id, 'payment_id' => 'SESS-ABC-123',
+            'payment_type' => 'bank_transfer', 'amount' => 13300, 'status' => 'pending',
+            'payment_url' => 'https://sandbox.ipaymu.com/payment/SESS-ABC-123',
+            'metadata' => [
+                'ipaymu_reference_id' => 'CC-SHIP-R5-20261030120000',
+                'payment_mode'        => 'redirect',
+            ],
+        ]);
+
+        $this->fakePayment->webhookStatus = 'paid';
+
+        $payload = [
+            'trx_id' => 555111,
+            'reference_id' => 'CC-SHIP-R5-20261030120000',
+            'status_code' => 1,
+            'status' => 'berhasil',
+            'additional_info' => [],
+        ];
+        $sig = $this->signatureFor($payload);
+
+        $this->postJson('/api/ipaymu/callback', $payload, ['X-Signature' => $sig])->assertOk();
+
+        $payment = Payment::where('metadata->ipaymu_reference_id', 'CC-SHIP-R5-20261030120000')->firstOrFail();
+        $this->assertSame('paid', $payment->status);
+        // trx_id resmi menggantikan SessionID supaya status bisa di-inquiry.
+        $this->assertSame('555111', (string) $payment->payment_id);
+        $this->assertSame('555111', (string) $payment->metadata['ipaymu_trx_id']);
+    }
+
+    public function test_return_pages_render(): void
+    {
+        $this->get('/api/ipaymu/return')
+            ->assertOk()
+            ->assertSee('City Courier');
+
+        $this->get('/api/ipaymu/cancel')
+            ->assertOk()
+            ->assertSee('Pembayaran Dibatalkan');
+    }
+
     // ─── 6. Signature GET (regresi: payment-channels) ───────────
 
     /**
@@ -743,7 +951,9 @@ class FakeIpaymuPaymentService extends IpaymuPaymentService
     public array $methods = [];
     public bool $configured = true;
     public ?array $createResult = null;
+    public ?array $redirectResult = null;
     public array $lastInput = [];
+    public ?array $lastRedirectInput = null;
     public array $syncResult = ['status' => 'pending', 'known' => false, 'error' => null];
     public string $webhookStatus = 'paid';
 
@@ -768,6 +978,16 @@ class FakeIpaymuPaymentService extends IpaymuPaymentService
             'success' => false, 'error' => 'not set', 'payment_id' => null,
             'va_number' => null, 'qr_string' => null, 'payment_url' => null,
             'expired_at' => null, 'raw' => null,
+        ];
+    }
+
+    public function createRedirectPayment(array $input): array
+    {
+        $this->lastRedirectInput = $input;
+
+        return $this->redirectResult ?? [
+            'success' => false, 'error' => 'redirect not set', 'session_id' => null,
+            'payment_url' => null, 'expired_at' => null, 'http_code' => null, 'raw' => null,
         ];
     }
 
