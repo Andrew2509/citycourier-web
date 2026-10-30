@@ -355,7 +355,9 @@ class PaymentController extends Controller
 
         $phone = BuyerIdentity::phone(
             $override['phone'] ?? null,
-            $shipment?->customer_phone ?? $shipment?->sender_phone ?? $user->phone,
+            $shipment?->customer_phone,
+            $shipment?->sender_phone,
+            $user->phone,
         );
 
         $email = BuyerIdentity::email(

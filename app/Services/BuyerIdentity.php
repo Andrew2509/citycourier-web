@@ -79,12 +79,17 @@ class BuyerIdentity
     /**
      * Normalisasi nomor telepon Indonesia ke format lokal `08…`.
      * `+62 812-3456-7890` → `081234567890`.
+     *
+     * Kandidat diperiksa berurutan; kandidat pertama yang berisi digit dipakai.
      */
-    public static function phone(?string $phone, ?string $fallback = null): string
+    public static function phone(?string ...$candidates): string
     {
-        $digits = preg_replace('/\D+/', '', (string) $phone) ?? '';
-        if ($digits === '') {
-            $digits = preg_replace('/\D+/', '', (string) $fallback) ?? '';
+        $digits = '';
+        foreach ($candidates as $candidate) {
+            $digits = preg_replace('/\D+/', '', (string) $candidate) ?? '';
+            if ($digits !== '') {
+                break;
+            }
         }
         if ($digits === '') {
             return '';
