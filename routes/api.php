@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CourierController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\GeocodingController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
@@ -11,6 +12,9 @@ use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\Api\DanaController;
 use App\Http\Controllers\Api\WithdrawalController;
 use App\Http\Controllers\Api\iPaymuWebhookController;
+
+// Penanda versi deploy — publik & ringan (tanpa database).
+Route::get('/health', [HealthController::class, 'index'])->name('api.health');
 
 Route::get('/documentation', function () {
     return response(

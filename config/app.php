@@ -30,6 +30,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Commit Deploy (opsional)
+    |--------------------------------------------------------------------------
+    |
+    | Isi dengan hash commit yang sedang terpasang supaya /api/health bisa
+    | menjawab tanpa akses git/exec — berguna di shared hosting. Kosongkan
+    | bila server punya folder .git; endpoint akan membaca `git log -1`.
+    |
+    */
+
+    'commit' => env('APP_COMMIT', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
     |
