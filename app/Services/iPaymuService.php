@@ -205,6 +205,86 @@ class iPaymuService
     }
 
     /**
+     * Daftar saluran pembayaran masuk (docs.ipaymu.com → Payment Channels):
+     * GET {base}/api/v2/payment-channels.
+     * Dipakai oleh IpaymuPaymentService untuk daftar VA & QRIS di checkout.
+     */
+    public function paymentChannels(): array
+    {
+        $path = (string) config('ipaymu.payment_channels_path', '/api/v2/payment-channels');
+        $raw = $this->call('GET', $path, '');
+        return $this->normalizeEnvelope($raw);
+    }
+
+    /**
+     * Buat transaksi pembayaran masuk (docs.ipaymu.com → Payment → Direct):
+     * POST {base}/api/v2/payment/direct.
+     * VA  → Data.PaymentNo (nomor VA pelanggan).
+     * QRIS→ Data berisi QR string / Url pembayaran.
+     */
+    public function createDirectPayment(array $payload): array
+    {
+        $path = (string) config('ipaymu.payment_direct_path', '/api/v2/payment/direct');
+        $body = json_encode($payload);
+        $raw = $this->call('POST', $path, $body);
+        return $this->normalizeEnvelope($raw);
+    }
+
+    /**
+     * Normalisasi envelope resmi iPaymu v2 ({Status, Success, Message, Data})
+     * menjadi bentuk tunggal untuk pemakaian pembayaran masuk.
+     */
+    private function normalizeEnvelope(array $raw): array
+    {
+        if (!$raw['reachable']) {
+            return [
+                'success'   => false,
+                'data'      => null,
+                'error'     => 'Tidak dapat menghubungi iPaymu: ' . ($raw['error'] ?? 'network error'),
+                'http_code' => 0,
+                'raw'       => null,
+            ];
+        }
+
+        $data = $raw['body'];
+
+        if ($data === null || $raw['http_code'] >= 400) {
+            $msg = $data['Message'] ?? $data['message'] ?? $data['Msg'] ?? $data['error'] ?? $data['Error']
+                ?? $raw['error']
+                ?? ('iPaymu menolak permintaan (HTTP ' . $raw['http_code'] . ').');
+            if (is_array($msg)) {
+                $msg = json_encode($msg);
+            }
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'error'     => (string) $msg,
+                'http_code' => $raw['http_code'],
+                'raw'       => $data,
+            ];
+        }
+
+        $envelopeSuccess = $data['Success'] ?? ($data['success'] ?? true);
+        if ($envelopeSuccess === false) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'error'     => (string) ($data['Message'] ?? ($data['message'] ?? 'iPaymu menolak permintaan.')),
+                'http_code' => $raw['http_code'],
+                'raw'       => $data,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => $data['Data'] ?? $data['data'] ?? null,
+            'error'     => null,
+            'http_code' => $raw['http_code'],
+            'raw'       => $data,
+        ];
+    }
+
+    /**
      * Inquiry nama pemilik akun e-wallet tujuan (DANA name inquiry).
      *
      * Endpoint-nya TIDAK ada di dokumentasi publik iPaymu v2 → path dibuat
