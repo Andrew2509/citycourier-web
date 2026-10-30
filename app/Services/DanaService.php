@@ -96,6 +96,7 @@ class DanaService
                 $connection = DanaConnection::updateOrCreate(
                     ['courier_id' => $courierId],
                     [
+                        'provider'            => 'dana',
                         'status'              => 'pending',
                         'external_id'         => $externalId,
                         'session_id'          => $state,
@@ -203,6 +204,7 @@ class DanaService
             }
 
             $connection->update([
+                'provider'             => 'dana',
                 'status'               => 'connected',
                 'masked_phone'         => $maskedPhone,
                 'provider_reference'   => $authCode,

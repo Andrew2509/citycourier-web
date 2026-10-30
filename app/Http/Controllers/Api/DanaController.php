@@ -397,6 +397,7 @@ class DanaController extends Controller
         $connection = DanaConnection::updateOrCreate(
             ['courier_id' => $courier->id],
             [
+                'provider'           => 'dana',
                 'status'             => 'connected',
                 'masked_phone'       => $maskedPhone,
                 'provider_reference' => 'DEMO-' . strtoupper(Str::random(8)),
@@ -520,6 +521,7 @@ class DanaController extends Controller
         $connection = DanaConnection::updateOrCreate(
             ['courier_id' => $courier->id],
             [
+                'provider'           => 'dana',
                 'status'             => 'connected',
                 'masked_phone'       => $maskedPhone,
                 'provider_reference' => $phoneNumber,

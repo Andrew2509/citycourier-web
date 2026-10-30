@@ -84,7 +84,7 @@ class WithdrawalService
             $feeConfig  = $validation['fee_config'];
             $fee        = (float) $feeConfig['admin_fee'];
             $netAmount  = $amount - $fee;
-            $provider   = strtolower((string) ($connection->provider ?? 'ovo'));
+            $provider   = strtolower((string) ($connection->provider ?? 'dana'));
 
             // 3. Create withdrawal record (status = reserved)
             $withdrawal = Withdrawal::create([
@@ -217,13 +217,14 @@ class WithdrawalService
             return ['valid' => false, 'error' => 'Maksimum penarikan Rp' . number_format($feeConfig['maximum'], 0, ',', '.') . '.'];
         }
 
-        // Connection check (OVO or DANA)
+        // Connection check — DANA adalah metode pencairan aktif.
         $connection = DanaConnection::where('courier_id', $courierId)
             ->where('status', 'connected')
+            ->where('provider', 'dana')
             ->first();
 
         if (!$connection) {
-            return ['valid' => false, 'error' => 'Metode pencairan OVO belum terhubung.'];
+            return ['valid' => false, 'error' => 'Metode pencairan DANA belum terhubung.'];
         }
 
         $wallet = Wallet::where('courier_id', $courierId)->first();
@@ -323,7 +324,7 @@ class WithdrawalService
             $courierId = $withdrawal->courier_id;
             $amount    = (float) $withdrawal->amount;
             $reference = $withdrawal->idempotency_key;
-            $provider  = strtolower((string) ($withdrawal->provider ?? 'ovo'));
+            $provider  = strtolower((string) ($withdrawal->provider ?? 'dana'));
 
             if ($newStatus === 'success') {
                 $withdrawal->update([
@@ -371,7 +372,7 @@ class WithdrawalService
             return $withdrawal;
         }
 
-        $provider = strtolower((string) ($withdrawal->provider ?? 'ovo'));
+        $provider = strtolower((string) ($withdrawal->provider ?? 'dana'));
         $ref = $withdrawal->idempotency_key;
         $txId = $withdrawal->provider_reference;
 

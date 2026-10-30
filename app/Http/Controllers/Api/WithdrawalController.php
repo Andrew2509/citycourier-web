@@ -228,7 +228,7 @@ class WithdrawalController extends Controller
      */
     private function formatWithdrawal(Withdrawal $withdrawal): array
     {
-        $provider = strtoupper((string) ($withdrawal->provider ?? 'OVO'));
+        $provider = strtoupper((string) ($withdrawal->provider ?? 'DANA'));
         $conn = $withdrawal->danaConnection;
         $maskedAccount = $withdrawal->account_number ?: ($conn?->masked_phone ?? '-');
         $accountName = $withdrawal->account_name ?: ($conn?->account_name ?? '-');

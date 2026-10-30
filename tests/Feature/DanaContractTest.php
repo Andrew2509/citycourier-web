@@ -71,6 +71,10 @@ class DanaContractTest extends TestCase
         Schema::create('dana_connections', function ($table) {
             $table->id();
             $table->foreignId('courier_id')->unique();
+            $table->string('provider', 20)->default('dana');
+            $table->string('account_name', 150)->nullable();
+            $table->text('phone_encrypted')->nullable();
+            $table->timestamp('consent_at')->nullable();
             $table->string('status')->default('not_connected');
             $table->string('external_id')->nullable();
             $table->string('state_hash')->nullable();
