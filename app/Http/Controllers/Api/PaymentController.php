@@ -216,6 +216,15 @@ class PaymentController extends Controller
                     'http_code'  => $result['http_code'] ?? null,
                     'provider'   => $result['raw'] ?? null,
                     'mode'       => $mode,
+                    // Endpoint persis yang dipanggil, supaya bisa dipastikan
+                    // apakah permintaan benar-benar ke /api/v2/payment/direct
+                    // dan ke host yang benar (production vs sandbox).
+                    'endpoint' => [
+                        'direct'   => rtrim((string) (\App\Services\iPaymuService::credentials()['base_url'] ?? ''), '/')
+                            . (string) config('ipaymu.payment_direct_path', '/api/v2/payment/direct'),
+                        'redirect' => rtrim((string) (\App\Services\iPaymuService::credentials()['base_url'] ?? ''), '/')
+                            . (string) config('ipaymu.payment_redirect_path', '/api/v2/payment'),
+                    ],
                 ],
             ], 502);
         }

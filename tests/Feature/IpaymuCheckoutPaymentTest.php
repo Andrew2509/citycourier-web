@@ -612,7 +612,13 @@ class IpaymuCheckoutPaymentTest extends TestCase
             ->assertJsonPath('debug.http_code', 503)
             ->assertJsonPath('debug.provider.Message', 'Suspicious buyer')
             ->assertJsonPath('debug.buyer.email', fn ($value) => is_string($value) && $value !== '')
-            ->assertJsonPath('debug.buyer.phone', fn ($value) => is_string($value) && $value !== '');
+            ->assertJsonPath('debug.buyer.phone', fn ($value) => is_string($value) && $value !== '')
+            // Endpoint yang benar-benar dipanggil harus terlihat, supaya bisa
+            // dibedakan masalah akun dari salah host (sandbox vs production).
+            ->assertJsonPath(
+                'debug.endpoint.direct',
+                fn ($value) => is_string($value) && str_ends_with($value, '/api/v2/payment/direct')
+            );
     }
 
     // ─── 3. status() ────────────────────────────────────────────
