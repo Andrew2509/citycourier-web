@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Models\Withdrawal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -53,12 +54,18 @@ class WalletService
             })
             ->sum('amount');
 
+        // Total saldo yang sudah berhasil dicairkan (semua metode, termasuk legacy DANA)
+        $totalWithdrawn = (float) Withdrawal::where('courier_id', $courierId)
+            ->whereIn('status', ['success', 'completed'])
+            ->sum('amount');
+
         return [
             'total_balance'     => $total,
             'available_balance' => $available,
             'pending_balance'   => $pending,
             'today_earnings'    => $todayEarnings,
             'total_earnings'    => $totalEarnings,
+            'total_withdrawn'   => $totalWithdrawn,
             'currency'          => $wallet->currency,
             'status'            => $wallet->status,
         ];

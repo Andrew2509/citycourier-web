@@ -16,9 +16,19 @@ class OvoService
 {
     private OvoProvider $provider;
 
+    private Ovo\OvoAuthenticationService $authentication;
+    private Ovo\OvoInquiryService $inquiry;
+    private Ovo\OvoDisbursementService $disbursement;
+    private Ovo\OvoTransactionStatusService $transactionStatus;
+
     public function __construct(?OvoProvider $provider = null)
     {
         $this->provider = $provider ?? $this->resolveProvider();
+
+        $this->authentication    = new Ovo\OvoAuthenticationService($this->provider);
+        $this->inquiry           = new Ovo\OvoInquiryService($this->provider);
+        $this->disbursement      = new Ovo\OvoDisbursementService($this->provider);
+        $this->transactionStatus = new Ovo\OvoTransactionStatusService($this->provider);
     }
 
     private function resolveProvider(): OvoProvider
@@ -54,6 +64,27 @@ class OvoService
     public function activeProvider(): OvoProvider
     {
         return $this->provider;
+    }
+
+    /** Sub-service OVO (autentikasi / inquiry / disbursement / status). */
+    public function authentication(): Ovo\OvoAuthenticationService
+    {
+        return $this->authentication;
+    }
+
+    public function inquiry(): Ovo\OvoInquiryService
+    {
+        return $this->inquiry;
+    }
+
+    public function disbursement(): Ovo\OvoDisbursementService
+    {
+        return $this->disbursement;
+    }
+
+    public function transactionStatus(): Ovo\OvoTransactionStatusService
+    {
+        return $this->transactionStatus;
     }
 
     /**
@@ -135,11 +166,9 @@ class OvoService
                 'error_code' => $val['error_code'],
             ];
         }
-        $normalizedPhone = $val['normalized_phone'];
-
-        // 2. Account Inquiry ke API OVO
-        try {
-            $inquiry = $this->provider->accountInquiry($normalizedPhone);
+        $normalizedPhone = $val['normalized_phone'];            // 2. Account Inquiry ke API OVO
+            try {
+                $inquiry = $this->inquiry->accountInquiry($normalizedPhone);
             if (!$inquiry['success']) {
                 return [
                     'success'    => false,
@@ -287,7 +316,7 @@ class OvoService
         }
 
         try {
-            $result = $this->provider->customerTopUp($rawPhone, $amount, $referenceNo);
+            $result = $this->disbursement->disburse($rawPhone, $amount, $referenceNo);
 
             return [
                 'success'        => $result['success'],
@@ -311,7 +340,7 @@ class OvoService
      */
     public function inquireTransactionStatus(string $referenceNo, ?string $transactionId = null): array
     {
-        return $this->provider->topupStatusInquiry($referenceNo, $transactionId);
+        return $this->transactionStatus->inquire($referenceNo, $transactionId);
     }
 
     /**

@@ -427,7 +427,7 @@ $financeData = $recaps->map(function ($c) {
                                         </button>
                                     </form>
                                 </div>
-                            @elseif($wd->status === 'approved')
+                            @elseif($wd->status === 'approved' && $providerName !== 'OVO')
                                 <form action="{{ route('admin.ci-work.finance.withdrawal.update', $wd->id) }}" method="POST" class="inline-block"
                                     onsubmit="return confirm('Tandai penarikan {{ fin($wd->amount) }} telah selesai ditransfer?')">
                                     @csrf
@@ -435,6 +435,14 @@ $financeData = $recaps->map(function ($c) {
                                     <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1" title="Tandai Selesai">
                                         <span class="material-symbols-outlined text-[14px] text-emerald-600">task_alt</span>
                                         <span>Tandai Selesai</span>
+                                    </button>
+                                </form>
+                            @elseif($providerName === 'OVO' && !$wd->isTerminal())
+                                <form action="{{ route('admin.ci-work.finance.withdrawal.check', $wd->id) }}" method="POST" class="inline-block">
+                                    @csrf
+                                    <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1" title="Verifikasi status resmi transaksi via API OVO (topup-status). Hasil OVO-lah yang memfinalkan status.">
+                                        <span class="material-symbols-outlined text-[14px] text-[#4c3494]">sync</span>
+                                        <span>Cek Status OVO</span>
                                     </button>
                                 </form>
                             @else

@@ -795,6 +795,11 @@ class CiWorkController extends Controller
 
     /**
      * Update withdrawal status.
+     *
+     * Keamanan: transaksi OVO tidak boleh ditandai 'completed' secara manual —
+     * hasil final HARUS diverifikasi lewat API OVO (action 'Cek Status OVO').
+     * Penandaaan manual hanya tersedia untuk transaksi legacy (provider dana)
+     * yang memang diselesaikan via transfer manual.
      */
     public function updateWithdrawalStatus(Request $request, $id)
     {
@@ -804,18 +809,62 @@ class CiWorkController extends Controller
         ]);
 
         $withdrawal = \App\Models\Withdrawal::findOrFail($id);
-        
+
+        $provider = strtolower((string) ($withdrawal->provider ?? 'ovo'));
+
+        if ($request->status === 'completed' && $provider === 'ovo') {
+            return back()->with('error', 'Penarikan OVO tidak boleh ditandai selesai secara manual. Gunakan tombol "Cek Status OVO" untuk memverifikasi status resmi dari API OVO.');
+        }
+
+        $wasOnHold = in_array($withdrawal->status, ['pending', 'reserved'], true);
+        $status = $request->status;
+
         $updateData = [
-            'status' => $request->status,
+            'status' => $status,
             'admin_notes' => $request->admin_notes,
         ];
 
-        if ($request->status !== 'pending') {
+        if ($status !== 'pending') {
             $updateData['processed_at'] = now();
         }
 
-        $withdrawal->update($updateData);
+        if ($status === 'rejected') {
+            $updateData['failure_reason'] = $request->admin_notes ?? 'Ditolak oleh admin';
+        }
+
+        DB::transaction(function () use ($withdrawal, $updateData, $wasOnHold, $status) {
+            $withdrawal->update($updateData);
+
+            // Penolakan sebelum dana dikirim -> kembalikan saldo yang tertahan
+            if ($status === 'rejected' && $wasOnHold) {
+                (new \App\Services\WalletService())->releaseReservation(
+                    $withdrawal->courier_id,
+                    (float) $withdrawal->amount,
+                    (string) $withdrawal->idempotency_key,
+                );
+            }
+        });
 
         return back()->with('success', 'Status penarikan berhasil diperbarui.');
+    }
+
+    /**
+     * Verifikasi status penarikan langsung ke API penyedia (OVO).
+     * Ini satu-satunya cara untuk memfinalkan hasil transaksi OVO di panel admin.
+     */
+    public function checkWithdrawalStatus(Request $request, $id)
+    {
+        $withdrawal = \App\Models\Withdrawal::findOrFail($id);
+
+        $updated = (new \App\Services\WithdrawalService())->checkAndSyncStatus($withdrawal);
+
+        $message = match ($updated->status) {
+            'success'   => 'Terverifikasi OVO: penarikan BERHASIL.',
+            'failed'    => 'Terverifikasi OVO: penarikan GAGAL' . ($updated->failure_reason ? ' — ' . $updated->failure_reason : '') . '. Saldo tertahan dikembalikan.',
+            'processing'=> 'Status OVO masih diproses (pending). Coba cek lagi nanti atau tunggu webhook.',
+            default     => 'Status OVO belum diketahui (unknown). Tunggu konfirmasi resmi dari OVO sebelum bertindak lanjut.',
+        };
+
+        return back()->with('success', $message);
     }
 }
