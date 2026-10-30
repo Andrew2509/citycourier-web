@@ -219,6 +219,9 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->assertSame('123456789012', $response->json('data.va_number'));
         $this->assertSame('99001', $response->json('data.payment_id'));
         $this->assertSame('pending', $response->json('data.status'));
+        // Aplikasi memakai shipment_id untuk membatalkan pesanannya (bukan
+        // hanya transaksi pembayaran) saat tombol Batalkan Pesanan ditekan.
+        $this->assertSame('SHIP-1', (string) $response->json('data.shipment_id'));
 
         $this->assertDatabaseHas('payments', [
             'payment_id'   => '99001',

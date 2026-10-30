@@ -318,6 +318,10 @@ class PaymentController extends Controller
                 'channel_code' => $payment->channel_code,
                 'amount'       => $payment->amount,
                 'status'       => $payment->status,
+                // Pesanan pemilik transaksi: dipakai aplikasi agar tombol
+                // "Batalkan Pesanan" membatalkan pesanan (satu pintu lewat
+                // /shipments/{id}/cancel), bukan hanya menutup pembayaran.
+                'shipment_id'  => $payment->shipment_id,
                 'va_number'    => $payment->va_number,
                 'qr_string'    => $payment->qr_string,
                 'payment_url'  => $payment->payment_url,
@@ -408,6 +412,7 @@ class PaymentController extends Controller
                 'amount'       => $payment->amount,
                 'payment_type' => $payment->payment_type,
                 'channel_code' => $payment->channel_code,
+                'shipment_id'  => $payment->shipment_id,
                 'va_number'    => $payment->va_number,
                 'qr_string'    => $payment->qr_string,
                 'payment_url'  => $payment->payment_url,
