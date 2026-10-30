@@ -17,7 +17,7 @@ return [
     | Base URL API iPaymu
     |--------------------------------------------------------------------------
     | Sandbox: https://sandbox.ipaymu.com
-    | Production: https://api.ipaymu.com
+    | Production: https://my.ipaymu.com
     */
     'base_url' => env('IPAYMU_BASE_URL', 'https://sandbox.ipaymu.com'),
 
