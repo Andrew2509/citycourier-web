@@ -10,7 +10,9 @@ namespace App\Services;
  * PRD §60: Withdrawal lifecycle
  *
  * Aturan penting:
- * - Kredensial (VA + API Key) hanya dari env (config/ipaymu.php).
+ * - Kredensial (VA + API Key + secret) di-resolve terpusat lewat credentials():
+ *   diprioritaskan dari tabel Settings (Admin > Pengaturan > Provider & Integrasi
+ *   Eksternal → iPaymu), bila kosong memakai env (config/ipaymu.php).
  * - Layanan payout iPaymu memerlukan aktivasi merchant. Jika belum aktif,
  *   service mengembalikan status 'not_configured' sehingga WithdrawalService
  *   MENOLAK permintaan SEBELUM saldo direservasi — tidak ada simulasi sukses.
@@ -29,15 +31,76 @@ class iPaymuService
     private ?string $secretKey;
     private int $timeout;
 
+    /** Cache credentials untuk satu siklus request. */
+    private static ?array $credentialCache = null;
+
     public function __construct(?array $configOverride = null)
     {
-        $cfg = $configOverride ?? [];
-        $this->baseUrl   = rtrim($cfg['base_url'] ?? config('ipaymu.base_url', 'https://sandbox.ipaymu.com'), '/');
-        $this->merchantId = $cfg['merchant_id'] ?? config('ipaymu.merchant_id', '');
-        $this->va        = $cfg['va'] ?? config('ipaymu.va', '');
-        $this->apiKey    = $cfg['api_key'] ?? config('ipaymu.api_key', '');
-        $this->secretKey = $cfg['secret_key'] ?? config('ipaymu.secret_key', '');
-        $this->timeout   = (int) ($cfg['timeout'] ?? config('ipaymu.timeout', 30));
+        $cfg = array_merge(self::credentials(), $configOverride ?? []);
+
+        $this->baseUrl   = rtrim((string) ($cfg['base_url'] ?? 'https://sandbox.ipaymu.com'), '/');
+        $this->merchantId = (string) ($cfg['merchant_id'] ?? '');
+        $this->va        = (string) ($cfg['va'] ?? '');
+        $this->apiKey    = (string) ($cfg['api_key'] ?? '');
+        $this->secretKey = (string) ($cfg['secret_key'] ?? '');
+        $this->timeout   = (int) ($cfg['timeout'] ?? 30);
+    }
+
+    /**
+     * Resolusi kredensial & konfigurasi iPaymu dalam satu tempat.
+     *
+     * Prioritas: tabel Settings (diedit dari Admin > Pengaturan > Provider &
+     * Integrasi Eksternal) → fallback env via config/ipaymu.php. Webhook
+     * controller dan halaman admin memakai fungsi ini juga agar tidak ada
+     * dua sumber kebenaran.
+     *
+     * @return array{base_url:string, merchant_id:string, va:string, api_key:string,
+     *               secret_key:string, payout_enabled:bool, webhook_secret:string, timeout:int}
+     */
+    public static function credentials(): array
+    {
+        if (self::$credentialCache !== null) {
+            return self::$credentialCache;
+        }
+
+        $cfg = config('ipaymu', []);
+        $fallback = [
+            'base_url'       => $cfg['base_url'] ?? 'https://sandbox.ipaymu.com',
+            'merchant_id'    => $cfg['merchant_id'] ?? '',
+            'va'             => $cfg['va'] ?? '',
+            'api_key'        => $cfg['api_key'] ?? '',
+            'secret_key'     => $cfg['secret_key'] ?? '',
+            'payout_enabled' => (bool) ($cfg['payout_enabled'] ?? false),
+            'webhook_secret' => $cfg['webhook_secret'] ?? '',
+            'timeout'        => (int) ($cfg['timeout'] ?? 30),
+        ];
+
+        $string = function (string $key, string $default): string {
+            $value = \App\Models\Setting::get($key, $default);
+            return trim((string) ($value ?? $default));
+        };
+
+        $credentials = [
+            'base_url'       => $string('ipaymu_base_url', $fallback['base_url']),
+            'merchant_id'    => $string('ipaymu_merchant_id', $fallback['merchant_id']),
+            'va'             => $string('ipaymu_va', $fallback['va']),
+            'api_key'        => $string('ipaymu_api_key', $fallback['api_key']),
+            'secret_key'     => $string('ipaymu_secret_key', $fallback['secret_key']),
+            'webhook_secret' => $string('ipaymu_webhook_secret', $fallback['webhook_secret']),
+            'payout_enabled' => filter_var(
+                \App\Models\Setting::get('ipaymu_payout_enabled', $fallback['payout_enabled']),
+                FILTER_VALIDATE_BOOLEAN
+            ),
+            'timeout'        => (int) \App\Models\Setting::get('ipaymu_timeout', $fallback['timeout']),
+        ];
+
+        return self::$credentialCache = $credentials;
+    }
+
+    /** Reset cache credentials (dipakai setelah admin menyimpan pengaturan). */
+    public static function flushCredentialsCache(): void
+    {
+        self::$credentialCache = null;
     }
 
     /** Merchant identity (fallback: va === merchant_id). */
@@ -275,15 +338,20 @@ class iPaymuService
      */
     public static function isConfigured(): bool
     {
-        return !empty(config('ipaymu.api_key')) && !empty(config('ipaymu.merchant_id') ?: config('ipaymu.va'));
+        $cfg = self::credentials();
+
+        return !empty($cfg['api_key']) && !empty($cfg['merchant_id'] ?: $cfg['va']);
     }
 
     /**
      * Check if the PAYOUT service is activated by iPaymu for City Courier.
-     * This requires: credentials + explicit activation flag (IPAYMU_PAYOUT_ENABLED=true).
+     * This requires: credentials + explicit activation flag
+     * (settings `ipaymu_payout_enabled` atau IPAYMU_PAYOUT_ENABLED=true).
      */
     public static function isPayoutActive(): bool
     {
-        return self::isConfigured() && (bool) config('ipaymu.payout_enabled');
+        $cfg = self::credentials();
+
+        return self::isConfigured() && (bool) $cfg['payout_enabled'];
     }
 }

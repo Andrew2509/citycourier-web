@@ -123,6 +123,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/ovo', [\App\Http\Controllers\Admin\SettingController::class, 'updateOvo'])->name('settings.ovo.update');
         Route::post('/settings/ovo/test', [\App\Http\Controllers\Admin\SettingController::class, 'testOvo'])->name('settings.ovo.test');
 
+        Route::get('/settings/ipaymu', [\App\Http\Controllers\Admin\SettingController::class, 'ipaymu'])->name('settings.ipaymu');
+        Route::post('/settings/ipaymu', [\App\Http\Controllers\Admin\SettingController::class, 'updateIpaymu'])->name('settings.ipaymu.update');
+        Route::post('/settings/ipaymu/test', [\App\Http\Controllers\Admin\SettingController::class, 'testIpaymu'])->name('settings.ipaymu.test');
+
 
         // Drop Points
         Route::get('drop-points/export', [\App\Http\Controllers\Admin\DropPointController::class, 'exportCsv'])->name('drop-points.export');

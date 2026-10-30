@@ -61,7 +61,127 @@ class SettingController extends Controller
             'private_key'   => Setting::get('ovo_private_key', ''),
         ];
 
-        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo'));
+        $ipaymu = \App\Services\iPaymuService::credentials();
+        $ipaymu['webhook_url'] = url('/api/ipaymu/webhook');
+
+        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo', 'ipaymu'));
+    }
+
+    // iPaymu (Payout/Disbursement) Settings
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Show iPaymu settings form.
+     * Nilai default diambil dari credentials() (Settings DB → fallback env).
+     */
+    public function ipaymu()
+    {
+        $settings = \App\Services\iPaymuService::credentials();
+        $settings['webhook_url'] = url('/api/ipaymu/webhook');
+
+        return view('admin.settings.ipaymu', compact('settings'));
+    }
+
+    /**
+     * Update iPaymu settings (disimpan ke tabel Settings).
+     */
+    public function updateIpaymu(Request $request)
+    {
+        $request->validate([
+            'ipaymu_base_url'  => 'required|url',
+            'ipaymu_va'        => 'required|string|max:64',
+            'ipaymu_api_key'   => 'required|string|min:8',
+            'ipaymu_timeout'   => 'nullable|integer|min:5|max:120',
+        ]);
+
+        Setting::set('ipaymu_base_url', $request->ipaymu_base_url, 'ipaymu');
+        Setting::set('ipaymu_va', $request->ipaymu_va, 'ipaymu');
+        Setting::set('ipaymu_api_key', trim($request->ipaymu_api_key), 'ipaymu');
+        Setting::set(
+            'ipaymu_payout_enabled',
+            $request->boolean('ipaymu_payout_enabled') ? '1' : '0',
+            'ipaymu'
+        );
+        Setting::set('ipaymu_timeout', (string) ($request->ipaymu_timeout ?? 30), 'ipaymu');
+
+        // merchant_id & secret bersifat sensitif: hanya ditimpa bila memang
+        // dikirim, supaya simpan cepat tidak menghapus nilai yang sudah ada.
+        foreach (['ipaymu_merchant_id', 'ipaymu_secret_key', 'ipaymu_webhook_secret'] as $sensitiveKey) {
+            if ($request->has($sensitiveKey)) {
+                Setting::set($sensitiveKey, trim((string) $request->input($sensitiveKey, '')), 'ipaymu');
+            }
+        }
+
+        \App\Services\iPaymuService::flushCredentialsCache();
+
+        return redirect()->back()->with('success', 'Pengaturan iPaymu berhasil diperbarui.');
+    }
+
+    /**
+     * Test koneksi iPaymu via inquiry transaksi dummy.
+     * Menerima kredensial lewat request agar admin bisa test SEBELUM menyimpan.
+     */
+    public function testIpaymu(Request $request)
+    {
+        try {
+            $current = \App\Services\iPaymuService::credentials();
+
+            $override = [
+                'base_url'   => trim((string) ($request->input('ipaymu_base_url') ?: $current['base_url'])),
+                'va'         => trim((string) ($request->input('ipaymu_va') ?: $current['va'])),
+                'merchant_id' => trim((string) ($request->input('ipaymu_merchant_id') ?: $current['merchant_id'])),
+                'api_key'    => trim((string) ($request->input('ipaymu_api_key') ?: $current['api_key'])),
+                'secret_key' => $request->filled('ipaymu_secret_key')
+                    ? trim((string) $request->input('ipaymu_secret_key'))
+                    : $current['secret_key'],
+                'timeout'    => (int) ($request->input('ipaymu_timeout') ?: $current['timeout']),
+            ];
+
+            if (empty($override['api_key']) || empty($override['va'] ?: $override['merchant_id'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'API Key dan VA iPaymu wajib diisi sebelum test koneksi.',
+                ], 422);
+            }
+
+            $service = new \App\Services\iPaymuService($override);
+            $result = $service->inquire('CITY-COURIER-TEST-CONNECTION-' . time());
+
+            $httpCode = $result['raw']['http_code'] ?? 0;
+            $errorMessage = strtolower((string) ($result['error'] ?? ''));
+
+            // Server merespons dengan HTTP < 400 → request tersambung dan
+            // tanda tangan diterima. Transaksi dummy memang tidak ada, dan
+            // itu bukan kegagalan koneksi.
+            if (($result['raw']['reachable'] ?? false) && $httpCode > 0 && $httpCode < 400) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons (HTTP {$httpCode}) dan tanda tangan API diterima.",
+                    'data'    => $result,
+                ]);
+            }
+
+            // Bedakan error autentikasi dari penolakan biasa.
+            $isAuthIssue = str_contains($errorMessage, 'sign') ||
+                str_contains($errorMessage, 'api key') ||
+                str_contains($errorMessage, 'apikey') ||
+                str_contains($errorMessage, 'unauthorized') ||
+                str_contains($errorMessage, 'auth') ||
+                $httpCode === 401 || $httpCode === 403;
+
+            return response()->json([
+                'success' => false,
+                'message' => $isAuthIssue
+                    ? 'Server iPaymu menolak kredensial. Periksa API Key, VA, atau mode sandbox/production.'
+                    : 'Koneksi Gagal: ' . ($result['error'] ?? 'Tidak dapat menghubungi server iPaymu.'),
+                'data'    => $result,
+            ], $isAuthIssue ? 401 : 400);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

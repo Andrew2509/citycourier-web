@@ -302,6 +302,87 @@
             </div>
         </div>
 
+        {{-- KARTU: iPaymu Payout (Disbursement Pencairan Kurir) --}}
+        <div class="card flex flex-col justify-between border-slate-200">
+            <div>
+                <div class="card-header">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-orange-50 text-orange-700">
+                            <span class="material-symbols-outlined text-[20px]">payments</span>
+                        </div>
+                        <div>
+                            <div class="card-title">iPaymu Payout (Pencairan Kurir)</div>
+                            <div class="card-subtitle">Disbursement saldo kurir ke akun DANA via iPaymu</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="badge {{ ($ipaymu['payout_enabled'] ?? false) ? 'badge-green' : 'badge-amber' }}">
+                            {{ ($ipaymu['payout_enabled'] ?? false) ? 'Payout Aktif' : 'Payout Nonaktif' }}
+                        </span>
+                        <span class="badge {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'badge-indigo' : 'badge-green' }}">
+                            {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'SANDBOX' : 'PRODUCTION' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body space-y-3">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Gateway pencairan saldo kurir ke DANA (tanpa binding: kurir memasukkan nomor tujuan saat penarikan). Status penarikan hanya "Berhasil" bila dikonfirmasi resmi oleh iPaymu.
+                    </p>
+
+                    <form method="POST" action="{{ route('admin.settings.ipaymu.update') }}" class="space-y-3 pt-1">
+                        @csrf
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">API Base URL</label>
+                                <input type="text"
+                                       name="ipaymu_base_url"
+                                       value="{{ $ipaymu['base_url'] ?? 'https://sandbox.ipaymu.com' }}"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Virtual Account (VA)</label>
+                                <input type="text"
+                                       name="ipaymu_va"
+                                       value="{{ $ipaymu['va'] ?? '' }}"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label text-xs">API Key</label>
+                            <input type="password"
+                                   name="ipaymu_api_key"
+                                   value="{{ $ipaymu['api_key'] ?? '' }}"
+                                   autocomplete="off"
+                                   class="form-input font-mono text-xs">
+                        </div>
+
+                        {{-- Nilai sensitif dipertahankan agar simpan cepat tidak menghapus secret tersimpan --}}
+                        <input type="hidden" name="ipaymu_merchant_id" value="{{ $ipaymu['merchant_id'] ?? '' }}">
+                        <input type="hidden" name="ipaymu_secret_key" value="{{ $ipaymu['secret_key'] ?? '' }}">
+                        <input type="hidden" name="ipaymu_webhook_secret" value="{{ $ipaymu['webhook_secret'] ?? '' }}">
+                        <label class="text-xs flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="ipaymu_payout_enabled" value="1"
+                                   {{ ($ipaymu['payout_enabled'] ?? false) ? 'checked' : '' }}
+                                   class="h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                            <span class="text-slate-600">Aktifkan Payout (setelah iPaymu konfirmasi aktivasi merchant)</span>
+                        </label>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <a href="{{ route('admin.settings.ipaymu') }}" class="text-xs text-orange-700 hover:underline font-medium inline-flex items-center gap-1">
+                                Konfigurasi Lengkap iPaymu (secret, webhook, dsb.) &rarr;
+                            </a>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                Simpan iPaymu
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         {{-- KARTU 4: Tarif RajaOngkir / Ekspedisi --}}
         <div class="card flex flex-col justify-between">
             <div>

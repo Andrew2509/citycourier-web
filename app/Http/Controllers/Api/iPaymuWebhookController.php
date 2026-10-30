@@ -31,7 +31,7 @@ class iPaymuWebhookController extends Controller
 
     public function handle(\Illuminate\Http\Request $request): JsonResponse
     {
-        $secret = (string) config('ipaymu.webhook_secret');
+        $secret = (string) (iPaymuService::credentials()['webhook_secret'] ?? '');
 
         // ── 1. Validasi signature (wajib bila secret dikonfigurasi) ──
         if ($secret !== '') {
