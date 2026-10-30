@@ -14,7 +14,7 @@
                     Gateway Operasional
                 </span>
             </div>
-            <p class="page-subtitle">Pusat orkestrasi integrasi gateway WhatsApp Fonnte, peta geolokasi, pembayaran digital, dan tarif ongkir.</p>
+            <p class="page-subtitle">Pusat orkestrasi integrasi gateway WhatsApp Fonnte, peta geolokasi, pembayaran digital (DANA), dan tarif ongkir.</p>
         </div>
     </div>
 
@@ -148,7 +148,87 @@
             </div>
         </div>
 
-        {{-- KARTU 3: OVO SNAP (Pencairan Dompet Kurir) --}}
+        {{-- KARTU 3: DANA WIDGET BINDING (Metode Pencairan Aktif) --}}
+        <div class="card flex flex-col justify-between border-sky-200">
+            <div>
+                <div class="card-header">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-sky-50 text-sky-700">
+                            <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                        </div>
+                        <div>
+                            <div class="card-title">DANA Widget Binding (Pencairan Kurir)</div>
+                            <div class="card-subtitle">Metode pencairan aktif: penghubungan akun &amp; disbursement DANA</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-green">Aktif</span>
+                        <span class="badge {{ ($dana['mode'] ?? 'mock') === 'production' ? 'badge-green' : (($dana['mode'] ?? 'mock') === 'sandbox' ? 'badge-indigo' : 'badge-amber') }}">
+                            {{ strtoupper($dana['mode'] ?? 'MOCK') }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body space-y-3">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Menghubungkan akun DANA kurir (Widget Binding / Deeplink Binding) dan mencairkan saldo pendapatan ke akun DANA kurir.
+                    </p>
+
+                    <form method="POST" action="{{ route('admin.settings.dana.update') }}" class="space-y-3 pt-1">
+                        @csrf
+
+                        {{-- Dipertahankan agar simpan cepat tidak mengubah callback URL yang terdaftar di DANA --}}
+                        <input type="hidden" name="dana_callback_url" value="{{ $dana['callback_url'] ?? url('/api/courier/dana/callback') }}">
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">Mode Lingkungan</label>
+                                <select name="dana_mode" class="form-select text-xs">
+                                    <option value="mock" {{ ($dana['mode'] ?? '') === 'mock' ? 'selected' : '' }}>Mock / Simulasi</option>
+                                    <option value="sandbox" {{ ($dana['mode'] ?? '') === 'sandbox' ? 'selected' : '' }}>Sandbox DANA</option>
+                                    <option value="production" {{ ($dana['mode'] ?? '') === 'production' ? 'selected' : '' }}>Production Live</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">API Base URL</label>
+                                <input type="text"
+                                       name="dana_api_base_url"
+                                       value="{{ $dana['api_base_url'] ?? 'https://api.sandbox.dana.id' }}"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">Client ID</label>
+                                <input type="text"
+                                       name="dana_client_id"
+                                       value="{{ $dana['client_id'] ?? '' }}"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Merchant ID</label>
+                                <input type="text"
+                                       name="dana_merchant_id"
+                                       value="{{ $dana['merchant_id'] ?? '' }}"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <a href="{{ route('admin.settings.dana') }}" class="text-xs text-sky-700 hover:underline font-medium inline-flex items-center gap-1">
+                                Konfigurasi Lengkap DANA (private key, dsb.) &rarr;
+                            </a>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                Simpan DANA
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- KARTU 4: OVO SNAP (Arsip — nonaktif) --}}
         <div class="card flex flex-col justify-between border-purple-200">
             <div>
                 <div class="card-header">
@@ -157,8 +237,8 @@
                             <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
                         </div>
                         <div>
-                            <div class="card-title">OVO SNAP (Pencairan Kurir)</div>
-                            <div class="card-subtitle">Integrasi disbursement OVO SNAP B2B untuk dompet kurir</div>
+                            <div class="card-title">OVO SNAP (Arsip &mdash; Nonaktif)</div>
+                            <div class="card-subtitle">Disimpan untuk riwayat transaksi; pencairan baru memakai DANA</div>
                         </div>
                     </div>
                     <span class="badge {{ ($ovo['mode'] ?? 'mock') === 'production' ? 'badge-green' : 'badge-amber' }}">

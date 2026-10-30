@@ -433,11 +433,16 @@ class SettingController extends Controller
         Setting::set('dana_mode', $request->dana_mode, 'dana');
         Setting::set('dana_api_base_url', $request->dana_api_base_url, 'dana');
         Setting::set('dana_client_id', $request->dana_client_id, 'dana');
-        Setting::set('dana_client_secret', $request->dana_client_secret ?? '', 'dana');
         Setting::set('dana_merchant_id', $request->dana_merchant_id, 'dana');
-        Setting::set('dana_public_key', $request->dana_public_key ?? '', 'dana');
-        Setting::set('dana_private_key', $request->dana_private_key ?? '', 'dana');
         Setting::set('dana_callback_url', $request->dana_callback_url, 'dana');
+
+        // Kredensial sensitif hanya ditimpa bila memang dikirim, supaya simpan
+        // cepat dari halaman Providers tidak menghapus private key yang sudah ada.
+        foreach (['dana_client_secret', 'dana_public_key', 'dana_private_key'] as $sensitiveKey) {
+            if ($request->has($sensitiveKey)) {
+                Setting::set($sensitiveKey, (string) $request->input($sensitiveKey, ''), 'dana');
+            }
+        }
 
         return redirect()->back()->with('success', 'Pengaturan Provider DANA berhasil diperbarui.');
     }
