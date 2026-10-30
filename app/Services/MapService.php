@@ -316,7 +316,7 @@ class MapService
 
         // Nominatim mewajibkan User-Agent yang jelas (kebijakan penggunaan).
         $response = Http::withHeaders([
-            'User-Agent' => 'CityCourierApp/1.0 (https://citycourier.pabm.space)',
+            'User-Agent' => 'CityCourierApp/1.0 (https://www.neonflux.my.id)',
         ])->get('https://nominatim.openstreetmap.org/search', $params);
 
         if ($response->successful()) {

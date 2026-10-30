@@ -43,7 +43,7 @@ info:
 servers:
   - url: /api
     description: Server Aktif (Auto-detect)
-  - url: https://citycourier.pabm.space/api
+  - url: https://www.neonflux.my.id/api
     description: Production
   - url: http://127.0.0.1:8000/api
     description: Local development

@@ -400,7 +400,7 @@ class Shipment extends Model
     {
         $baseUrl = rtrim(\App\Models\Setting::get('app_url', config('app.url')), '/');
         if (empty($baseUrl) || $baseUrl === 'http://localhost') {
-            $baseUrl = 'https://citycourier.pabm.space';
+            $baseUrl = 'https://www.neonflux.my.id';
         }
         return $baseUrl . '/track/' . ($this->tracking_number ?? $this->shipment_number);
     }
@@ -409,7 +409,7 @@ class Shipment extends Model
     {
         $baseUrl = rtrim(\App\Models\Setting::get('app_url', config('app.url')), '/');
         if (empty($baseUrl) || $baseUrl === 'http://localhost') {
-            $baseUrl = 'https://citycourier.pabm.space';
+            $baseUrl = 'https://www.neonflux.my.id';
         }
         return $baseUrl . '/track/' . ($this->tracking_number ?? $this->shipment_number) . '/qrcode.png';
     }

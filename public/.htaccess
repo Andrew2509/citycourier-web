@@ -5,6 +5,17 @@
 
     RewriteEngine On
 
+    # Force www untuk domain produksi (neonflux.my.id → www.neonflux.my.id).
+    # Hanya aktif bila host adalah versi non-www dari domain tersebut sehingga
+    # tidak memengaruhi akses lokal (localhost / subdomain lain).
+    RewriteCond %{HTTP_HOST} ^neonflux\.my\.id$
+    RewriteRule ^(.*)$ https://www.neonflux.my.id/$1 [R=301,L]
+
+    # Force HTTPS untuk www.neonflux.my.id bila request masih HTTP.
+    RewriteCond %{HTTP_HOST} ^(www\.)?neonflux\.my\.id$
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://www.neonflux.my.id/$1 [R=301,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

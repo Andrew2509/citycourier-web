@@ -17,7 +17,7 @@ class GeocodingController extends Controller
 {
     private const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
     private const PHOTON_BASE = 'https://photon.komoot.io';
-    private const USER_AGENT = 'CityCourierBackend/1.0 (https://citycourier.pabm.space)';
+    private const USER_AGENT = 'CityCourierBackend/1.0 (https://www.neonflux.my.id)';
     private const TIMEOUT = 15;
     private const SEARCH_CACHE_TTL = 300;
     private const REVERSE_CACHE_TTL = 600;
