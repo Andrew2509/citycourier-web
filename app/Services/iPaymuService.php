@@ -183,7 +183,7 @@ class iPaymuService
             'description' => 'Penarikan saldo kurir City Courier',
         ];
 
-        $body = json_encode($payload);
+        $body = $this->encodeBody($payload);
         $raw = $this->call('POST', $path, $body);
         return $this->interpretResponse($raw);
     }
@@ -206,7 +206,7 @@ class iPaymuService
         // Cek status transaksi iPaymu v2: POST {base}/api/v2/transaction
         // dengan body {"transactionId": "..."} (docs.ipaymu.com → check-transaction).
         $path = (string) config('ipaymu.inquiry_path', '/api/v2/transaction');
-        $body = json_encode(['transactionId' => (string) $transactionId]);
+        $body = $this->encodeBody(['transactionId' => (string) $transactionId]);
         $raw = $this->call('POST', $path, $body);
         return $this->interpretResponse($raw);
     }
@@ -232,9 +232,28 @@ class iPaymuService
     public function createDirectPayment(array $payload): array
     {
         $path = (string) config('ipaymu.payment_direct_path', '/api/v2/payment/direct');
-        $body = json_encode($payload);
+        $body = $this->encodeBody($payload);
         $raw = $this->call('POST', $path, $body);
         return $this->normalizeEnvelope($raw);
+    }
+
+    /**
+     * Encode body JSON persis seperti sample resmi iPaymu
+     * (ipaymu-payment-v2-sample-php): `json_encode($body, JSON_UNESCAPED_SLASHES)`.
+     *
+     * PENTING: body yang di-hash untuk signature harus byte-identik dengan body
+     * yang dikirim. Tanpa JSON_UNESCAPED_SLASHES, URL (notifyUrl) ter-encode
+     * menjadi `https:\/\/...` sehingga hash berbeda dari yang dihitung iPaymu
+     * dan request ditolak dengan "unauthorized signature".
+     */
+    private function encodeBody(array $payload): string
+    {
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            // Fallback aman: JSON minimal agar signature tetap konsisten.
+            return '{}';
+        }
+        return $json;
     }
 
     /**

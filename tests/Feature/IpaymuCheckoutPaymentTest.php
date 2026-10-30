@@ -478,6 +478,34 @@ class IpaymuCheckoutPaymentTest extends TestCase
 
         $this->assertSame($expected, $signature);
     }
+
+    /**
+     * Body POST harus byte-identik dengan yang di-hash. Sample resmi memakai
+     * json_encode($body, JSON_UNESCAPED_SLASHES) — URL tidak boleh menjadi
+     * `https:\/\/...`, jika tidak iPaymu menolak "unauthorized signature".
+     */
+    public function test_encode_body_keeps_urls_unescaped(): void
+    {
+        $svc = new iPaymuService([
+            'base_url' => 'https://sandbox.ipaymu.com',
+            'va'       => '1179000899',
+            'api_key'  => 'QbGcoO0Qds9sQFDmY0MWg1Tq.xtuh1',
+            'timeout'  => 10,
+        ]);
+
+        $ref = new \ReflectionMethod(iPaymuService::class, 'encodeBody');
+        $ref->setAccessible(true);
+
+        $body = $ref->invoke($svc, [
+            'amount'    => 13300,
+            'notifyUrl' => 'https://www.neonflux.my.id/api/ipaymu/callback',
+            'referenceId' => 'REF-1',
+        ]);
+
+        $this->assertStringContainsString('https://www.neonflux.my.id/api/ipaymu/callback', $body);
+        $this->assertStringNotContainsString('\\/', $body);
+        $this->assertNotFalse(json_decode($body, true));
+    }
 }
 
 // ──────────────────────────────────────────────────────────────
