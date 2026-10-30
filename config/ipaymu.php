@@ -59,6 +59,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Path Endpoint Inquiry Nama Akuntujuan (DANA Name Inquiry)
+    |--------------------------------------------------------------------------
+    | Endpoint penyedia payout biasanya menyediakan "account name inquiry":
+    | cek nama pemilik nomor e-wallet tujuan SEBELUM uang dikirim. Endpoint
+    | ini BELUM ada di dokumentasi publik iPaymu v2 → default KOSONG dan
+    | fitur preview nama di aplikasi otomatis menampilkan "belum tersedia".
+    | Begitu iPaymu mengaktifkan layanan payout dan memberikan spesifiknya,
+    | isi PATH ini (mis. /api/v2/disbursement/inquiry-account) tanpa mengubah
+    | kode — UI Flutter langsung menyala. Payload dikirim (dinormalisasi
+    | ke bentuk 628…): {"account": "62812xxxx"}; respons dibaca fleksibel.
+    */
+    'inquiry_account_path' => env('IPAYMU_INQUIRY_ACCOUNT_PATH', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Webhook
     |--------------------------------------------------------------------------
     | Secret untuk memvalidasi callback dari iPaymu. Jika belum di-set,

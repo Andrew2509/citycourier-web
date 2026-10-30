@@ -204,6 +204,95 @@ class iPaymuService
         return $this->interpretResponse($raw);
     }
 
+    /**
+     * Inquiry nama pemilik akun e-wallet tujuan (DANA name inquiry).
+     *
+     * Endpoint-nya TIDAK ada di dokumentasi publik iPaymu v2 → path dibuat
+     * configurable (ipaymu.inquiry_account_path) dan default kosong. Selama
+     * belum diisi (atau payout belum aktif), metode ini jujur melapor "not
+     * available" — TIDAK ada nama fiktif, TIDAK ada panggilan API.
+     *
+     * @param string $phone Nomor DANA tujuan (akan dinormalisasi ke 628…).
+     * @return array{
+     *   available: bool,
+     *   account_name: ?string,
+     *   reason: string,   // ok | not_configured | payout_inactive | endpoint_not_set | lookup_failed
+     *   error: ?string,
+     *   raw: ?array
+     * }
+     */
+    public function inquireAccountName(string $phone): array
+    {
+        $none = [
+            'available'    => false,
+            'account_name' => null,
+            'reason'       => '',
+            'error'        => null,
+            'raw'          => null,
+        ];
+
+        if (!self::isConfigured()) {
+            $none['reason'] = 'not_configured';
+            return $none;
+        }
+
+        if (!self::isPayoutActive()) {
+            // Name inquiry milik keluarga layanan disbursement — tanpa
+            // aktivasi payout, iPaymu pasti menolak; jangan panggil percuma.
+            $none['reason'] = 'payout_inactive';
+            return $none;
+        }
+
+        $path = trim((string) config('ipaymu.inquiry_account_path', ''));
+        if ($path === '') {
+            // iPaymu belum memberikan spec inquiry nama → fitur jujur belum ada.
+            $none['reason'] = 'endpoint_not_set';
+            return $none;
+        }
+
+        $body = json_encode(['account' => $phone]);
+        $raw = $this->call('POST', $path, $body);
+
+        if (!$raw['reachable']) {
+            $none['reason']  = 'lookup_failed';
+            $none['error']   = $raw['error'] ?? 'Tidak dapat menghubungi iPaymu.';
+            return $none;
+        }
+
+        if ($raw['http_code'] >= 400 || $raw['body'] === null) {
+            $none['reason'] = 'lookup_failed';
+            $none['error']  = $raw['error'] ?? ('iPaymu menolak inquiry nama (HTTP ' . $raw['http_code'] . ').');
+            $none['raw']    = $raw['body'];
+            return $none;
+        }
+
+        // Respons dibaca fleksibel sampai spec resmi tersedia:
+        // Data.AccountName / account_name / beneficiary_name / Name / name.
+        $data     = $raw['body'];
+        $dataBlock = $data['Data'] ?? $data['data'] ?? $data;
+        $name     = null;
+        if (is_array($dataBlock)) {
+            $name = $dataBlock['AccountName'] ?? $dataBlock['account_name']
+                ?? $dataBlock['beneficiary_name'] ?? $dataBlock['BeneficiaryName']
+                ?? $dataBlock['Name'] ?? $dataBlock['name'] ?? null;
+        }
+
+        if (!is_string($name) || trim($name) === '') {
+            $none['reason'] = 'lookup_failed';
+            $none['error']  = 'Nama pemilik akun tidak ditemukan pada respons iPaymu.';
+            $none['raw']    = $data;
+            return $none;
+        }
+
+        return [
+            'available'    => true,
+            'account_name' => trim($name),
+            'reason'       => 'ok',
+            'error'        => null,
+            'raw'          => $data,
+        ];
+    }
+
     /** HTTP call via curl. Never throws; returns raw envelope. */
     private function call(string $method, string $path, ?string $body): array
     {

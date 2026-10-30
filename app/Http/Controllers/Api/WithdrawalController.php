@@ -23,6 +23,56 @@ class WithdrawalController extends Controller
     }
 
     /**
+     * GET /api/courier/withdrawals/destination-inquiry?phone=…
+     *
+     * Preview nama pemilik akun DANA tujuan SEBELUM penarikan dikirim.
+     * Sumber kebenaran adalah penyedia payout (iPaymu) — endpoint ini hanya
+     * meneruskan, tidak pernah menebak nama. Selama layanan payout besar
+     * (disbursement) belum diaktifkan iPaymu, responsnya jujur:
+     * { available: false, status: "unavailable" } dan UI Flutter cukup
+     * menampilkan hint netral (bukan error keras).
+     */
+    public function destinationInquiry(Request $request)
+    {
+        $phone = $this->withdrawalService->normalizePhoneNumber(
+            (string) ($request->query('phone') ?? $request->query('phone_number') ?? '')
+        );
+
+        if ($phone === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nomor DANA tidak valid. Gunakan format 08…, 628…, atau 8… (9–13 digit).',
+                'error_code' => 'INVALID_PHONE',
+            ], 422);
+        }
+
+        $result = (new \App\Services\iPaymuService())->inquireAccountName($phone);
+
+        if (!$result['available']) {
+            // Bukan kegagalan form — layanan inquiry memang belum tersedia.
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'available'    => false,
+                    'account_name' => null,
+                    'status'       => $result['reason'], // endpoint_not_set | payout_inactive | not_configured | lookup_failed
+                    'destination'  => $phone,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'available'    => true,
+                'account_name' => $result['account_name'],
+                'status'       => 'ok',
+                'destination'  => $phone,
+            ],
+        ]);
+    }
+
+    /**
      * POST /api/courier/withdrawals
      * Create a withdrawal request to DANA via iPaymu (no binding needed).
      * PRD §19: Withdrawal API

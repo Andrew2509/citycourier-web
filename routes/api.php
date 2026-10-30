@@ -95,6 +95,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('courier/withdrawals')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\WithdrawalController::class, 'index']);
         Route::post('/', [App\Http\Controllers\Api\WithdrawalController::class, 'store']);
+        // Preview nama pemilik DANA tujuan (wajib SEBELUM /{id} agar
+        // "destination-inquiry" tidak tertangkap parameter {id}).
+        Route::get('/destination-inquiry', [App\Http\Controllers\Api\WithdrawalController::class, 'destinationInquiry']);
         // {id}: ID numerik atau idempotency_key (kontrak test/aplikasi lama).
         Route::get('/{id}', [App\Http\Controllers\Api\WithdrawalController::class, 'show']);
         Route::post('/{id}/cancel', [App\Http\Controllers\Api\WithdrawalController::class, 'cancel']);

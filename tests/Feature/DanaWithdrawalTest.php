@@ -644,4 +644,57 @@ class DanaWithdrawalTest extends TestCase
         $this->assertEquals(400000, $balanceFinal['total_balance']);
         $this->assertEquals(500000, $balanceFinal['total_earnings']);
     }
+
+    /**
+     * Skenario 13: Preview nama pemilik DANA tujuan (destination-inquiry)
+     * — selama layanan payout iPaymu belum aktif / spec endpoint belum ada,
+     * endpoint jujur mengembalikan available:false (bukan error, bukan nama fiktif).
+     */
+    public function test_13_destination_inquiry_honestly_unavailable_before_payout_activation(): void
+    {
+        $this->actingCourier();
+
+        $response = $this->getJson('/api/courier/withdrawals/destination-inquiry?phone=081234567890');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.available', false)
+            ->assertJsonPath('data.destination', '6281234567890')
+            ->assertJsonPath('data.account_name', null);
+
+        // Status jujur: payout default tidak aktif → tidak pernah memanggil API.
+        $this->assertContains($response->json('data.status'), ['payout_inactive', 'not_configured', 'endpoint_not_set']);
+    }
+
+    /**
+     * Skenario 14: Nomor DANA tidak valid ditolak destination-inquiry (422).
+     */
+    public function test_14_destination_inquiry_rejects_invalid_phone(): void
+    {
+        $this->actingCourier();
+
+        $this->getJson('/api/courier/withdrawals/destination-inquiry?phone=0812')
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('error_code', 'INVALID_PHONE');
+
+        // Tanpa parameter → juga 422, bukan 500.
+        $this->getJson('/api/courier/withdrawals/destination-inquiry')
+            ->assertStatus(422);
+    }
+
+    /**
+     * Skenario 15: inquireAccountName() tanpa config mengembalikan reason jelas.
+     */
+    public function test_15_inquire_account_name_reports_reason_without_calling_api(): void
+    {
+        $service = new \App\Services\iPaymuService();
+
+        $result = $service->inquireAccountName('6281234567890');
+
+        $this->assertFalse($result['available']);
+        $this->assertNull($result['account_name']);
+        $this->assertContains($result['reason'], ['not_configured', 'payout_inactive', 'endpoint_not_set']);
+        $this->assertNull($result['raw']);
+    }
 }
