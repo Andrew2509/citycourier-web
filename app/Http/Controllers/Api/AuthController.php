@@ -301,9 +301,11 @@ class AuthController extends Controller
             ['phone' => $phone],
             [
                 'name' => 'User ' . substr($phone, -4),
-                // Jangan pakai domain reserved: iPaymu menolak email
-                // `@citycourier.local` sebagai "Suspicious buyer".
-                'email' => BuyerIdentity::email(null, null, BuyerIdentity::phone($phone)),
+                // Nomor telepon dipertahankan di sini agar kolom email yang
+                // UNIQUE tetap unik per pengguna. Domain reserved dihindari.
+                // Checkout iPaymu TIDAK memakai alamat ini (dianggap alamat
+                // hasil generate) — lihat App\Services\BuyerIdentity.
+                'email' => 'pelanggan' . BuyerIdentity::phone($phone) . '@' . BuyerIdentity::emailDomain(),
                 'password' => Hash::make(Str::random(16)),
                 'role' => 'customer' // default role
             ]

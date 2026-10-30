@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Payment;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Pembayaran Masuk Checkout via iPaymu API v2 (VA & QRIS).
@@ -188,6 +189,17 @@ class IpaymuPaymentService
 
         $res = $this->ipaymu->createDirectPayment($payload);
         if (!$res['success'] || !is_array($res['data'])) {
+            // Simpan payload + respons mentah supaya penolakan seperti
+            // "Suspicious buyer" bisa didiagnosis dari log server, bukan
+            // ditebak dari aplikasi.
+            Log::warning('iPaymu payment/direct ditolak', [
+                'reference' => $payload['referenceId'],
+                'http_code' => $res['http_code'] ?? null,
+                'error'     => $res['error'] ?? null,
+                'provider'  => $res['raw']['body'] ?? $res['raw'] ?? null,
+                'payload'   => $payload,
+            ]);
+
             $none['error'] = $res['error'] ?? 'iPaymu menolak pembayaran.';
             $none['raw'] = $res['raw'];
             return $none;

@@ -66,16 +66,46 @@ class BuyerIdentityTest extends TestCase
 
     public function test_email_falls_back_to_merchant_domain_when_invalid(): void
     {
-        config(['ipaymu.buyer_email_domain' => 'neonflux.my.id']);
+        config(['ipaymu.buyer_email_domain' => 'neonflux.my.id', 'ipaymu.buyer_email' => null]);
 
         $this->assertSame(
             'budi@gmail.com',
             BuyerIdentity::email('budi@gmail.com', '081234567890@citycourier.local', '081234567890')
         );
 
+        // Alamat hasil generate (local-part berisi nomor telepon) tidak dipakai.
         $this->assertSame(
-            'pelanggan.081234567890@neonflux.my.id',
+            'pesanan@neonflux.my.id',
             BuyerIdentity::email('081234567890@citycourier.local', null, '081234567890')
+        );
+    }
+
+    public function test_generated_looking_emails_are_not_usable(): void
+    {
+        $this->assertTrue(BuyerIdentity::isGeneratedLookingEmail('pelanggan.081234567890@neonflux.my.id'));
+        $this->assertFalse(BuyerIdentity::isUsableEmail('pelanggan.081234567890@neonflux.my.id'));
+
+        // Nama pengguna dengan beberapa digit tetap boleh.
+        $this->assertFalse(BuyerIdentity::isGeneratedLookingEmail('budi1234@gmail.com'));
+        $this->assertTrue(BuyerIdentity::isUsableEmail('budi1234@gmail.com'));
+    }
+
+    public function test_configured_merchant_email_is_used_before_generated_address(): void
+    {
+        config([
+            'ipaymu.buyer_email_domain' => 'neonflux.my.id',
+            'ipaymu.buyer_email'        => 'cs@neonflux.my.id',
+        ]);
+
+        $this->assertSame(
+            'cs@neonflux.my.id',
+            BuyerIdentity::email('081234567890@citycourier.local', null, '081234567890')
+        );
+
+        // Email pengguna yang benar-benar valid tetap diutamakan.
+        $this->assertSame(
+            'budi@gmail.com',
+            BuyerIdentity::email('budi@gmail.com', null, '081234567890')
         );
     }
 
@@ -83,6 +113,7 @@ class BuyerIdentityTest extends TestCase
     {
         config(['ipaymu.buyer_email_domain' => null, 'app.url' => 'https://www.neonflux.my.id']);
 
-        $this->assertSame('www.neonflux.my.id', BuyerIdentity::emailDomain());
+        // Prefix `www.` dibuang: alamat email memakai domain apex.
+        $this->assertSame('neonflux.my.id', BuyerIdentity::emailDomain());
     }
 }

@@ -103,6 +103,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Email Buyer Fallback
+    |--------------------------------------------------------------------------
+    | Alamat email NYATA yang dipakai sebagai identitas pembeli bila email
+    | pengguna tidak layak (kosong, domain reserved, atau hasil generate
+    | seperti `pelanggan.0812…@domain`). Isi dengan inbox yang benar-benar
+    | aktif dan terdaftar di akun iPaymu — mis. cs@domain-anda.com. Ini
+    | menghindari penolakan "Suspicious buyer" karena email yang terlihat
+    | dibuat-buat. Kosongkan untuk memakai `pesanan@<buyer_email_domain>`.
+    */
+    'buyer_email' => env('IPAYMU_BUYER_EMAIL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Path Endpoint Inquiry Nama Akuntujuan (DANA Name Inquiry)
     |--------------------------------------------------------------------------
     | Endpoint penyedia payout biasanya menyediakan "account name inquiry":

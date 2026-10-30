@@ -313,7 +313,9 @@ class IpaymuCheckoutPaymentTest extends TestCase
 
         $this->assertSame('Budi Santoso', $buyer['name']);
         $this->assertSame('081298765432', $buyer['phone']);
-        $this->assertSame('pelanggan.081298765432@neonflux.my.id', $buyer['email']);
+        // Email netral tanpa nomor telepon: local-part berisi digit panjang
+        // (`pelanggan.0812…`) juga ditandai iPaymu sebagai buyer mencurigakan.
+        $this->assertSame('pesanan@neonflux.my.id', $buyer['email']);
         $this->assertNotSame($user->email, $buyer['email']);
     }
 

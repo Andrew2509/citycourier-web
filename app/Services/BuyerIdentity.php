@@ -16,8 +16,9 @@ namespace App\Services;
  *
  * Kelas ini merapikan data tersebut menjadi identitas yang wajar. Nomor
  * telepon dinormalisasi ke format lokal `08…`, dan bila email pengguna tidak
- * layak dipakai, dibuat alamat valid pada domain merchant (bukan domain
- * reserved) supaya iPaymu tidak menandainya sebagai pembeli mencurigakan.
+ * layak dipakai, dipakai alamat merchant yang nyata (`IPAYMU_BUYER_EMAIL`)
+ * atau alamat netral `pesanan@<domain>` — bukan alamat hasil generate yang
+ * memuat nomor telepon, karena pola itu juga ditandai iPaymu.
  */
 class BuyerIdentity
 {
@@ -104,11 +105,33 @@ class BuyerIdentity
         return $digits;
     }
 
+    /**
+     * Email yang local-part-nya memuat deret digit panjang (>= 8 digit).
+     *
+     * Pola ini muncul dari email yang dibuat sistem, misalnya
+     * `pelanggan.081234567890@…`. iPaymu membaca pola seperti ini sebagai
+     * identitas hasil generate dan menolaknya sebagai "Suspicious buyer",
+     * jadi email tersebut tidak dipakai sebagai identitas pembeli.
+     */
+    public static function isGeneratedLookingEmail(?string $email): bool
+    {
+        $email = trim((string) $email);
+        $at = strrpos($email, '@');
+        if ($at === false) {
+            return false;
+        }
+
+        return preg_match('/\d{8,}/', substr($email, 0, $at)) === 1;
+    }
+
     /** Email benar-benar bisa dipakai (format valid + domain tidak reserved). */
     public static function isUsableEmail(?string $email): bool
     {
         $email = trim((string) $email);
         if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return false;
+        }
+        if (self::isGeneratedLookingEmail($email)) {
             return false;
         }
 
@@ -130,8 +153,16 @@ class BuyerIdentity
     }
 
     /**
-     * Email buyer: pakai kandidat valid pertama; bila tidak ada, buat alamat
-     * valid pada domain merchant berdasarkan nomor telepon.
+     * Email buyer untuk iPaymu.
+     *
+     * Urutan prioritas:
+     * 1. email asli pembeli/pengguna (bila valid dan bukan hasil generate),
+     * 2. `IPAYMU_BUYER_EMAIL` — alamat nyata milik merchant yang sudah
+     *    terdaftar di dashboard iPaymu (paling aman untuk produksi),
+     * 3. alamat netral `pesanan@<domain merchant>` tanpa nomor telepon.
+     *
+     * Nomor telepon sengaja TIDAK ikut disisipkan ke local-part: local-part
+     * berisi deret digit panjang adalah pola yang ditandai iPaymu.
      */
     public static function email(?string $preferred, ?string $fallback = null, string $phone = ''): string
     {
@@ -141,9 +172,12 @@ class BuyerIdentity
             }
         }
 
-        $local = 'pelanggan' . ($phone !== '' ? '.' . $phone : '');
+        $merchant = trim((string) config('ipaymu.buyer_email', ''));
+        if (self::isUsableEmail($merchant)) {
+            return $merchant;
+        }
 
-        return $local . '@' . self::emailDomain();
+        return 'pesanan@' . self::emailDomain();
     }
 
     /** Domain email fallback: config khusus, atau host dari APP_URL. */
@@ -151,11 +185,22 @@ class BuyerIdentity
     {
         $configured = trim((string) config('ipaymu.buyer_email_domain', ''));
         if ($configured !== '') {
-            return ltrim($configured, '@');
+            return self::normalizeDomain($configured);
         }
 
         $host = parse_url((string) config('app.url'), PHP_URL_HOST);
 
-        return ($host && $host !== 'localhost') ? $host : 'citycourier.app';
+        return ($host && $host !== 'localhost') ? self::normalizeDomain($host) : 'citycourier.app';
+    }
+
+    /**
+     * Buang prefix `www.` dan tanda `@`: alamat email memakai domain apex,
+     * bukan subdomain `www` yang biasanya tidak punya mail exchanger.
+     */
+    private static function normalizeDomain(string $domain): string
+    {
+        $domain = strtolower(ltrim(trim($domain), '@'));
+
+        return str_starts_with($domain, 'www.') ? substr($domain, 4) : $domain;
     }
 }
