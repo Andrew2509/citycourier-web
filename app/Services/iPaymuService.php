@@ -110,25 +110,33 @@ class iPaymuService
     }
 
     /**
-     * Headers Direct API iPaymu v2:
-     * - X-Api-Key : API key merchant
-     * - va        : Virtual account (merchant id)
-     * - timestamp : UNIX time (WIB)
-     * - Sign      : HMAC-SHA256 hex dari "<METHOD> : <requestBody> : <X-Api-Key> : <timestamp>"
+     * Headers API iPaymu v2 — sesuai docs.ipaymu.com (Signature Generation):
+     * - va        : nomor VA merchant dari menu Integration
+     * - timestamp : 14 digit, format YYYYMMDDHHmmss
+     * - signature : HMAC-SHA256(StringToSign, APIKey)
+     *
+     * StringToSign = METHOD + ":" + VA + ":" + RequestBody + ":" + APIKey
+     * - POST: RequestBody = SHA-256 hex (huruf kecil) dari body JSON
+     * - GET : RequestBody = JSON stringified dari query parameters
      */
     private function buildHeaders(string $method, ?string $body = null): array
     {
-        $now = time();
-        $signBase = strtoupper($method) . ' : ' . ($body ?? '') . ' : ' . (string) $this->apiKey . ' : ' . $now;
-        $sign = hash_hmac('sha256', $signBase, (string) $this->apiKey);
+        $method = strtoupper($method);
+        $timestamp = \Illuminate\Support\Carbon::now()->format('YmdHis');
+
+        $requestBody = $method === 'POST'
+            ? hash('sha256', (string) ($body ?? ''))
+            : (string) ($body ?? '');   // GET: body sudah berupa query JSON (dipakai polos)
+
+        $stringToSign = $method . ':' . $this->merchant() . ':' . $requestBody . ':' . (string) $this->apiKey;
+        $signature = hash_hmac('sha256', $stringToSign, (string) $this->apiKey);
 
         return [
             'Content-Type: application/json',
             'Accept: application/json',
-            'X-Api-Key: ' . (string) $this->apiKey,
             'va: ' . $this->merchant(),
-            'timestamp: ' . $now,
-            'Sign: ' . $sign,
+            'timestamp: ' . $timestamp,
+            'signature: ' . $signature,
         ];
     }
 
@@ -158,7 +166,7 @@ class iPaymuService
             ];
         }
 
-        $path = (string) config('ipaymu.disburse_path', '/v2/disbursement');
+        $path = (string) config('ipaymu.disburse_path', '/api/v2/disbursement');
 
         $payload = [
             'channel'     => 'dana',
@@ -188,10 +196,10 @@ class iPaymuService
             ];
         }
 
-        // Cek status transaksi iPaymu v2 adalah POST {base}/api/v2/transaction
-        // dengan body {"trx_id": "..."} — endpoint ini menolak metode GET.
+        // Cek status transaksi iPaymu v2: POST {base}/api/v2/transaction
+        // dengan body {"transactionId": "..."} (docs.ipaymu.com → check-transaction).
         $path = (string) config('ipaymu.inquiry_path', '/api/v2/transaction');
-        $body = json_encode(['trx_id' => $transactionId]);
+        $body = json_encode(['transactionId' => (string) $transactionId]);
         $raw = $this->call('POST', $path, $body);
         return $this->interpretResponse($raw);
     }
@@ -267,20 +275,35 @@ class iPaymuService
             ];
         }
 
-        // iPaymu v2 mengembalikan { "Status": 0, "Data": { ... } } atau polos.
+        // Envelope resmi iPaymu v2: { Status: 200, Success: true, Message, Data: {...} }
         $dataBlock = $data['Data'] ?? $data['data'] ?? $data;
-        $statusNum = is_array($data) ? ($data['Status'] ?? $data['status'] ?? null) : null;
+        $envelopeSuccess = $data['Success'] ?? ($data['success'] ?? true);
 
         $txId = null;
         if (is_array($dataBlock)) {
-            $txId = $dataBlock['transaction_id']
-                ?? $dataBlock['TransactionId']
+            $txId = $dataBlock['TransactionId']
+                ?? $dataBlock['transactionId']
                 ?? $dataBlock['trx_id']
                 ?? $dataBlock['reference_id']
                 ?? null;
         }
 
-        $status = $this->mapRawStatus($dataBlock, $statusNum);
+        // Envelope menyatakan gagal (mis. transaksi tidak ditemukan) padahal
+        // HTTP 200 → perlakukan sebagai penolakan resmi provider.
+        if ($envelopeSuccess === false) {
+            return [
+                'success'        => false,
+                'transaction_id' => is_scalar($txId) ? (string) $txId : null,
+                'status'         => 'failed',
+                'verdict'        => 'known',
+                'error'          => (string) ($data['Message'] ?? 'iPaymu menolak permintaan.'),
+                'raw'            => $data,
+            ];
+        }
+
+        // Status TRANSAKSI ada di Data.Status (kode resmi 0/1/2/3/4/5/6/7/-2) —
+        // envelope Status di level atas (200/400) bukan status transaksi.
+        $status = $this->mapRawStatus($dataBlock, null);
 
         if ($status === null) {
             return [
@@ -323,15 +346,21 @@ class iPaymuService
             return null;
         }
 
-        // Angka status iPaymu: 0 = sukses; 1 = pending; nilai lain umumnya gagal.
-        if (is_int($raw) || (is_string($raw) && ctype_digit($raw))) {
-            return (int) $raw === 0 ? 'success' : ((int) $raw === 1 ? 'pending' : 'failed');
+        // Kode status resmi iPaymu v2 (docs.ipaymu.com → check-transaction):
+        // 0 pending · 1 success · 2 cancelled · 3 refund · 4 error · 5 failed
+        // 6 success (unsettled) · 7 escrow · -2 expired.
+        if (is_int($raw) || (is_string($raw) && (ctype_digit($raw) || $raw === '-2'))) {
+            return match ((int) $raw) {
+                1, 6    => 'success',
+                0, 7    => 'pending',
+                default => 'failed',
+            };
         }
 
         return match (strtolower((string) $raw)) {
             'success', 'paid', 'settled', 'completed', 'berhasil'  => 'success',
             'processing', 'pending', 'queued', 'awaiting', 'diproses', 'menunggu' => 'pending',
-            'expired', 'failed', 'cancelled', 'reversed', 'gagal'  => 'failed',
+            'expired', 'failed', 'cancelled', 'reversed', 'gagal', 'dibatalkan', 'error'  => 'failed',
             default                                                => null,
         };
     }

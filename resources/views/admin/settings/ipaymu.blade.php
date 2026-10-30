@@ -113,7 +113,7 @@
                                    value="{{ old('ipaymu_webhook_secret', $settings['webhook_secret'] ?? '') }}"
                                    autocomplete="off"
                                    class="form-input font-mono text-xs">
-                            <p class="form-help">Bila kosong, webhook hanya dipercaya setelah verifikasi inquiry resmi.</p>
+                            <p class="form-help">Secret callback resmi iPaymu adalah nomor VA kamu (menu Integration). Bila diisi, nilai ini menggantikan VA sebagai secret HMAC callback.</p>
                         </div>
                     </div>
 

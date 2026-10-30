@@ -11,9 +11,16 @@ use Illuminate\Support\Facades\Log;
 /**
  * iPaymu Webhook Controller (publik).
  *
+ * Sesuai docs.ipaymu.com → Callback:
+ * - Header autentikasi: X-Signature (+ X-Timestamp, X-External-ID).
+ * - Secret = nomor VA merchant (kolom "Webhook Secret" di admin bersifat
+ *   override opsional).
+ * - Validasi: normalisasi tipe data → sort keys A→Z → PHP json_encode
+ *   (default meng-escape '/') → HMAC-SHA256 dengan secret → bandingkan.
+ *
  * Tanggung jawab:
- * 1. Validasi signature callback jika IPAYMU_WEBHOOK_SECRET di-set.
- * 2. Terima payload status disbursement dari iPaymu.
+ * 1. Validasi signature callback (wajib bila VA/secret tersedia).
+ * 2. Terima payload status transaksi dari iPaymu.
  * 3. Untuk status FINAL (success/failed), validasi ULANG ke API iPaymu
  *    (inquiry) sebelum saldo dikonfirmasi/dilepas — payload webhook saja
  *    tidak cukup mengubah saldo.
@@ -31,32 +38,49 @@ class iPaymuWebhookController extends Controller
 
     public function handle(\Illuminate\Http\Request $request): JsonResponse
     {
-        $secret = (string) (iPaymuService::credentials()['webhook_secret'] ?? '');
+        $cred = iPaymuService::credentials();
 
-        // ── 1. Validasi signature (wajib bila secret dikonfigurasi) ──
+        // Secret callback resmi iPaymu adalah nomor VA (menu Integration).
+        // "Webhook Secret" di pengaturan admin dipakai sebagai override bila
+        // diisi — misalnya bila merchant memakai callback key terpisah.
+        $secret = ($cred['webhook_secret'] ?? '') !== ''
+            ? (string) $cred['webhook_secret']
+            : (string) ($cred['va'] ?? '');
+
+        // ── 1. Validasi signature (wajib bila VA/secret tersedia) ──
         if ($secret !== '') {
             if (!$this->signatureMatches($request, $secret)) {
                 Log::warning('[iPaymuWebhook] Signature tidak valid', [
                     'ip' => $request->ip(),
+                    'external_id' => $request->headers->get('x-external-id'),
                 ]);
                 return response()->json(['success' => false, 'message' => 'Signature tidak valid.'], 401);
             }
+        } else {
+            Log::warning('[iPaymuWebhook] Callback diterima tanpa VA/secret — validasi dilewati, status akan diverifikasi via inquiry.');
         }
 
         $payload = $request->all();
         Log::info('[iPaymuWebhook] Callback diterima', ['payload' => $payload]);
 
         // ── 2. Identifikasi transaksi ──
-        // Menerima nama field umum iPaymu: transaction_id | trx_id | reference | data.*
-        $transactionId = $payload['transaction_id']
-            ?? $payload['trx_id']
+        // Nama field callback resmi iPaymu: trx_id (id iPaymu) dan
+        // reference_id/referenceId (referensi merchant kita).
+        $transactionId = $payload['trx_id']
+            ?? $payload['transaction_id']
             ?? $payload['TransactionId']
-            ?? $payload['reference']
             ?? $payload['reference_id']
+            ?? $payload['referenceId']
+            ?? $payload['reference']
+            ?? $payload['sid']
             ?? ($payload['data']['transaction_id'] ?? null)
             ?? ($payload['Data']['TransactionId'] ?? null);
 
-        $rawStatus = $payload['status']
+        // status_code numerik resmi diprioritaskan; 'status' teks
+        // ('berhasil'|'pending'|'expired') sebagai fallback.
+        $rawStatus = $payload['status_code']
+            ?? $payload['transaction_status_code']
+            ?? $payload['status']
             ?? $payload['Status']
             ?? $payload['transaction_status']
             ?? ($payload['data']['status'] ?? null)
@@ -69,8 +93,8 @@ class iPaymuWebhookController extends Controller
             ], 422);
         }
 
-        // Normalisasi status: angka iPaymu (0 sukses, 1 pending, lainnya gagal)
-        // maupun masih string ("success", "pending", "failed", ...).
+        // Normalisasi status: kode resmi iPaymu (1/6 sukses, 0/7 pending,
+        // -2 dan lainnya gagal) maupun teks ("berhasil", "pending", ...).
         $normalized = $this->normalizeStatus($rawStatus);
 
         if (!in_array($normalized, ['success', 'failed', 'pending', 'processing'], true)) {
@@ -139,45 +163,91 @@ class iPaymuWebhookController extends Controller
     }
 
     /**
-     * Signature webhook. Mendukung pola umum provider:
-     * - Header X-Callback-Signature / X-Signature / Sign
-     *   = hash('sha256', $secret, body) ATAU body + secret concat HMAC/SHA256.
+     * Validasi X-Signature callback iPaymu (docs.ipaymu.com → Callback):
+     * 1. Ambil data body (JSON atau form-urlencoded).
+     * 2. Normalisasi tipe (trx_id dll → int, is_escrow → bool, additional_info → array).
+     * 3. Sort semua keys A→Z (case-sensitive, seperti PHP ksort).
+     * 4. JSON-encode (PHP default meng-escape '/', sesuai standar iPaymu).
+     * 5. HMAC-SHA256 dengan secret (VA) → bandingkan dengan header.
      */
     private function signatureMatches(\Illuminate\Http\Request $request, string $secret): bool
     {
-        $header = $request->headers->get('x-callback-signature')
-            ?? $request->headers->get('x-signature')
-            ?? $request->headers->get('sign')
-            ?? $request->input('sign');
+        $received = $request->headers->get('x-signature')
+            ?? $request->headers->get('x-callback-signature')
+            ?? '';
 
-        if (empty($header)) {
+        if ($received === '') {
             return false;
         }
 
-        $body = $request->getContent();
-        $candidates = [
-            hash_hmac('sha256', $body, $secret),
-            hash('sha256', $body . $secret),
-            hash('sha256', $secret . $body),
-        ];
+        $normalized = $this->normalizeCallbackData($request);
+        ksort($normalized, SORT_STRING);
 
-        return in_array(strtolower((string) $header), $candidates, true);
+        $json = json_encode($normalized);
+        if ($json === false) {
+            return false;
+        }
+
+        $calculated = hash_hmac('sha256', $json, $secret);
+
+        return hash_equals($calculated, strtolower(trim($received)));
+    }
+
+    /**
+     * Normalisasi tipe data callback sesuai tabel di dokumentasi iPaymu.
+     * Kesalahan tipe pada salah satu field akan membuat hash tidak cocok.
+     */
+    private function normalizeCallbackData(\Illuminate\Http\Request $request): array
+    {
+        $data = $request->json()->all();
+        if (!is_array($data) || empty($data)) {
+            $data = $request->post();
+        }
+        if (!is_array($data)) {
+            return [];
+        }
+
+        $intFields = ['trx_id', 'status_code', 'transaction_status_code', 'paid_off'];
+
+        $result = [];
+        foreach ($data as $key => $value) {
+            if ($key === 'signature') {
+                continue;
+            }
+            if (in_array($key, $intFields, true)) {
+                $result[$key] = is_numeric($value) ? (int) $value : $value;
+            } elseif ($key === 'is_escrow') {
+                $result[$key] = in_array($value, [true, 1, '1', 'true'], true);
+            } elseif ($key === 'additional_info') {
+                $result[$key] = ($value === '[]') ? [] : $value;
+            } else {
+                $result[$key] = is_array($value) ? $value : (string) $value;
+            }
+        }
+
+        if (!array_key_exists('additional_info', $result)) {
+            $result['additional_info'] = [];
+        }
+
+        return $result;
     }
 
     private function normalizeStatus($raw): string
     {
-        if (is_int($raw) || (is_string($raw) && ctype_digit($raw))) {
+        if (is_int($raw) || (is_string($raw) && (ctype_digit($raw) || $raw === '-2'))) {
+            // Kode resmi: 0 pending · 1 success · 2 cancelled · 3 refund
+            // 4 error · 5 failed · 6 success(unsettled) · 7 escrow · -2 expired.
             return match ((int) $raw) {
-                0 => 'success',
-                1 => 'pending',
+                1, 6    => 'success',
+                0, 7    => 'pending',
                 default => 'failed',
             };
         }
 
         return match (strtolower((string) $raw)) {
-            'success', 'paid', 'settled', 'completed' => 'success',
-            'processing', 'pending', 'queued', 'awaiting' => 'processing',
-            'expired', 'failed', 'cancelled', 'reversed' => 'failed',
+            'success', 'paid', 'settled', 'completed', 'berhasil', 'terbayar' => 'success',
+            'processing', 'pending', 'queued', 'awaiting', 'diproses', 'menunggu' => 'processing',
+            'expired', 'failed', 'cancelled', 'reversed', 'gagal', 'dibatalkan', 'error' => 'failed',
             default => 'unknown',
         };
     }
