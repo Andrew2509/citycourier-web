@@ -162,6 +162,18 @@ class SettingController extends Controller
                 || str_contains($providerMsg, 'not found');
             $isRouteNotFound = str_contains($providerMsg, 'could not be found');
 
+            // Respons bisnis "transaksi not found" (iPaymu balas HTTP 400 untuk
+            // error bisnis) tetap membuktikan: server dijangkau, tanda tangan
+            // DAN kredensial diterima — hanya id dummy yang memang tidak ada.
+            if (($result['raw']['reachable'] ?? false) && $httpCode > 0 && $isDataNotFound && !$isRouteNotFound) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons, tanda tangan & kredensial API diterima "
+                        . "(id transaksi dummy memang tidak ditemukan — ini normal dan justru membuktikan koneksi valid).",
+                    'data'    => $result,
+                ]);
+            }
+
             // Server merespons dengan HTTP < 400 → request tersambung dan
             // tanda tangan diterima.
             if (($result['raw']['reachable'] ?? false) && $httpCode > 0 && $httpCode < 400) {
