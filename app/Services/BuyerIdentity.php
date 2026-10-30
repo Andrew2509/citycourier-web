@@ -172,12 +172,27 @@ class BuyerIdentity
             }
         }
 
-        $merchant = trim((string) config('ipaymu.buyer_email', ''));
+        $merchant = self::merchantEmail();
         if (self::isUsableEmail($merchant)) {
             return $merchant;
         }
 
         return 'pesanan@' . self::emailDomain();
+    }
+
+    /**
+     * Email merchant: diisi admin lewat Admin > Pengaturan > Provider &
+     * Integrasi (tabel Settings), fallback ke env IPAYMU_BUYER_EMAIL.
+     * Setting::get aman dipanggil walau database belum siap.
+     */
+    public static function merchantEmail(): string
+    {
+        $setting = \App\Models\Setting::get('ipaymu_buyer_email');
+        if (is_string($setting) && trim($setting) !== '') {
+            return trim($setting);
+        }
+
+        return trim((string) config('ipaymu.buyer_email', ''));
     }
 
     /** Domain email fallback: config khusus, atau host dari APP_URL. */

@@ -117,6 +117,21 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="form-label" for="ipaymu_buyer_email">Email Buyer (fallback)</label>
+                        <input type="email"
+                               name="ipaymu_buyer_email"
+                               id="ipaymu_buyer_email"
+                               value="{{ old('ipaymu_buyer_email', $settings['buyer_email'] ?? '') }}"
+                               placeholder="cs@domain-anda.com"
+                               class="form-input font-mono text-xs">
+                        <p class="form-help">
+                            Email NYATA milik merchant. Dipakai bila email pembeli tidak layak (kosong, domain tanpa
+                            mail server, atau alamat hasil generate) supaya iPaymu tidak menolak transaksi dengan
+                            pesan "Suspicious buyer".
+                        </p>
+                    </div>
+
                     <div class="rounded-lg bg-slate-50 border border-slate-200 p-3">
                         <label class="flex items-center gap-3 cursor-pointer">
                             <input type="checkbox"

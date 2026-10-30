@@ -393,6 +393,34 @@ class IpaymuCheckoutPaymentTest extends TestCase
     }
 
     /**
+     * Email buyer fallback boleh diatur admin (Admin > Provider & Integrasi),
+     * bukan hanya lewat .env, dan dipakai bila email pembeli tidak layak.
+     */
+    public function test_buyer_email_from_admin_setting_is_used(): void
+    {
+        $this->makeConfigured();
+        Setting::create(['key' => 'ipaymu_buyer_email', 'value' => 'cs@citycourier.id', 'group' => 'ipaymu']);
+
+        $user = $this->user(); // email "tester@example.com" = domain reserved
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->createResult = [
+            'success' => true, 'error' => null, 'payment_id' => '99099',
+            'va_number' => '8808123456799', 'qr_string' => null,
+            'payment_url' => null, 'expired_at' => now()->addHours(24)->toIso8601String(),
+            'raw' => null,
+        ];
+
+        $this->postJson('/api/payment/create', [
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bni',
+            'amount'       => 13300,
+        ])->assertStatus(201);
+
+        $this->assertSame('cs@citycourier.id', $this->fakePayment->lastInput['customer']['email']);
+    }
+
+    /**
      * Penolakan provider (mis. "Suspicious buyer") harus mengembalikan data
      * diagnostik: identitas yang dikirim dan jawaban mentah iPaymu.
      */

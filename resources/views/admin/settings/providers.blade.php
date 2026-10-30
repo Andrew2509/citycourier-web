@@ -359,6 +359,20 @@
                                    class="form-input font-mono text-xs">
                         </div>
 
+                        <div>
+                            <label class="form-label text-xs">Email Buyer (fallback)</label>
+                            <input type="email"
+                                   name="ipaymu_buyer_email"
+                                   value="{{ $ipaymu['buyer_email'] ?? '' }}"
+                                   placeholder="cs@domain-anda.com"
+                                   class="form-input font-mono text-xs">
+                            <p class="text-[11px] text-slate-500 leading-relaxed mt-1">
+                                Dipakai bila email pembeli tidak layak (kosong/domain tanpa email/hasil generate).
+                                Isi dengan inbox yang aktif dan terdaftar di iPaymu agar transaksi tidak ditolak
+                                sebagai "Suspicious buyer".
+                            </p>
+                        </div>
+
                         {{-- Nilai sensitif dipertahankan agar simpan cepat tidak menghapus secret tersimpan --}}
                         <input type="hidden" name="ipaymu_merchant_id" value="{{ $ipaymu['merchant_id'] ?? '' }}">
                         <input type="hidden" name="ipaymu_secret_key" value="{{ $ipaymu['secret_key'] ?? '' }}">

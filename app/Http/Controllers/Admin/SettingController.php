@@ -88,10 +88,11 @@ class SettingController extends Controller
     public function updateIpaymu(Request $request)
     {
         $request->validate([
-            'ipaymu_base_url'  => 'required|url',
-            'ipaymu_va'        => 'required|string|max:64',
-            'ipaymu_api_key'   => 'required|string|min:8',
-            'ipaymu_timeout'   => 'nullable|integer|min:5|max:120',
+            'ipaymu_base_url'    => 'required|url',
+            'ipaymu_va'          => 'required|string|max:64',
+            'ipaymu_api_key'     => 'required|string|min:8',
+            'ipaymu_buyer_email' => 'nullable|email|max:150',
+            'ipaymu_timeout'     => 'nullable|integer|min:5|max:120',
         ]);
 
         Setting::set('ipaymu_base_url', $request->ipaymu_base_url, 'ipaymu');
@@ -103,6 +104,9 @@ class SettingController extends Controller
             'ipaymu'
         );
         Setting::set('ipaymu_timeout', (string) ($request->ipaymu_timeout ?? 30), 'ipaymu');
+        // Email nyata yang dipakai bila email pembeli tidak layak;
+        // menghindari penolakan iPaymu "Suspicious buyer".
+        Setting::set('ipaymu_buyer_email', trim((string) $request->input('ipaymu_buyer_email', '')), 'ipaymu');
 
         // merchant_id & secret bersifat sensitif: hanya ditimpa bila memang
         // dikirim, supaya simpan cepat tidak menghapus nilai yang sudah ada.
