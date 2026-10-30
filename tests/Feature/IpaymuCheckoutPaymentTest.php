@@ -262,6 +262,100 @@ class IpaymuCheckoutPaymentTest extends TestCase
         ]);
     }
 
+    public function test_qris_payload_in_url_is_saved_as_qr_string_not_payment_url(): void
+    {
+        // Sebagian respons QRIS iPaymu menaruh payload EMVCo (panjang, bukan
+        // URL) di Data.Url. Kolom payment_url hanya 255 karakter, jadi payload
+        // harus masuk ke qr_string supaya pembuatan pembayaran tidak gagal
+        // dengan "Data too long for column 'payment_url'".
+        $this->makeConfigured();
+
+        $payload = '00020101021226610014ID.CO.QRIS.WWW0118' . str_repeat('9', 300);
+
+        $fake = new class($payload) extends iPaymuService {
+            public function __construct(private string $qrPayload) {}
+
+            public function createDirectPayment(array $payload): array
+            {
+                return [
+                    'success'   => true,
+                    'error'     => null,
+                    'http_code' => 200,
+                    'data'      => [
+                        'TransactionId' => '99003',
+                        'Url'           => $this->qrPayload,
+                        'Expired'       => now()->addHour()->format('Y-m-d H:i:s'),
+                    ],
+                    'raw'       => ['Status' => 200],
+                ];
+            }
+
+            public static function isConfigured(): bool
+            {
+                return true;
+            }
+        };
+
+        $service = new IpaymuPaymentService($fake);
+        $result = $service->createPayment([
+            'payment_type' => 'qris',
+            'channel_code' => 'QRIS',
+            'amount'       => 15800,
+            'reference'    => 'CC-108-TEST',
+            'customer'     => ['name' => 'Tes', 'email' => 'tes@example.com', 'phone' => '081234567890'],
+            'items'        => [['name' => 'Biaya Pengiriman', 'quantity' => 1, 'price' => 15800]],
+            'comments'     => null,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertNull($result['payment_url']);
+        $this->assertSame($payload, $result['qr_string']);
+        $this->assertSame('99003', $result['payment_id']);
+    }
+
+    public function test_qris_short_url_kept_as_payment_url(): void
+    {
+        $this->makeConfigured();
+
+        $fake = new class extends iPaymuService {
+            public function __construct() {}
+
+            public function createDirectPayment(array $payload): array
+            {
+                return [
+                    'success'   => true,
+                    'error'     => null,
+                    'http_code' => 200,
+                    'data'      => [
+                        'TransactionId' => '99004',
+                        'Url'           => 'https://my.ipaymu.com/qris/99004',
+                    ],
+                    'raw'       => ['Status' => 200],
+                ];
+            }
+
+            public static function isConfigured(): bool
+            {
+                return true;
+            }
+        };
+
+        $service = new IpaymuPaymentService($fake);
+        $result = $service->createPayment([
+            'payment_type' => 'qris',
+            'channel_code' => 'QRIS',
+            'amount'       => 15800,
+            'reference'    => 'CC-108-TEST-2',
+            'customer'     => ['name' => 'Tes', 'email' => 'tes@example.com', 'phone' => '081234567890'],
+            'items'        => [['name' => 'Biaya Pengiriman', 'quantity' => 1, 'price' => 15800]],
+            'comments'     => null,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('https://my.ipaymu.com/qris/99004', $result['payment_url']);
+        $this->assertNull($result['qr_string']);
+    }
+
     // ─── 2a. Redirect Payment (cadangan saat Direct diblokir) ────
 
     private function setPaymentMode(string $mode): void

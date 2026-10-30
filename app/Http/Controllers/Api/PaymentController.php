@@ -62,6 +62,38 @@ class PaymentController extends Controller
      */
     public function create(Request $request): JsonResponse
     {
+        // Pembuatan pembayaran tidak boleh berakhir sebagai "Server Error"
+        // tanpa jejak: transaksi iPaymu bisa saja sudah tercipta, sedangkan
+        // penyimpanan lokal gagal. Semua pengecualian dicatat ke log lengkap
+        // dengan konteks, dan klien menerima alasan singkat untuk dilaporkan.
+        try {
+            return $this->createPayment($request);
+        } catch (\Throwable $e) {
+            Log::error('PaymentController: gagal membuat pembayaran', [
+                'user_id'      => optional($request->user())->id,
+                'shipment_id'  => $request->input('shipment_id'),
+                'payment_type' => $request->input('payment_type'),
+                'channel'      => $request->input('channel_code'),
+                'amount'       => $request->input('amount'),
+                'error'        => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat pembayaran di server.',
+                // Bukan kredensial: pesan pengecualian (mis. nama kolom yang
+                // terlalu panjang) supaya masalah bisa langsung diperbaiki.
+                'reason'  => \Illuminate\Support\Str::limit($e->getMessage(), 300),
+            ], 500);
+        }
+    }
+
+    /**
+     * Isi sebenarnya dari POST /api/payment/create (dibungkus create()).
+     */
+    private function createPayment(Request $request): JsonResponse
+    {
         $user = $request->user();
 
         $validator = Validator::make($request->all(), [
@@ -256,7 +288,25 @@ class PaymentController extends Controller
             $paymentData['shipment_id'] = $request->shipment_id;
         }
 
-        $payment = Payment::create($paymentData);
+        try {
+            $payment = Payment::create($paymentData);
+        } catch (\Throwable $e) {
+            // Transaksi iPaymu sudah dibuat; jangan mengubah status apa pun,
+            // catat data yang gagal disimpan agar bisa direkonsiliasi manual.
+            Log::error('PaymentController: pembayaran iPaymu gagal disimpan', [
+                'reference'    => $reference,
+                'payment_data' => $paymentData,
+                'provider'     => $result['raw'] ?? null,
+                'error'        => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Pembayaran dibuat di iPaymu tetapi gagal disimpan di server.',
+                'ref'     => $reference,
+                'reason'  => \Illuminate\Support\Str::limit($e->getMessage(), 300),
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,

@@ -207,6 +207,26 @@ class IpaymuPaymentService
         }
 
         $data = $res['data'];
+
+        // iPaymu kadang mengirim payload QRIS (deretan karakter EMVCo, bukan
+        // URL halaman) pada Data.Url. Kolom payment_url hanya 255 karakter,
+        // sedangkan payload QRIS lebih panjang — bila disimpan di sana MySQL
+        // menolak dengan "Data too long for column 'payment_url'" dan seluruh
+        // pembuatan pembayaran QRIS gagal. Payload seperti itu disimpan
+        // sebagai qr_string (kolom TEXT), bukan sebagai payment_url.
+        $url      = isset($data['Url']) ? trim((string) $data['Url']) : '';
+        $qrString = $this->extractQrString($data);
+
+        if ($url !== '' && !preg_match('#^https?://#i', $url)) {
+            $qrString = $qrString ?: $url;
+            $url = '';
+        }
+
+        $paymentUrl = $url !== '' && strlen($url) <= 255 ? $url : null;
+        if ($paymentUrl === null && $url !== '') {
+            $qrString = $qrString ?: $url;
+        }
+
         return [
             'success'     => true,
             'error'       => null,
@@ -214,8 +234,8 @@ class IpaymuPaymentService
             'va_number'   => isset($data['PaymentNo']) && (string) $data['PaymentNo'] !== ''
                 ? (string) $data['PaymentNo']
                 : null,
-            'qr_string'   => $this->extractQrString($data),
-            'payment_url' => isset($data['Url']) && (string) $data['Url'] !== '' ? (string) $data['Url'] : null,
+            'qr_string'   => $qrString,
+            'payment_url' => $paymentUrl,
             'expired_at'  => isset($data['Expired']) && (string) $data['Expired'] !== ''
                 ? $this->toIso((string) $data['Expired'], $expiresAt)
                 : $expiresAt->toIso8601String(),
