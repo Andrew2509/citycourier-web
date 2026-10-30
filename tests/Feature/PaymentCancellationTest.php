@@ -254,6 +254,7 @@ class PaymentCancellationTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Pesanan berhasil dibatalkan.')
             ->assertJsonPath('payment.status', 'canceled')
             ->assertJsonPath('payment.provider_cancel_api', false)
             ->assertJsonPath('payment.amount', 13300)

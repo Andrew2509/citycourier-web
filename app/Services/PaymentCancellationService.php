@@ -317,10 +317,14 @@ class PaymentCancellationService
         };
     }
 
+    /**
+     * Pesan untuk pelanggan cukup singkat. Detail teknis (iPaymu tanpa API
+     * pembatalan, kode bayar hanya kedaluwarsa sendiri) tetap tersimpan di
+     * metadata pembatalan dan log, jadi tidak perlu ditampilkan di aplikasi.
+     */
     private function providerPendingMessage(): string
     {
-        return 'Pesanan berhasil dibatalkan. iPaymu tidak menyediakan API pembatalan, '
-            . 'jadi kode pembayaran akan kedaluwarsa sendiri dan tidak bisa dipakai lagi.';
+        return 'Pesanan berhasil dibatalkan.';
     }
 
     /** Terjemahan kode status resmi iPaymu untuk tampilan admin. */
