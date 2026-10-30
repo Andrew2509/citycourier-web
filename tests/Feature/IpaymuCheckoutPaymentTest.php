@@ -438,6 +438,46 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $response->assertOk();
         $this->assertDatabaseHas('payments', ['payment_id' => '99003', 'status' => 'paid']);
     }
+
+    // ─── 6. Signature GET (regresi: payment-channels) ───────────
+
+    /**
+     * Sample resmi iPaymu (ipaymu-payment-v2-sample-php/payment_channel.php):
+     *   GET /api/v2/payment-channels
+     *   $requestBody = hash('sha256', '{}')
+     * Sebelumnya kode memakai body mentah '' → "unauthorized signature".
+     */
+    public function test_get_signature_uses_sha256_of_empty_json_object(): void
+    {
+        $va = '1179000899';
+        $apiKey = 'QbGcoO0Qds9sQFDmY0MWg1Tq.xtuh1';
+
+        $svc = new iPaymuService([
+            'base_url' => 'https://sandbox.ipaymu.com',
+            'va'       => $va,
+            'api_key'  => $apiKey,
+            'timeout'  => 10,
+        ]);
+
+        $ref = new \ReflectionMethod(iPaymuService::class, 'buildHeaders');
+        $ref->setAccessible(true);
+        $headers = $ref->invoke($svc, 'GET', '');
+
+        $signature = null;
+        foreach ($headers as $header) {
+            if (str_starts_with($header, 'signature: ')) {
+                $signature = substr($header, strlen('signature: '));
+            }
+        }
+
+        $expected = hash_hmac(
+            'sha256',
+            'GET:' . $va . ':' . hash('sha256', '{}') . ':' . $apiKey,
+            $apiKey
+        );
+
+        $this->assertSame($expected, $signature);
+    }
 }
 
 // ──────────────────────────────────────────────────────────────

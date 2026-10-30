@@ -117,16 +117,23 @@ class iPaymuService
      *
      * StringToSign = METHOD + ":" + VA + ":" + RequestBody + ":" + APIKey
      * - POST: RequestBody = SHA-256 hex (huruf kecil) dari body JSON
-     * - GET : RequestBody = JSON stringified dari query parameters
+     * - GET : RequestBody = SHA-256 hex dari JSON query parameters
+     *         (tanpa query → hash dari '{}', sesuai sample resmi iPaymu
+     *          `payment_channel.php`: hash('sha256', '{}'))
      */
     private function buildHeaders(string $method, ?string $body = null): array
     {
         $method = strtoupper($method);
         $timestamp = \Illuminate\Support\Carbon::now()->format('YmdHis');
 
-        $requestBody = $method === 'POST'
-            ? hash('sha256', (string) ($body ?? ''))
-            : (string) ($body ?? '');   // GET: body sudah berupa query JSON (dipakai polos)
+        if ($method === 'POST') {
+            $requestBody = hash('sha256', (string) ($body ?? ''));
+        } else {
+            // GET: query parameters di-stringify JSON lalu di-hash.
+            // Request tanpa query memakai objek JSON kosong '{}'.
+            $queryJson = ($body === null || $body === '') ? '{}' : $body;
+            $requestBody = hash('sha256', $queryJson);
+        }
 
         $stringToSign = $method . ':' . $this->merchant() . ':' . $requestBody . ':' . (string) $this->apiKey;
         $signature = hash_hmac('sha256', $stringToSign, (string) $this->apiKey);
