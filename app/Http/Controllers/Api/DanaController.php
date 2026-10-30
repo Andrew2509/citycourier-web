@@ -33,6 +33,25 @@ class DanaController extends Controller
     }
 
     /**
+     * Tentukan mode binding: Seamless Binding hanya dipakai bila nomor HP
+     * kurir sudah tersimpan DAN terverifikasi di City Courier. Klien boleh
+     * memaksa mode normal dengan `seamless=false` (mis. seamless ditolak DANA).
+     *
+     * @return array{0: bool, 1: string|null} [$seamless, $phoneNumber]
+     */
+    private function resolveBindingMode(Request $request, $courier): array
+    {
+        $phone = $courier->phone ?: $request->input('phone_number');
+        $verifiedPhone = !empty($courier->phone) && (bool) $courier->is_verified;
+
+        $seamless = $request->has('seamless')
+            ? filter_var($request->input('seamless'), FILTER_VALIDATE_BOOLEAN)
+            : $verifiedPhone;
+
+        return [$seamless && $verifiedPhone, $phone];
+    }
+
+    /**
      * GET /api/courier/dana/status
      * Get DANA connection status (PRD §34).
      * Otomatis menandai EXPIRED bila token kedaluwarsa (PRD §33).
@@ -99,9 +118,9 @@ class DanaController extends Controller
             ], 400);
         }
 
-        // Step 1: Apply OTT / Deeplink Binding (One Time Token)
-        $phone = $courier->phone ?? $request->input('phone_number');
-        $result = $this->danaService->beginBinding($courier->id, $phone);
+        // Step 1: Deeplink Binding (Seamless bila nomor HP sudah terverifikasi)
+        [$seamless, $phone] = $this->resolveBindingMode($request, $courier);
+        $result = $this->danaService->beginBinding($courier->id, $phone, $seamless);
 
         if ($result['success']) {
             return response()->json([
@@ -111,6 +130,8 @@ class DanaController extends Controller
                     'session_id'     => $result['ott'],
                     'redirect_url'   => $result['redirect_url'],
                     'binding_url'    => $result['redirect_url'],
+                    'external_id'    => $result['external_id'] ?? null,
+                    'binding_mode'   => $result['binding_mode'] ?? 'normal',
                     'status'         => 'PENDING',
                 ],
             ]);
@@ -150,8 +171,8 @@ class DanaController extends Controller
             ], 400);
         }
 
-        $phone = $courier->phone ?? $request->input('phone_number');
-        $result = $this->danaService->beginBinding($courier->id, $phone);
+        [$seamless, $phone] = $this->resolveBindingMode($request, $courier);
+        $result = $this->danaService->beginBinding($courier->id, $phone, $seamless);
 
         if ($result['success']) {
             $connection = DanaConnection::where('courier_id', $courier->id)->first();
@@ -163,6 +184,8 @@ class DanaController extends Controller
                     'binding_url'  => $result['redirect_url'],
                     'redirect_url' => $result['redirect_url'],
                     'session_id'   => $result['ott'],
+                    'external_id'  => $result['external_id'] ?? null,
+                    'binding_mode' => $result['binding_mode'] ?? 'normal',
                     'expires_at'   => $connection?->session_expires_at?->toIso8601String(),
                 ],
                 // Backward-compat legacy fields (konsumen lama connect()) tetap jalan.
@@ -254,6 +277,12 @@ class DanaController extends Controller
             if ($resolved['valid']) {
                 $courierId = $resolved['connection']->courier_id;
             } else {
+                // Webhook replay untuk sesi yang sudah terhubung → idempoten, tanpa tukar ulang authCode.
+                $existing = $this->danaService->findConnectionByState((string) $state);
+                if ($existing && $existing->status === 'connected') {
+                    return response()->json(['status' => 'success', 'masked_phone' => $existing->masked_phone]);
+                }
+
                 Log::warning('[DanaController] webhook session tidak valid', ['state' => $state, 'error' => $resolved['error']]);
                 return response()->json(['status' => 'failed', 'error' => $resolved['error'], 'error_code' => $resolved['error_code'] ?? 'INVALID_STATE'], 400);
             }
@@ -322,8 +351,28 @@ class DanaController extends Controller
         if ($state) {
             $resolved = $this->danaService->resolveSession($state);
             if ($resolved['valid']) {
-                $courierId = $resolved['connection']->courier_id;
+                $connection = $resolved['connection'];
+
+                // externalId yang dipantulkan DANA (bila ada) harus cocok dengan sesi ini.
+                $echoedExternalId = $request->query('externalId') ?? $request->input('externalId');
+                if ($echoedExternalId && $connection->external_id
+                    && !hash_equals((string) $connection->external_id, (string) $echoedExternalId)) {
+                    Log::warning('[DanaController] callback externalId tidak cocok', ['state' => $state]);
+                    return $this->renderCallbackResult(false, 'Sesi penghubungan tidak cocok. Silakan ulangi dari aplikasi.');
+                }
+
+                $courierId = $connection->courier_id;
             } else {
+                // Replay / sesi sudah selesai: bila akun sudah terhubung, anggap sukses
+                // (idempoten) tanpa menukar ulang authCode.
+                $existing = $this->danaService->findConnectionByState((string) $state);
+                if ($existing && $existing->status === 'connected') {
+                    Log::info('[DanaController] callback replay untuk sesi terhubung — diabaikan', [
+                        'courier_id' => $existing->courier_id,
+                    ]);
+                    return $this->renderCallbackResult(true, 'Akun DANA sudah terhubung.', $existing->masked_phone);
+                }
+
                 Log::warning('[DanaController] callback session tidak valid', ['state' => $state, 'error' => $resolved['error']]);
                 return $this->renderCallbackResult(false, $resolved['error'] ?? 'Sesi penghubungan tidak ditemukan atau kedaluwarsa.');
             }

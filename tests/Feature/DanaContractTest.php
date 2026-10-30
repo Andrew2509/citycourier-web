@@ -111,7 +111,7 @@ class DanaContractTest extends TestCase
         });
     }
 
-    private function makeCourier(): Courier
+    private function makeCourier(bool $verified = true): Courier
     {
         $user = User::create([
             'name'     => 'Test Courier',
@@ -123,14 +123,14 @@ class DanaContractTest extends TestCase
         return Courier::create([
             'user_id'     => $user->id,
             'phone'       => '081234567890',
-            'is_verified' => true,
+            'is_verified' => $verified,
             'is_active'   => true,
         ]);
     }
 
-    private function actingCourier(): Courier
+    private function actingCourier(bool $verified = true): Courier
     {
-        $courier = $this->makeCourier();
+        $courier = $this->makeCourier($verified);
         Sanctum::actingAs($courier->user);
 
         return $courier;
@@ -189,6 +189,86 @@ class DanaContractTest extends TestCase
         $this->assertSame('pending', $conn->status);
         $this->assertNotEmpty($conn->state_hash);
         $this->assertNotSame($conn->state_hash, $conn->session_id);
+    }
+
+    public function test_binding_uses_seamless_when_courier_phone_verified(): void
+    {
+        $this->actingCourier();
+
+        $response = $this->postJson('/api/courier/dana/binding')->assertOk();
+
+        $data = $response->json('data');
+        $this->assertSame('seamless', $data['binding_mode']);
+        $this->assertNotEmpty($data['external_id']);
+
+        // URL deeplink resmi membawa externalId, redirectUrl, state, dan seamlessData.mobileNumber
+        $url = $data['binding_url'];
+        $this->assertStringContainsString('externalId=', $url);
+        $this->assertStringContainsString('redirectUrl=', $url);
+        $this->assertStringContainsString('state=', $url);
+        $this->assertStringContainsString('seamlessData=', $url);
+        $this->assertStringContainsString('mobileNumber', urldecode($url));
+
+        // externalId yang dipakai di URL harus sama dengan yang tersimpan di sesi
+        $conn = DanaConnection::first();
+        $this->assertSame($data['external_id'], $conn->external_id);
+    }
+
+    public function test_binding_uses_normal_mode_for_unverified_courier_or_override(): void
+    {
+        // Kurir dengan nomor belum terverifikasi → Normal Binding (kurir memasukkan
+        // nomor sendiri di halaman DANA), tanpa seamlessData.
+        $this->actingCourier(false);
+
+        $data = $this->postJson('/api/courier/dana/binding')->assertOk()->json('data');
+        $this->assertSame('normal', $data['binding_mode']);
+        $this->assertStringNotContainsString('seamlessData=', $data['binding_url']);
+
+        // Kurir terverifikasi boleh memaksa mode normal (mis. seamless ditolak DANA).
+        $courier = $this->makeCourier(true);
+        Sanctum::actingAs($courier->user);
+
+        $data = $this->postJson('/api/courier/dana/binding', ['seamless' => false])
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame('normal', $data['binding_mode']);
+        $this->assertStringNotContainsString('seamlessData=', $data['binding_url']);
+    }
+
+    public function test_callback_replay_is_idempotent(): void
+    {
+        $this->actingCourier();
+
+        $state = $this->postJson('/api/courier/dana/binding')->json('data.session_id');
+
+        $this->get('/api/dana/callback?auth_code=TEST-AUTH&state=' . urlencode($state))
+            ->assertStatus(200);
+
+        $firstToken = DanaConnection::first()->getAttributes()['access_token_encrypted'];
+
+        // Callback kedua (replay) tidak boleh menukar ulang authCode atau merusak sesi.
+        $html = $this->get('/api/dana/callback?auth_code=TEST-AUTH&state=' . urlencode($state))
+            ->assertStatus(200)
+            ->getContent();
+
+        $this->assertStringContainsString('citycourier://dana/binding/success', $html);
+        $this->assertSame('connected', DanaConnection::first()->status);
+        $this->assertSame($firstToken, DanaConnection::first()->getAttributes()['access_token_encrypted']);
+    }
+
+    public function test_callback_rejects_mismatched_external_id(): void
+    {
+        $this->actingCourier();
+
+        $state = $this->postJson('/api/courier/dana/binding')->json('data.session_id');
+
+        $html = $this->get('/api/dana/callback?auth_code=TEST-AUTH&externalId=WRONG-EXTERNAL&state=' . urlencode($state))
+            ->assertStatus(400)
+            ->getContent();
+
+        $this->assertStringContainsString('citycourier://dana/binding/failed', $html);
+        $this->assertSame('pending', DanaConnection::first()->status);
     }
 
     public function test_binding_rejects_when_already_connected(): void

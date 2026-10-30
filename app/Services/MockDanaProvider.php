@@ -14,24 +14,45 @@ use Illuminate\Support\Str;
  */
 class MockDanaProvider implements DanaProvider
 {
-    public function applyOTT(?string $phoneNumber = null): array
+    /**
+     * Mock Deeplink Binding: membentuk URL yang meniru struktur resmi DANA
+     * (redirectUrl + externalId + state, dengan seamlessData bila diminta),
+     * sehingga alur Flutter & test memakai kontrak yang sama seperti produksi.
+     */
+    public function applyOTT(?string $phoneNumber = null, ?string $externalId = null, bool $seamless = false): array
     {
-        Log::info('[MockDANA] applyOTT called', ['phone' => $phoneNumber]);
+        Log::info('[MockDANA] applyOTT called', [
+            'phone'    => $phoneNumber,
+            'seamless' => $seamless,
+        ]);
 
-        // Generate mock OTT token
+        // Generate mock OTT token (state untuk validasi callback)
         $ott = 'OTT-' . strtoupper(Str::random(16));
+        $externalId = $externalId ?: (string) Str::uuid();
+
+        $params = [
+            'externalId'  => $externalId,
+            'channelId'   => 'DANAID',
+            'callback'    => \App\Models\Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
+            'redirectUrl' => \App\Models\Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
+            'state'       => $ott,
+        ];
+
+        $seamlessUsed = $seamless && $phoneNumber && preg_match('/^\d{9,15}$/', (string) $phoneNumber);
+        if ($seamlessUsed) {
+            $params['seamlessData'] = json_encode(['mobileNumber' => $phoneNumber], JSON_UNESCAPED_SLASHES);
+        }
 
         // Build mock redirect URL (sandbox)
         $redirectUrl = 'https://sandbox.dana.id';
-        $redirectUrl .= '/v1.0/widget/binding?' . http_build_query([
-            'ott'       => $ott,
-            'callback'  => \App\Models\Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
-        ]);
+        $redirectUrl .= '/v1.0/widget/binding?' . http_build_query($params);
 
         return [
             'success'      => true,
             'ott'          => $ott,
             'redirect_url' => $redirectUrl,
+            'external_id'  => $externalId,
+            'seamless'     => (bool) $seamlessUsed,
             'error'        => null,
         ];
     }

@@ -210,13 +210,18 @@ class OfficialDanaProvider implements DanaProvider
     }
 
     /**
-     * Generate Deeplink Binding URL (ditampilkan sebagai redirect URL).
-     * applyOTT disini memakai Deeplink Binding sesuai dokumentasi.
+     * Generate Deeplink Binding URL sesuai panduan resmi DANA Widget Binding.
+     *
+     * URL dibentuk dengan redirectUrl (terdaftar di Merchant Portal), externalId,
+     * state untuk validasi callback, dan seamlessData.mobileNumber bila nomor
+     * HP kurir sudah tersimpan & terverifikasi di City Courier (Seamless Binding).
+     * Bila seamless tidak dipakai, DANA meminta kurir memasukkan nomor HP sendiri
+     * (Normal Binding) — URL tetap memakai mekanisme Deeplink Binding resmi.
      */
-    public function applyOTT(?string $phoneNumber = null): array
+    public function applyOTT(?string $phoneNumber = null, ?string $externalId = null, bool $seamless = false): array
     {
         try {
-            $externalId = (string) Str::uuid();
+            $externalId = $externalId ?: (string) Str::uuid();
             $state = substr(md5(uniqid((string) mt_rand(), true)), 0, 24);
 
             $scopes = 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE';
@@ -233,8 +238,9 @@ class OfficialDanaProvider implements DanaProvider
                 'allowRegistration'=> 'true',
             ];
 
-            // Seamless binding bila nomor HP kurir tersedia
-            if ($phoneNumber && preg_match('/^\d{9,15}$/', $phoneNumber)) {
+            // Seamless binding hanya bila kurir meminta DAN nomor HP terverifikasi tersedia
+            $seamlessUsed = $seamless && $phoneNumber && preg_match('/^\d{9,15}$/', $phoneNumber);
+            if ($seamlessUsed) {
                 $seamlessData = json_encode([
                     'mobileNumber' => $this->normalizePhone($phoneNumber),
                     'bizScenario'  => 'PAYMENT',
@@ -252,6 +258,8 @@ class OfficialDanaProvider implements DanaProvider
                 'success'      => true,
                 'ott'          => $state,
                 'redirect_url' => $redirectUrl,
+                'external_id'  => $externalId,
+                'seamless'     => (bool) $seamlessUsed,
                 'error'        => null,
             ];
         } catch (\Exception $e) {

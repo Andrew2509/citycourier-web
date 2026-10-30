@@ -81,16 +81,27 @@ class DanaService
      * Step 1: Get binding URL/session for DANA Widget Binding.
      * PRD §7, §11-12: generate binding URL + external_id + state_hash.
      *
-     * @return array ['success' => bool, 'ott' => string|null, 'redirect_url' => string|null, 'error' => string|null]
+     * Satu externalId dipakai untuk URL DANA maupun record sesi lokal, sehingga
+     * callback dapat divalidasi terhadap sesi yang sama.
+     *
+     * @param bool $seamless Gunakan Seamless Binding (butuh nomor HP terverifikasi)
+     * @return array ['success' => bool, 'ott' => string|null, 'redirect_url' => string|null,
+     *                'external_id' => string|null, 'binding_mode' => string, 'error' => string|null]
      */
-    public function beginBinding(int $courierId, ?string $phoneNumber = null): array
+    public function beginBinding(int $courierId, ?string $phoneNumber = null, bool $seamless = false): array
     {
         try {
-            $result = $this->provider->applyOTT($phoneNumber);
+            $externalId = 'DANA-BIND-CRR-' . strtoupper((string) \Illuminate\Support\Str::uuid());
+
+            $result = $this->provider->applyOTT(
+                $seamless ? $phoneNumber : null,
+                $externalId,
+                $seamless
+            );
 
             if ($result['success']) {
                 $state = (string) $result['ott'];
-                $externalId = 'DANA-BIND-CRR-' . strtoupper((string) \Illuminate\Support\Str::uuid());
+                $externalId = (string) ($result['external_id'] ?? $externalId);
 
                 // Store session untuk verifikasi callback (PRD §21) + expiry 10 menit (PRD §17).
                 $connection = DanaConnection::updateOrCreate(
@@ -106,10 +117,14 @@ class DanaService
                 );
 
                 Log::info('[DanaService] Binding initiated', [
-                    'courier_id' => $courierId,
+                    'courier_id'  => $courierId,
                     'external_id' => $externalId,
+                    'seamless'    => (bool) ($result['seamless'] ?? false),
                 ]);
             }
+
+            $result['binding_mode'] = ($result['seamless'] ?? false) ? 'seamless' : 'normal';
+            $result['external_id'] = $externalId;
 
             return $result;
         } catch (\Exception $e) {
@@ -131,6 +146,20 @@ class DanaService
     public function hashState(string $state): string
     {
         return hash('sha256', $state);
+    }
+
+    /**
+     * Cari sesi binding berdasarkan state, tanpa syarat status.
+     * Dipakai callback/webhook untuk mendeteksi replay: bila sesi sudah
+     * 'connected', callback kedua harus diabaikan (idempoten).
+     */
+    public function findConnectionByState(string $state): ?DanaConnection
+    {
+        if ($state === '') {
+            return null;
+        }
+
+        return DanaConnection::where('state_hash', $this->hashState($state))->first();
     }
 
     /**

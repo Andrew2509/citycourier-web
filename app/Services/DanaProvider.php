@@ -18,19 +18,30 @@ namespace App\Services;
  *
  * PRD §38: DanaProvider interface — decouple DANA API from business logic.
  * PRD §73: MockDanaProvider for dev, OfficialDanaProvider when credentials available.
+ *
+ * Batas fungsi (jangan dicampur):
+ *  - DANA Widget Binding  → menghubungkan akun DANA kurir (applyOTT + applyToken).
+ *  - Direct Debit Payment → membayar memakai akun terhubung; TIDAK dipakai
+ *    untuk mencairkan saldo pendapatan kurir.
+ *  - Disbursement to Balance → customerTopUp(), jalur pencairan saldo kurir.
  */
 interface DanaProvider
 {
     /**
-     * Apply One Time Token (OTT) for DANA Widget Binding.
-     * Used to generate the authorization URL / deep link to DANA App.
+     * Generate the DANA Widget Binding URL (Deeplink Binding).
      *
-     * POST /rest/v1.1/qr/apply-ott
+     * DANA's official guide: merchant calls Deeplink Binding to generate the
+     * binding URL by providing redirectUrl, with seamlessData as an optional
+     * parameter (seamless binding). The URL opens the DANA App where the user
+     * logs in (only when needed) and approves the binding.
      *
-     * @param string $phoneNumber User's phone number (optional, for seamless binding)
-     * @return array ['success' => bool, 'ott' => string|null, 'redirect_url' => string|null, 'error' => string|null]
+     * @param string|null $phoneNumber User's verified phone, only sent for seamless binding
+     * @param string|null $externalId  Merchant unique reference for this binding request
+     * @param bool        $seamless    Attach seamlessData.mobileNumber when true
+     * @return array ['success' => bool, 'ott' => string|null, 'redirect_url' => string|null,
+     *                'external_id' => string|null, 'seamless' => bool, 'error' => string|null]
      */
-    public function applyOTT(?string $phoneNumber = null): array;
+    public function applyOTT(?string $phoneNumber = null, ?string $externalId = null, bool $seamless = false): array;
 
     /**
      * Apply Token — exchange authCode for accessToken.
