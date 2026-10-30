@@ -356,6 +356,97 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->assertNull($result['qr_string']);
     }
 
+    public function test_qris_payment_no_payload_is_not_saved_as_va_number(): void
+    {
+        // Nyata di produksi: untuk QRIS iPaymu mengisi Data.PaymentNo dengan
+        // payload EMVCo. Kolom va_number hanya 30 karakter sehingga insert
+        // ditolak MySQL ("Data too long for column 'va_number'") dan QRIS
+        // tidak pernah tersimpan. Payload seperti itu harus jadi qr_string.
+        $this->makeConfigured();
+
+        $payload = '00020101021226610014ID.CO.QRIS.WWW0118' . str_repeat('7', 200);
+
+        $fake = new class($payload) extends iPaymuService {
+            public function __construct(private string $qrPayload) {}
+
+            public function createDirectPayment(array $payload): array
+            {
+                return [
+                    'success'   => true,
+                    'error'     => null,
+                    'http_code' => 200,
+                    'data'      => [
+                        'TransactionId' => '99005',
+                        'PaymentNo'     => $this->qrPayload,
+                    ],
+                    'raw'       => ['Status' => 200],
+                ];
+            }
+
+            public static function isConfigured(): bool
+            {
+                return true;
+            }
+        };
+
+        $service = new IpaymuPaymentService($fake);
+        $result = $service->createPayment([
+            'payment_type' => 'qris',
+            'channel_code' => 'QRIS',
+            'amount'       => 15800,
+            'reference'    => 'CC-108-TEST-3',
+            'customer'     => ['name' => 'Tes', 'email' => 'tes@example.com', 'phone' => '081234567890'],
+            'items'        => [['name' => 'Biaya Pengiriman', 'quantity' => 1, 'price' => 15800]],
+            'comments'     => null,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertNull($result['va_number'], 'Payload QRIS tidak boleh masuk ke kolom va_number');
+        $this->assertSame($payload, $result['qr_string']);
+    }
+
+    public function test_short_payment_no_still_becomes_va_number(): void
+    {
+        $this->makeConfigured();
+
+        $fake = new class extends iPaymuService {
+            public function __construct() {}
+
+            public function createDirectPayment(array $payload): array
+            {
+                return [
+                    'success'   => true,
+                    'error'     => null,
+                    'http_code' => 200,
+                    'data'      => [
+                        'TransactionId' => '99006',
+                        'PaymentNo'     => '8808123456799',
+                    ],
+                    'raw'       => ['Status' => 200],
+                ];
+            }
+
+            public static function isConfigured(): bool
+            {
+                return true;
+            }
+        };
+
+        $service = new IpaymuPaymentService($fake);
+        $result = $service->createPayment([
+            'payment_type' => 'va',
+            'channel_code' => 'BNI',
+            'amount'       => 15800,
+            'reference'    => 'CC-108-TEST-4',
+            'customer'     => ['name' => 'Tes', 'email' => 'tes@example.com', 'phone' => '081234567890'],
+            'items'        => [['name' => 'Biaya Pengiriman', 'quantity' => 1, 'price' => 15800]],
+            'comments'     => null,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('8808123456799', $result['va_number']);
+    }
+
     // ─── 2a. Redirect Payment (cadangan saat Direct diblokir) ────
 
     private function setPaymentMode(string $mode): void

@@ -227,13 +227,26 @@ class IpaymuPaymentService
             $qrString = $qrString ?: $url;
         }
 
+        // QRIS: iPaymu mengisi Data.PaymentNo dengan payload EMVCo, bukan nomor
+        // Virtual Account. Kolom va_number hanya 30 karakter, jadi nilai yang
+        // lebih panjang dipindah ke qr_string (TEXT) — kalau tidak, MySQL
+        // menolak dengan "Data too long for column 'va_number'" dan seluruh
+        // pembuatan pembayaran (termasuk VA biasa) ikut gagal.
+        $paymentNo = isset($data['PaymentNo']) ? trim((string) $data['PaymentNo']) : '';
+        $vaNumber  = null;
+        if ($paymentNo !== '') {
+            if (strlen($paymentNo) <= 30) {
+                $vaNumber = $paymentNo;
+            } elseif ($qrString === null) {
+                $qrString = $paymentNo;
+            }
+        }
+
         return [
             'success'     => true,
             'error'       => null,
             'payment_id'  => (string) ($data['TransactionId'] ?? ''),
-            'va_number'   => isset($data['PaymentNo']) && (string) $data['PaymentNo'] !== ''
-                ? (string) $data['PaymentNo']
-                : null,
+            'va_number'   => $vaNumber,
             'qr_string'   => $qrString,
             'payment_url' => $paymentUrl,
             'expired_at'  => isset($data['Expired']) && (string) $data['Expired'] !== ''
