@@ -17,10 +17,16 @@ class ShipmentController extends Controller
 
     protected ShipmentNotificationService $notificationService;
 
-    public function __construct(TrackingService $trackingService, ShipmentNotificationService $notificationService)
-    {
+    protected \App\Services\PaymentCancellationService $paymentCancellation;
+
+    public function __construct(
+        TrackingService $trackingService,
+        ShipmentNotificationService $notificationService,
+        \App\Services\PaymentCancellationService $paymentCancellation
+    ) {
         $this->trackingService = $trackingService;
         $this->notificationService = $notificationService;
+        $this->paymentCancellation = $paymentCancellation;
     }
 
     /**
@@ -586,7 +592,34 @@ class ShipmentController extends Controller
             $reason = trim((string) $request->input('reason', '')) ?: $defaultReason;
             $previousShipmentStatus = $shipment->status;
 
-            // 6. Update status & metadata pembatalan pada Shipment
+            // 6. Sinkronkan transaksi pembayaran ke iPaymu SEBELUM status diubah.
+            //    Tidak ada API cancel/refund di iPaymu, jadi status resmi
+            //    diambil lewat Check Transaction dan hasilnya menentukan apakah
+            //    pembatalan aman dilanjutkan.
+            $paymentOutcome = $this->paymentCancellation->cancelForShipment($shipment, $cancelledBy, $reason);
+
+            if ($paymentOutcome['result'] === \App\Services\PaymentCancellationService::UNVERIFIED) {
+                // Status tidak pasti → jangan ubah status apa pun (rollback).
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'payment_status_unknown',
+                    'message'    => $paymentOutcome['message'],
+                    'payment'    => $paymentOutcome['payment'],
+                ], 409);
+            }
+
+            if ($paymentOutcome['result'] === \App\Services\PaymentCancellationService::REQUIRES_REFUND) {
+                // Uang sudah diterima iPaymu: pembatalan = refund manual, bukan
+                // pembatalan biasa. Pesanan tidak diubah.
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'payment_already_paid',
+                    'message'    => $paymentOutcome['message'],
+                    'payment'    => $paymentOutcome['payment'],
+                ], 422);
+            }
+
+            // 7. Update status & metadata pembatalan pada Shipment
             $shipment->update([
                 'status'                => 'cancelled',
                 'cancelled_at'          => $now,
@@ -595,7 +628,7 @@ class ShipmentController extends Controller
                 'cancelled_from_status' => $previousShipmentStatus,
             ]);
 
-            // 7. Sinkronkan pembatalan ke Order terkait (agar hilang dari daftar aktif kurir)
+            // 8. Sinkronkan pembatalan ke Order terkait (agar hilang dari daftar aktif kurir)
             $courierId = null;
             if ($order) {
                 $courierId = $order->courier_id;
@@ -614,7 +647,7 @@ class ShipmentController extends Controller
                 }
             }
 
-            // 8. Catat riwayat pembatalan ke shipment_logs
+            // 9. Catat riwayat pembatalan ke shipment_logs
             $actorLabel = $isAdmin ? 'Admin' : 'Pelanggan';
             $this->trackingService->createStatusHistory(
                 $shipment,
@@ -626,18 +659,12 @@ class ShipmentController extends Controller
                 "Pesanan dibatalkan oleh {$actorLabel} (status sebelumnya: {$previousShipmentStatus}). Alasan: {$reason}"
             );
 
-            // 9. Batalkan transaksi payment yang masih pending jika ada
-            try {
-                \App\Models\Payment::where('shipment_id', $shipment->id)
-                    ->where('status', 'pending')
-                    ->update(['status' => 'cancelled']);
-            } catch (\Throwable $e) {
-                // Lewati jika Payment model belum digunakan
-            }
-
             return response()->json([
                 'success' => true,
-                'message' => 'Pesanan berhasil dibatalkan.',
+                'message' => $paymentOutcome['result'] === \App\Services\PaymentCancellationService::NO_PAYMENT
+                    ? 'Pesanan berhasil dibatalkan.'
+                    : $paymentOutcome['message'],
+                'payment' => $paymentOutcome['payment'],
                 'data'    => $shipment->fresh(),
             ], 200);
         });

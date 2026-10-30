@@ -271,16 +271,53 @@ class iPaymuWebhookController extends Controller
      */
     private function handlePaymentCallback(\App\Models\Payment $payment, string $webhookStatus, array $payload, string $transactionId): JsonResponse
     {
-        if (in_array($payment->status, ['paid', 'expired', 'canceled', 'failed'], true)) {
-            // Idempotent: transaksi terminal tidak berubah.
-            return response()->json(['success' => true, 'message' => 'Transaksi pembayaran sudah final.']);
-        }
+        $terminal = in_array($payment->status, ['paid', 'expired', 'canceled', 'cancelled', 'failed'], true);
 
         if ($webhookStatus === 'pending' || $webhookStatus === 'processing') {
             return response()->json(['success' => true, 'message' => 'Status processing dicatat.']);
         }
 
         $finalStatus = $this->paymentService->webhookFinalStatus($transactionId, $webhookStatus);
+
+        if ($terminal) {
+            // Satu-satunya transisi yang tetap dihormati: uang benar-benar masuk
+            // SETELAH pesanan/pembayaran lokal ditutup (pembatalan). Uang nyata
+            // tidak boleh hilang diam-diam — status jadi paid + wajib refund,
+            // sementara pesanan tetap dibatalkan (tidak dihidupkan kembali).
+            if ($payment->status !== 'paid' && in_array($finalStatus, ['paid'], true)) {
+                $metadata = (array) ($payment->metadata ?? []);
+                $metadata['cancellation'] = array_merge((array) ($metadata['cancellation'] ?? []), [
+                    'refund_required'      => true,
+                    'payment_after_cancel' => now()->toIso8601String(),
+                    'note'                 => 'Pembayaran diterima iPaymu setelah pembatalan lokal.',
+                ]);
+
+                $payment->update([
+                    'status'        => 'paid',
+                    'paid_at'       => now(),
+                    'callback_data' => $payload,
+                    'metadata'      => $metadata,
+                ]);
+
+                if ($payment->order_id) {
+                    \App\Models\Order::where('id', $payment->order_id)->update(['payment_status' => 'paid']);
+                }
+
+                Log::warning('Pembayaran masuk setelah pembatalan — perlu refund manual', [
+                    'payment_id' => $payment->payment_id,
+                    'reference'  => $metadata['ipaymu_reference_id'] ?? null,
+                    'amount'     => $payment->amount,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pembayaran terlambat dicatat; refund diperlukan.',
+                ]);
+            }
+
+            // Idempotent: transaksi terminal tidak berubah.
+            return response()->json(['success' => true, 'message' => 'Transaksi pembayaran sudah final.']);
+        }
 
         $updateData = [
             'status'        => $finalStatus,

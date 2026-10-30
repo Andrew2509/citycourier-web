@@ -677,10 +677,37 @@ class IpaymuCheckoutPaymentTest extends TestCase
             'amount' => 10000, 'status' => 'pending', 'va_number' => '123',
         ]);
 
+        // iPaymu dikonfirmasi masih pending → pembayaran ditutup lokal.
+        $this->fakePayment->syncResult = [
+            'status' => 'pending', 'known' => true, 'error' => null,
+            'provider_code' => '0', 'raw' => ['Data' => ['Status' => 0]],
+        ];
+
         $response = $this->postJson('/api/payment/cancel', ['payment_id' => 'P-3']);
         $response->assertOk()
             ->assertJson(['success' => true]);
         $this->assertDatabaseHas('payments', ['payment_id' => 'P-3', 'status' => 'canceled']);
+    }
+
+    /** Status provider tidak diketahui → pembatalan tidak diklaim berhasil. */
+    public function test_cancel_blocked_when_provider_status_unknown(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        Payment::create([
+            'user_id' => $user->id, 'payment_id' => 'P-3B', 'payment_type' => 'bank_transfer',
+            'amount' => 10000, 'status' => 'pending', 'va_number' => '123',
+        ]);
+
+        $this->fakePayment->syncResult = ['status' => 'pending', 'known' => false, 'error' => 'timeout'];
+
+        $this->postJson('/api/payment/cancel', ['payment_id' => 'P-3B'])
+            ->assertStatus(409)
+            ->assertJsonPath('error_code', 'payment_status_unknown');
+
+        $this->assertDatabaseHas('payments', ['payment_id' => 'P-3B', 'status' => 'pending']);
     }
 
     // ─── 5. webhook() ───────────────────────────────────────────

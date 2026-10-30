@@ -126,6 +126,151 @@
             </div>
             @endif
 
+            {{-- Pembayaran iPaymu: status transaksi, pembatalan, dan refund --}}
+            @php $paymentsForAdmin = $shipment->payments ?? collect(); @endphp
+            @if($paymentsForAdmin->isNotEmpty())
+            <div class="card">
+                <div class="card-header">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-brand-600">payments</span>
+                        <div>
+                            <div class="card-title text-sm">Pembayaran iPaymu</div>
+                            <div class="card-subtitle text-xs">Status transaksi, pembatalan, dan refund</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-blue text-xs">{{ $paymentsForAdmin->count() }} transaksi</span>
+                </div>
+                <div class="card-body space-y-3">
+                    @foreach($paymentsForAdmin as $pay)
+                        @php
+                            $payMeta = (array) ($pay->metadata ?? []);
+                            $cancel = (array) ($payMeta['cancellation'] ?? []);
+                            $payStatus = strtolower((string) $pay->status);
+                            $payBadge = match ($payStatus) {
+                                'paid' => 'badge-green',
+                                'pending' => 'badge-amber',
+                                'canceled', 'cancelled', 'expired', 'failed' => 'badge-red',
+                                default => 'badge-slate',
+                            };
+                            $payLabel = match ($payStatus) {
+                                'paid' => 'Dibayar',
+                                'pending' => 'Menunggu pembayaran',
+                                'canceled', 'cancelled' => 'Dibatalkan',
+                                'expired' => 'Kedaluwarsa',
+                                'failed' => 'Gagal',
+                                default => ucfirst($payStatus),
+                            };
+                        @endphp
+                        <div class="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="badge {{ $payBadge }} text-xs">{{ $payLabel }}</span>
+                                    <span class="text-xs font-semibold text-slate-800">
+                                        {{ $pay->channel_code ?: strtoupper((string) $pay->payment_type) }}
+                                    </span>
+                                    <span class="text-xs text-slate-500 font-mono">
+                                        Rp {{ number_format($pay->amount ?? 0, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                                <span class="text-[11px] text-slate-500 font-mono">
+                                    {{ $pay->created_at?->timezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+                                <div>
+                                    <div class="uppercase tracking-wider text-slate-500">ID Transaksi iPaymu</div>
+                                    <div class="font-mono text-slate-800 break-all">{{ $pay->payment_id ?: '-' }}</div>
+                                </div>
+                                <div>
+                                    <div class="uppercase tracking-wider text-slate-500">Reference ID</div>
+                                    <div class="font-mono text-slate-800 break-all">{{ $payMeta['ipaymu_reference_id'] ?? '-' }}</div>
+                                </div>
+                                <div>
+                                    <div class="uppercase tracking-wider text-slate-500">Nomor VA</div>
+                                    <div class="font-mono text-slate-800">{{ $pay->va_number ?: '-' }}</div>
+                                </div>
+                                <div>
+                                    <div class="uppercase tracking-wider text-slate-500">Jalur</div>
+                                    <div class="text-slate-800">
+                                        {{ ($payMeta['payment_mode'] ?? 'direct') === 'redirect' ? 'Redirect (halaman iPaymu)' : 'Direct (VA/QRIS)' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if(!empty($cancel))
+                            <div class="rounded-md bg-slate-50 border border-slate-200 p-2.5 text-[11px] space-y-1">
+                                <div class="font-semibold text-slate-700">Riwayat Pembatalan</div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                    <div>
+                                        <div class="uppercase tracking-wider text-slate-500">Waktu Permintaan</div>
+                                        <div class="text-slate-800">
+                                            {{ !empty($cancel['requested_at']) ? \Illuminate\Support\Carbon::parse($cancel['requested_at'])->timezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' : '-' }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="uppercase tracking-wider text-slate-500">Diminta Oleh</div>
+                                        <div class="text-slate-800">{{ ($cancel['actor'] ?? 'customer') === 'admin' ? 'Admin' : 'Pelanggan' }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="uppercase tracking-wider text-slate-500">Status di iPaymu</div>
+                                        <div class="text-slate-800">
+                                            {{ $cancel['provider_status_desc'] ?? ($cancel['provider_status'] ?? '-') }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="uppercase tracking-wider text-slate-500">Hasil Pembatalan</div>
+                                        <div class="text-slate-800">
+                                            {{ match ($cancel['result'] ?? '') {
+                                                'provider_pending' => 'Ditutup lokal — iPaymu tanpa API pembatalan, kode kedaluwarsa sendiri',
+                                                'provider_canceled' => 'Dibatalkan di iPaymu',
+                                                'expired' => 'Kedaluwarsa',
+                                                'requires_refund' => 'Perlu refund manual',
+                                                'unverified' => 'Belum terverifikasi',
+                                                'no_payment' => 'Tidak ada transaksi',
+                                                default => $cancel['result'] ?? '-',
+                                            } }}
+                                        </div>
+                                    </div>
+                                </div>
+                                @if(!empty($cancel['reason']))
+                                    <div class="text-slate-600"><span class="font-semibold">Alasan:</span> {{ $cancel['reason'] }}</div>
+                                @endif
+                                @if(!empty($cancel['provider_expired_at']))
+                                    <div class="text-slate-600">Kode bayar kedaluwarsa: {{ \Illuminate\Support\Carbon::parse($cancel['provider_expired_at'])->timezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB</div>
+                                @endif
+                            </div>
+                            @endif
+
+                            @if(!empty($cancel['refund_required']))
+                            <div class="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-[11px] text-amber-900">
+                                <div class="font-semibold flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">warning</span>
+                                    Refund diperlukan (manual)
+                                </div>
+                                <p class="mt-1">
+                                    Dana sudah diterima iPaymu untuk transaksi ini. iPaymu tidak menyediakan API refund;
+                                    pengembalian diproses manual oleh admin melalui support@ipaymu.com setelah pesanan dibatalkan.
+                                    @if(!empty($cancel['refund_requested_at']))
+                                        <br>Permintaan refund diajukan: {{ \Illuminate\Support\Carbon::parse($cancel['refund_requested_at'])->timezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB.
+                                    @endif
+                                    @if(!empty($cancel['payment_after_cancel']))
+                                        <br>Pembayaran masuk setelah pembatalan: {{ \Illuminate\Support\Carbon::parse($cancel['payment_after_cancel'])->timezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB.
+                                    @endif
+                                </p>
+                            </div>
+                            @endif
+                        </div>
+                    @endforeach
+
+                    <p class="text-[11px] text-slate-500 leading-relaxed">
+                        Status pembayaran hanya berubah dari konfirmasi resmi iPaymu (callback ber-signature atau
+                        Check Transaction). Admin tidak dapat menandai transaksi menjadi dibatalkan/berhasil secara manual.
+                    </p>
+                </div>
+            </div>
+            @endif
+
             {{-- Informasi Pembatalan Penugasan Kurir (jika kurir pernah melepas / mengajukan pembatalan) --}}
             @if($shipment->order && ($shipment->order->courier_cancel_reason || $shipment->order->courier_cancel_status))
             @php

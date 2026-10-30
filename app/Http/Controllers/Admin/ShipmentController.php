@@ -196,7 +196,14 @@ class ShipmentController extends Controller
 
     public function show(Shipment $shipment)
     {
-        $shipment->load(['order.courier.user', 'order.lastCancelledCourier.user', 'order.rejections.courier.user', 'logs']);
+        $shipment->load([
+            'order.courier.user',
+            'order.lastCancelledCourier.user',
+            'order.rejections.courier.user',
+            'logs',
+            // Status pembayaran iPaymu + jejak pembatalan/refund untuk admin.
+            'payments' => fn ($query) => $query->orderByDesc('id'),
+        ]);
         return view('admin.shipments.show', compact('shipment'));
     }
 

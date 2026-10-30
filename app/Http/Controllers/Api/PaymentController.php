@@ -28,7 +28,10 @@ use Illuminate\Support\Facades\Validator;
  */
 class PaymentController extends Controller
 {
-    public function __construct(private readonly IpaymuPaymentService $paymentService) {}
+    public function __construct(
+        private readonly IpaymuPaymentService $paymentService,
+        private readonly \App\Services\PaymentCancellationService $paymentCancellation
+    ) {}
 
     // ─── 1. Ambil daftar metode pembayaran ──────────────────────
     /**
@@ -369,10 +372,16 @@ class PaymentController extends Controller
     /**
      * POST /api/payment/{paymentId}/cancel
      *
-     * iPaymu v2 tidak menyediakan API pembatalan payment pending —
-     * pembatalan ditandai LOKAL. Bila pelanggan ternyata tetap membayar
-     * VA/QRIS, callback resmi iPaymu akan menandai 'paid' (uang sungguhan
-     * tetap dihormati); pesanan tidak hilang.
+     * iPaymu v2 TIDAK punya API cancel/void/refund. Endpoint ini karena itu:
+     *  1. menanyakan status resmi lewat Check Transaction,
+     *  2. menutup pembayaran lokal bila iPaymu masih pending (kode bayar akan
+     *     kedaluwarsa sendiri di sisi iPaymu),
+     *  3. MENOLAK pembatalan biasa bila ternyata sudah dibayar → jalur refund,
+     *  4. tidak mengubah apa pun bila status tidak bisa dipastikan.
+     *
+     * Pembayaran yang sudah dibatalkan tidak dikirim ulang ke iPaymu
+     * (idempotent), dan status pesanan tidak diubah dari sini agar pembatalan
+     * pesanan tetap satu pintu lewat /shipments/{id}/cancel.
      */
     public function cancel(Request $request, ?string $paymentId = null): JsonResponse
     {
@@ -390,22 +399,31 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'message' => 'Pembayaran tidak ditemukan'], 404);
         }
 
-        if (!$payment->isPending()) {
+        $outcome = $this->paymentCancellation->cancelPayment($payment, 'customer', 'Pelanggan membatalkan pembayaran.');
+
+        if ($outcome['result'] === \App\Services\PaymentCancellationService::UNVERIFIED) {
             return response()->json([
-                'success' => false,
-                'message' => 'Hanya pembayaran dengan status PENDING yang bisa dibatalkan',
+                'success'    => false,
+                'error_code' => 'payment_status_unknown',
+                'message'    => $outcome['message'],
+                'payment'    => $outcome['payment'],
+            ], 409);
+        }
+
+        if ($outcome['result'] === \App\Services\PaymentCancellationService::REQUIRES_REFUND) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'payment_already_paid',
+                'message'    => $outcome['message'],
+                'payment'    => $outcome['payment'],
             ], 422);
         }
 
-        $payment->update(['status' => 'canceled']);
-
-        if ($payment->shipment_id) {
-            Shipment::where('id', $payment->shipment_id)->update(['status' => 'cancelled']);
-        }
-
         return response()->json([
-            'success' => true,
-            'message' => 'Pembayaran berhasil dibatalkan',
+            'success'     => true,
+            'already_final' => $outcome['result'] === \App\Services\PaymentCancellationService::ALREADY_FINAL,
+            'message'     => $outcome['message'],
+            'payment'     => $outcome['payment'],
         ]);
     }
 

@@ -335,10 +335,20 @@ class IpaymuPaymentService
         }
 
         $inquiry = $this->ipaymu->inquire((string) $payment->payment_id);
+        $rawCode = $inquiry['raw']['Data']['Status']
+            ?? $inquiry['raw']['data']['Status']
+            ?? $inquiry['raw']['Data']['status']
+            ?? $inquiry['raw']['data']['status']
+            ?? null;
+
         return [
             'status' => $this->mapProviderStatus($inquiry, $payment->status),
             'known'  => $inquiry['verdict'] === 'known',
             'error'  => $inquiry['error'] ?? null,
+            // Kode status resmi iPaymu (1/6 sukses · 0/7 pending · 2 cancel
+            // · -2 expired · 3 refund · 4 error · 5 failed) untuk audit admin.
+            'provider_code' => $rawCode !== null ? (string) $rawCode : null,
+            'raw'           => $inquiry['raw'] ?? null,
         ];
     }
 
