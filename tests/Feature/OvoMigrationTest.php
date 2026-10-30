@@ -618,3 +618,4 @@ class OvoMigrationTest extends TestCase
         $this->assertEquals(500000, $balanceFinal['total_earnings']);
     }
 }
+

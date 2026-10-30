@@ -52,16 +52,21 @@ return [
     ],
 
     // OVO integration. Sourced from Settings (DB) or fallback to env.
+    // Alias env yang didukung (nama mengikuti konvensi partner OVO):
+    //   OVO_ENVIRONMENT -> OVO_MODE          (mock | sandbox | production)
+    //   OVO_BASE_URL    -> OVO_API_BASE_URL
+    //   OVO_CHANNEL_ID  -> header X-CHANNEL-ID (opsional, bila diwajibkan OVO)
     'ovo' => [
-        'mode'          => env('OVO_MODE', 'mock'), // mock | sandbox | production
-        'api_base_url'  => env('OVO_API_BASE_URL', 'https://api.ovo.id'),
+        'mode'          => env('OVO_MODE') ?: env('OVO_ENVIRONMENT', 'mock'), // mock | sandbox | production
+        'api_base_url'  => env('OVO_API_BASE_URL') ?: env('OVO_BASE_URL', 'https://api.ovo.id'),
         'client_id'     => env('OVO_CLIENT_ID', ''),
         'client_secret' => env('OVO_CLIENT_SECRET', ''),
         'partner_id'    => env('OVO_PARTNER_ID', ''),
         'merchant_id'   => env('OVO_MERCHANT_ID', ''),
+        'channel_id'    => env('OVO_CHANNEL_ID', ''),
         'public_key'    => env('OVO_PUBLIC_KEY', ''),
         'private_key'   => env('OVO_PRIVATE_KEY', ''),
-        'webhook_secret'=> env('OVO_WEBHOOK_SECRET', ''),
+        'webhook_secret' => env('OVO_WEBHOOK_SECRET', ''),
     ],
 
     // DANA integration. Kredensial dikelola dari Admin > Pengaturan Provider DANA

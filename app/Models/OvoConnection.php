@@ -24,3 +24,4 @@ class OvoConnection extends DanaConnection
         return $this->provider === 'ovo';
     }
 }
+

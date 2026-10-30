@@ -58,3 +58,4 @@ interface OvoProvider
      */
     public function balanceInquiry(): array;
 }
+

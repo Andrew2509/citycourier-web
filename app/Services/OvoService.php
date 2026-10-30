@@ -43,9 +43,11 @@ class OvoService
             'client_secret' => Setting::get('ovo_client_secret', config('services.ovo.client_secret', '')),
             'partner_id'    => Setting::get('ovo_partner_id', config('services.ovo.partner_id', '')),
             'merchant_id'   => Setting::get('ovo_merchant_id', config('services.ovo.merchant_id', '')),
+            'channel_id'    => Setting::get('ovo_channel_id', config('services.ovo.channel_id', '')),
             'api_base_url'  => Setting::get('ovo_api_base_url', config('services.ovo.api_base_url', 'https://api.ovo.id')),
             'public_key'    => Setting::get('ovo_public_key', config('services.ovo.public_key', '')),
             'private_key'   => Setting::get('ovo_private_key', config('services.ovo.private_key', '')),
+            'webhook_secret' => config('services.ovo.webhook_secret', ''),
         ];
     }
 

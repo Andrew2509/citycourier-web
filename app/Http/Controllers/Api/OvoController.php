@@ -258,9 +258,37 @@ class OvoController extends Controller
     /**
      * POST /api/ovo/webhook
      * Webhook notifikasi SNAP dari OVO.
+     *
+     * Verifikasi signature hanya aktif bila OVO_WEBHOOK_SECRET dikonfigurasi.
+     * Sesuai format SNAP untuk notifikasi: X-SIGNATURE = base64(HMAC-SHA512(rawBody + X-TIMESTAMP, secret)).
+     * Sesuaikan rumus ini persis dengan spesifikasi webhook yang diberikan OVO
+     * (lihat tech-doc integrasi partner) sebelum mengisi OVO_WEBHOOK_SECRET.
      */
     public function webhook(Request $request)
     {
+        $secret = (string) config('services.ovo.webhook_secret', '');
+        if ($secret !== '') {
+            $provided = (string) $request->header('X-SIGNATURE', '');
+            $timestamp = (string) $request->header('X-TIMESTAMP', '');
+            $rawBody = $request->getContent();
+
+            $expected = base64_encode(hash_hmac('sha512', $rawBody . $timestamp, $secret, true));
+
+            if ($provided === '' || !hash_equals($expected, $provided)) {
+                Log::warning('[OvoController] Webhook signature verification failed', [
+                    'ip'          => $request->ip(),
+                    'has_sig'     => $provided !== '',
+                    'has_ts'      => $timestamp !== '',
+                    'body_length' => strlen($rawBody),
+                ]);
+
+                return response()->json([
+                    'responseCode'    => '4010000',
+                    'responseMessage' => 'Unauthorized — webhook signature verification failed',
+                ], 401);
+            }
+        }
+
         Log::info('[OvoController] Webhook notification received', $request->all());
 
         $partnerReference = $request->input('originalPartnerReferenceNo')
@@ -294,3 +322,4 @@ class OvoController extends Controller
         ]);
     }
 }
+
