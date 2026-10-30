@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\iPaymuService;
+use App\Services\IpaymuPaymentService;
 use App\Services\WithdrawalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -31,9 +32,11 @@ class iPaymuWebhookController extends Controller
     public function __construct(
         private ?iPaymuService $ipaymuService = null,
         private ?WithdrawalService $withdrawalService = null,
+        private ?IpaymuPaymentService $paymentService = null,
     ) {
         $this->ipaymuService = $this->ipaymuService ?? new iPaymuService();
         $this->withdrawalService = $this->withdrawalService ?? new WithdrawalService();
+        $this->paymentService = $this->paymentService ?? new IpaymuPaymentService($this->ipaymuService);
     }
 
     public function handle(\Illuminate\Http\Request $request): JsonResponse
@@ -108,6 +111,12 @@ class iPaymuWebhookController extends Controller
             ->first();
 
         if (!$withdrawal) {
+            // ── Bukan penarikan — cek pembayaran checkout (VA/QRIS) ──
+            $payment = \App\Models\Payment::where('payment_id', (string) $transactionId)->first();
+            if ($payment) {
+                return $this->handlePaymentCallback($payment, $normalized, $payload, (string) $transactionId);
+            }
+
             Log::warning('[iPaymuWebhook] Transaksi tidak ditemukan', ['tx' => $transactionId]);
             // 200 supaya iPaymu tidak me-retry webhook yang memang bukan milik kita.
             return response()->json(['success' => true, 'message' => 'Referensi tidak dikenal, diabaikan.']);
@@ -230,6 +239,49 @@ class iPaymuWebhookController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Tangani callback untuk transaksi pembayaran checkout (VA/QRIS) iPaymu.
+     *
+     * Status 'paid' HANYA setelah konfirmasi resmi iPaymu (callback dengan
+     * signature tervalidasi + inquiry). Bila inquiry gagal, status webhook
+     * dipakai karena endpoint sudah terautentikasi signature.
+     */
+    private function handlePaymentCallback(\App\Models\Payment $payment, string $webhookStatus, array $payload, string $transactionId): JsonResponse
+    {
+        if (in_array($payment->status, ['paid', 'expired', 'canceled', 'failed'], true)) {
+            // Idempotent: transaksi terminal tidak berubah.
+            return response()->json(['success' => true, 'message' => 'Transaksi pembayaran sudah final.']);
+        }
+
+        if ($webhookStatus === 'pending' || $webhookStatus === 'processing') {
+            return response()->json(['success' => true, 'message' => 'Status processing dicatat.']);
+        }
+
+        $finalStatus = $this->paymentService->webhookFinalStatus($transactionId, $webhookStatus);
+
+        $updateData = [
+            'status'        => $finalStatus,
+            'callback_data' => $payload,
+        ];
+
+        if ($finalStatus === 'paid') {
+            $updateData['paid_at'] = now();
+        }
+
+        $payment->update($updateData);
+
+        if ($finalStatus === 'paid') {
+            if ($payment->order_id) {
+                \App\Models\Order::where('id', $payment->order_id)->update(['payment_status' => 'paid']);
+            }
+            if ($payment->shipment_id) {
+                \App\Models\Shipment::where('id', $payment->shipment_id)->update(['status' => 'confirmed']);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Status pembayaran diperbarui.']);
     }
 
     private function normalizeStatus($raw): string

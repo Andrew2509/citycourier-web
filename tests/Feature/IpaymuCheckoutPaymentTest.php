@@ -1,0 +1,521 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Http\Controllers\Api\iPaymuWebhookController;
+use App\Models\Payment;
+use App\Models\Setting;
+use App\Models\User;
+use App\Services\IpaymuPaymentService;
+use App\Services\iPaymuService;
+use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
+
+/**
+ * Pengujian pembayaran checkout (VA & QRIS) via iPaymu API v2.
+ *
+ * Kontrak respons dipertahankan (Flutter tidak berubah), status 'paid' HANYA
+ * setelah konfirmasi resmi iPaymu (callback ber-signature / inquiry) —
+ * TIDAK ada simulasi sukses.
+ */
+class IpaymuCheckoutPaymentTest extends TestCase
+{
+    protected FakeIpaymuService $fakeIpaymu;
+    protected FakeIpaymuPaymentService $fakePayment;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->dropSchema();
+        $this->createSchema();
+
+        // Reset cache kredensial iPaymu agar baca dari settings baru.
+        iPaymuService::flushCredentialsCache();
+
+        $this->fakeIpaymu = new FakeIpaymuService();
+        $this->fakePayment = new FakeIpaymuPaymentService($this->fakeIpaymu);
+
+        $this->app->bind(iPaymuService::class, fn () => $this->fakeIpaymu);
+        $this->app->bind(IpaymuPaymentService::class, fn () => $this->fakePayment);
+    }
+
+    private function dropSchema(): void
+    {
+        foreach (['payments', 'orders', 'shipments', 'settings', 'users'] as $table) {
+            Schema::dropIfExists($table);
+        }
+    }
+
+    private function createSchema(): void
+    {
+        Schema::create('users', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->string('phone', 20)->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
+        Schema::create('settings', function ($table) {
+            $table->id();
+            $table->string('key')->unique();
+            $table->text('value')->nullable();
+            $table->string('group')->default('general');
+            $table->timestamps();
+        });
+
+        Schema::create('payments', function ($table) {
+            $table->id();
+            $table->foreignId('user_id');
+            $table->unsignedBigInteger('order_id')->nullable();
+            $table->string('shipment_id')->nullable();
+            $table->string('payment_id');
+            $table->string('payment_type');
+            $table->string('channel_code')->nullable();
+            $table->integer('amount');
+            $table->string('status');
+            $table->string('va_number')->nullable();
+            $table->text('qr_string')->nullable();
+            $table->string('payment_url')->nullable();
+            $table->timestamp('expired_at')->nullable();
+            $table->timestamp('paid_at')->nullable();
+            $table->json('callback_data')->nullable();
+            $table->json('metadata')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('withdrawals', function ($table) {
+            $table->id();
+            $table->foreignId('user_id')->nullable();
+            $table->string('provider_reference')->nullable();
+            $table->string('idempotency_key')->nullable();
+            $table->string('status')->default('pending');
+            $table->timestamps();
+        });
+
+        Schema::create('orders', function ($table) {
+            $table->id();
+            $table->string('payment_status')->default('unpaid');
+            $table->timestamps();
+        });
+
+        Schema::create('shipments', function ($table) {
+            $table->id();
+            $table->string('status')->default('pending');
+            $table->timestamps();
+        });
+    }
+
+    protected function tearDown(): void
+    {
+        iPaymuService::flushCredentialsCache();
+        parent::tearDown();
+    }
+
+    private function user(): User
+    {
+        return User::create([
+            'name'     => 'Tester',
+            'email'    => 'tester@example.com',
+            'password' => bcrypt('secret'),
+            'phone'    => '08123456789',
+        ]);
+    }
+
+    private function makeConfigured(): void
+    {
+        Setting::create(['key' => 'ipaymu_va', 'value' => '123456', 'group' => 'ipaymu']);
+        Setting::create(['key' => 'ipaymu_api_key', 'value' => 'apikey-xyz', 'group' => 'ipaymu']);
+        Setting::create(['key' => 'ipaymu_base_url', 'value' => 'https://sandbox.ipaymu.com', 'group' => 'ipaymu']);
+        iPaymuService::flushCredentialsCache();
+    }
+
+    // ─── 1. methods() ───────────────────────────────────────────
+
+    public function test_methods_requires_config(): void
+    {
+        $user = $this->user();
+        Sanctum::actingAs($user);
+        $this->fakePayment->configured = false;
+
+        $response = $this->getJson('/api/payment/methods');
+        $response->assertStatus(502)
+            ->assertJson(['success' => false]);
+    }
+
+    public function test_methods_returns_va_and_qris(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->methods = [
+            ['code' => 'bca', 'name' => 'BCA Virtual Account', 'group' => 'virtual_account', 'icon' => 'https://x/bca.png', 'fee' => 4000, 'is_available' => true],
+            ['code' => 'QRIS', 'name' => 'QRIS', 'group' => 'qris', 'icon' => 'https://x/qris.png', 'fee' => 0, 'is_available' => true],
+        ];
+
+        $response = $this->getJson('/api/payment/methods');
+        $response->assertOk()
+            ->assertJson(['success' => true]);
+        $data = $response->json('data');
+        $this->assertCount(2, $data);
+        $this->assertSame('bca', $data[0]['code']);
+        $this->assertSame('QRIS', $data[1]['code']);
+    }
+
+    // ─── 2. create() ────────────────────────────────────────────
+
+    public function test_create_validation_amount_min(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/payment/create', [
+            'shipment_id' => 'SHIP-1',
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bca',
+            'amount'      => 5000,
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_create_va_success(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->createResult = [
+            'success'     => true,
+            'error'       => null,
+            'payment_id'  => '99001',
+            'va_number'   => '123456789012',
+            'qr_string'   => null,
+            'payment_url' => 'https://sandbox.ipaymu.com/payment/99001',
+            'expired_at'  => now()->addHours(24)->toIso8601String(),
+            'raw'         => null,
+        ];
+
+        $response = $this->postJson('/api/payment/create', [
+            'shipment_id' => 'SHIP-1',
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bca',
+            'amount'       => 13300,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson(['success' => true]);
+        $this->assertSame('123456789012', $response->json('data.va_number'));
+        $this->assertSame('99001', $response->json('data.payment_id'));
+        $this->assertSame('pending', $response->json('data.status'));
+
+        $this->assertDatabaseHas('payments', [
+            'payment_id'   => '99001',
+            'channel_code' => 'BCA',
+            'amount'       => 13300,
+            'status'       => 'pending',
+            'va_number'    => '123456789012',
+        ]);
+    }
+
+    public function test_create_qris_success(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->createResult = [
+            'success'     => true,
+            'error'       => null,
+            'payment_id'  => '99002',
+            'va_number'   => null,
+            'qr_string'   => 'QRIS-STRING-ABC',
+            'payment_url' => 'https://sandbox.ipaymu.com/payment/99002',
+            'expired_at'  => now()->addMinutes(60)->toIso8601String(),
+            'raw'         => null,
+        ];
+
+        $response = $this->postJson('/api/payment/create', [
+            'shipment_id' => 'SHIP-2',
+            'payment_type' => 'qris',
+            'channel_code' => 'qris',
+            'amount'       => 13300,
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertSame('QRIS-STRING-ABC', $response->json('data.qr_string'));
+        $this->assertDatabaseHas('payments', [
+            'payment_id'   => '99002',
+            'payment_type' => 'qris',
+            'status'       => 'pending',
+        ]);
+    }
+
+    // ─── 3. status() ────────────────────────────────────────────
+
+    public function test_status_terminal_no_api(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        Payment::create([
+            'user_id' => $user->id, 'payment_id' => 'P-1', 'payment_type' => 'bank_transfer',
+            'amount' => 10000, 'status' => 'paid', 'va_number' => '123',
+        ]);
+
+        $response = $this->getJson('/api/payment/status?payment_id=P-1');
+        $response->assertOk()
+            ->assertJson(['data' => ['status' => 'paid']]);
+    }
+
+    public function test_status_inquiry_updates_paid(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $order = \DB::table('orders')->insertGetId(['payment_status' => 'unpaid', 'created_at' => now(), 'updated_at' => now()]);
+        $shipment = \DB::table('shipments')->insertGetId(['status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
+
+        Payment::create([
+            'user_id' => $user->id, 'order_id' => $order, 'shipment_id' => $shipment,
+            'payment_id' => 'P-2', 'payment_type' => 'bank_transfer', 'amount' => 10000,
+            'status' => 'pending', 'va_number' => '123',
+        ]);
+
+        $this->fakePayment->syncResult = ['status' => 'paid', 'known' => true, 'error' => null];
+
+        $response = $this->getJson('/api/payment/status?payment_id=P-2');
+        $response->assertOk()
+            ->assertJson(['data' => ['status' => 'paid']]);
+
+        $this->assertDatabaseHas('orders', ['id' => $order, 'payment_status' => 'paid']);
+        $this->assertDatabaseHas('shipments', ['id' => $shipment, 'status' => 'confirmed']);
+    }
+
+    // ─── 4. cancel() ────────────────────────────────────────────
+
+    public function test_cancel_marks_canceled(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        Payment::create([
+            'user_id' => $user->id, 'payment_id' => 'P-3', 'payment_type' => 'bank_transfer',
+            'amount' => 10000, 'status' => 'pending', 'va_number' => '123',
+        ]);
+
+        $response = $this->postJson('/api/payment/cancel', ['payment_id' => 'P-3']);
+        $response->assertOk()
+            ->assertJson(['success' => true]);
+        $this->assertDatabaseHas('payments', ['payment_id' => 'P-3', 'status' => 'canceled']);
+    }
+
+    // ─── 5. webhook() ───────────────────────────────────────────
+
+    private function signatureFor(array $payload): string
+    {
+        // Replikasi normalisasi controller (int fields, additional_info).
+        $intFields = ['trx_id', 'status_code', 'transaction_status_code', 'paid_off'];
+        $normalized = [];
+        foreach ($payload as $k => $v) {
+            if ($k === 'signature') continue;
+            if (in_array($k, $intFields, true)) {
+                $normalized[$k] = is_numeric($v) ? (int) $v : $v;
+            } elseif ($k === 'is_escrow') {
+                $normalized[$k] = in_array($v, [true, 1, '1', 'true'], true);
+            } elseif ($k === 'additional_info') {
+                $normalized[$k] = ($v === '[]') ? [] : $v;
+            } else {
+                $normalized[$k] = is_array($v) ? $v : (string) $v;
+            }
+        }
+        if (!array_key_exists('additional_info', $normalized)) {
+            $normalized['additional_info'] = [];
+        }
+        ksort($normalized, SORT_STRING);
+        $json = json_encode($normalized);
+        return hash_hmac('sha256', $json, '123456');
+    }
+
+    public function test_webhook_invalid_signature_401(): void
+    {
+        $this->makeConfigured();
+        $payload = [
+            'trx_id' => 99001, 'status_code' => 1, 'status' => 'berhasil',
+            'additional_info' => [],
+        ];
+        $response = $this->postJson('/api/ipaymu/callback', $payload, [
+            'X-Signature' => 'deadbeef',
+        ]);
+        $response->assertStatus(401);
+    }
+
+    public function test_webhook_paid_callback_updates_payment(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+
+        $order = \DB::table('orders')->insertGetId(['payment_status' => 'unpaid', 'created_at' => now(), 'updated_at' => now()]);
+        $shipment = \DB::table('shipments')->insertGetId(['status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
+
+        Payment::create([
+            'user_id' => $user->id, 'order_id' => $order, 'shipment_id' => $shipment,
+            'payment_id' => '99001', 'payment_type' => 'bank_transfer', 'amount' => 10000,
+            'status' => 'pending', 'va_number' => '123',
+        ]);
+
+        $this->fakePayment->webhookStatus = 'paid';
+
+        $payload = [
+            'trx_id' => 99001,
+            'status_code' => 1,
+            'status' => 'berhasil',
+            'amount' => '10000',
+            'total' => '10000',
+            'additional_info' => [],
+        ];
+        $sig = $this->signatureFor($payload);
+
+        $response = $this->postJson('/api/ipaymu/callback', $payload, [
+            'X-Signature' => $sig,
+        ]);
+        $response->assertOk();
+
+        $this->assertDatabaseHas('payments', ['payment_id' => '99001', 'status' => 'paid']);
+        $this->assertDatabaseHas('orders', ['id' => $order, 'payment_status' => 'paid']);
+        $this->assertDatabaseHas('shipments', ['id' => $shipment, 'status' => 'confirmed']);
+    }
+
+    public function test_webhook_unknown_reference_ignored(): void
+    {
+        $this->makeConfigured();
+
+        $payload = [
+            'trx_id' => 777777,
+            'status_code' => 1,
+            'status' => 'berhasil',
+            'additional_info' => [],
+        ];
+        $sig = $this->signatureFor($payload);
+
+        $response = $this->postJson('/api/ipaymu/callback', $payload, [
+            'X-Signature' => $sig,
+        ]);
+        $response->assertOk()
+            ->assertJson(['success' => true]);
+    }
+
+    public function test_webhook_idempotent_terminal(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+
+        Payment::create([
+            'user_id' => $user->id, 'payment_id' => '99003', 'payment_type' => 'bank_transfer',
+            'amount' => 10000, 'status' => 'paid', 'va_number' => '123',
+        ]);
+
+        $payload = [
+            'trx_id' => 99003,
+            'status_code' => 1,
+            'status' => 'berhasil',
+            'additional_info' => [],
+        ];
+        $sig = $this->signatureFor($payload);
+
+        $response = $this->postJson('/api/ipaymu/callback', $payload, [
+            'X-Signature' => $sig,
+        ]);
+        $response->assertOk();
+        $this->assertDatabaseHas('payments', ['payment_id' => '99003', 'status' => 'paid']);
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Fakes
+// ──────────────────────────────────────────────────────────────
+
+class FakeIpaymuService extends iPaymuService
+{
+    public function __construct() {}
+
+    public function inquire(string $transactionId): array
+    {
+        return [
+            'status'  => 'success',
+            'verdict' => 'known',
+            'error'   => null,
+            'raw'     => ['Data' => ['Status' => 1]],
+            'http_code' => 200,
+        ];
+    }
+
+    public static function isConfigured(): bool
+    {
+        return true;
+    }
+
+    public static function credentials(): array
+    {
+        return [
+            'base_url' => 'https://sandbox.ipaymu.com',
+            'merchant_id' => '123456',
+            'va' => '123456',
+            'api_key' => 'apikey-xyz',
+            'secret_key' => '',
+            'payout_enabled' => false,
+            'webhook_secret' => '',
+            'timeout' => 30,
+        ];
+    }
+}
+
+class FakeIpaymuPaymentService extends IpaymuPaymentService
+{
+    public array $methods = [];
+    public bool $configured = true;
+    public ?array $createResult = null;
+    public array $syncResult = ['status' => 'pending', 'known' => false, 'error' => null];
+    public string $webhookStatus = 'paid';
+
+    public function __construct(?iPaymuService $ipaymu = null)
+    {
+        parent::__construct($ipaymu);
+    }
+
+    public function getPaymentMethods(): array
+    {
+        if (!$this->configured) {
+            return ['success' => false, 'methods' => [], 'message' => 'iPaymu belum terkonfigurasi.'];
+        }
+        return ['success' => true, 'methods' => $this->methods, 'message' => null];
+    }
+
+    public function createPayment(array $input): array
+    {
+        return $this->createResult ?? [
+            'success' => false, 'error' => 'not set', 'payment_id' => null,
+            'va_number' => null, 'qr_string' => null, 'payment_url' => null,
+            'expired_at' => null, 'raw' => null,
+        ];
+    }
+
+    public function syncStatus(\App\Models\Payment $payment): array
+    {
+        return $this->syncResult;
+    }
+
+    public function webhookFinalStatus(string $transactionId, string $webhookStatus): string
+    {
+        return $this->webhookStatus;
+    }
+}

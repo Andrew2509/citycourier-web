@@ -59,6 +59,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Path Endpoint Pembayaran Masuk (Checkout VA & QRIS)
+    |--------------------------------------------------------------------------
+    | REST API v2 resmi (docs.ipaymu.com → Payment → Direct):
+    | - POST {base}/api/v2/payment/direct      (buat VA / QRIS)
+    | - GET  {base}/api/v2/payment-channels    (daftar saluran aktif)
+    | notifyUrl dikirim pada body create → route /api/ipaymu/callback
+    | (callback publik yang sama dengan webhook penarikan; domain & path ini
+    | SUDAH terdaftar di dashboard iPaymu).
+    */
+    'payment_direct_path'   => env('IPAYMU_PAYMENT_DIRECT_PATH', '/api/v2/payment/direct'),
+    'payment_channels_path' => env('IPAYMU_PAYMENT_CHANNELS_PATH', '/api/v2/payment-channels'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Kadaluarsa Pembayaran Masuk
+    |--------------------------------------------------------------------------
+    | VA   : default 24 jam (default iPaymu).
+    | QRIS : 60 menit (checkout on-demand — QR harus segera dibayar).
+    */
+    'payment_expired_hours'  => (int) env('IPAYMU_PAYMENT_EXPIRED_HOURS', 24),
+    'qris_expired_minutes'   => (int) env('IPAYMU_QRIS_EXPIRED_MINUTES', 60),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Saluran QRIS
+    |--------------------------------------------------------------------------
+    | Di iPaymu v2, QRIS memakai paymentChannel "mpm" (Merchant Presented Mode).
+    */
+    'qris_channel' => env('IPAYMU_QRIS_CHANNEL', 'mpm'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Path Endpoint Inquiry Nama Akuntujuan (DANA Name Inquiry)
     |--------------------------------------------------------------------------
     | Endpoint penyedia payout biasanya menyediakan "account name inquiry":
