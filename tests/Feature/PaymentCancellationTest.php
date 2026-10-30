@@ -522,6 +522,29 @@ class PaymentCancellationTest extends TestCase
         $this->assertSame(0, $this->fakePayment->syncCalls, 'Tanpa pembayaran, iPaymu tidak dipanggil');
     }
 
+    /**
+     * Daftar "belum dibayar" memakai `payment_info` untuk membuka layar
+     * pembayaran; tanpa payment_id tombol Cek Status / Batalkan Pesanan tidak
+     * punya transaksi untuk ditanyakan ke backend.
+     */
+    public function test_payment_info_exposes_transaction_id_for_pending_payment(): void
+    {
+        $this->configure();
+        $user = $this->user();
+        $shipment = $this->shipmentFor($user);
+
+        $this->payment($user, [
+            'shipment_id' => $shipment->id,
+            'payment_id'  => '99200',
+        ]);
+
+        $info = $shipment->fresh()->payment_info;
+
+        $this->assertSame('99200', $info['payment_id']);
+        $this->assertSame('pending', $info['status']);
+        $this->assertSame('8808123456799', $info['va_number'], 'Data VA tetap dikirim seperti sebelumnya');
+    }
+
     // ─── 3. Webhook vs pembatalan ──────────────────────────────
 
     /**

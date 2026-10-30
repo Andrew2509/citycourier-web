@@ -92,9 +92,15 @@ class Shipment extends Model
         if (!$payment) return null;
 
         return [
-            'va_number'   => $payment->va_number,
-            'bank_name'   => $payment->channel_code,
-            'amount'      => $payment->amount,
+            // ID transaksi iPaymu: wajib dikirim agar aplikasi bisa memanggil
+            // /payment/status dan /payment/cancel untuk pesanan yang dibuka
+            // ulang dari daftar "belum dibayar".
+            'payment_id'   => $payment->payment_id,
+            'status'       => $payment->status,
+            'payment_type' => $payment->payment_type,
+            'va_number'    => $payment->va_number,
+            'bank_name'    => $payment->channel_code,
+            'amount'       => $payment->amount,
             'expired_at'  => $payment->expired_at?->toIso8601String(),
             'payment_url' => $payment->payment_url,
             'qr_string'   => $payment->qr_string,
