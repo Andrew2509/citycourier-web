@@ -430,9 +430,10 @@ class IpaymuCheckoutPaymentTest extends TestCase
         Sanctum::actingAs($this->user());
 
         $this->fakePayment->createResult = [
-            'success' => false,
-            'error'   => 'Suspicious buyer',
-            'raw'     => ['Status' => 400, 'Message' => 'Suspicious buyer'],
+            'success'   => false,
+            'error'     => 'Suspicious buyer',
+            'http_code' => 503,
+            'raw'       => ['Status' => 503, 'Message' => 'Suspicious buyer'],
         ];
 
         $this->postJson('/api/payment/create', [
@@ -441,6 +442,7 @@ class IpaymuCheckoutPaymentTest extends TestCase
             'amount'       => 13300,
         ])->assertStatus(502)
             ->assertJsonPath('message', 'Suspicious buyer')
+            ->assertJsonPath('debug.http_code', 503)
             ->assertJsonPath('debug.provider.Message', 'Suspicious buyer')
             ->assertJsonPath('debug.buyer.email', fn ($value) => is_string($value) && $value !== '')
             ->assertJsonPath('debug.buyer.phone', fn ($value) => is_string($value) && $value !== '');

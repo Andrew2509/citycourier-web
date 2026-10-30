@@ -138,7 +138,7 @@ class PaymentController extends Controller
                 // data yang memang sudah dikirim ke iPaymu — bukan kredensial.
                 'debug' => [
                     'buyer'     => $customer,
-                    'http_code' => $result['raw']['http_code'] ?? null,
+                    'http_code' => $result['http_code'] ?? null,
                     'provider'  => $result['raw'] ?? null,
                 ],
             ], 502);

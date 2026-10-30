@@ -129,7 +129,7 @@ class IpaymuPaymentService
         $none = [
             'success' => false, 'error' => null, 'payment_id' => null,
             'va_number' => null, 'qr_string' => null, 'payment_url' => null,
-            'expired_at' => null, 'raw' => null,
+            'expired_at' => null, 'http_code' => null, 'raw' => null,
         ];
 
         if (!iPaymuService::isConfigured()) {
@@ -201,6 +201,7 @@ class IpaymuPaymentService
             ]);
 
             $none['error'] = $res['error'] ?? 'iPaymu menolak pembayaran.';
+            $none['http_code'] = $res['http_code'] ?? null;
             $none['raw'] = $res['raw'];
             return $none;
         }
