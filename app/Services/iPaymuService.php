@@ -72,6 +72,7 @@ class iPaymuService
             'secret_key'     => $cfg['secret_key'] ?? '',
             'payout_enabled' => (bool) ($cfg['payout_enabled'] ?? false),
             'webhook_secret' => $cfg['webhook_secret'] ?? '',
+            'buyer_email'    => $cfg['buyer_email'] ?? '',
             'timeout'        => (int) ($cfg['timeout'] ?? 30),
         ];
 
@@ -87,6 +88,7 @@ class iPaymuService
             'api_key'        => $string('ipaymu_api_key', $fallback['api_key']),
             'secret_key'     => $string('ipaymu_secret_key', $fallback['secret_key']),
             'webhook_secret' => $string('ipaymu_webhook_secret', $fallback['webhook_secret']),
+            'buyer_email'    => $string('ipaymu_buyer_email', $fallback['buyer_email']),
             'payout_enabled' => filter_var(
                 \App\Models\Setting::get('ipaymu_payout_enabled', $fallback['payout_enabled']),
                 FILTER_VALIDATE_BOOLEAN
