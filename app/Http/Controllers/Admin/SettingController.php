@@ -147,9 +147,11 @@ class SettingController extends Controller
             $service = new \App\Services\iPaymuService($override);
             $result = $service->inquire('CITY-COURIER-TEST-CONNECTION-' . time());
 
-            $httpCode = $result['raw']['http_code'] ?? 0;
+            // interpretResponse() mengembalikan http_code terstruktur di level
+            // hasil, dan raw = isi body provider (bukan envelope HTTP).
+            $httpCode = (int) ($result['http_code'] ?? 0);
             $errorMessage = strtolower((string) ($result['error'] ?? ''));
-            $rawBody = $result['raw']['body'] ?? [];
+            $rawBody = $result['raw'] ?? [];
             $providerMsg = strtolower((string) ($rawBody['Message'] ?? $rawBody['message']
                 ?? $rawBody['Msg'] ?? $rawBody['msg']
                 ?? $rawBody['error'] ?? $rawBody['Error']
@@ -165,7 +167,10 @@ class SettingController extends Controller
             // Respons bisnis "transaksi not found" (iPaymu balas HTTP 400 untuk
             // error bisnis) tetap membuktikan: server dijangkau, tanda tangan
             // DAN kredensial diterima — hanya id dummy yang memang tidak ada.
-            if (($result['raw']['reachable'] ?? false) && $httpCode > 0 && $isDataNotFound && !$isRouteNotFound) {
+            // Respons bisnis "transaksi not found" (iPaymu balas HTTP 400 untuk
+            // error bisnis) tetap membuktikan: server dijangkau, tanda tangan
+            // DAN kredensial diterima — hanya id dummy yang memang tidak ada.
+            if ($httpCode > 0 && $isDataNotFound && !$isRouteNotFound) {
                 return response()->json([
                     'success' => true,
                     'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons, tanda tangan & kredensial API diterima "
@@ -176,7 +181,7 @@ class SettingController extends Controller
 
             // Server merespons dengan HTTP < 400 → request tersambung dan
             // tanda tangan diterima.
-            if (($result['raw']['reachable'] ?? false) && $httpCode > 0 && $httpCode < 400) {
+            if ($httpCode > 0 && $httpCode < 400) {
                 return response()->json([
                     'success' => true,
                     'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons (HTTP {$httpCode}) dan tanda tangan API diterima."

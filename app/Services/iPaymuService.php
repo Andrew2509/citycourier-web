@@ -343,6 +343,7 @@ class iPaymuService
                 'verdict'        => 'unknown',
                 'error'          => 'Tidak dapat menghubungi iPaymu: ' . $raw['error'],
                 'raw'            => null,
+                'http_code'      => 0,
             ];
         }
 
@@ -372,6 +373,7 @@ class iPaymuService
                 'verdict'        => 'known',
                 'error'          => $msg,
                 'raw'            => $data,
+                'http_code'      => $raw['http_code'],
             ];
         }
 
@@ -398,6 +400,7 @@ class iPaymuService
                 'verdict'        => 'known',
                 'error'          => (string) ($data['Message'] ?? 'iPaymu menolak permintaan.'),
                 'raw'            => $data,
+                'http_code'      => $raw['http_code'],
             ];
         }
 
@@ -413,6 +416,7 @@ class iPaymuService
                 'verdict'        => 'unknown',
                 'error'          => 'Status iPaymu tidak dikenali.',
                 'raw'            => $data,
+                'http_code'      => $raw['http_code'],
             ];
         }
 
@@ -426,6 +430,7 @@ class iPaymuService
             'verdict'        => 'known',
             'error'          => $knownFailure ? ($providerError ?? 'Payout ditolak oleh iPaymu.') : null,
             'raw'            => $data,
+            'http_code'      => $raw['http_code'],
         ];
     }
 
