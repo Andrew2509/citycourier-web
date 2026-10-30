@@ -392,6 +392,32 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->assertSame('081311112222', $buyer['phone']);
     }
 
+    /**
+     * Penolakan provider (mis. "Suspicious buyer") harus mengembalikan data
+     * diagnostik: identitas yang dikirim dan jawaban mentah iPaymu.
+     */
+    public function test_create_failure_returns_buyer_diagnostics(): void
+    {
+        $this->makeConfigured();
+        Sanctum::actingAs($this->user());
+
+        $this->fakePayment->createResult = [
+            'success' => false,
+            'error'   => 'Suspicious buyer',
+            'raw'     => ['Status' => 400, 'Message' => 'Suspicious buyer'],
+        ];
+
+        $this->postJson('/api/payment/create', [
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bni',
+            'amount'       => 13300,
+        ])->assertStatus(502)
+            ->assertJsonPath('message', 'Suspicious buyer')
+            ->assertJsonPath('debug.provider.Message', 'Suspicious buyer')
+            ->assertJsonPath('debug.buyer.email', fn ($value) => is_string($value) && $value !== '')
+            ->assertJsonPath('debug.buyer.phone', fn ($value) => is_string($value) && $value !== '');
+    }
+
     // ─── 3. status() ────────────────────────────────────────────
 
     public function test_status_terminal_no_api(): void

@@ -132,6 +132,15 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $result['error'] ?? 'Gagal membuat pembayaran',
+                // Data diagnostik untuk penolakan provider (mis. "Suspicious
+                // buyer"): identitas yang kita kirim + jawaban mentah iPaymu.
+                // Dikembalikan ke pengguna yang sama pemilik shipment, berisi
+                // data yang memang sudah dikirim ke iPaymu — bukan kredensial.
+                'debug' => [
+                    'buyer'     => $customer,
+                    'http_code' => $result['raw']['http_code'] ?? null,
+                    'provider'  => $result['raw'] ?? null,
+                ],
             ], 502);
         }
 
