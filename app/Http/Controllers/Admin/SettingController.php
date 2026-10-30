@@ -150,7 +150,10 @@ class SettingController extends Controller
             $httpCode = $result['raw']['http_code'] ?? 0;
             $errorMessage = strtolower((string) ($result['error'] ?? ''));
             $rawBody = $result['raw']['body'] ?? [];
-            $providerMsg = strtolower((string) ($rawBody['message'] ?? ($rawBody['error'] ?? '')));
+            $providerMsg = strtolower((string) ($rawBody['Message'] ?? $rawBody['message']
+                ?? $rawBody['Msg'] ?? $rawBody['msg']
+                ?? $rawBody['error'] ?? $rawBody['Error']
+                ?? $rawBody['StatusDesc'] ?? ''));
 
             // Respons bisnis "transaksi tidak ditemukan" tetap membuktikan:
             // server dijangkau, tanda tangan diterima, hanya id dummy yang
@@ -192,6 +195,7 @@ class SettingController extends Controller
                 'success' => false,
                 'message' => $isAuthIssue
                     ? 'Server iPaymu menolak kredensial. Periksa API Key, VA, atau mode sandbox/production.'
+                        . ($providerMsg !== '' ? ' Alasan server: ' . $providerMsg : '.')
                     : 'Koneksi Gagal: ' . ($result['error'] ?? 'Tidak dapat menghubungi server iPaymu.'),
                 'data'    => $result,
             ], $isAuthIssue ? 401 : 400);

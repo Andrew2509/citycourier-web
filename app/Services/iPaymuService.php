@@ -260,9 +260,20 @@ class iPaymuService
         $data = $raw['body'];
         if ($data === null || $raw['http_code'] >= 400) {
             $msg = $raw['error'] ?? ('iPaymu menolak permintaan (HTTP ' . $raw['http_code'] . ').');
-            $providerMsg = $data['message'] ?? ($data['error'] ?? ($data['Status'] ?? null));
+
+            // Envelope resmi memakai key awalan kapital ({Message, Status, Success}),
+            // beberapa endpoint memakai kecil → cek semua penulisan umum.
+            $providerMsg = $data['Message'] ?? $data['message']
+                ?? $data['Msg'] ?? $data['msg']
+                ?? $data['error'] ?? $data['Error']
+                ?? $data['StatusDesc'] ?? null;
+            if (is_array($providerMsg)) {
+                $providerMsg = json_encode($providerMsg);
+            }
             if ($providerMsg) {
-                $msg .= ' ' . (is_string($providerMsg) ? $providerMsg : json_encode($providerMsg));
+                $msg .= ' ' . $providerMsg;
+            } elseif (isset($data['Status'])) {
+                $msg .= ' (Kode: ' . $data['Status'] . ')';
             }
 
             return [
