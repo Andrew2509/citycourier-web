@@ -91,6 +91,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Domain Email Buyer
+    |--------------------------------------------------------------------------
+    | iPaymu menolak transaksi production dengan pesan "Suspicious buyer" bila
+    | email pembeli memakai domain reserved seperti `@citycourier.local` atau
+    | `@example.com`. Bila email akun pengguna tidak layak, sistem membuat
+    | alamat valid pada domain merchant ini. Kosongkan untuk memakai host dari
+    | APP_URL (mis. www.neonflux.my.id).
+    */
+    'buyer_email_domain' => env('IPAYMU_BUYER_EMAIL_DOMAIN'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Path Endpoint Inquiry Nama Akuntujuan (DANA Name Inquiry)
     |--------------------------------------------------------------------------
     | Endpoint penyedia payout biasanya menyediakan "account name inquiry":

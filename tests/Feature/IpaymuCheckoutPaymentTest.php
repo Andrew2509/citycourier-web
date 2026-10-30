@@ -105,6 +105,11 @@ class IpaymuCheckoutPaymentTest extends TestCase
 
         Schema::create('shipments', function ($table) {
             $table->id();
+            $table->foreignId('user_id')->nullable();
+            $table->string('customer_name')->nullable();
+            $table->string('customer_phone', 20)->nullable();
+            $table->string('sender_name')->nullable();
+            $table->string('sender_phone', 20)->nullable();
             $table->string('status')->default('pending');
             $table->timestamps();
         });
@@ -255,6 +260,134 @@ class IpaymuCheckoutPaymentTest extends TestCase
             'payment_type' => 'qris',
             'status'       => 'pending',
         ]);
+    }
+
+    // ─── 2b. Identitas buyer (anti "Suspicious buyer") ──────────
+
+    /**
+     * Akun hasil login OTP lama menyimpan nama "User 1234" dan email
+     * `@citycourier.local`. Keduanya ditolak iPaymu di mode production.
+     * Checkout harus memakai data pelanggan dari shipment + email valid.
+     */
+    public function test_create_uses_shipment_identity_instead_of_placeholder_account(): void
+    {
+        $this->makeConfigured();
+        config(['ipaymu.buyer_email_domain' => 'neonflux.my.id']);
+
+        $user = User::create([
+            'name'     => 'User 1234',
+            'email'    => '081234567890@citycourier.local',
+            'password' => bcrypt('secret'),
+            'phone'    => '+62 812-3456-7890',
+        ]);
+        Sanctum::actingAs($user);
+
+        $shipmentId = \Illuminate\Support\Facades\DB::table('shipments')->insertGetId([
+            'user_id'        => $user->id,
+            'customer_name'  => 'Budi Santoso',
+            'customer_phone' => '+62 812-9876-5432',
+            'status'         => 'pending',
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        $this->fakePayment->createResult = [
+            'success'     => true,
+            'error'       => null,
+            'payment_id'  => '99010',
+            'va_number'   => '8808123456789',
+            'qr_string'   => null,
+            'payment_url' => null,
+            'expired_at'  => now()->addHours(24)->toIso8601String(),
+            'raw'         => null,
+        ];
+
+        $this->postJson('/api/payment/create', [
+            'shipment_id'  => (string) $shipmentId,
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bni',
+            'amount'       => 13300,
+        ])->assertStatus(201);
+
+        $buyer = $this->fakePayment->lastInput['customer'];
+
+        $this->assertSame('Budi Santoso', $buyer['name']);
+        $this->assertSame('081298765432', $buyer['phone']);
+        $this->assertSame('pelanggan.081298765432@neonflux.my.id', $buyer['email']);
+        $this->assertNotSame($user->email, $buyer['email']);
+    }
+
+    /** Email pengguna yang valid (mis. Gmail) dipertahankan apa adanya. */
+    public function test_create_keeps_valid_user_email(): void
+    {
+        $this->makeConfigured();
+
+        $user = User::create([
+            'name'     => 'Budi Santoso',
+            'email'    => 'budi.santoso@gmail.com',
+            'password' => bcrypt('secret'),
+            'phone'    => '081298765432',
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->createResult = [
+            'success'     => true, 'error' => null, 'payment_id' => '99011',
+            'va_number'   => '8808123456790', 'qr_string' => null,
+            'payment_url' => null, 'expired_at' => now()->addHours(24)->toIso8601String(),
+            'raw'         => null,
+        ];
+
+        $this->postJson('/api/payment/create', [
+            'shipment_id'  => 'SHIP-VALID-EMAIL',
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bni',
+            'amount'       => 13300,
+        ])->assertStatus(201);
+
+        $buyer = $this->fakePayment->lastInput['customer'];
+
+        $this->assertSame('Budi Santoso', $buyer['name']);
+        $this->assertSame('budi.santoso@gmail.com', $buyer['email']);
+        $this->assertSame('081298765432', $buyer['phone']);
+    }
+
+    /** Override `customer` dari request (dipakai untuk uji curl) dihormati. */
+    public function test_create_respects_explicit_customer_override(): void
+    {
+        $this->makeConfigured();
+
+        $user = User::create([
+            'name'     => 'User 1234',
+            'email'    => '081234567890@citycourier.local',
+            'password' => bcrypt('secret'),
+            'phone'    => '081234567890',
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->fakePayment->createResult = [
+            'success'     => true, 'error' => null, 'payment_id' => '99012',
+            'va_number'   => '8808123456791', 'qr_string' => null,
+            'payment_url' => null, 'expired_at' => now()->addHours(24)->toIso8601String(),
+            'raw'         => null,
+        ];
+
+        $this->postJson('/api/payment/create', [
+            'shipment_id'  => 'SHIP-OVERRIDE',
+            'payment_type' => 'virtual_account',
+            'channel_code' => 'bni',
+            'amount'       => 13300,
+            'customer'     => [
+                'name'  => 'Siti Aminah',
+                'email' => 'siti.aminah@yahoo.com',
+                'phone' => '+62 813-1111-2222',
+            ],
+        ])->assertStatus(201);
+
+        $buyer = $this->fakePayment->lastInput['customer'];
+
+        $this->assertSame('Siti Aminah', $buyer['name']);
+        $this->assertSame('siti.aminah@yahoo.com', $buyer['email']);
+        $this->assertSame('081311112222', $buyer['phone']);
     }
 
     // ─── 3. status() ────────────────────────────────────────────
@@ -552,6 +685,7 @@ class FakeIpaymuPaymentService extends IpaymuPaymentService
     public array $methods = [];
     public bool $configured = true;
     public ?array $createResult = null;
+    public array $lastInput = [];
     public array $syncResult = ['status' => 'pending', 'known' => false, 'error' => null];
     public string $webhookStatus = 'paid';
 
@@ -570,6 +704,8 @@ class FakeIpaymuPaymentService extends IpaymuPaymentService
 
     public function createPayment(array $input): array
     {
+        $this->lastInput = $input;
+
         return $this->createResult ?? [
             'success' => false, 'error' => 'not set', 'payment_id' => null,
             'va_number' => null, 'qr_string' => null, 'payment_url' => null,

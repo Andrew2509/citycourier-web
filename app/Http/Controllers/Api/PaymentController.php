@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Shipment;
+use App\Services\BuyerIdentity;
 use App\Services\IpaymuPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -93,11 +94,18 @@ class PaymentController extends Controller
             ? 'va'
             : 'qris';
 
-        $customer = $request->customer ?? [
-            'name'  => $user->name ?? 'Customer',
-            'email' => $user->email ?? 'customer@example.com',
-            'phone' => $user->phone ?? '08123456789',
-        ];
+        // Identitas buyer untuk iPaymu. Data shipment (nama/telepon yang
+        // diketik pelanggan) lebih dipercaya daripada profil akun yang bisa
+        // berisi placeholder seperti "User 1234" / `@citycourier.local`.
+        // Placeholder tersebut membuat iPaymu menolak transaksi production
+        // dengan pesan "Suspicious buyer".
+        $customer = $this->resolveCustomer($request, $user);
+
+        Log::info('PaymentController: identitas buyer iPaymu', [
+            'user_id'     => $user->id,
+            'shipment_id' => $request->input('shipment_id'),
+            'buyer'       => $customer,
+        ]);
 
         $items = $request->items ?? [[
             'name'     => 'Biaya Pengiriman City Courier',
@@ -320,6 +328,58 @@ class PaymentController extends Controller
     }
 
     // ─── Helpers ─────────────────────────────────────────────────
+
+    /**
+     * Susun identitas buyer yang aman untuk iPaymu.
+     *
+     * Urutan prioritas:
+     * - name  : customer (request) → shipment.customer_name → shipment.sender_name → user.name
+     * - phone : customer (request) → shipment.customer_phone → shipment.sender_phone → user.phone
+     * - email : customer (request) → user.email bila valid → alamat valid di domain merchant
+     *
+     * @return array{name:string,email:string,phone:string}
+     */
+    private function resolveCustomer(Request $request, $user): array
+    {
+        $override = $request->input('customer');
+        $override = is_array($override) ? $override : [];
+
+        $shipment = $this->findShipment($request, (int) $user->id);
+
+        $name = BuyerIdentity::name(
+            $override['name'] ?? null,
+            $shipment?->customer_name,
+            $shipment?->sender_name,
+            $user->name,
+        );
+
+        $phone = BuyerIdentity::phone(
+            $override['phone'] ?? null,
+            $shipment?->customer_phone ?? $shipment?->sender_phone ?? $user->phone,
+        );
+
+        $email = BuyerIdentity::email(
+            $override['email'] ?? null,
+            $user->email,
+            $phone,
+        );
+
+        return ['name' => $name, 'email' => $email, 'phone' => $phone];
+    }
+
+    /** Shipment milik user yang sedang login (null bila tidak ditemukan). */
+    private function findShipment(Request $request, int $userId): ?Shipment
+    {
+        $shipmentId = $request->input('shipment_id');
+        if ($shipmentId === null || $shipmentId === '') {
+            return null;
+        }
+
+        return Shipment::query()
+            ->where('id', $shipmentId)
+            ->where('user_id', $userId)
+            ->first();
+    }
 
     /** Tandai order/shipment terbayar bila relasi tersedia. */
     private function markOrderShipmentPaid(Payment $payment): void

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Courier;
+use App\Services\BuyerIdentity;
 use App\Services\WhatsAppManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -300,7 +301,9 @@ class AuthController extends Controller
             ['phone' => $phone],
             [
                 'name' => 'User ' . substr($phone, -4),
-                'email' => $phone . '@citycourier.local',
+                // Jangan pakai domain reserved: iPaymu menolak email
+                // `@citycourier.local` sebagai "Suspicious buyer".
+                'email' => BuyerIdentity::email(null, null, BuyerIdentity::phone($phone)),
                 'password' => Hash::make(Str::random(16)),
                 'role' => 'customer' // default role
             ]
