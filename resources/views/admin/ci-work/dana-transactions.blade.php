@@ -84,7 +84,7 @@
     <div class="card overflow-hidden">
         <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
             <div class="flex items-center justify-between gap-2 text-xs text-slate-500">
-                <span>Menampilkan {{ $withdrawals->total() > 0 ? $withdrawals->firstItem() . ' - ' . $withdrawals->lastItem() : 0 }} dari {$withdrawals->total()} penarikan DANA</span>
+                <span>Menampilkan {{ $withdrawals->total() > 0 ? $withdrawals->firstItem() . ' - ' . $withdrawals->lastItem() : 0 }} dari {{ $withdrawals->total() }} penarikan DANA</span>
                 {{ $withdrawals->withQueryString()->links() }}
             </div>
         </div>
@@ -107,6 +107,10 @@
                         $wdStatus = in_array($wd->status, ['approved', 'completed', 'success']) ? 'completed' : (in_array($wd->status, ['rejected', 'failed', 'cancelled']) ? 'rejected' : 'pending');
                         $providerName = strtoupper($wd->provider ?? $wd->bank_name ?? 'DANA');
                         $providerHasApi = $providerName === 'DANA';
+                        // Nomor tujuan disamarkan untuk tampilan admin (raw tetap di DB).
+                        $wdAccountMasked = $wd->account_number
+                            ? (\App\Services\WithdrawalService::maskPhone($wd->account_number))
+                            : ($wd->danaConnection?->masked_phone ?? '-');
                     @endphp
                     <tr class="wd-row" data-status="{{ $wdStatus }}">
                         <td>
@@ -134,7 +138,7 @@
                                         <span>{{ $providerName }}</span>
                                     @endif
                                 </span>
-                                <p class="text-[11px] text-slate-600 font-mono">{{ $wd->account_number ?: ($wd->danaConnection?->masked_phone ?? '-') }}</p>
+                                <p class="text-[11px] text-slate-600 font-mono">{{ $wdAccountMasked }}</p>
                                 <p class="text-[10px] text-slate-400">a.n {{ $wd->account_name ?: ($wd->danaConnection?->account_name ?? 'Kurir') }}</p>
                             </div>
                         </td>
@@ -169,13 +173,14 @@
                                     'fee'           => (float) $wd->fee,
                                     'net_amount'    => (float) $wd->net_amount,
                                     'provider'      => $providerName,
-                                    'account'       => $wd->account_number ?: ($wd->danaConnection?->masked_phone ?? '-'),
+                                    'account'       => $wdAccountMasked,
                                     'account_name'  => $wd->account_name ?: ($wd->danaConnection?->account_name ?? '-'),
                                     'status'        => $wd->status,
                                     'reference'     => $wd->provider_reference,
                                     'idempotency'   => $wd->idempotency_key,
                                     'failure'       => $wd->failure_reason,
                                     'notes'         => $wd->admin_notes,
+                                    'status_history'=> $wd->status_history ?? [],
                                     'created_at'    => \Carbon\Carbon::parse($wd->created_at)->format('d M Y, H:i:s'),
                                     'processed_at'  => $wd->processed_at ? \Carbon\Carbon::parse($wd->processed_at)->format('d M Y, H:i:s') : null,
                                     'is_terminal'   => $wd->isTerminal(),
@@ -339,6 +344,147 @@ document.addEventListener('DOMContentLoaded', function() {
             radio.checked = true;
         }
     });
+});
+
+function rupiah(n) {
+    return 'Rp ' + Number(n ?? 0).toLocaleString('id-ID');
+}
+
+// Detail penarikan — dibaca dari atribut data baris (tanpa data fiktif).
+// Riwayat perubahan status (status_history) ikut ditampilkan.
+function openWithdrawalDetail(btn) {
+    const raw = btn.getAttribute('data-withdrawal');
+    if (!raw) return;
+
+    let w;
+    try {
+        w = JSON.parse(raw);
+    } catch (e) {
+        return;
+    }
+
+    const statusLabel = {
+        pending: 'Menunggu',
+        reserved: 'Dana ditahan',
+        processing: 'Diproses',
+        approved: 'Disetujui',
+        completed: 'Berhasil',
+        success: 'Berhasil',
+        rejected: 'Ditolak',
+        failed: 'Gagal',
+        cancelled: 'Dibatalkan',
+    }[w.status] || w.status;
+
+    const statusClass = ['completed', 'success'].includes(w.status)
+        ? 'badge-primary'
+        : (['rejected', 'failed', 'cancelled'].includes(w.status) ? 'badge-danger'
+            : (w.status === 'processing' || w.status === 'approved' ? 'badge-info' : 'badge-warning'));
+
+    const rows = [
+        ['Kurir', w.courier + (w.phone ? ' • ' + w.phone : '')],
+        ['Metode', w.provider],
+        ['No. HP DANA tujuan', w.account],
+        ['Nama penerima', w.account_name],
+        ['Nominal penarikan', rupiah(w.amount)],
+        ['Biaya administrasi', rupiah(w.fee)],
+        ['Total dana diterima', rupiah(w.net_amount)],
+        ['Kode idempotency', w.idempotency || '-'],
+        ['Referensi iPaymu', w.reference || 'belum ada'],
+        ['Diajukan', w.created_at],
+        ['Diproses', w.processed_at || '-'],
+    ];
+
+    if (w.failure) rows.push(['Alasan gagal', w.failure]);
+    if (w.notes) rows.push(['Catatan admin', w.notes]);
+
+    // Riwayat perubahan status (terbaru di bawah → tampilkan kronologis).
+    let historyHtml = '';
+    const history = Array.isArray(w.status_history) ? w.status_history : [];
+    if (history.length > 0) {
+        historyHtml = `
+            <div class="mt-3 pt-3 border-t border-slate-100">
+                <p class="text-[11px] font-semibold text-slate-700 mb-2">Riwayat Status</p>
+                <ol class="space-y-1.5">
+                    ${history.map(h => `
+                        <li class="flex items-start gap-2 text-[11px]">
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0"></span>
+                            <span class="text-slate-700 font-medium">${statusLabel[h.status] || h.status}</span>
+                            ${h.note ? `<span class="text-slate-400">— ${h.note}</span>` : ''}
+                            <span class="text-slate-400 ml-auto whitespace-nowrap font-mono">${h.at || ''}</span>
+                        </li>`).join('')}
+                </ol>
+            </div>`;
+    } else {
+        historyHtml = `
+            <div class="mt-3 pt-3 border-t border-slate-100">
+                <p class="text-[11px] text-slate-400">Belum ada riwayat perubahan status tercatat.</p>
+            </div>`;
+    }
+
+    document.getElementById('withdrawalDetailBody').innerHTML = `
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+            <div>
+                <p class="text-[11px] text-slate-500">Penarikan #${w.id}</p>
+                <p class="text-lg font-bold text-slate-900 font-mono">${rupiah(w.amount)}</p>
+            </div>
+            <span class="badge ${statusClass} text-[11px]">${statusLabel}</span>
+        </div>
+        <dl class="space-y-1.5 text-xs">
+            ${rows.map(([k, v]) => `
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-slate-500 shrink-0">${k}</dt>
+                    <dd class="text-slate-800 font-medium text-right break-all">${v}</dd>
+                </div>`).join('')}
+        </dl>${historyHtml}`;
+
+    // Tombol verifikasi resmi hanya untuk transaksi belum final.
+    const checkBox = document.getElementById('withdrawalDetailCheck');
+    if (w.has_api && !w.is_terminal && w.check_url) {
+        checkBox.innerHTML = `
+            <form action="${w.check_url}" method="POST">
+                <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.content || ''}">
+                <button type="submit" class="btn btn-secondary text-xs h-8 px-3 gap-1">
+                    <span class="material-symbols-outlined text-[14px] text-[#118EEA]">sync</span>
+                    <span>Cek Status ${w.provider}</span>
+                </button>
+            </form>`;
+    } else {
+        checkBox.innerHTML = '';
+    }
+
+    const m = document.getElementById('withdrawalDetailModal');
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+}
+
+function closeWithdrawalDetail() {
+    const m = document.getElementById('withdrawalDetailModal');
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+}
+
+function openGuideModal() {
+    const m = document.getElementById('guideModal');
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+}
+
+function closeGuideModal() {
+    const m = document.getElementById('guideModal');
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        ['guideModal', 'withdrawalDetailModal'].forEach(id => {
+            const m = document.getElementById(id);
+            if (m && !m.classList.contains('hidden')) {
+                m.classList.add('hidden');
+                m.classList.remove('flex');
+            }
+        });
+    }
 });
 </script>
 @endsection

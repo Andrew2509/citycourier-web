@@ -66,6 +66,23 @@ class DanaConnection extends Model
         return $this->decrypt('access_token_encrypted');
     }
 
+    /**
+     * Nomor HP penuh (dekripsi phone_encrypted). Hanya untuk keperluan
+     * backend payout; tidak pernah ikut dikirim ke response JSON karena
+     * attribute masuk daftar tersembunyi.
+     */
+    public function getPhoneAttribute(): ?string
+    {
+        return $this->decrypt('phone_encrypted');
+    }
+
+    public function setPhoneAttribute(?string $value): void
+    {
+        $this->attributes['phone_encrypted'] = $value === null || $value === ''
+            ? null
+            : Crypt::encryptString($value);
+    }
+
     public function setAccessTokenAttribute(?string $value): void
     {
         $this->attributes['access_token_encrypted'] = $value === null || $value === ''

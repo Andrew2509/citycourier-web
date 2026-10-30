@@ -43,19 +43,6 @@ class WalletController extends Controller
 
         $balance = $this->walletService->getBalance($courier->id);
 
-        $conn = \App\Models\DanaConnection::where('courier_id', $courier->id)->first();
-        $isConnected = $conn !== null && $conn->status === 'connected';
-
-        $balance['dana'] = [
-            'status'         => $isConnected ? 'CONNECTED' : strtoupper((string) ($conn?->status ?? 'NOT_CONNECTED')),
-            'status_label'   => $isConnected ? 'CONNECTED' : strtoupper((string) ($conn?->status ?? 'NOT_CONNECTED')),
-            'connected'      => $isConnected,
-            'provider'       => 'DANA',
-            'masked_phone'   => $conn?->masked_phone,
-            'account_name'   => $conn?->account_name,
-            'bound_at'       => $conn?->bound_at?->toIso8601String(),
-        ];
-
         return response()->json([
             'success' => true,
             'data'    => $balance,

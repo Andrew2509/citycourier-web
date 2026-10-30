@@ -10,6 +10,7 @@ use App\Models\WalletTransaction;
 use App\Models\Withdrawal;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -30,12 +31,19 @@ class WalletHistoryTest extends TestCase
 
     private function dropSchema(): void
     {
-        foreach ([
-            'wallet_transactions', 'withdrawals', 'wallets',
-            'dana_connections', 'couriers', 'settings', 'users',
-        ] as $table) {
+        // SQLite does not support SET FOREIGN_KEY_CHECKS, use PRAGMA instead
+        DB::statement('PRAGMA foreign_keys=0');
+
+        foreach (
+            [
+                'wallet_transactions', 'withdrawals', 'wallets',
+                'dana_connections', 'couriers', 'settings', 'users',
+            ] as $table) {
             Schema::dropIfExists($table);
         }
+
+        // Re-enable foreign key checks
+        DB::statement('PRAGMA foreign_keys=1');
     }
 
     private function createSchema(): void
@@ -123,6 +131,7 @@ class WalletHistoryTest extends TestCase
             $table->string('failure_code')->nullable();
             $table->text('failure_reason')->nullable();
             $table->text('admin_notes')->nullable();
+            $table->json('status_history')->nullable();
             $table->timestamp('processed_at')->nullable();
             $table->timestamps();
         });
@@ -338,17 +347,18 @@ class WalletHistoryTest extends TestCase
         $this->assertContains('Dana berhasil dikirim', $titles);
     }
 
-    public function test_withdrawal_requires_connected_dana(): void
+    public function test_withdrawal_with_phone_number_succeeds_without_dana_binding(): void
     {
         $courier = $this->actingCourier();
         $this->walletWithBalance($courier, 200000);
 
-        $this->postJson('/api/courier/withdrawals', [
+        $created = $this->postJson('/api/withdrawals', [
             'amount'          => 50000,
             'idempotency_key' => 'WD-NO-DANA-1',
-        ])->assertStatus(400)->assertJsonPath('success', false);
+            'phone_number'    => '081234567890',
+        ])->assertStatus(201);
 
-        $this->assertSame(0, Withdrawal::count());
+        $this->assertGreaterThan(0, Withdrawal::count());
     }
 
     public function test_withdrawal_rejects_amount_above_available_balance(): void
@@ -404,9 +414,12 @@ class WalletHistoryTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame('processing', $row['status']);
 
-        // Sinkronisasi status resmi provider.
+        // Sinkronisasi status: belum final tanpa konfirmasi provider.
         $sync = $this->getJson('/api/courier/withdrawals/' . $withdrawalId . '/status')->assertOk();
-        $sync->assertJsonPath('data.status', 'success');
+        $sync->assertJsonPath('data.status', 'processing');
+
+        // Konfirmasi resmi provider (webhook/inquiry) memfinalkan status.
+        (new \App\Services\WithdrawalService())->handleStatusUpdate('WD-FLOW-1', 'success');
 
         $wallet->refresh();
         $this->assertSame('150000.00', $wallet->available_balance);
@@ -429,10 +442,12 @@ class WalletHistoryTest extends TestCase
             'idempotency_key' => 'WD-FAIL-1',
         ])->assertCreated();
 
-        $reference = $created->json('data.provider_reference');
+        // Provider belum kirim referensi (payout belum aktif) — gunakan idempotency key
+        // untuk pencocokan konfirmasi resmi.
+        $reference = $created->json('data.idempotency_key');
         $this->assertNotEmpty($reference);
 
-        // Provider menyatakan transaksi gagal.
+        // Provider menyatakan transaksi gagal (konfirmasi resmi).
         (new \App\Services\WithdrawalService())->handleStatusUpdate($reference, 'failed', 'Nomor DANA tidak valid');
 
         $wallet = Wallet::where('courier_id', $courier->id)->first();

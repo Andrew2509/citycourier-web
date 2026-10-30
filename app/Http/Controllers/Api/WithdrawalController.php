@@ -17,7 +17,6 @@ use Illuminate\Http\Request;
 class WithdrawalController extends Controller
 {
     private WithdrawalService $withdrawalService;
-
     public function __construct(?WithdrawalService $withdrawalService = null)
     {
         $this->withdrawalService = $withdrawalService ?? new WithdrawalService();
@@ -25,14 +24,16 @@ class WithdrawalController extends Controller
 
     /**
      * POST /api/courier/withdrawals
-     * Create a withdrawal request.
+     * Create a withdrawal request to DANA via iPaymu (no binding needed).
      * PRD §19: Withdrawal API
      */
     public function store(Request $request)
     {
         $request->validate([
-            'amount'           => 'required|numeric|min:1',
-            'idempotency_key'  => 'required|string|max:50',
+            'amount'            => 'required|numeric|min:1',
+            'idempotency_key'   => 'required|string|max:50',
+            'phone_number'      => 'nullable|string|max:20',
+            'destination_phone' => 'nullable|string|max:20',
         ]);
 
         $courier = $request->user()->courier;
@@ -44,10 +45,13 @@ class WithdrawalController extends Controller
             ], 404);
         }
 
+        $destinationPhone = $request->input('phone_number') ?: $request->input('destination_phone');
+
         $result = $this->withdrawalService->create(
             $courier->id,
             (float) $request->amount,
-            $request->idempotency_key,
+            (string) $request->idempotency_key,
+            $destinationPhone !== null ? (string) $destinationPhone : null,
         );
 
         if ($result['success']) {
@@ -225,12 +229,14 @@ class WithdrawalController extends Controller
 
     /**
      * Format withdrawal for API response.
+     * Nomor HP DANA tujuan di-mask sebelum dikirim ke aplikasi.
      */
     private function formatWithdrawal(Withdrawal $withdrawal): array
     {
         $provider = strtoupper((string) ($withdrawal->provider ?? 'DANA'));
         $conn = $withdrawal->danaConnection;
-        $maskedAccount = $withdrawal->account_number ?: ($conn?->masked_phone ?? '-');
+        $rawAccount = $withdrawal->account_number ?: ($conn?->masked_phone ?? '');
+        $maskedAccount = $rawAccount !== '' ? WithdrawalService::maskPhone($rawAccount) : '-';
         $accountName = $withdrawal->account_name ?: ($conn?->account_name ?? '-');
 
         return [
@@ -242,13 +248,14 @@ class WithdrawalController extends Controller
             'net_amount'         => (float) $withdrawal->net_amount,
             'status'             => $withdrawal->status,
             'provider'           => $provider,
-            'destination'        => $provider,
+            'destination'        => $maskedAccount,
             'bank_name'          => $withdrawal->bank_name ?? $provider,
             'account_number'     => $maskedAccount,
             'account_name'       => $accountName,
             'masked_account'     => $maskedAccount,
             'provider_reference' => $withdrawal->provider_reference,
             'failure_reason'     => $withdrawal->failure_reason,
+            'status_history'     => $withdrawal->status_history,
             'created_at'         => $withdrawal->created_at,
             'processed_at'       => $withdrawal->processed_at,
         ];

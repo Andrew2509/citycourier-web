@@ -875,7 +875,17 @@ class CiWorkController extends Controller
             $updateData['failure_reason'] = $request->admin_notes ?? 'Ditolak oleh admin';
         }
 
-        DB::transaction(function () use ($withdrawal, $updateData, $wasOnHold, $status) {
+        DB::transaction(function () use ($withdrawal, $updateData, $wasOnHold, $status, $request) {
+            // Riwayat perubahan status untuk audit admin (kolom status_history).
+            $history = is_array($withdrawal->status_history) ? $withdrawal->status_history : [];
+            $history[] = [
+                'status' => $status,
+                'note'   => $request->admin_notes ?: ($status === 'rejected' ? 'Ditolak oleh admin' : 'Diperbarui admin'),
+                'source' => 'admin',
+                'at'     => now()->toIso8601String(),
+            ];
+            $updateData['status_history'] = $history;
+
             $withdrawal->update($updateData);
 
             // Penolakan sebelum dana dikirim -> kembalikan saldo yang tertahan

@@ -492,7 +492,9 @@ class WalletService
             'status'         => $status,
             'status_label'   => $this->statusLabel($status),
             'reference'      => $withdrawal->provider_reference ?: $withdrawal->idempotency_key,
-            'destination'    => $withdrawal->account_number ?: ($withdrawal->danaConnection?->masked_phone),
+            'destination'    => $withdrawal->account_number
+                ? WithdrawalService::maskPhone($withdrawal->account_number)
+                : $withdrawal->danaConnection?->masked_phone,
             'account_name'   => $withdrawal->account_name,
             'provider'       => $provider,
             'order_id'       => null,

@@ -122,6 +122,7 @@ class DanaWithdrawalTest extends TestCase
             $table->string('failure_code')->nullable();
             $table->text('failure_reason')->nullable();
             $table->text('admin_notes')->nullable();
+            $table->json('status_history')->nullable();
             $table->timestamp('processed_at')->nullable();
             $table->timestamps();
         });
@@ -229,23 +230,27 @@ class DanaWithdrawalTest extends TestCase
     }
 
     /**
-     * Skenario 3: Penarikan ditolak ketika akun DANA belum terhubung
+     * Skenario 3: Penarikan saldo tanpa menghubungkan akun DANA (iPaymu flow)
+     * Kurir cukup memasukkan nomor HP DANA tujuan setiap kali penarikan
      */
-    public function test_03_withdrawal_rejected_when_dana_not_connected(): void
+    public function test_03_withdrawal_without_dana_connection_iPaymu_flow(): void
     {
         $courier = $this->actingCourier();
         $walletService = new WalletService();
         $walletService->credit($courier->id, 100000, 'earning', null, 'Saldo awal');
 
+        // Withdrawal tanpa DANA binding - sukses via iPaymu flow
+        // Nomor HP DANA dimasukkan setiap kali penarikan
         $this->postJson('/api/courier/withdrawals', [
             'amount'          => 50000,
             'idempotency_key' => 'IDEMP-NOT-LINKED-001',
-        ])->assertStatus(400)
-          ->assertJsonPath('message', 'Metode pencairan DANA belum terhubung.');
+            'phone_number'    => '081234567890',
+        ])->assertCreated();
 
-        // Saldo tidak berkurang
+        // Saldo berkurang karena penarikan berhasil (dihold via iPaymu)
         $wallet = Wallet::where('courier_id', $courier->id)->first();
-        $this->assertEquals(100000, (float) $wallet->available_balance);
+        $this->assertEquals(50000, (float) $wallet->available_balance);
+        $this->assertEquals(50000, (float) $wallet->pending_balance);
     }
 
     /**
@@ -272,7 +277,7 @@ class DanaWithdrawalTest extends TestCase
                 'amount'      => 50000,
                 'status'      => 'processing',
                 'provider'    => 'DANA',
-                'destination' => 'DANA',
+                'destination' => '6281****7890', // fallback nomor terdaftar kurir, disamarkan
             ],
         ]);
 
@@ -281,10 +286,8 @@ class DanaWithdrawalTest extends TestCase
         $this->assertEquals(50000, (float) $wallet->available_balance);
         $this->assertEquals(50000, (float) $wallet->pending_balance);
 
-        // Verifikasi status via inquiry DANA → success, dana dilepas dari pending
-        $this->getJson('/api/courier/withdrawals/IDEMP-WD-001/status')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'success');
+        // Konfirmasi resmi dari provider (webhook/inquiry sukses) → dana dilepas dari pending
+        (new WithdrawalService())->handleStatusUpdate('IDEMP-WD-001', 'success');
 
         $wallet->refresh();
         $this->assertEquals(50000, (float) $wallet->available_balance);
@@ -348,10 +351,8 @@ class DanaWithdrawalTest extends TestCase
         $this->assertNotNull($holdTxn);
         $this->assertSame('pending', $holdTxn->status);
 
-        // Verifikasi inquiry → success, mutasi debit pencairan tercatat
-        $this->getJson('/api/courier/withdrawals/IDEMP-LEDGER-01/status')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'success');
+        // Konfirmasi resmi provider → success, mutasi debit pencairan tercatat
+        (new WithdrawalService())->handleStatusUpdate('IDEMP-LEDGER-01', 'success');
 
         // Hold diselesaikan setelah provider mengonfirmasi sukses
         $holdTxn->refresh();
@@ -434,9 +435,12 @@ class DanaWithdrawalTest extends TestCase
         $this->assertEquals(60000, (float) $wallet->available_balance);
         $this->assertEquals(40000, (float) $wallet->pending_balance);
 
-        // Rekonsiliasi via sync status API (inquiry DANA) — bukan kirim ulang
+        // Sebelum konfirmasi: sync status TIDAK mengarang 'success'
         $syncRes = $this->getJson('/api/courier/withdrawals/TIMEOUT-WD-001/status')->assertOk();
-        $this->assertSame('success', $syncRes->json('data.status'));
+        $this->assertSame('processing', $syncRes->json('data.status'));
+
+        // Rekonsiliasi via konfirmasi resmi (webhook/inquiry success) — bukan kirim ulang
+        (new WithdrawalService())->handleStatusUpdate('TIMEOUT-WD-001', 'success');
 
         // Setelah rekonsiliasi sukses, pending balance berkurang dan debit selesai
         $wallet->refresh();
@@ -626,10 +630,13 @@ class DanaWithdrawalTest extends TestCase
         $this->assertEquals(400000, $balanceHeld['available_balance']);
         $this->assertEquals(100000, $balanceHeld['pending_balance']);
 
-        // 4. Verifikasi status via inquiry DANA → success, pending dilepas
+        // 4. Status sync tidak mengarang 'success' tanpa konfirmasi provider
         $this->getJson('/api/courier/withdrawals/ACCURATE-TEST-001/status')
             ->assertOk()
-            ->assertJsonPath('data.status', 'success');
+            ->assertJsonPath('data.status', 'processing');
+
+        // Konfirmasi resmi provider (webhook/inquiry success) → pending dilepas
+        (new WithdrawalService())->handleStatusUpdate('ACCURATE-TEST-001', 'success');
 
         $balanceFinal = $walletService->getBalance($courier->id);
         $this->assertEquals(400000, $balanceFinal['available_balance']);

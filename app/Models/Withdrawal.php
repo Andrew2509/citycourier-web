@@ -28,13 +28,15 @@ class Withdrawal extends Model
         'failure_code',
         'failure_reason',
         'processed_at',
+        'status_history',
     ];
 
     protected $casts = [
-        'amount'       => 'decimal:2',
-        'fee'          => 'decimal:2',
-        'net_amount'   => 'decimal:2',
-        'processed_at' => 'datetime',
+        'amount'         => 'decimal:2',
+        'fee'            => 'decimal:2',
+        'net_amount'     => 'decimal:2',
+        'processed_at'   => 'datetime',
+        'status_history' => 'array',
     ];
 
     public function courier()
