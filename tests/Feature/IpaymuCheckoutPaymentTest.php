@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\IpaymuPaymentService;
 use App\Services\iPaymuService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -111,6 +112,7 @@ class IpaymuCheckoutPaymentTest extends TestCase
             $table->string('sender_name')->nullable();
             $table->string('sender_phone', 20)->nullable();
             $table->string('status')->default('pending');
+            $table->string('payment_method')->nullable();
             $table->timestamps();
         });
     }
@@ -357,6 +359,47 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertSame('https://my.ipaymu.com/qris/99004', $result['payment_url']);
         $this->assertNull($result['qr_string']);
+    }
+
+    public function test_create_payment_marks_shipment_payment_method(): void
+    {
+        // Metode pembayaran dipilih SETELAH pesanan dibuat, jadi pesanan bisa
+        // tersimpan sebagai COD padahal pelanggan membayar QRIS/VA. Detail
+        // pesanan harus menampilkan metode yang benar-benar dipakai.
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $shipmentId = DB::table('shipments')->insertGetId([
+            'user_id'        => $user->id,
+            'status'         => 'pending',
+            'payment_method' => 'COD',
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        $this->fakePayment->createResult = [
+            'success'     => true,
+            'error'       => null,
+            'payment_id'  => '99007',
+            'va_number'   => null,
+            'qr_string'   => 'QRIS-STRING-XYZ',
+            'payment_url' => null,
+            'expired_at'  => now()->addMinutes(30)->toIso8601String(),
+            'raw'         => null,
+        ];
+
+        $this->postJson('/api/payment/create', [
+            'shipment_id' => (string) $shipmentId,
+            'payment_type' => 'qris',
+            'channel_code' => 'QRIS',
+            'amount'       => 15800,
+        ])->assertStatus(201);
+
+        $this->assertSame(
+            'QRIS',
+            DB::table('shipments')->where('id', $shipmentId)->value('payment_method')
+        );
     }
 
     public function test_qris_payment_no_payload_is_not_saved_as_va_number(): void

@@ -308,6 +308,20 @@ class PaymentController extends Controller
             ], 500);
         }
 
+        // Metode pembayaran yang benar-benar dipakai dicatat ke pesanan, supaya
+        // detail pesanan tidak lagi menampilkan "COD" untuk pembayaran QRIS/VA.
+        if (!empty($paymentData['shipment_id'])) {
+            try {
+                \App\Models\Shipment::whereKey($paymentData['shipment_id'])
+                    ->update(['payment_method' => $paymentType === 'va' ? 'VA' : 'QRIS']);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal menyimpan metode pembayaran ke pesanan', [
+                    'shipment_id' => $paymentData['shipment_id'],
+                    'error'       => $e->getMessage(),
+                ]);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Pembayaran berhasil dibuat',

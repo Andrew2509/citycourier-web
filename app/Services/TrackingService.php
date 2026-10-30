@@ -315,7 +315,7 @@ class TrackingService
             'receiver_phone'            => $shipment->receiver_phone,
             'vehicle'                   => $shipment->vehicle_type ?? $shipment->vehicle ?? 'motor',
             'package_weight'            => (float) ($shipment->package_weight ?? 1.0),
-            'payment_method'            => $shipment->payment_method ?? 'COD',
+            'payment_method'            => $this->resolvePaymentMethod($shipment),
             'total_cost'                => (int) ($shipment->total_cost ?? 0),
             'scheduled_pickup'          => (bool) $shipment->scheduled_pickup,
             'pickup_scheduled_at'       => $pickupScheduledAt?->toIso8601String(),
@@ -357,6 +357,28 @@ class TrackingService
             'timeline'              => $logs->toArray(),
             'estimated_delivery'    => $shipment->estimated_delivery?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Metode pembayaran yang ditampilkan pada halaman pelacakan.
+     *
+     * Pesanan lama bisa tersimpan sebagai "COD" karena metode dipilih setelah
+     * pesanan dibuat, padahal pelanggan membayar lewat QRIS/VA. Bila ada
+     * transaksi iPaymu yang tersimpan, metode itulah yang dilaporkan.
+     */
+    private function resolvePaymentMethod(\App\Models\Shipment $shipment): string
+    {
+        $stored = strtoupper((string) ($shipment->payment_method ?? ''));
+        if (in_array($stored, ['VA', 'QRIS', 'TUNAI'], true)) {
+            return $stored;
+        }
+
+        $payment = $shipment->payments()->latest('id')->first();
+        if ($payment) {
+            return $payment->payment_type === 'qris' ? 'QRIS' : 'VA';
+        }
+
+        return $stored !== '' ? $stored : 'COD';
     }
 
     /**
