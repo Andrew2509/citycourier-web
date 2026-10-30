@@ -149,16 +149,35 @@ class SettingController extends Controller
 
             $httpCode = $result['raw']['http_code'] ?? 0;
             $errorMessage = strtolower((string) ($result['error'] ?? ''));
+            $rawBody = $result['raw']['body'] ?? [];
+            $providerMsg = strtolower((string) ($rawBody['message'] ?? ($rawBody['error'] ?? '')));
+
+            // Respons bisnis "transaksi tidak ditemukan" tetap membuktikan:
+            // server dijangkau, tanda tangan diterima, hanya id dummy yang
+            // memang tidak ada.
+            $isDataNotFound = str_contains($providerMsg, 'tidak ada')
+                || str_contains($providerMsg, 'not found');
+            $isRouteNotFound = str_contains($providerMsg, 'could not be found');
 
             // Server merespons dengan HTTP < 400 → request tersambung dan
-            // tanda tangan diterima. Transaksi dummy memang tidak ada, dan
-            // itu bukan kegagalan koneksi.
+            // tanda tangan diterima.
             if (($result['raw']['reachable'] ?? false) && $httpCode > 0 && $httpCode < 400) {
                 return response()->json([
                     'success' => true,
-                    'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons (HTTP {$httpCode}) dan tanda tangan API diterima.",
+                    'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons (HTTP {$httpCode}) dan tanda tangan API diterima."
+                        . ($isDataNotFound ? ' (Transaksi dummy memang tidak ada — ini normal untuk tes koneksi.)' : ''),
                     'data'    => $result,
                 ]);
+            }
+
+            // HTTP 404 rute → base URL / path endpoint keliru (bukan masalah
+            // kredensial). Beri petunjuk yang bisa ditindaklanjuti langsung.
+            if ($isRouteNotFound || $httpCode === 404) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Endpoint iPaymu tidak ditemukan (HTTP 404). Periksa API Base URL: harusnya hanya host, '
+                        . "mis. https://sandbox.ipaymu.com — path /api/v2/... ditambahkan otomatis oleh backend. Diterima: {$override['base_url']}",
+                ], 400);
             }
 
             // Bedakan error autentikasi dari penolakan biasa.

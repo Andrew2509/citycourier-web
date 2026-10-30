@@ -188,7 +188,10 @@ class iPaymuService
             ];
         }
 
-        $path = (string) config('ipaymu.inquiry_path', '/v2/transaction') . '/' . rawurlencode($transactionId);
+        // GET {base}/api/v2/transaction?id={trx_id} — status transaksi iPaymu
+        // di-query lewat query string, bukan segmen path.
+        $path = (string) config('ipaymu.inquiry_path', '/api/v2/transaction')
+            . '?' . http_build_query(['id' => $transactionId]);
         $raw = $this->call('GET', $path, null);
         return $this->interpretResponse($raw);
     }

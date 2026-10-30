@@ -49,10 +49,13 @@ return [
     | Path Endpoint Disbursement & Inquiry
     |--------------------------------------------------------------------------
     | Dibuat configurable supaya penyesuaian versi API iPaymu tidak
-    | memaksa perubahan kode. Default mengikuti REST API v2 iPaymu.
+    | memaksa perubahan kode. Default mengikuti REST API v2 iPaymu yang
+    | memakai prefix /api (mis. https://sandbox.ipaymu.com/api/v2/payment):
+    | disbursement POST {base}/api/v2/disbursement, inquiry GET
+    | {base}/api/v2/transaction?id={trx_id}.
     */
-    'disburse_path' => env('IPAYMU_DISBURSE_PATH', '/v2/disbursement'),
-    'inquiry_path'  => env('IPAYMU_INQUIRY_PATH', '/v2/transaction'),
+    'disburse_path' => env('IPAYMU_DISBURSE_PATH', '/api/v2/disbursement'),
+    'inquiry_path'  => env('IPAYMU_INQUIRY_PATH', '/api/v2/transaction'),
 
     /*
     |--------------------------------------------------------------------------
