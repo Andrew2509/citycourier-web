@@ -313,6 +313,12 @@ class IpaymuCheckoutPaymentTest extends TestCase
                 ],
             ]);
 
+        // Aplikasi perlu tahu URL kembali/batal agar bisa menutup WebView dan
+        // membaca status resmi, bukan menebak dari pola URL iPaymu.
+        $base = rtrim((string) config('app.url'), '/');
+        $response->assertJsonPath('data.return_url', $base . '/api/ipaymu/return')
+            ->assertJsonPath('data.cancel_url', $base . '/api/ipaymu/cancel');
+
         // Direct Payment tidak boleh dipanggil pada mode redirect.
         $this->assertSame([], $this->fakePayment->lastInput);
         $this->assertNotNull($this->fakePayment->lastRedirectInput);
@@ -416,7 +422,11 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->getJson('/api/payment/status?payment_id=SESS-ABC-123')
             ->assertOk()
             ->assertJsonPath('data.status', 'pending')
-            ->assertJsonPath('data.payment_mode', 'redirect');
+            ->assertJsonPath('data.payment_mode', 'redirect')
+            ->assertJsonPath(
+                'data.return_url',
+                rtrim((string) config('app.url'), '/') . '/api/ipaymu/return'
+            );
     }
 
     // ─── 2b. Identitas buyer (anti "Suspicious buyer") ──────────

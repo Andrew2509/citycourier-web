@@ -260,6 +260,8 @@ class PaymentController extends Controller
                 'qr_string'    => $payment->qr_string,
                 'payment_url'  => $payment->payment_url,
                 'payment_mode' => $usedMode,
+                'return_url'   => $usedMode === 'redirect' ? $this->ipaymuReturnUrl() : null,
+                'cancel_url'   => $usedMode === 'redirect' ? $this->ipaymuCancelUrl() : null,
                 'expired_at'   => $payment->expired_at?->toIso8601String(),
                 'instructions' => $this->getInstructions($payment),
             ],
@@ -314,6 +316,8 @@ class PaymentController extends Controller
                     'channel_code' => $payment->channel_code,
                     'payment_url'  => $payment->payment_url,
                     'payment_mode' => 'redirect',
+                    'return_url'   => $this->ipaymuReturnUrl(),
+                    'cancel_url'   => $this->ipaymuCancelUrl(),
                     'expired_at'   => $payment->expired_at?->toISOString(),
                     'paid_at'      => $payment->paid_at?->toISOString(),
                 ],
@@ -506,6 +510,16 @@ class PaymentController extends Controller
         if ($payment->shipment_id) {
             Shipment::where('id', $payment->shipment_id)->update(['status' => 'confirmed']);
         }
+    }
+
+    private function ipaymuReturnUrl(): string
+    {
+        return rtrim((string) config('app.url'), '/') . '/api/ipaymu/return';
+    }
+
+    private function ipaymuCancelUrl(): string
+    {
+        return rtrim((string) config('app.url'), '/') . '/api/ipaymu/cancel';
     }
 
     private function getInstructions(Payment $payment): array
