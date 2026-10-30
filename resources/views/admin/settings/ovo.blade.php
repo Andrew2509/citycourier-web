@@ -153,7 +153,7 @@ document.getElementById('btn-test-ovo')?.addEventListener('click', function() {
     btn.disabled = true;
     btn.classList.add('opacity-50');
 
-    fetch('{{ route("settings.ovo.test") }}', {
+    fetch('{{ route("admin.settings.ovo.test") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',

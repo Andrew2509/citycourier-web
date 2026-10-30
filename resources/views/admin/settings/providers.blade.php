@@ -171,7 +171,7 @@
                         Memproses verifikasi akun kurir (Account Inquiry) dan pencairan saldo pendapatan langsung ke akun OVO kurir via API OVO SNAP.
                     </p>
 
-                    <form method="POST" action="{{ route('settings.ovo.update') }}" class="space-y-3 pt-1">
+                    <form method="POST" action="{{ route('admin.settings.ovo.update') }}" class="space-y-3 pt-1">
                         @csrf
 
                         <div class="grid grid-cols-2 gap-3">
@@ -210,7 +210,7 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
-                            <a href="{{ route('settings.ovo') }}" class="text-xs text-purple-700 hover:underline font-medium inline-flex items-center gap-1">
+                            <a href="{{ route('admin.settings.ovo') }}" class="text-xs text-purple-700 hover:underline font-medium inline-flex items-center gap-1">
                                 Konfigurasi Lengkap OVO &rarr;
                             </a>
                             <button type="submit" class="btn btn-sm btn-primary">
