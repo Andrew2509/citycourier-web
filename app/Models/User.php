@@ -41,6 +41,41 @@ class User extends Authenticatable
     }
 
     /**
+     * Apakah akun ini benar-benar terdaftar melalui Google?
+     *
+     * `firebase_uid` saja tidak cukup: akun lama hasil auto-register OTP juga
+     * pernah menyimpan UID Firebase. Karena itu email hasil generate
+     * (`<phone>@citycourier.local`, `pelanggan<phone>@...`) tidak dianggap
+     * sebagai bukti akun Google. Nomor telepon yang hanya diisi di profil
+     * tanpa autentikasi Google juga tidak lolos pengecekan ini.
+     */
+    public function hasGoogleAuth(): bool
+    {
+        if (trim((string) $this->getAttribute('firebase_uid')) === '') {
+            return false;
+        }
+
+        $email = strtolower(trim((string) $this->getAttribute('email')));
+        if ($email === '' || !str_contains($email, '@')) {
+            return false;
+        }
+
+        [$localPart, $domain] = explode('@', $email, 2);
+
+        if ($domain === 'citycourier.local') {
+            return false;
+        }
+
+        // Email yang dibuat sistem untuk akun lama hasil login OTP:
+        // pelanggan<phone>@<domain>.
+        if (preg_match('/^pelanggan\.?\d{8,}$/', $localPart) === 1) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Get the full URL for the user's avatar.
      */
     public function getPhotoUrlAttribute()

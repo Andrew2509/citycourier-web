@@ -5,17 +5,30 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Courier;
-use App\Services\BuyerIdentity;
+use App\Services\PhoneNumber;
 use App\Services\WhatsAppManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    /**
+     * Login nomor telepon hanya berlaku untuk akun yang sudah terdaftar
+     * melalui Google. Pesan ini dipakai backend dan Flutter.
+     */
+    public const PHONE_NOT_REGISTERED_CODE = 'PHONE_NOT_REGISTERED';
+
+    public const PHONE_NOT_REGISTERED_MESSAGE = 'Nomor telepon belum terdaftar. Silakan gunakan nomor telepon yang sudah terdaftar melalui Google. Jika belum memiliki akun, silakan daftar terlebih dahulu menggunakan Google.';
+
+    public const INVALID_PHONE_CODE = 'INVALID_PHONE';
+
+    public const INVALID_PHONE_MESSAGE = 'Format nomor telepon tidak valid. Gunakan format seperti 081234567890.';
+
     protected $whatsappManager;
 
     public function __construct(WhatsAppManager $whatsappManager)
@@ -237,28 +250,47 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $phone = $request->phone;
+        $phone = PhoneNumber::normalize($request->phone);
 
-        // Generate real random random 4-digit OTP
+        if ($phone === null) {
+            return response()->json([
+                'success' => false,
+                'code' => self::INVALID_PHONE_CODE,
+                'message' => self::INVALID_PHONE_MESSAGE,
+            ], 422);
+        }
+
+        // Login nomor telepon bukan pendaftaran. Nomor harus sudah dimiliki
+        // oleh akun yang terdaftar melalui Google.
+        if (!$this->findGoogleUserByPhone($phone)) {
+            return $this->phoneNotRegisteredResponse();
+        }
+
+        // Generate real random 4-digit OTP
         $otp = (string) random_int(1000, 9999);
 
-        // Store in cache for 5 minutes
-        Cache::put('otp_' . $phone, $otp, now()->addMinutes(10));
+        // Store in cache for 10 minutes (kunci memakai nomor ternormalisasi)
+        Cache::put($this->otpCacheKey($phone), $otp, now()->addMinutes(10));
 
         // Send OTP via WhatsApp (uses configured provider: Fonnte/OrbitWA/Mock)
         $waResult = $this->whatsappManager->sendOtp($phone, $otp);
 
         if (!$waResult['success']) {
+            Log::warning('Gagal mengirim OTP login WhatsApp', [
+                'phone' => $phone,
+                'provider_message' => $waResult['message'] ?? null,
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengirim OTP via WhatsApp. ' . ($waResult['message'] ?? ''),
-            ], 500);
+                'code' => 'OTP_SEND_FAILED',
+                'message' => 'Gagal mengirim kode OTP. Silakan coba lagi beberapa saat lagi.',
+            ], 502);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'OTP berhasil dikirim ke WhatsApp.',
-            // 'otp' => $otp // Hidden in production for security
         ]);
     }
 
@@ -281,12 +313,28 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $phone = $request->phone;
+        $phone = PhoneNumber::normalize($request->phone);
+
+        if ($phone === null) {
+            return response()->json([
+                'success' => false,
+                'code' => self::INVALID_PHONE_CODE,
+                'message' => self::INVALID_PHONE_MESSAGE,
+            ], 422);
+        }
+
         $otp = $request->otp;
 
-        $cachedOtp = Cache::get('otp_' . $phone);
+        $cacheKey = $this->otpCacheKey($phone);
+        $cachedOtp = Cache::get($cacheKey);
 
-        if (!$cachedOtp || $cachedOtp !== $otp) {
+        // Kompatibilitas OTP yang dikirim sebelum nomor dinormalisasi.
+        if (!$cachedOtp) {
+            $cacheKey = 'otp_' . $request->phone;
+            $cachedOtp = Cache::get($cacheKey);
+        }
+
+        if (!$cachedOtp || !hash_equals((string) $cachedOtp, (string) $otp)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Kode OTP salah atau telah kadaluarsa.',
@@ -294,22 +342,16 @@ class AuthController extends Controller
         }
 
         // Clear OTP
-        Cache::forget('otp_' . $phone);
+        Cache::forget($cacheKey);
+        Cache::forget($this->otpCacheKey($phone));
 
-        // Find or create user
-        $user = User::firstOrCreate(
-            ['phone' => $phone],
-            [
-                'name' => 'User ' . substr($phone, -4),
-                // Nomor telepon dipertahankan di sini agar kolom email yang
-                // UNIQUE tetap unik per pengguna. Domain reserved dihindari.
-                // Checkout iPaymu TIDAK memakai alamat ini (dianggap alamat
-                // hasil generate) — lihat App\Services\BuyerIdentity.
-                'email' => 'pelanggan' . BuyerIdentity::phone($phone) . '@' . BuyerIdentity::emailDomain(),
-                'password' => Hash::make(Str::random(16)),
-                'role' => 'customer' // default role
-            ]
-        );
+        // OTP valid, tetapi login tetap hanya boleh untuk akun yang sudah
+        // terdaftar via Google. Jangan pernah membuat akun baru di sini.
+        $user = $this->findGoogleUserByPhone($phone);
+
+        if (!$user) {
+            return $this->phoneNotRegisteredResponse();
+        }
 
         // Load courier profile if exists
         $user->load('courier');
@@ -408,10 +450,13 @@ class AuthController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::warning('Verifikasi token Firebase Google gagal', [
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Token Firebase tidak valid.',
-                'error' => $e->getMessage(),
             ], 401);
         }
     }
@@ -448,32 +493,17 @@ class AuthController extends Controller
                 ], 400);
             }
 
-            // Find user by phone
-            $user = User::where('phone', $phone)
-                ->orWhere('firebase_uid', $firebaseUid)
-                ->first();
+            // Cari berdasarkan nomor (akun Google yang sudah menyimpan nomor)
+            // atau UID Firebase yang sama. Jangan pernah membuat akun baru.
+            $user = $this->findGoogleUserByPhone($phone)
+                ?? User::where('firebase_uid', $firebaseUid)->first();
 
-            if ($user) {
-                // Update existing user with firebase info if not set
-                $user->update([
-                    'firebase_uid' => $firebaseUid,
-                    'phone' => $phone,
-                ]);
-            } else {
-                // Register new user
-                $user = User::create([
-                    'name' => 'User ' . substr($phone, -4),
-                    'email' => $phone . '@citycourier.local',
-                    'phone' => $phone,
-                    'firebase_uid' => $firebaseUid,
-                    'role' => 'customer',
-                ]);
-                if (!$user->password) {
-                    $user->password = Hash::make(Str::random(16));
-                    $user->save();
-                }
+            if (!$user || !$user->hasGoogleAuth()) {
+                return $this->phoneNotRegisteredResponse();
             }
 
+            // Jangan mengubah phone/firebase_uid di sini. Login nomor telepon
+            // tidak boleh mengubah identitas akun Google tanpa verifikasi.
             $token = $user->createToken('phone-auth')->plainTextToken;
 
             return response()->json([
@@ -494,10 +524,14 @@ class AuthController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // Detail teknis hanya masuk log, tidak dikirim ke klien.
+            Log::warning('Verifikasi token Firebase nomor HP gagal', [
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Token Firebase tidak valid.',
-                'error' => $e->getMessage(),
             ], 401);
         }
     }
@@ -641,5 +675,65 @@ class AuthController extends Controller
                 ]
             ]
         ]);
+    }
+
+    /**
+     * Cari akun Google berdasarkan nomor telepon.
+     *
+     * Nomor dicocokkan setelah dinormalisasi (`08…`, `62…`, `+62…`) dan
+     * akun harus benar-benar memiliki autentikasi Google. Nomor yang hanya
+     * tersimpan di profil tanpa akun Google tidak dianggap terdaftar.
+     */
+    private function findGoogleUserByPhone(?string $phone): ?User
+    {
+        $normalized = PhoneNumber::normalize($phone);
+
+        if ($normalized === null) {
+            return null;
+        }
+
+        $variants = PhoneNumber::variants($normalized);
+
+        if ($variants === []) {
+            return null;
+        }
+
+        $users = User::query()
+            ->whereIn('phone', $variants)
+            ->get();
+
+        // Toleransi data lama yang menyimpan spasi/tanda hubung, mis.
+        // "0812-3456-7890" atau "+62 812 3456 7890".
+        if ($users->isEmpty()) {
+            $users = User::query()
+                ->whereNotNull('phone')
+                ->whereRaw(
+                    "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '') IN (?, ?, ?)",
+                    $variants
+                )
+                ->get();
+        }
+
+        foreach ($users as $user) {
+            if (PhoneNumber::normalize($user->phone) === $normalized && $user->hasGoogleAuth()) {
+                return $user;
+            }
+        }
+
+        return null;
+    }
+
+    private function otpCacheKey(string $normalizedPhone): string
+    {
+        return 'otp_' . $normalizedPhone;
+    }
+
+    private function phoneNotRegisteredResponse()
+    {
+        return response()->json([
+            'success' => false,
+            'code' => self::PHONE_NOT_REGISTERED_CODE,
+            'message' => self::PHONE_NOT_REGISTERED_MESSAGE,
+        ], 404);
     }
 }
