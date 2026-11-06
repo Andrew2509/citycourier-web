@@ -58,15 +58,21 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label for="phone" class="form-label">
-                            Nomor Telepon / WhatsApp <span class="text-red-500">*</span>
+                            Nomor Telepon / WhatsApp
                         </label>
                         <input type="text"
                                name="phone"
                                id="phone"
                                value="{{ old('phone', $user->phone) }}"
-                               required
                                class="form-input font-mono @error('phone') form-invalid @enderror">
                         @error('phone') <p class="form-error">{{ $message }}</p> @enderror
+                        @if($user->hasVerifiedPhone())
+                            <p class="text-[11px] text-emerald-600 mt-1">Nomor sudah diverifikasi OTP.</p>
+                        @elseif($user->phone)
+                            <p class="text-[11px] text-amber-600 mt-1">Nomor belum diverifikasi. Mengubah nomor akan mereset status verifikasi.</p>
+                        @else
+                            <p class="text-[11px] text-amber-600 mt-1">Nomor telepon belum dilengkapi oleh pengguna.</p>
+                        @endif
                     </div>
 
                     <div>
@@ -90,12 +96,11 @@
 
                 <div>
                     <label for="address" class="form-label">
-                        Alamat Lengkap <span class="text-red-500">*</span>
+                        Alamat Lengkap
                     </label>
                     <textarea name="address"
                               id="address"
                               rows="2"
-                              required
                               class="form-textarea @error('address') form-invalid @enderror">{{ old('address', $user->address) }}</textarea>
                     @error('address') <p class="form-error">{{ $message }}</p> @enderror
                 </div>
@@ -130,8 +135,8 @@
                     <label for="avatar" class="form-label">Ubah Foto Profil / Avatar</label>
                     <div class="flex items-center gap-3">
                         <div class="avatar bg-brand-50 text-brand-700 font-bold shrink-0">
-                            @if($user->avatar)
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar) }}"
+                            @if($user->photo_url)
+                                <img src="{{ $user->photo_url }}"
                                      alt="{{ $user->name }}"
                                      class="h-full w-full object-cover rounded-full">
                             @else

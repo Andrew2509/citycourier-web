@@ -69,6 +69,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
     Route::post('/profile/update', [AuthController::class, 'updateProfile']);
+    Route::post('/profile/phone/request-otp', [AuthController::class, 'requestProfilePhoneOtp']);
+    Route::post('/profile/phone/verify-otp', [AuthController::class, 'verifyProfilePhoneOtp']);
 
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/available', [OrderController::class, 'available']);

@@ -9,6 +9,7 @@
     $adminCount = $collection->filter(fn($u) => $u->roles->contains('name', 'admin') || $u->roles->contains('name', 'super-admin'))->count();
     $courierCount = $collection->filter(fn($u) => $u->roles->contains('name', 'courier'))->count();
     $customerCount = $collection->filter(fn($u) => $u->roles->contains('name', 'customer'))->count();
+    $incompleteCount = $collection->filter(fn($u) => !$u->isProfileComplete())->count();
 @endphp
 
 <div class="space-y-5">
@@ -35,7 +36,7 @@
     </div>
 
     {{-- Ringkasan Pengguna (KPIs) --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div class="card p-3.5">
             <div class="stat-label">Total Pengguna</div>
             <div class="stat-value">{{ $totalUsers }}</div>
@@ -55,6 +56,11 @@
             <div class="stat-label">Pelanggan</div>
             <div class="stat-value text-slate-800">{{ $customerCount }}</div>
             <div class="stat-meta">Konsumen terdaftar</div>
+        </div>
+        <div class="card p-3.5">
+            <div class="stat-label">Belum Lengkap</div>
+            <div class="stat-value text-amber-600">{{ $incompleteCount }}</div>
+            <div class="stat-meta">Perlu verifikasi nomor / profil</div>
         </div>
     </div>
 
@@ -98,6 +104,7 @@
                         <th>Pengguna</th>
                         <th>Email Akun</th>
                         <th>No. Telepon / WhatsApp</th>
+                        <th>Metode</th>
                         <th>Role &amp; Hak Akses</th>
                         <th>Status</th>
                         <th>Terdaftar</th>
@@ -116,8 +123,8 @@
                         <td>
                             <div class="flex items-center gap-2.5">
                                 <div class="avatar bg-brand-50 text-brand-700 font-bold shrink-0">
-                                    @if($user->avatar)
-                                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar) }}"
+                                    @if($user->photo_url)
+                                        <img src="{{ $user->photo_url }}"
                                              alt="{{ $user->name }}"
                                              class="h-full w-full object-cover rounded-full">
                                     @else
@@ -141,8 +148,28 @@
                         </td>
 
                         {{-- Telepon --}}
-                        <td class="whitespace-nowrap font-mono text-xs text-slate-600">
-                            {{ $user->phone ?? '-' }}
+                        <td class="whitespace-nowrap">
+                            <div class="font-mono text-xs text-slate-600">
+                                {{ $user->phone ?: '-' }}
+                            </div>
+                            @if($user->hasVerifiedPhone())
+                                <span class="badge badge-green mt-1">
+                                    <span class="badge-dot"></span>
+                                    Terverifikasi
+                                </span>
+                            @else
+                                <span class="badge badge-amber mt-1">
+                                    <span class="badge-dot"></span>
+                                    Belum diverifikasi
+                                </span>
+                            @endif
+                        </td>
+
+                        {{-- Metode Registrasi --}}
+                        <td class="whitespace-nowrap">
+                            <span class="badge {{ $user->hasGoogleAuth() ? 'badge-blue' : 'badge-gray' }}">
+                                {{ $user->registrationMethod() }}
+                            </span>
                         </td>
 
                         {{-- Roles --}}
@@ -163,17 +190,31 @@
                                     {{ ucfirst($role->name) }}
                                 </span>
                                 @empty
-                                <span class="badge badge-gray text-[10px]">Tanpa Role</span>
+                                @if($user->role)
+                                    <span class="badge badge-gray">
+                                        {{ ucfirst($user->role) }}
+                                    </span>
+                                @else
+                                    <span class="badge badge-gray text-[10px]">Tanpa Role</span>
+                                @endif
                                 @endforelse
                             </div>
                         </td>
 
                         {{-- Status --}}
                         <td class="whitespace-nowrap">
-                            <span class="badge badge-green">
-                                <span class="badge-dot"></span>
-                                Aktif
-                            </span>
+                            @if($user->isProfileComplete())
+                                <span class="badge badge-green">
+                                    <span class="badge-dot"></span>
+                                    Aktif
+                                </span>
+                            @else
+                                <span class="badge badge-amber"
+                                      title="Belum lengkap: {{ implode(', ', $user->missingProfileFields()) }}">
+                                    <span class="badge-dot"></span>
+                                    Belum Lengkap
+                                </span>
+                            @endif
                         </td>
 
                         {{-- Tanggal Bergabung --}}

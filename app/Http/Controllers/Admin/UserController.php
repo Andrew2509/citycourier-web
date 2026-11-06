@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\PhoneNumber;
 use Spatie\Permission\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,7 +14,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('roles')->paginate(10);
+        $users = User::with('roles')->latest()->paginate(10);
         return view('admin.users.index', compact('users'));
     }
 
@@ -77,6 +78,12 @@ class UserController extends Controller
             'phone' => $request->phone,
             'address' => $request->address,
         ];
+
+        // Nomor yang diubah admin belum tentu dimiliki pengguna. Status
+        // verifikasi lama tidak boleh ikut terbawa ke nomor baru.
+        if (PhoneNumber::normalize($request->phone) !== PhoneNumber::normalize($user->phone)) {
+            $data['phone_verified_at'] = null;
+        }
 
         if ($request->hasFile('avatar')) {
             // Delete old avatar

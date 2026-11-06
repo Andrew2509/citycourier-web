@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Courier;
 use App\Services\PhoneNumber;
+use App\Services\PhoneVerificationService;
 use App\Services\WhatsAppManager;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -29,10 +32,38 @@ class AuthController extends Controller
 
     public const INVALID_PHONE_MESSAGE = 'Format nomor telepon tidak valid. Gunakan format seperti 081234567890.';
 
+    public const PHONE_TAKEN_CODE = 'PHONE_TAKEN';
+
+    public const PHONE_TAKEN_MESSAGE = 'Nomor telepon sudah digunakan oleh akun lain. Silakan gunakan nomor telepon lain.';
+
+    public const OTP_SENT_MESSAGE = 'Kode OTP telah dikirim ke nomor telepon Anda.';
+
+    public const OTP_VERIFIED_MESSAGE = 'Nomor telepon berhasil diverifikasi.';
+
+    public const OTP_INVALID_CODE = 'OTP_INVALID';
+
+    public const OTP_INVALID_MESSAGE = 'Kode OTP yang Anda masukkan salah. Silakan coba lagi.';
+
+    public const OTP_EXPIRED_CODE = 'OTP_EXPIRED';
+
+    public const OTP_EXPIRED_MESSAGE = 'Kode OTP sudah kedaluwarsa. Silakan minta kode baru.';
+
+    public const OTP_TOO_MANY_CODE = 'OTP_TOO_MANY';
+
+    public const OTP_TOO_MANY_MESSAGE = 'Terlalu banyak percobaan kode OTP. Silakan minta kode baru.';
+
+    public const OTP_COOLDOWN_CODE = 'OTP_COOLDOWN';
+
+    public const EMAIL_MANAGED_CODE = 'EMAIL_MANAGED_BY_GOOGLE';
+
+    public const EMAIL_MANAGED_MESSAGE = 'Email dikelola oleh akun Google dan tidak dapat diubah di sini.';
+
     protected $whatsappManager;
 
-    public function __construct(WhatsAppManager $whatsappManager)
-    {
+    public function __construct(
+        WhatsAppManager $whatsappManager,
+        private readonly PhoneVerificationService $phoneVerification,
+    ) {
         $this->whatsappManager = $whatsappManager;
     }
 
@@ -217,18 +248,10 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'address' => $user->address,
-                    'photo_url' => $user->photo_url,
-                    'role' => $user->role,
-                ],
+            'data' => array_merge([
+                'user' => $this->userPayload($user),
                 'courier' => $user->courier,
-            ],
+            ], $this->profileFlags($user)),
         ]);
     }
 
@@ -266,19 +289,20 @@ class AuthController extends Controller
             return $this->phoneNotRegisteredResponse();
         }
 
-        // Generate real random 4-digit OTP
-        $otp = (string) random_int(1000, 9999);
+        $send = $this->phoneVerification->send(
+            PhoneVerificationService::PURPOSE_LOGIN,
+            $phone,
+            4,
+        );
 
-        // Store in cache for 10 minutes (kunci memakai nomor ternormalisasi)
-        Cache::put($this->otpCacheKey($phone), $otp, now()->addMinutes(10));
+        if ($send['status'] === PhoneVerificationService::STATUS_COOLDOWN) {
+            return $this->otpCooldownResponse((int) ($send['retry_after'] ?? 60));
+        }
 
-        // Send OTP via WhatsApp (uses configured provider: Fonnte/OrbitWA/Mock)
-        $waResult = $this->whatsappManager->sendOtp($phone, $otp);
-
-        if (!$waResult['success']) {
+        if ($send['status'] !== PhoneVerificationService::STATUS_SENT) {
             Log::warning('Gagal mengirim OTP login WhatsApp', [
                 'phone' => $phone,
-                'provider_message' => $waResult['message'] ?? null,
+                'provider_message' => $send['provider_message'] ?? null,
             ]);
 
             return response()->json([
@@ -290,7 +314,9 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'OTP berhasil dikirim ke WhatsApp.',
+            'message' => self::OTP_SENT_MESSAGE,
+            'retry_after' => $send['retry_after'] ?? PhoneVerificationService::COOLDOWN_SECONDS,
+            'expires_in' => PhoneVerificationService::EXPIRY_MINUTES * 60,
         ]);
     }
 
@@ -323,27 +349,15 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $otp = $request->otp;
+        $verification = $this->phoneVerification->verify(
+            PhoneVerificationService::PURPOSE_LOGIN,
+            $phone,
+            (string) $request->otp,
+        );
 
-        $cacheKey = $this->otpCacheKey($phone);
-        $cachedOtp = Cache::get($cacheKey);
-
-        // Kompatibilitas OTP yang dikirim sebelum nomor dinormalisasi.
-        if (!$cachedOtp) {
-            $cacheKey = 'otp_' . $request->phone;
-            $cachedOtp = Cache::get($cacheKey);
+        if ($verification['status'] !== PhoneVerificationService::STATUS_OK) {
+            return $this->otpErrorResponse($verification);
         }
-
-        if (!$cachedOtp || !hash_equals((string) $cachedOtp, (string) $otp)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kode OTP salah atau telah kadaluarsa.',
-            ], 401);
-        }
-
-        // Clear OTP
-        Cache::forget($cacheKey);
-        Cache::forget($this->otpCacheKey($phone));
 
         // OTP valid, tetapi login tetap hanya boleh untuk akun yang sudah
         // terdaftar via Google. Jangan pernah membuat akun baru di sini.
@@ -351,6 +365,13 @@ class AuthController extends Controller
 
         if (!$user) {
             return $this->phoneNotRegisteredResponse();
+        }
+
+        // OTP membuktikan kepemilikan nomor yang memang sudah tersimpan pada
+        // akun Google ini. Status verifikasi boleh diisi, tetapi nomor dan
+        // identitas Google tidak diubah.
+        if (!$user->hasVerifiedPhone()) {
+            $user->forceFill(['phone_verified_at' => now()])->save();
         }
 
         // Load courier profile if exists
@@ -361,19 +382,11 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil.',
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'phone' => $user->phone,
-                    'email' => $user->email,
-                    'address' => $user->address,
-                    'photo_url' => $user->photo_url,
-                    'role' => $user->role,
-                ],
+            'data' => array_merge([
+                'user' => $this->userPayload($user),
                 'courier' => $user->courier,
                 'token' => $token,
-            ],
+            ], $this->profileFlags($user)),
         ]);
     }
 
@@ -401,33 +414,85 @@ class AuthController extends Controller
             $verifiedIdToken = app('firebase.auth')->verifyIdToken($idToken);
             $firebaseUid = $verifiedIdToken->claims()->get('sub');
             $email = $verifiedIdToken->claims()->get('email');
-            $name = $verifiedIdToken->claims()->get('name') ?? 'Google User';
+
+            if (!$email) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun Google tidak memiliki email yang dapat digunakan.',
+                ], 422);
+            }
+
+            $email = strtolower(trim((string) $email));
+            $firebaseUid = (string) $firebaseUid;
+            $name = trim((string) ($verifiedIdToken->claims()->get('name') ?? ''));
             $avatar = $verifiedIdToken->claims()->get('picture');
 
-            // Find user by firebase_uid or email
-            $user = User::where('firebase_uid', $firebaseUid)
-                ->orWhere('email', $email)
-                ->first();
+            // Satu akun Google hanya boleh memiliki satu baris pengguna.
+            // Cocokkan dulu lewat UID Firebase, lalu lewat email Google.
+            $user = User::where('firebase_uid', $firebaseUid)->first()
+                ?? User::where('email', $email)->first();
 
             if ($user) {
-                // Update existing user with firebase info if not set
-                $user->update([
-                    'firebase_uid' => $firebaseUid,
-                    'avatar' => $avatar,
-                ]);
-            } else {
-                // Register new user
-                $user = User::create([
-                    'name' => $name,
-                    'email' => $email,
-                    'firebase_uid' => $firebaseUid,
-                    'avatar' => $avatar,
-                    'password' => Hash::make(Str::random(16)), // Required field in migration
-                    'role' => 'customer',
-                ]);
+                $updates = [];
 
-                // Assign customer role (spatie)
-                $user->assignRole('customer');
+                // Akun lama yang belum punya UID Google dihubungkan, bukan
+                // diduplikasi.
+                if ((string) $user->firebase_uid !== $firebaseUid) {
+                    $updates['firebase_uid'] = $firebaseUid;
+                }
+
+                // Email hasil generate sistem diganti dengan email Google asli.
+                if (!$user->hasRealEmail()) {
+                    $updates['email'] = $email;
+                }
+
+                $currentName = trim((string) $user->name);
+                if ($name !== '' && ($currentName === '' || str_starts_with($currentName, 'User ') || $currentName === 'Google User')) {
+                    $updates['name'] = $name;
+                }
+
+                // Foto Google hanya dipakai bila belum ada foto atau foto lama
+                // masih berupa URL Google. Foto unggahan pengguna dipertahankan.
+                $currentAvatar = trim((string) $user->avatar);
+                if (is_string($avatar) && $avatar !== ''
+                    && ($currentAvatar === '' || filter_var($currentAvatar, FILTER_VALIDATE_URL))) {
+                    $updates['avatar'] = $avatar;
+                }
+
+                if ($updates !== []) {
+                    $user->update($updates);
+                }
+            } else {
+                try {
+                    $user = User::create([
+                        'name' => $name !== '' ? $name : 'Google User',
+                        'email' => $email,
+                        'firebase_uid' => $firebaseUid,
+                        'avatar' => is_string($avatar) ? $avatar : null,
+                        'password' => Hash::make(Str::random(32)), // Required field in migration
+                        'role' => 'customer',
+                    ]);
+                } catch (QueryException $e) {
+                    // Antisipasi dua permintaan login bersamaan: pakai baris
+                    // yang sudah dibuat permintaan pertama.
+                    $user = User::where('firebase_uid', $firebaseUid)
+                        ->orWhere('email', $email)
+                        ->first();
+
+                    if (!$user) {
+                        throw $e;
+                    }
+                }
+
+                // Assign customer role (spatie) bila role tersedia.
+                try {
+                    $user->assignRole('customer');
+                } catch (\Throwable $e) {
+                    Log::warning('Role customer tidak dapat diberikan saat registrasi Google', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             $token = $user->createToken('google-auth')->plainTextToken;
@@ -435,21 +500,14 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Login Google berhasil.',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'phone' => $user->phone,
-                        'address' => $user->address,
-                        'photo_url' => $user->photo_url,
-                        'role' => $user->role,
-                    ],
+                'data' => array_merge([
+                    'user' => $this->userPayload($user),
                     'token' => $token,
-                ],
+                ], $this->profileFlags($user)),
             ]);
 
         } catch (\Exception $e) {
+            // Detail teknis hanya masuk log, tidak dikirim ke klien.
             Log::warning('Verifikasi token Firebase Google gagal', [
                 'error' => $e->getMessage(),
             ]);
@@ -509,18 +567,10 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Login nomor HP berhasil.',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'phone' => $user->phone,
-                        'email' => $user->email,
-                        'address' => $user->address,
-                        'photo_url' => $user->photo_url,
-                        'role' => $user->role,
-                    ],
+                'data' => array_merge([
+                    'user' => $this->userPayload($user),
                     'token' => $token,
-                ],
+                ], $this->profileFlags($user)),
             ]);
 
         } catch (\Exception $e) {
@@ -624,7 +674,11 @@ class AuthController extends Controller
     }
 
     /**
-     * Update user profile (name and email).
+     * Update data profil yang boleh diubah pengguna.
+     *
+     * Nomor telepon TIDAK diubah di sini: nomor hanya boleh disimpan setelah
+     * OTP diverifikasi lewat endpoint /profile/phone/*. Email akun Google juga
+     * tidak dapat diganti dari aplikasi.
      * POST /api/profile/update
      */
     public function updateProfile(Request $request)
@@ -633,7 +687,7 @@ class AuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'nullable|email',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
@@ -648,11 +702,38 @@ class AuthController extends Controller
         }
 
         $data = [
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'name' => trim((string) $request->name),
             'address' => $request->address,
         ];
+
+        if ($request->filled('email')) {
+            $email = strtolower(trim((string) $request->email));
+
+            if ($user->hasGoogleAuth() && $email !== strtolower(trim((string) $user->email))) {
+                return response()->json([
+                    'success' => false,
+                    'code' => self::EMAIL_MANAGED_CODE,
+                    'message' => self::EMAIL_MANAGED_MESSAGE,
+                ], 422);
+            }
+
+            if (!$user->hasGoogleAuth()) {
+                $taken = User::where('email', $email)->whereKeyNot($user->id)->exists();
+
+                if ($taken) {
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'EMAIL_TAKEN',
+                        'message' => 'Email sudah digunakan oleh akun lain.',
+                    ], 422);
+                }
+
+                $data['email'] = $email;
+            }
+        }
+
+        // Catatan: `phone` sengaja tidak pernah disimpan di sini agar status
+        // verifikasi tidak bisa dilewati dari aplikasi.
 
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('photos', 'public');
@@ -660,20 +741,186 @@ class AuthController extends Controller
         }
 
         $user->update($data);
+        $user->refresh();
 
         return response()->json([
             'success' => true,
             'message' => 'Profil berhasil diperbarui.',
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'address' => $user->address,
-                    'photo_url' => $user->photo_url,
-                ]
-            ]
+            'data' => array_merge([
+                'user' => $this->userPayload($user),
+            ], $this->profileFlags($user)),
+        ]);
+    }
+
+    /**
+     * Kirim OTP untuk memverifikasi nomor telepon akun yang sedang login.
+     * POST /api/profile/phone/request-otp
+     */
+    public function requestProfilePhoneOtp(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $phone = PhoneNumber::normalize($request->phone);
+
+        if ($phone === null) {
+            return response()->json([
+                'success' => false,
+                'code' => self::INVALID_PHONE_CODE,
+                'message' => self::INVALID_PHONE_MESSAGE,
+            ], 422);
+        }
+
+        if (PhoneNumber::normalize($user->phone) === $phone && $user->hasVerifiedPhone()) {
+            return response()->json([
+                'success' => true,
+                'message' => self::OTP_VERIFIED_MESSAGE,
+                'already_verified' => true,
+            ]);
+        }
+
+        if ($this->otherUserWithPhone($phone, (int) $user->id) !== null) {
+            return $this->phoneTakenResponse();
+        }
+
+        $send = $this->phoneVerification->send(
+            PhoneVerificationService::PURPOSE_PROFILE,
+            $phone,
+            6,
+            (int) $user->id,
+        );
+
+        if ($send['status'] === PhoneVerificationService::STATUS_COOLDOWN) {
+            return $this->otpCooldownResponse((int) ($send['retry_after'] ?? 60));
+        }
+
+        if ($send['status'] !== PhoneVerificationService::STATUS_SENT) {
+            Log::warning('Gagal mengirim OTP verifikasi nomor profil', [
+                'user_id' => $user->id,
+                'provider_message' => $send['provider_message'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'code' => 'OTP_SEND_FAILED',
+                'message' => 'Gagal mengirim kode OTP. Silakan coba lagi beberapa saat lagi.',
+            ], 502);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => self::OTP_SENT_MESSAGE,
+            'retry_after' => $send['retry_after'] ?? PhoneVerificationService::COOLDOWN_SECONDS,
+            'expires_in' => PhoneVerificationService::EXPIRY_MINUTES * 60,
+        ]);
+    }
+
+    /**
+     * Verifikasi OTP dan simpan nomor telepon ke akun yang sedang login.
+     * POST /api/profile/phone/verify-otp
+     */
+    public function verifyProfilePhoneOtp(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string|max:20',
+            'otp' => 'required|string|min:4|max:8',
+            'name' => 'nullable|string|max:255',
+            'address' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $phone = PhoneNumber::normalize($request->phone);
+
+        if ($phone === null) {
+            return response()->json([
+                'success' => false,
+                'code' => self::INVALID_PHONE_CODE,
+                'message' => self::INVALID_PHONE_MESSAGE,
+            ], 422);
+        }
+
+        if ($this->otherUserWithPhone($phone, (int) $user->id) !== null) {
+            return $this->phoneTakenResponse();
+        }
+
+        $verification = $this->phoneVerification->verify(
+            PhoneVerificationService::PURPOSE_PROFILE,
+            $phone,
+            (string) $request->otp,
+            (int) $user->id,
+        );
+
+        if ($verification['status'] !== PhoneVerificationService::STATUS_OK) {
+            return $this->otpErrorResponse($verification);
+        }
+
+        try {
+            DB::transaction(function () use ($user, $phone, $request) {
+                if ($this->otherUserWithPhone($phone, (int) $user->id) !== null) {
+                    throw new \RuntimeException(self::PHONE_TAKEN_CODE);
+                }
+
+                $updates = [
+                    'phone' => $phone,
+                    'phone_verified_at' => now(),
+                ];
+
+                if ($request->filled('name')) {
+                    $updates['name'] = trim((string) $request->name);
+                }
+
+                if ($request->has('address')) {
+                    $updates['address'] = $request->address;
+                }
+
+                $user->forceFill($updates)->save();
+            });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === self::PHONE_TAKEN_CODE) {
+                return $this->phoneTakenResponse();
+            }
+
+            throw $e;
+        } catch (QueryException $e) {
+            // Unique index pada kolom phone menangkap balapan dua akun yang
+            // mencoba memakai nomor yang sama.
+            Log::warning('Nomor telepon gagal disimpan karena duplikat', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->phoneTakenResponse();
+        }
+
+        $user->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => self::OTP_VERIFIED_MESSAGE,
+            'data' => array_merge([
+                'user' => $this->userPayload($user),
+                'phone_verified' => true,
+            ], $this->profileFlags($user)),
         ]);
     }
 
@@ -723,9 +970,138 @@ class AuthController extends Controller
         return null;
     }
 
-    private function otpCacheKey(string $normalizedPhone): string
+    /**
+     * Cari akun lain (selain pemilik saat ini) yang sudah memakai nomor ini.
+     * Dipakai agar dua akun tidak pernah berbagi nomor yang sama.
+     */
+    private function otherUserWithPhone(string $phone, int $exceptUserId): ?User
     {
-        return 'otp_' . $normalizedPhone;
+        $normalized = PhoneNumber::normalize($phone);
+
+        if ($normalized === null) {
+            return null;
+        }
+
+        $variants = PhoneNumber::variants($normalized);
+
+        if ($variants === []) {
+            return null;
+        }
+
+        $users = User::query()
+            ->whereKeyNot($exceptUserId)
+            ->whereIn('phone', $variants)
+            ->get();
+
+        if ($users->isEmpty()) {
+            $users = User::query()
+                ->whereKeyNot($exceptUserId)
+                ->whereNotNull('phone')
+                ->whereRaw(
+                    "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '') IN (?, ?, ?)",
+                    $variants
+                )
+                ->get();
+        }
+
+        foreach ($users as $user) {
+            if (PhoneNumber::normalize($user->phone) === $normalized) {
+                return $user;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Bentuk data pengguna yang konsisten untuk seluruh respons autentikasi.
+     *
+     * @return array<string, mixed>
+     */
+    private function userPayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'phone_verified' => $user->hasVerifiedPhone(),
+            'phone_verified_at' => $user->phone_verified_at?->toISOString(),
+            'address' => $user->address,
+            'photo_url' => $user->photo_url,
+            'role' => $user->role,
+            'registration_method' => $user->registrationMethod(),
+            'account_status' => $user->accountStatus(),
+        ];
+    }
+
+    /**
+     * Status kelengkapan profil yang menjadi acuan Flutter dan admin.
+     *
+     * @return array<string, mixed>
+     */
+    private function profileFlags(User $user): array
+    {
+        $missing = $user->missingProfileFields();
+
+        return [
+            'profile_completed' => $missing === [],
+            'requires_profile_completion' => $missing !== [],
+            'missing_profile_fields' => $missing,
+            'phone_verified' => $user->hasVerifiedPhone(),
+        ];
+    }
+
+    private function phoneTakenResponse()
+    {
+        return response()->json([
+            'success' => false,
+            'code' => self::PHONE_TAKEN_CODE,
+            'message' => self::PHONE_TAKEN_MESSAGE,
+        ], 422);
+    }
+
+    private function otpCooldownResponse(int $seconds)
+    {
+        $seconds = max(1, $seconds);
+
+        return response()->json([
+            'success' => false,
+            'code' => self::OTP_COOLDOWN_CODE,
+            'message' => "Tunggu {$seconds} detik sebelum meminta kode OTP baru.",
+            'retry_after' => $seconds,
+        ], 429);
+    }
+
+    /**
+     * @param array{status?: string, attempts_left?: int} $result
+     */
+    private function otpErrorResponse(array $result)
+    {
+        $status = $result['status'] ?? PhoneVerificationService::STATUS_INVALID;
+
+        if ($status === PhoneVerificationService::STATUS_EXPIRED) {
+            return response()->json([
+                'success' => false,
+                'code' => self::OTP_EXPIRED_CODE,
+                'message' => self::OTP_EXPIRED_MESSAGE,
+            ], 422);
+        }
+
+        if ($status === PhoneVerificationService::STATUS_TOO_MANY) {
+            return response()->json([
+                'success' => false,
+                'code' => self::OTP_TOO_MANY_CODE,
+                'message' => self::OTP_TOO_MANY_MESSAGE,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => false,
+            'code' => self::OTP_INVALID_CODE,
+            'message' => self::OTP_INVALID_MESSAGE,
+            'attempts_left' => $result['attempts_left'] ?? null,
+        ], 422);
     }
 
     private function phoneNotRegisteredResponse()

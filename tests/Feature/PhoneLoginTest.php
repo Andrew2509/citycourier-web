@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\Api\AuthController;
 use App\Models\User;
+use App\Services\WhatsAppManager;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -22,6 +23,8 @@ class PhoneLoginTest extends TestCase
 {
     private const NOT_REGISTERED_MESSAGE = 'Nomor telepon belum terdaftar. Silakan gunakan nomor telepon yang sudah terdaftar melalui Google. Jika belum memiliki akun, silakan daftar terlebih dahulu menggunakan Google.';
 
+    private object $whatsapp;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -29,8 +32,23 @@ class PhoneLoginTest extends TestCase
         $this->dropSchema();
         $this->createSchema();
 
-        // Jangan memanggil provider WhatsApp sungguhan saat test.
-        config(['services.whatsapp.provider' => 'mock']);
+        // Jangan memanggil provider WhatsApp sungguhan saat test; simpan kode
+        // OTP yang "dikirim" agar bisa dipakai untuk verifikasi.
+        $this->whatsapp = new class extends WhatsAppManager {
+            public ?string $lastOtp = null;
+
+            public ?string $lastPhone = null;
+
+            public function sendOtp(string $phone, string $otp): array
+            {
+                $this->lastPhone = $phone;
+                $this->lastOtp = $otp;
+
+                return ['success' => true];
+            }
+        };
+
+        $this->app->instance(WhatsAppManager::class, $this->whatsapp);
         Cache::flush();
     }
 
@@ -59,6 +77,7 @@ class PhoneLoginTest extends TestCase
             $table->string('name');
             $table->string('email')->unique();
             $table->string('phone', 20)->nullable()->unique();
+            $table->timestamp('phone_verified_at')->nullable();
             $table->string('address')->nullable();
             $table->string('avatar')->nullable();
             $table->timestamp('email_verified_at')->nullable();
@@ -130,9 +149,10 @@ class PhoneLoginTest extends TestCase
 
         $this->postJson('/api/request-otp', ['phone' => '081234567890'])
             ->assertStatus(200)
-            ->assertJsonPath('success', true);
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', AuthController::OTP_SENT_MESSAGE);
 
-        $otp = Cache::get('otp_081234567890');
+        $otp = $this->whatsapp->lastOtp;
         $this->assertNotNull($otp);
 
         $response = $this->postJson('/api/verify-otp', [
@@ -143,10 +163,38 @@ class PhoneLoginTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.user.id', $user->id)
-            ->assertJsonPath('data.user.phone', '081234567890');
+            ->assertJsonPath('data.user.phone', '081234567890')
+            ->assertJsonPath('data.phone_verified', true);
 
         $this->assertNotEmpty($response->json('data.token'));
         $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_wrong_otp_returns_clear_message(): void
+    {
+        $this->googleUser(['phone' => '081234567890']);
+
+        $this->postJson('/api/request-otp', ['phone' => '081234567890'])
+            ->assertStatus(200);
+
+        $this->postJson('/api/verify-otp', [
+            'phone' => '081234567890',
+            'otp' => '0000',
+        ])->assertStatus(422)
+            ->assertJsonPath('code', AuthController::OTP_INVALID_CODE)
+            ->assertJsonPath('message', AuthController::OTP_INVALID_MESSAGE);
+    }
+
+    public function test_resend_otp_is_rate_limited(): void
+    {
+        $this->googleUser(['phone' => '081234567890']);
+
+        $this->postJson('/api/request-otp', ['phone' => '081234567890'])
+            ->assertStatus(200);
+
+        $this->postJson('/api/request-otp', ['phone' => '081234567890'])
+            ->assertStatus(429)
+            ->assertJsonPath('code', AuthController::OTP_COOLDOWN_CODE);
     }
 
     public function test_unregistered_phone_is_rejected_with_clear_message(): void
@@ -186,16 +234,12 @@ class PhoneLoginTest extends TestCase
                 default => '081255556666',
             };
 
-            $this->assertNotNull(
-                Cache::get('otp_' . $normalized),
-                "OTP untuk {$case['input']} harus tersimpan dengan kunci ternormalisasi."
-            );
+            $this->assertSame($normalized, $this->whatsapp->lastPhone);
 
             // Pastikan OTP memang bisa diverifikasi dengan format berbeda.
-            $otp = Cache::get('otp_' . $normalized);
             $this->postJson('/api/verify-otp', [
                 'phone' => $case['input'],
-                'otp' => $otp,
+                'otp' => $this->whatsapp->lastOtp,
             ])->assertStatus(200)
                 ->assertJsonPath('data.user.id', $user->id);
         }
@@ -250,31 +294,44 @@ class PhoneLoginTest extends TestCase
 
     public function test_verify_otp_never_creates_account_for_unregistered_phone(): void
     {
-        Cache::put('otp_081298765432', '1234', now()->addMinutes(10));
+        $user = $this->googleUser(['phone' => '081298765432']);
+
+        $this->postJson('/api/request-otp', ['phone' => '081298765432'])
+            ->assertStatus(200);
+
+        $otp = $this->whatsapp->lastOtp;
+
+        // Akun kehilangan identitas Google setelah OTP dikirim.
+        $user->forceFill(['firebase_uid' => null])->save();
 
         $this->postJson('/api/verify-otp', [
             'phone' => '081298765432',
-            'otp' => '1234',
+            'otp' => $otp,
         ])->assertStatus(404)
             ->assertJsonPath('code', AuthController::PHONE_NOT_REGISTERED_CODE);
 
-        $this->assertDatabaseCount('users', 0);
-        $this->assertNull(Cache::get('otp_081298765432'));
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
     public function test_verify_otp_rejects_non_google_account_without_issuing_token(): void
     {
-        $this->googleUser([
-            'firebase_uid' => null,
+        $user = $this->googleUser([
             'email' => 'non.google@gmail.com',
             'phone' => '081234000111',
         ]);
 
-        Cache::put('otp_081234000111', '4321', now()->addMinutes(10));
+        $this->postJson('/api/request-otp', ['phone' => '081234000111'])
+            ->assertStatus(200);
+
+        $otp = $this->whatsapp->lastOtp;
+
+        // Email diubah menjadi email generate sistem (akun OTP lama).
+        $user->forceFill(['email' => 'pelanggan081234000111@neonflux.my.id'])->save();
 
         $this->postJson('/api/verify-otp', [
             'phone' => '081234000111',
-            'otp' => '4321',
+            'otp' => $otp,
         ])->assertStatus(404)
             ->assertJsonPath('code', AuthController::PHONE_NOT_REGISTERED_CODE);
 
@@ -338,7 +395,9 @@ class PhoneLoginTest extends TestCase
         $this->postJson('/api/auth/google', ['id_token' => 'valid-token'])
             ->assertStatus(200)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.user.email', 'new.customer@gmail.com');
+            ->assertJsonPath('data.user.email', 'new.customer@gmail.com')
+            ->assertJsonPath('data.requires_profile_completion', true)
+            ->assertJsonPath('data.profile_completed', false);
 
         $user = User::where('email', 'new.customer@gmail.com')->first();
         $this->assertNotNull($user);
