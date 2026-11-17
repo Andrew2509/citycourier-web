@@ -201,7 +201,10 @@ trait CreatesPaymentWalletSchema
     {
         $this->setUpBaseTablesForWalletTests();
 
-        $files = glob(database_path('migrations/2026_11_17_*.php'));
+        $files = array_merge(
+            glob(database_path('migrations/2026_11_17_*.php')) ?: [],
+            glob(database_path('migrations/2026_11_18_*.php')) ?: [],
+        );
         sort($files);
 
         foreach ($files as $file) {
