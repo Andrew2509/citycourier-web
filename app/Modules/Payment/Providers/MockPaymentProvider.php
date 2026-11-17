@@ -192,28 +192,18 @@ class MockPaymentProvider implements PaymentProviderInterface, PayoutProviderInt
                 'supported' => true,
                 'found' => false,
                 'account_holder_name' => null,
-                'message' => 'Nomor rekening/e-wallet tidak terdaftar (Simulasi Sandbox).',
+                'message' => 'Nomor rekening/e-wallet tidak terdaftar.',
                 'provider' => 'mock',
             ];
         }
 
-        $sampleNames = [
-            'BUDI SANTOSO',
-            'SITI RAHAYU',
-            'ANDI PRATAMA',
-            'DEWI LESTARI',
-            'HENDRA WIJAYA',
-            'RINA KUSUMA',
-            'FAJAR NUGROHO',
-            'MAYA PUTRI',
-        ];
-        $idx = abs(crc32(strtoupper($channelCode).':'.$digits)) % count($sampleNames);
-
+        // Jangan mengembalikan nama acak palsu; kembalikan supported=false
+        // agar pengguna mengetik nama asli sesuai buku tabungan/akun e-wallet.
         return [
-            'supported' => true,
-            'found' => true,
-            'account_holder_name' => $sampleNames[$idx],
-            'message' => 'Nama pemilik ditemukan (Simulasi Sandbox).',
+            'supported' => false,
+            'found' => false,
+            'account_holder_name' => null,
+            'message' => 'Cek nama otomatis belum didukung tanpa API validator bank/e-wallet aktif. Silakan isi nama secara manual.',
             'provider' => 'mock',
         ];
     }

@@ -4,7 +4,6 @@ namespace App\Modules\Payout\Services;
 
 use App\Models\Courier;
 use App\Models\User;
-use App\Modules\Payment\Providers\MockPaymentProvider;
 use App\Modules\Payment\Providers\ProviderResolver;
 use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use App\Modules\Wallet\Models\PayoutDestination;
@@ -99,8 +98,8 @@ class DestinationService
             }
         }
 
-        // 3. Di mode Sandbox/Demo, cocokkan nomor HP akun pengguna yang login agar terasa nyata.
-        if ($isSandbox && $destType === 'ewallet') {
+        // 3. Cocokkan nomor HP akun pengguna sendiri yang sedang login agar langsung terisi nama profil aslinya.
+        if ($destType === 'ewallet') {
             $userPhone = $this->normalizeInquiryNumber('ewallet', (string) ($user->phone ?? ''));
             if ($userPhone !== '' && $userPhone === $accountNumber && trim((string) $user->name) !== '') {
                 return $this->inquiryEnvelope(
@@ -110,21 +109,17 @@ class DestinationService
                     channelCode: $channelCode,
                     accountNumber: $accountNumber,
                     mode: $mode,
-                    isSimulated: true,
-                    provider: 'mock',
-                    message: 'Nama pemilik ditemukan sesuai profil akun (Simulasi Sandbox).'
+                    isSimulated: false,
+                    provider: 'account_profile',
+                    message: 'Nama diisi otomatis sesuai profil akun Anda.'
                 );
             }
         }
 
-        // 4. Delegasikan ke provider payout aktif.
+        // 4. Delegasikan ke provider payout aktif (tanpa menghasilkan nama simulasi acak).
         try {
             $provider = $this->providerResolver->resolvePayoutProvider();
             $result = $provider->inquireDestination($destType, $channelCode, $accountNumber);
-
-            if (! ($result['supported'] ?? false) && $isSandbox) {
-                $result = app(MockPaymentProvider::class)->inquireDestination($destType, $channelCode, $accountNumber);
-            }
 
             return $this->inquiryEnvelope(
                 supported: (bool) ($result['supported'] ?? false),
@@ -133,7 +128,7 @@ class DestinationService
                 channelCode: $channelCode,
                 accountNumber: $accountNumber,
                 mode: $mode,
-                isSimulated: ($result['provider'] ?? '') === 'mock' || $isSandbox,
+                isSimulated: false,
                 provider: (string) ($result['provider'] ?? $provider->providerCode()),
                 message: $result['message'] ?? null
             );

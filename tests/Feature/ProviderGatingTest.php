@@ -520,63 +520,7 @@ class ProviderGatingTest extends TestCase
 
         Sanctum::actingAs($customer);
 
-        // Bank account inquiry in Sandbox returns deterministic non-empty name
-        $bankRes = $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
-            'destination_type' => 'bank',
-            'channel_code' => 'ID_BCA',
-            'account_number' => '1234567890',
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', true)
-            ->assertJsonPath('data.found', true);
-
-        $this->assertNotEmpty($bankRes->json('data.account_holder_name'));
-
-        // E-wallet matching user's own profile phone resolves to user's name in Sandbox
-        $intlPhone = '62'.substr($customer->phone, 1);
-        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
-            'destination_type' => 'ewallet',
-            'channel_code' => 'ID_DANA',
-            'account_number' => '+'.$intlPhone,
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', true)
-            ->assertJsonPath('data.found', true)
-            ->assertJsonPath('data.account_holder_name', $expectedUserUpper);
-
-        // Numbers ending with 0000 return not found cleanly
-        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
-            'destination_type' => 'bank',
-            'channel_code' => 'ID_BRI',
-            'account_number' => '123450000',
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', true)
-            ->assertJsonPath('data.found', false)
-            ->assertJsonPath('data.account_holder_name', null);
-
-        // Courier endpoint also works
-        [$courierUser, $courier] = $this->createCourier('inq');
-        $this->assertNotNull($courier);
-
-        Sanctum::actingAs($courierUser);
-        $courierRes = $this->postJson('/api/v1/courier/wallet/destinations/inquiry', [
-            'destination_type' => 'bank',
-            'channel_code' => 'ID_MANDIRI',
-            'account_number' => '1370012345678',
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', true)
-            ->assertJsonPath('data.found', true);
-
-        $this->assertNotEmpty($courierRes->json('data.account_holder_name'));
-
-        // Production Xendit without Bank Name Validator returns supported=false cleanly
-        Setting::set('payment_wallet_mode', 'production', 'payment_wallet');
-        Setting::set('xendit_secret_key', 'xnd_production_test_key_12345', 'payment_wallet');
-        Setting::set('xendit_enabled', '1', 'payment_wallet');
-
-        Sanctum::actingAs($customer);
+        // Unknown third-party bank account never fabricates a fake Sandbox name
         $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
             'destination_type' => 'bank',
             'channel_code' => 'ID_BCA',
@@ -586,5 +530,92 @@ class ProviderGatingTest extends TestCase
             ->assertJsonPath('data.supported', false)
             ->assertJsonPath('data.found', false)
             ->assertJsonPath('data.account_holder_name', null);
+
+        // E-wallet matching user's own profile phone resolves to user's real profile name
+        $intlPhone = '62'.substr($customer->phone, 1);
+        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => '+'.$intlPhone,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', true)
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.is_simulated', false)
+            ->assertJsonPath('data.provider', 'account_profile')
+            ->assertJsonPath('data.account_holder_name', $expectedUserUpper);
+
+        // Saving a verified bank account makes subsequent inquiries recognize the real saved name
+        $this->postJson('/api/v1/customer/wallet/destinations', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_BCA',
+            'account_number' => '1234567890',
+            'account_holder_name' => 'Rina Pemilik Asli',
+            'is_default' => true,
+        ])->assertStatus(201);
+
+        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_BCA',
+            'account_number' => '1234567890',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', true)
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.is_simulated', false)
+            ->assertJsonPath('data.provider', 'saved_destination')
+            ->assertJsonPath('data.account_holder_name', 'RINA PEMILIK ASLI');
+
+        // Courier endpoint also uses real profile phone and never fabricates unknown bank names
+        [$courierUser, $courier] = $this->createCourier('inq');
+        $this->assertNotNull($courier);
+
+        Sanctum::actingAs($courierUser);
+        $this->postJson('/api/v1/courier/wallet/destinations/inquiry', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_MANDIRI',
+            'account_number' => '1370012345678',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', false)
+            ->assertJsonPath('data.found', false)
+            ->assertJsonPath('data.account_holder_name', null);
+
+        $this->postJson('/api/v1/courier/wallet/destinations/inquiry', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => $courierUser->phone,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', true)
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.account_holder_name', strtoupper($courierUser->name));
+
+        // Production Xendit without Bank Name Validator returns supported=false for unknown accounts,
+        // while still recognizing the user's own profile phone on e-wallet
+        Setting::set('payment_wallet_mode', 'production', 'payment_wallet');
+        Setting::set('xendit_secret_key', 'xnd_production_test_key_12345', 'payment_wallet');
+        Setting::set('xendit_enabled', '1', 'payment_wallet');
+
+        Sanctum::actingAs($customer);
+        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_BRI',
+            'account_number' => '998877665544',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', false)
+            ->assertJsonPath('data.found', false)
+            ->assertJsonPath('data.account_holder_name', null);
+
+        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => $customer->phone,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', true)
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.account_holder_name', $expectedUserUpper);
     }
 }
