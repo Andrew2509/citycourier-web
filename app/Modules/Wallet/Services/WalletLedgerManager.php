@@ -501,7 +501,8 @@ class WalletLedgerManager
         );
 
         if (! $journal['idempotent_replay']) {
-            WalletTransaction::where('reference_id', str_replace('-SETTLE', '', $journalReference))
+            $refCol = Schema::hasColumn('wallet_transactions', 'reference') ? 'reference' : 'reference_id';
+            WalletTransaction::where($refCol, str_replace('-SETTLE', '', $journalReference))
                 ->where('status', 'pending')
                 ->update(['status' => 'completed']);
         }
@@ -555,7 +556,8 @@ class WalletLedgerManager
 
         if (! $journal['idempotent_replay']) {
             $freshBalance = WalletBalance::where('wallet_id', $wallet->id)->firstOrFail();
-            WalletTransaction::where('reference_id', str_replace('-RELEASE', '', $journalReference))
+            $refCol = Schema::hasColumn('wallet_transactions', 'reference') ? 'reference' : 'reference_id';
+            WalletTransaction::where($refCol, str_replace('-RELEASE', '', $journalReference))
                 ->where('status', 'pending')
                 ->update(['status' => 'failed']);
 
@@ -737,15 +739,25 @@ class WalletLedgerManager
             }
         }
 
+        $signedAmount = $direction === 'debit' ? -$amountIdr : $amountIdr;
+        $refCol = Schema::hasColumn('wallet_transactions', 'reference') ? 'reference' : 'reference_id';
+
         $data = [
             'wallet_id' => $wallet->id,
             'courier_id' => $wallet->courier_id,
             'type' => $type,
-            'amount' => $direction === 'debit' ? -$amountIdr : $amountIdr,
+            'amount' => $signedAmount,
             'status' => $status,
-            'reference_id' => $referenceId,
+            $refCol => $referenceId,
             'description' => $description,
         ];
+
+        if (Schema::hasColumn('wallet_transactions', 'fee')) {
+            $data['fee'] = 0;
+        }
+        if (Schema::hasColumn('wallet_transactions', 'net_amount')) {
+            $data['net_amount'] = $signedAmount;
+        }
 
         if (Schema::hasColumn('wallet_transactions', 'user_id')) {
             $data['user_id'] = $wallet->user_id;

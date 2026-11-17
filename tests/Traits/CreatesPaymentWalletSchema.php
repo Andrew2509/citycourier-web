@@ -134,8 +134,9 @@ trait CreatesPaymentWalletSchema
                 $table->string('status')->default('not_active');
                 $table->decimal('available_balance', 15, 2)->default(0);
                 $table->decimal('pending_balance', 15, 2)->default(0);
-                $table->string('currency', 8)->default('IDR');
+                $table->string('currency', 10)->default('IDR');
                 $table->timestamps();
+                $table->unique('courier_id');
             });
         }
 
@@ -144,10 +145,13 @@ trait CreatesPaymentWalletSchema
                 $table->id();
                 $table->foreignId('wallet_id')->constrained('wallets')->onDelete('cascade');
                 $table->foreignId('courier_id')->constrained('couriers')->onDelete('cascade');
+                $table->foreignId('order_id')->nullable()->constrained('orders')->onDelete('set null');
                 $table->string('type', 48);
                 $table->decimal('amount', 15, 2);
+                $table->decimal('fee', 15, 2)->default(0);
+                $table->decimal('net_amount', 15, 2);
                 $table->string('status', 32)->default('completed');
-                $table->string('reference_id')->nullable();
+                $table->string('reference')->nullable();
                 $table->string('description')->nullable();
                 $table->timestamps();
             });

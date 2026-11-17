@@ -44,6 +44,9 @@ class PaymentWalletMigrationTest extends TestCase
         ]));
 
         $this->assertTrue(Schema::hasColumns('wallet_transactions', [
+            'reference',
+            'fee',
+            'net_amount',
             'user_id',
             'wallet_type',
             'direction',
@@ -53,6 +56,8 @@ class PaymentWalletMigrationTest extends TestCase
             'mode',
             'metadata',
         ]));
+
+        $this->assertFalse(Schema::hasColumn('wallet_transactions', 'reference_id'));
 
         $this->assertTrue(Schema::hasColumns('wallet_ledger_entries', [
             'journal_id',
@@ -64,5 +69,16 @@ class PaymentWalletMigrationTest extends TestCase
             'amount',
             'mode',
         ]));
+    }
+
+    public function test_payment_and_wallet_migrations_are_idempotent_on_rerun(): void
+    {
+        $this->runPaymentWalletMigrations();
+        $this->runPaymentWalletMigrations();
+
+        $this->assertTrue(Schema::hasTable('wallet_transactions'));
+        $this->assertTrue(Schema::hasColumn('wallet_transactions', 'idempotency_key'));
+        $this->assertTrue(Schema::hasColumn('wallet_transactions', 'reference'));
+        $this->assertTrue(Schema::hasColumn('wallets', 'user_id'));
     }
 }

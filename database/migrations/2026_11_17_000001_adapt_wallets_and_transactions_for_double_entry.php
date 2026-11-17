@@ -25,22 +25,22 @@ return new class extends Migration
                     $table->unsignedBigInteger('courier_id')->nullable()->change();
                 }
                 if (! Schema::hasColumn('wallets', 'user_id')) {
-                    $table->unsignedBigInteger('user_id')->nullable()->after('id');
+                    $table->unsignedBigInteger('user_id')->nullable();
                 }
                 if (! Schema::hasColumn('wallets', 'wallet_type')) {
-                    $table->string('wallet_type', 24)->default('courier')->after('user_id');
+                    $table->string('wallet_type', 24)->default('courier');
                 }
                 if (! Schema::hasColumn('wallets', 'reserved_balance')) {
-                    $table->bigInteger('reserved_balance')->default(0)->after('pending_balance');
+                    $table->bigInteger('reserved_balance')->default(0);
                 }
                 if (! Schema::hasColumn('wallets', 'frozen_at')) {
-                    $table->timestamp('frozen_at')->nullable()->after('status');
+                    $table->timestamp('frozen_at')->nullable();
                 }
                 if (! Schema::hasColumn('wallets', 'frozen_by')) {
-                    $table->unsignedBigInteger('frozen_by')->nullable()->after('frozen_at');
+                    $table->unsignedBigInteger('frozen_by')->nullable();
                 }
                 if (! Schema::hasColumn('wallets', 'freeze_reason')) {
-                    $table->string('freeze_reason', 500)->nullable()->after('frozen_by');
+                    $table->string('freeze_reason', 500)->nullable();
                 }
                 if ($driver === 'mysql' && Schema::hasColumn('wallets', 'status')) {
                     $table->string('status', 32)->default('active')->change();
@@ -78,28 +78,28 @@ return new class extends Migration
                     $table->unsignedBigInteger('courier_id')->nullable()->change();
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'user_id')) {
-                    $table->unsignedBigInteger('user_id')->nullable()->after('wallet_id');
+                    $table->unsignedBigInteger('user_id')->nullable();
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'wallet_type')) {
-                    $table->string('wallet_type', 24)->default('courier')->after('user_id');
+                    $table->string('wallet_type', 24)->default('courier');
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'direction')) {
-                    $table->string('direction', 12)->nullable()->after('type');
+                    $table->string('direction', 12)->nullable();
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'amount_idr')) {
-                    $table->bigInteger('amount_idr')->nullable()->after('amount');
+                    $table->bigInteger('amount_idr')->nullable();
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'balance_after')) {
-                    $table->bigInteger('balance_after')->nullable()->after('amount_idr');
+                    $table->bigInteger('balance_after')->nullable();
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'idempotency_key')) {
-                    $table->string('idempotency_key', 120)->nullable()->after('reference_id');
+                    $table->string('idempotency_key', 120)->nullable();
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'mode')) {
-                    $table->string('mode', 20)->default('sandbox')->after('status');
+                    $table->string('mode', 20)->default('sandbox');
                 }
                 if (! Schema::hasColumn('wallet_transactions', 'metadata')) {
-                    $table->json('metadata')->nullable()->after('description');
+                    $table->json('metadata')->nullable();
                 }
                 if ($driver === 'mysql') {
                     if (Schema::hasColumn('wallet_transactions', 'type')) {
@@ -107,6 +107,9 @@ return new class extends Migration
                     }
                     if (Schema::hasColumn('wallet_transactions', 'status')) {
                         $table->string('status', 32)->default('completed')->change();
+                    }
+                    if (Schema::hasColumn('wallet_transactions', 'net_amount')) {
+                        $table->decimal('net_amount', 15, 2)->default(0)->change();
                     }
                 }
             });
