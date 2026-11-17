@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Courier;
+use App\Services\AccountSecurityService;
 use App\Services\PhoneNumber;
 use App\Services\PhoneVerificationService;
 use App\Services\WhatsAppManager;
@@ -63,6 +64,7 @@ class AuthController extends Controller
     public function __construct(
         WhatsAppManager $whatsappManager,
         private readonly PhoneVerificationService $phoneVerification,
+        private readonly AccountSecurityService $accountSecurity,
     ) {
         $this->whatsappManager = $whatsappManager;
     }
@@ -106,7 +108,19 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('courier-app')->plainTextToken;
+        $newToken = $user->createToken('courier-app');
+        $this->accountSecurity->attachTokenMetadata($newToken->accessToken, $request);
+        $this->accountSecurity->logEvent(
+            $user,
+            'login_password',
+            'Login Berhasil via Email & Password',
+            'Sesi login baru dibuka menggunakan email dan password.',
+            $request,
+            'success',
+            [],
+            $newToken->accessToken->id ?? null,
+        );
+        $token = $newToken->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -205,7 +219,19 @@ class AuthController extends Controller
             ]
         );
 
-        $token = $user->createToken('courier-app')->plainTextToken;
+        $newToken = $user->createToken('courier-app');
+        $this->accountSecurity->attachTokenMetadata($newToken->accessToken, $request);
+        $this->accountSecurity->logEvent(
+            $user,
+            'login_password',
+            'Login Berhasil via Email & Password',
+            'Sesi login baru dibuka menggunakan email dan password.',
+            $request,
+            'success',
+            [],
+            $newToken->accessToken->id ?? null,
+        );
+        $token = $newToken->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -299,6 +325,14 @@ class AuthController extends Controller
             return $this->otpCooldownResponse((int) ($send['retry_after'] ?? 60));
         }
 
+        if ($send['status'] === PhoneVerificationService::STATUS_PROVIDER_DISABLED || ! empty($send['disabled'])) {
+            return response()->json([
+                'success' => false,
+                'code' => 'PROVIDER_DISABLED',
+                'message' => $send['provider_message'] ?? 'Layanan WhatsApp Gateway sedang dinonaktifkan oleh Admin.',
+            ], 503);
+        }
+
         if ($send['status'] !== PhoneVerificationService::STATUS_SENT) {
             Log::warning('Gagal mengirim OTP login WhatsApp', [
                 'phone' => $phone,
@@ -377,7 +411,19 @@ class AuthController extends Controller
         // Load courier profile if exists
         $user->load('courier');
 
-        $token = $user->createToken('flutter-app')->plainTextToken;
+        $newToken = $user->createToken('flutter-app');
+        $this->accountSecurity->attachTokenMetadata($newToken->accessToken, $request);
+        $this->accountSecurity->logEvent(
+            $user,
+            'login_otp',
+            'Login Berhasil via OTP WhatsApp',
+            'Sesi login baru dibuka setelah verifikasi kode OTP.',
+            $request,
+            'success',
+            [],
+            $newToken->accessToken->id ?? null,
+        );
+        $token = $newToken->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -495,7 +541,19 @@ class AuthController extends Controller
                 }
             }
 
-            $token = $user->createToken('google-auth')->plainTextToken;
+            $newToken = $user->createToken('google-auth');
+            $this->accountSecurity->attachTokenMetadata($newToken->accessToken, $request);
+            $this->accountSecurity->logEvent(
+                $user,
+                'login_google',
+                'Login Berhasil via Google',
+                'Sesi login baru dibuka menggunakan akun Google terhubung.',
+                $request,
+                'success',
+                [],
+                $newToken->accessToken->id ?? null,
+            );
+            $token = $newToken->plainTextToken;
 
             return response()->json([
                 'success' => true,
@@ -562,7 +620,19 @@ class AuthController extends Controller
 
             // Jangan mengubah phone/firebase_uid di sini. Login nomor telepon
             // tidak boleh mengubah identitas akun Google tanpa verifikasi.
-            $token = $user->createToken('phone-auth')->plainTextToken;
+            $newToken = $user->createToken('phone-auth');
+            $this->accountSecurity->attachTokenMetadata($newToken->accessToken, $request);
+            $this->accountSecurity->logEvent(
+                $user,
+                'login_phone_firebase',
+                'Login Berhasil via Nomor Telepon',
+                'Sesi login baru dibuka menggunakan autentikasi nomor telepon.',
+                $request,
+                'success',
+                [],
+                $newToken->accessToken->id ?? null,
+            );
+            $token = $newToken->plainTextToken;
 
             return response()->json([
                 'success' => true,
@@ -618,6 +688,14 @@ class AuthController extends Controller
         $waResult = $this->whatsappManager->sendMessage($phone, $message);
 
         if (!$waResult['success']) {
+            if (!empty($waResult['disabled'])) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'PROVIDER_DISABLED',
+                    'message' => $waResult['message'] ?? 'Layanan WhatsApp Gateway sedang dinonaktifkan oleh Admin.',
+                ], 503);
+            }
+
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengirim OTP via WhatsApp. ' . ($waResult['message'] ?? ''),
@@ -805,6 +883,14 @@ class AuthController extends Controller
             return $this->otpCooldownResponse((int) ($send['retry_after'] ?? 60));
         }
 
+        if ($send['status'] === PhoneVerificationService::STATUS_PROVIDER_DISABLED || ! empty($send['disabled'])) {
+            return response()->json([
+                'success' => false,
+                'code' => 'PROVIDER_DISABLED',
+                'message' => $send['provider_message'] ?? 'Layanan WhatsApp Gateway sedang dinonaktifkan oleh Admin.',
+            ], 503);
+        }
+
         if ($send['status'] !== PhoneVerificationService::STATUS_SENT) {
             Log::warning('Gagal mengirim OTP verifikasi nomor profil', [
                 'user_id' => $user->id,
@@ -913,6 +999,14 @@ class AuthController extends Controller
         }
 
         $user->refresh();
+
+        $this->accountSecurity->logEvent(
+            $user,
+            'phone_verified',
+            'Nomor Telepon Diverifikasi',
+            'Nomor telepon ' . $phone . ' berhasil diverifikasi via OTP.',
+            $request,
+        );
 
         return response()->json([
             'success' => true,
@@ -1032,6 +1126,9 @@ class AuthController extends Controller
             'role' => $user->role,
             'registration_method' => $user->registrationMethod(),
             'account_status' => $user->accountStatus(),
+            'has_pin' => $user->hasTransactionPin(),
+            'biometric_enabled' => (bool) ($user->getAttribute('biometric_enabled') ?? false),
+            'security_alerts_enabled' => (bool) ($user->getAttribute('security_alerts_enabled') ?? true),
         ];
     }
 

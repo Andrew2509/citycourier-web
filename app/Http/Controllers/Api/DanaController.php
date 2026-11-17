@@ -56,6 +56,17 @@ class DanaController extends Controller
      * Get DANA connection status (PRD §34).
      * Otomatis menandai EXPIRED bila token kedaluwarsa (PRD §33).
      */
+    private function disabledResponse()
+    {
+        return response()->json([
+            'success'          => false,
+            'message'          => 'Layanan DANA sedang dinonaktifkan oleh Admin.',
+            'error'            => 'Layanan DANA sedang dinonaktifkan oleh Admin.',
+            'error_code'       => 'PROVIDER_DISABLED',
+            'provider_enabled' => false,
+        ], 403);
+    }
+
     public function status(Request $request)
     {
         $courier = $request->user()->courier;
@@ -67,6 +78,26 @@ class DanaController extends Controller
             ], 404);
         }
 
+        if (!DanaService::isEnabled()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Layanan DANA sedang dinonaktifkan oleh Admin.',
+                'data'    => [
+                    'status'           => 'DISABLED',
+                    'status_label'     => 'DISABLED',
+                    'provider'         => 'DANA',
+                    'provider_enabled' => false,
+                    'connected'        => false,
+                    'masked_account'   => null,
+                    'masked_phone'     => null,
+                    'account_name'     => null,
+                    'bound_at'         => null,
+                    'connected_at'     => null,
+                    'external_id'      => null,
+                ],
+            ]);
+        }
+
         $connection = $this->danaService->freshStatus($courier->id);
 
         $status = $connection?->status ?? 'not_connected';
@@ -76,16 +107,17 @@ class DanaController extends Controller
             'success' => true,
             'message' => 'OK',
             'data'    => [
-                'status'         => $label, // PRD §14: NOT_CONNECTED / PENDING / CONNECTED / ...
-                'status_label'   => $label,
-                'provider'       => 'DANA',
-                'connected'      => $status === 'connected',
-                'masked_account' => $connection?->masked_phone,
-                'masked_phone'   => $connection?->masked_phone,
-                'account_name'   => $connection?->account_name,
-                'bound_at'       => $connection?->bound_at?->toIso8601String(),
-                'connected_at'   => $connection?->linked_at,
-                'external_id'    => $connection?->external_id,
+                'status'           => $label, // PRD §14: NOT_CONNECTED / PENDING / CONNECTED / ...
+                'status_label'     => $label,
+                'provider'         => 'DANA',
+                'provider_enabled' => true,
+                'connected'        => $status === 'connected',
+                'masked_account'   => $connection?->masked_phone,
+                'masked_phone'     => $connection?->masked_phone,
+                'account_name'     => $connection?->account_name,
+                'bound_at'         => $connection?->bound_at?->toIso8601String(),
+                'connected_at'     => $connection?->linked_at,
+                'external_id'      => $connection?->external_id,
             ],
         ]);
     }
@@ -97,6 +129,10 @@ class DanaController extends Controller
      */
     public function connect(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json([
@@ -151,6 +187,10 @@ class DanaController extends Controller
      */
     public function binding(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json([
@@ -208,6 +248,10 @@ class DanaController extends Controller
      */
     public function initBinding(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json(['error' => 'Profil kurir tidak ditemukan.'], 404);
@@ -243,6 +287,10 @@ class DanaController extends Controller
      */
     public function checkBindingStatus(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json(['error' => 'Profil kurir tidak ditemukan.'], 404);
@@ -432,6 +480,10 @@ class DanaController extends Controller
      */
     public function mockConnect(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
@@ -483,6 +535,10 @@ class DanaController extends Controller
      */
     public function disconnect(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json([
@@ -533,6 +589,10 @@ class DanaController extends Controller
      */
     public function reconnect(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
@@ -555,6 +615,10 @@ class DanaController extends Controller
      */
     public function verify(Request $request)
     {
+        if (!DanaService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $request->validate(['phone_number' => 'required|string|min:10|max:15']);
 
         $courier = $request->user()->courier;

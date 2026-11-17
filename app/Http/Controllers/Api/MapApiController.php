@@ -48,9 +48,10 @@ class MapApiController extends Controller
 
         return response()->json([
             'success' => false,
+            'error_code' => !empty($result['disabled']) ? 'PROVIDER_DISABLED' : null,
             'message' => $result['message'],
             'error' => $result['error'] ?? null
-        ], 400);
+        ], !empty($result['disabled']) ? 503 : 400);
     }
 
     /**
@@ -82,9 +83,10 @@ class MapApiController extends Controller
 
         return response()->json([
             'success' => false,
+            'error_code' => !empty($result['disabled']) ? 'PROVIDER_DISABLED' : null,
             'message' => $result['message'],
             'error' => $result['error'] ?? null
-        ], 400);
+        ], !empty($result['disabled']) ? 503 : 400);
     }
 
     /**
@@ -116,9 +118,10 @@ class MapApiController extends Controller
 
         return response()->json([
             'success' => false,
+            'error_code' => !empty($result['disabled']) ? 'PROVIDER_DISABLED' : null,
             'message' => $result['message'],
             'error' => $result['error'] ?? null
-        ], 400);
+        ], !empty($result['disabled']) ? 503 : 400);
     }
 
     /**
@@ -126,6 +129,14 @@ class MapApiController extends Controller
      */
     public function getStyle($name)
     {
+        if (!MapService::isEnabled()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PROVIDER_DISABLED',
+                'message' => 'Provider Peta & Geocoding sedang dimatikan oleh Admin.',
+            ], 503);
+        }
+
         $cacheKey = "map_style_" . $name;
 
         $styleJson = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($name) {

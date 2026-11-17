@@ -25,6 +25,16 @@ class OvoController extends Controller
         $this->withdrawalService = $withdrawalService ?? new WithdrawalService();
     }
 
+    private function disabledResponse()
+    {
+        return response()->json([
+            'success'          => false,
+            'message'          => 'Layanan OVO SNAP sedang dinonaktifkan oleh Admin.',
+            'error_code'       => 'PROVIDER_DISABLED',
+            'provider_enabled' => false,
+        ], 403);
+    }
+
     /**
      * GET /api/courier/ovo/status
      */
@@ -39,6 +49,26 @@ class OvoController extends Controller
             ], 404);
         }
 
+        if (!OvoService::isEnabled()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Layanan OVO SNAP sedang dinonaktifkan oleh Admin.',
+                'data'    => [
+                    'status'           => 'DISABLED',
+                    'status_label'     => 'DISABLED',
+                    'provider'         => 'OVO',
+                    'provider_enabled' => false,
+                    'connected'        => false,
+                    'phone_number'     => null,
+                    'masked_phone'     => null,
+                    'masked_account'   => null,
+                    'account_name'     => null,
+                    'bound_at'         => null,
+                    'connected_at'     => null,
+                ],
+            ]);
+        }
+
         $connection = $this->ovoService->freshStatus($courier->id);
 
         $status = $connection?->status ?? 'not_connected';
@@ -48,16 +78,17 @@ class OvoController extends Controller
             'success' => true,
             'message' => 'OK',
             'data'    => [
-                'status'         => $isConnected ? 'CONNECTED' : strtoupper($status),
-                'status_label'   => $isConnected ? 'CONNECTED' : strtoupper($status),
-                'provider'       => 'OVO',
-                'connected'      => $isConnected,
-                'phone_number'   => $connection?->masked_phone,
-                'masked_phone'   => $connection?->masked_phone,
-                'masked_account' => $connection?->masked_phone,
-                'account_name'   => $connection?->account_name,
-                'bound_at'       => $connection?->bound_at?->toIso8601String(),
-                'connected_at'   => $connection?->linked_at?->toIso8601String(),
+                'status'           => $isConnected ? 'CONNECTED' : strtoupper($status),
+                'status_label'     => $isConnected ? 'CONNECTED' : strtoupper($status),
+                'provider'         => 'OVO',
+                'provider_enabled' => true,
+                'connected'        => $isConnected,
+                'phone_number'     => $connection?->masked_phone,
+                'masked_phone'     => $connection?->masked_phone,
+                'masked_account'   => $connection?->masked_phone,
+                'account_name'     => $connection?->account_name,
+                'bound_at'         => $connection?->bound_at?->toIso8601String(),
+                'connected_at'     => $connection?->linked_at?->toIso8601String(),
             ],
         ]);
     }
@@ -68,6 +99,10 @@ class OvoController extends Controller
      */
     public function connect(Request $request)
     {
+        if (!OvoService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json([
@@ -128,6 +163,10 @@ class OvoController extends Controller
      */
     public function disconnect(Request $request)
     {
+        if (!OvoService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json([
@@ -159,6 +198,10 @@ class OvoController extends Controller
      */
     public function withdraw(Request $request)
     {
+        if (!OvoService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $request->validate([
             'amount'          => 'required|numeric|min:1',
             'idempotency_key' => 'required|string|max:50',
@@ -219,6 +262,10 @@ class OvoController extends Controller
      */
     public function syncStatus(Request $request, $id)
     {
+        if (!OvoService::isEnabled()) {
+            return $this->disabledResponse();
+        }
+
         $courier = $request->user()->courier;
         if (!$courier) {
             return response()->json([

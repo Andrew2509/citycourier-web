@@ -89,6 +89,11 @@ class ProviderResolver
         $mode = $this->currentMode();
         $code = $forcedCode ? strtolower($forcedCode) : $this->activePaymentProviderCode();
 
+        if ($this->isPaymentProviderDisabled($code)) {
+            $label = $this->providerDisplayName($code);
+            throw new RuntimeException("PROVIDER_DISABLED:Gateway pembayaran {$label} sedang dinonaktifkan oleh Admin.");
+        }
+
         if ($mode === 'production') {
             $provider = match ($code) {
                 'doku' => $this->dokuPayment,
@@ -116,10 +121,65 @@ class ProviderResolver
         return $provider->isConfigured() ? $provider : $this->mock;
     }
 
+    public function isPaymentProviderDisabled(?string $forcedCode = null): bool
+    {
+        $mode = $this->currentMode();
+        $code = $forcedCode ? strtolower($forcedCode) : $this->activePaymentProviderCode();
+        if ($mode === 'demo' || $code === 'mock') {
+            return false;
+        }
+
+        return in_array($code, ['xendit', 'doku'], true)
+            && app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->isExplicitlyDisabled($code);
+    }
+
+    public function isPayoutProviderDisabled(?string $forcedCode = null): bool
+    {
+        $mode = $this->currentMode();
+        $code = $forcedCode ? strtolower($forcedCode) : $this->activePayoutProviderCode();
+        if ($mode === 'demo' || $code === 'mock') {
+            return false;
+        }
+
+        return in_array($code, ['xendit', 'doku', 'ipaymu', 'dana', 'ovo'], true)
+            && app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->isExplicitlyDisabled($code);
+    }
+
+    public function providerDisplayName(string $code): string
+    {
+        return match (strtolower($code)) {
+            'xendit' => 'Xendit',
+            'doku' => 'DOKU',
+            'ipaymu' => 'iPaymu',
+            'dana' => 'DANA',
+            'ovo' => 'OVO',
+            default => strtoupper($code),
+        };
+    }
+
+    public function safePaymentProviderCode(?string $forcedCode = null): string
+    {
+        $mode = $this->currentMode();
+        $code = $forcedCode ? strtolower($forcedCode) : $this->activePaymentProviderCode();
+        if ($mode === 'demo' || $code === 'mock') {
+            return 'mock';
+        }
+        if ($this->isPaymentProviderDisabled($code)) {
+            return $code;
+        }
+
+        return $this->resolvePaymentProvider($code)->providerCode();
+    }
+
     public function resolvePayoutProvider(?string $forcedCode = null): PayoutProviderInterface
     {
         $mode = $this->currentMode();
         $code = $forcedCode ? strtolower($forcedCode) : $this->activePayoutProviderCode();
+
+        if ($this->isPayoutProviderDisabled($code)) {
+            $label = $this->providerDisplayName($code);
+            throw new RuntimeException("PROVIDER_DISABLED:Gateway pencairan {$label} sedang dinonaktifkan oleh Admin.");
+        }
 
         if ($mode === 'production') {
             $provider = match ($code) {

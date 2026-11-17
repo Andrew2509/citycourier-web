@@ -12,11 +12,28 @@ trait CreatesPaymentWalletSchema
         if (! Schema::hasTable('users')) {
             Schema::create('users', function (Blueprint $table) {
                 $table->id();
+                $table->string('firebase_uid')->nullable()->unique();
                 $table->string('name');
                 $table->string('email')->unique()->nullable();
                 $table->string('phone')->nullable();
+                $table->timestamp('phone_verified_at')->nullable();
+                $table->text('address')->nullable();
+                $table->string('avatar')->nullable();
                 $table->string('role')->default('customer');
                 $table->string('password')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable('personal_access_tokens')) {
+            Schema::create('personal_access_tokens', function (Blueprint $table) {
+                $table->id();
+                $table->morphs('tokenable');
+                $table->text('name');
+                $table->string('token', 64)->unique();
+                $table->text('abilities')->nullable();
+                $table->timestamp('last_used_at')->nullable();
+                $table->timestamp('expires_at')->nullable();
                 $table->timestamps();
             });
         }

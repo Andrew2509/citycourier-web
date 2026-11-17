@@ -23,6 +23,16 @@ class RajaOngkirMatcherService
      */
     public function match(array $input): array
     {
+        if (!$this->rajaOngkir::isEnabled()) {
+            return [
+                'success' => false,
+                'disabled' => true,
+                'error_code' => 'PROVIDER_DISABLED',
+                'message' => 'Layanan pencocokan wilayah (RajaOngkir) sedang dinonaktifkan oleh Admin.',
+                'data' => null,
+            ];
+        }
+
         $lat = isset($input['lat']) ? (float)$input['lat'] : (isset($input['latitude']) ? (float)$input['latitude'] : null);
         $lng = isset($input['lng']) ? (float)$input['lng'] : (isset($input['longitude']) ? (float)$input['longitude'] : null);
 

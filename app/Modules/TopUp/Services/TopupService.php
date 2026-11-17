@@ -23,11 +23,29 @@ class TopupService
     public function getAvailableMethods(): array
     {
         $mode = $this->providerResolver->currentMode();
+        if ($this->providerResolver->isPaymentProviderDisabled()) {
+            $activeCode = $this->providerResolver->activePaymentProviderCode();
+            $label = $this->providerResolver->providerDisplayName($activeCode);
+
+            return [
+                'mode' => $mode,
+                'active_provider' => $activeCode,
+                'provider_enabled' => false,
+                'disabled_reason' => "Gateway top-up {$label} sedang dinonaktifkan oleh Admin.",
+                'is_simulated' => false,
+                'min_amount_idr' => (int) config('payment_wallet.topup.min_amount_idr', 10000),
+                'max_amount_idr' => (int) config('payment_wallet.topup.max_amount_idr', 10000000),
+                'methods' => [],
+            ];
+        }
+
         $provider = $this->providerResolver->resolvePaymentProvider();
 
         return [
             'mode' => $mode,
             'active_provider' => $provider->providerCode(),
+            'provider_enabled' => true,
+            'disabled_reason' => null,
             'is_simulated' => $provider->providerCode() === 'mock',
             'min_amount_idr' => (int) config('payment_wallet.topup.min_amount_idr', 10000),
             'max_amount_idr' => (int) config('payment_wallet.topup.max_amount_idr', 10000000),

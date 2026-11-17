@@ -596,10 +596,31 @@ class iPaymuService
     }
 
     /**
-     * Check if iPaymu is properly configured (credentials present).
+     * Check whether Admin enabled the iPaymu provider switch.
+     */
+    public static function isEnabled(): bool
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+            return true;
+        }
+
+        $raw = \App\Models\Setting::get('ipaymu_enabled', '1');
+        if ($raw === null || $raw === '') {
+            return true;
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Check if iPaymu is properly configured (credentials present & enabled).
      */
     public static function isConfigured(): bool
     {
+        if (!self::isEnabled()) {
+            return false;
+        }
+
         $cfg = self::credentials();
 
         return !empty($cfg['api_key']) && !empty($cfg['merchant_id'] ?: $cfg['va']);

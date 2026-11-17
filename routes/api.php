@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountSecurityController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CourierController;
 use App\Http\Controllers\Api\HealthController;
@@ -54,7 +55,8 @@ Route::prefix('geocoding')->group(function () {
 });
 
 Route::match(['get', 'post'], '/shipping/match-region', function (\Illuminate\Http\Request $request, App\Services\RajaOngkirMatcherService $matcher) {
-    return response()->json($matcher->match($request->all()));
+    $result = $matcher->match($request->all());
+    return response()->json($result, !empty($result['disabled']) ? 503 : 200);
 });
 
 Route::get('/shipments/track/{number}', [App\Http\Controllers\Api\ShipmentController::class, 'track']);
@@ -71,6 +73,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/update', [AuthController::class, 'updateProfile']);
     Route::post('/profile/phone/request-otp', [AuthController::class, 'requestProfilePhoneOtp']);
     Route::post('/profile/phone/verify-otp', [AuthController::class, 'verifyProfilePhoneOtp']);
+
+    // Keamanan Akun (PIN Transaksi, Biometrik, Perangkat Tepercaya, Log Keamanan)
+    Route::prefix('security')->group(function () {
+        Route::get('/overview', [AccountSecurityController::class, 'overview']);
+        Route::post('/pin', [AccountSecurityController::class, 'updatePin']);
+        Route::post('/pin/request-otp', [AccountSecurityController::class, 'requestPinOtp']);
+        Route::post('/pin/verify', [AccountSecurityController::class, 'verifyPin']);
+        Route::patch('/preferences', [AccountSecurityController::class, 'updatePreferences']);
+        Route::get('/devices', [AccountSecurityController::class, 'devices']);
+        Route::post('/devices/register', [AccountSecurityController::class, 'registerDevice']);
+        Route::post('/devices/revoke-others', [AccountSecurityController::class, 'revokeOtherDevices']);
+        Route::delete('/devices/{tokenId}', [AccountSecurityController::class, 'revokeDevice']);
+        Route::get('/logs', [AccountSecurityController::class, 'logs']);
+    });
 
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/available', [OrderController::class, 'available']);

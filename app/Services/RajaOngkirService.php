@@ -35,11 +35,37 @@ class RajaOngkirService
     }
 
     /**
+     * Check whether Admin enabled the RajaOngkir / shipping rate provider.
+     */
+    public static function isEnabled(): bool
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+            return true;
+        }
+
+        $raw = \App\Models\Setting::get('rajaongkir_enabled', '1');
+        if ($raw === null || $raw === '') {
+            return true;
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function disabledPayload(): array
+    {
+        return [
+            'status' => false,
+            'disabled' => true,
+            'message' => 'Layanan tarif & wilayah ekspedisi (RajaOngkir) sedang dinonaktifkan oleh Admin.',
+        ];
+    }
+
+    /**
      * Check if a valid non-placeholder API key is configured.
      */
     public function hasValidKey(): bool
     {
-        if (\Illuminate\Support\Facades\Schema::hasTable('settings') && \App\Models\Setting::get('rajaongkir_enabled', '1') === '0') {
+        if (!self::isEnabled()) {
             return false;
         }
 
@@ -75,6 +101,10 @@ class RajaOngkirService
      */
     public function getProvinces()
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             $url = $this->provider === 'komerce' 
                 ? $this->baseUrl . '/destination/province' 
@@ -92,6 +122,10 @@ class RajaOngkirService
      */
     public function getCities($provinceId = null)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             if ($this->provider === 'komerce') {
                 $url = $this->baseUrl . '/destination/city';
@@ -122,6 +156,10 @@ class RajaOngkirService
      */
     public function calculateCost($origin, $destination, $weight, $courier)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             if ($this->provider === 'komerce') {
                 $url = $this->baseUrl . '/calculate/district/domestic-cost';
@@ -156,6 +194,10 @@ class RajaOngkirService
      */
     public function getDistricts($cityId)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             if ($this->provider === 'komerce') {
                 $url = $this->baseUrl . '/destination/district/' . $cityId;
@@ -176,6 +218,10 @@ class RajaOngkirService
      */
     public function getSubdistricts($districtId)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             if ($this->provider === 'komerce') {
                 $url = $this->baseUrl . '/destination/sub-district/' . $districtId;
@@ -191,6 +237,10 @@ class RajaOngkirService
 
     public function searchDestination($keyword)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             if ($this->provider === 'komerce') {
                 $url = $this->baseUrl . '/destination/domestic-destination?search=' . urlencode($keyword);

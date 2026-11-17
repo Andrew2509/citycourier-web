@@ -67,6 +67,12 @@ class OvoService
     }
 
     /** Sub-service OVO (autentikasi / inquiry / disbursement / status). */
+    public static function isEnabled(): bool
+    {
+        return app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)
+            ->isProviderEnabled('ovo');
+    }
+
     public function authentication(): Ovo\OvoAuthenticationService
     {
         return $this->authentication;

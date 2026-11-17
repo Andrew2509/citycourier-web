@@ -21,6 +21,8 @@ class PhoneVerificationService
 
     public const PURPOSE_PROFILE = 'profile';
 
+    public const PURPOSE_SECURITY_PIN = 'security_pin';
+
     public const EXPIRY_MINUTES = 5;
 
     public const COOLDOWN_SECONDS = 60;
@@ -30,6 +32,8 @@ class PhoneVerificationService
     public const STATUS_SENT = 'sent';
 
     public const STATUS_COOLDOWN = 'cooldown';
+
+    public const STATUS_PROVIDER_DISABLED = 'provider_disabled';
 
     public const STATUS_SEND_FAILED = 'send_failed';
 
@@ -74,8 +78,11 @@ class PhoneVerificationService
         $result = $this->whatsapp->sendOtp($normalizedPhone, $otp);
 
         if (! ($result['success'] ?? false)) {
+            $disabled = (bool) ($result['disabled'] ?? false);
+
             return [
-                'status' => self::STATUS_SEND_FAILED,
+                'status' => $disabled ? self::STATUS_PROVIDER_DISABLED : self::STATUS_SEND_FAILED,
+                'disabled' => $disabled,
                 'provider_message' => $result['message'] ?? null,
             ];
         }

@@ -12,8 +12,22 @@ use Laravel\Sanctum\HasApiTokens;
 
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'phone', 'phone_verified_at', 'address', 'password', 'role', 'firebase_uid', 'avatar'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable([
+    'name',
+    'email',
+    'phone',
+    'phone_verified_at',
+    'address',
+    'password',
+    'role',
+    'firebase_uid',
+    'avatar',
+    'transaction_pin',
+    'transaction_pin_updated_at',
+    'biometric_enabled',
+    'security_alerts_enabled',
+])]
+#[Hidden(['password', 'remember_token', 'transaction_pin'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -29,6 +43,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
+            'transaction_pin_updated_at' => 'datetime',
+            'biometric_enabled' => 'boolean',
+            'security_alerts_enabled' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -179,5 +196,21 @@ class User extends Authenticatable
     public function courier()
     {
         return $this->hasOne(Courier::class);
+    }
+
+    /**
+     * Apakah pengguna sudah mengatur PIN transaksi 6 digit.
+     */
+    public function hasTransactionPin(): bool
+    {
+        return trim((string) $this->getAttribute('transaction_pin')) !== '';
+    }
+
+    /**
+     * Riwayat aktivitas keamanan akun.
+     */
+    public function securityLogs()
+    {
+        return $this->hasMany(AccountSecurityLog::class);
     }
 }

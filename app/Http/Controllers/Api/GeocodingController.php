@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\MapService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -24,6 +25,14 @@ class GeocodingController extends Controller
 
     public function search(Request $request)
     {
+        if (!MapService::isEnabled()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PROVIDER_DISABLED',
+                'message' => 'Provider Peta & Geocoding sedang dimatikan oleh Admin.',
+            ], 503);
+        }
+
         $query = $request->input('q', '');
         $limit = min((int) $request->input('limit', 5), 10);
 
@@ -93,6 +102,14 @@ class GeocodingController extends Controller
 
     public function reverse(Request $request)
     {
+        if (!MapService::isEnabled()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PROVIDER_DISABLED',
+                'message' => 'Provider Peta & Geocoding sedang dimatikan oleh Admin.',
+            ], 503);
+        }
+
         $lat = $request->input('lat');
         $lng = $request->input('lng');
 

@@ -72,14 +72,33 @@ class MapService
      * @param array $vias Array of coordinates "lng,lat"
      * @return array
      */
+    public static function isEnabled(): bool
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+            return true;
+        }
+
+        $raw = Setting::get('map_enabled', '1');
+        if ($raw === null || $raw === '') {
+            return true;
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function disabledPayload(): array
+    {
+        return [
+            'success' => false,
+            'disabled' => true,
+            'message' => 'Provider Peta & Geocoding sedang dimatikan oleh Admin.',
+        ];
+    }
+
     public function getRoute($origin, $destination, $vias = [])
     {
-        if (\Illuminate\Support\Facades\Schema::hasTable('settings') && Setting::get('map_enabled', '1') === '0') {
-            return [
-                'success' => false,
-                'disabled' => true,
-                'message' => 'Provider Peta & Geocoding sedang dimatikan oleh Admin.',
-            ];
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
         }
 
         try {
@@ -174,6 +193,10 @@ class MapService
      */
     public function getMatrix($coordinates)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             $coordString = implode(';', $coordinates);
 
@@ -256,6 +279,10 @@ class MapService
      */
     public function searchPOI($keyword, $proximity = null)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             // Nominatim (OpenStreetMap geocoding) — open source, tanpa API key.
             if ($this->provider === 'osrm') {
@@ -383,6 +410,10 @@ class MapService
      */
     public function getStyleContent($name)
     {
+        if (!self::isEnabled()) {
+            return $this->disabledPayload();
+        }
+
         try {
             if ($this->provider === 'maplibre') {
                 $url = "{$this->baseUrl}/style.json";

@@ -16,12 +16,28 @@ class ShippingController extends Controller
         $this->rajaOngkir = $rajaOngkir;
     }
 
+    private function disabledIfNecessary(array $result): ?\Illuminate\Http\JsonResponse
+    {
+        if (!empty($result['disabled'])) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PROVIDER_DISABLED',
+                'message' => $result['message'] ?? 'Layanan RajaOngkir sedang dinonaktifkan oleh Admin.',
+            ], 503);
+        }
+
+        return null;
+    }
+
     /**
      * List all provinces.
      */
     public function provinces()
     {
         $result = $this->rajaOngkir->getProvinces();
+        if (is_array($result) && ($disabled = $this->disabledIfNecessary($result))) {
+            return $disabled;
+        }
 
         // Standard RajaOngkir
         if (isset($result['rajaongkir']['status']['code']) && $result['rajaongkir']['status']['code'] == 200) {
@@ -66,6 +82,9 @@ class ShippingController extends Controller
         ]);
 
         $result = $this->rajaOngkir->getCities($request->province_id);
+        if (is_array($result) && ($disabled = $this->disabledIfNecessary($result))) {
+            return $disabled;
+        }
 
         // Standard RajaOngkir
         if (isset($result['rajaongkir']['status']['code']) && $result['rajaongkir']['status']['code'] == 200) {
@@ -130,6 +149,9 @@ class ShippingController extends Controller
             $request->weight,
             $request->courier
         );
+        if (is_array($result) && ($disabled = $this->disabledIfNecessary($result))) {
+            return $disabled;
+        }
 
         // Standard RajaOngkir
         if (isset($result['rajaongkir']['status']['code']) && $result['rajaongkir']['status']['code'] == 200) {
@@ -192,6 +214,9 @@ class ShippingController extends Controller
         ]);
 
         $result = $this->rajaOngkir->getDistricts($request->city_id);
+        if (is_array($result) && ($disabled = $this->disabledIfNecessary($result))) {
+            return $disabled;
+        }
 
         // Standard RajaOngkir
         if (isset($result['rajaongkir']['status']['code']) && $result['rajaongkir']['status']['code'] == 200) {
@@ -237,6 +262,9 @@ class ShippingController extends Controller
         ]);
 
         $result = $this->rajaOngkir->getSubdistricts($request->district_id);
+        if (is_array($result) && ($disabled = $this->disabledIfNecessary($result))) {
+            return $disabled;
+        }
 
         // Standard RajaOngkir (Subdistrict might not be available in Basic/Starter)
         if (isset($result['rajaongkir']['status']['code']) && $result['rajaongkir']['status']['code'] == 200) {

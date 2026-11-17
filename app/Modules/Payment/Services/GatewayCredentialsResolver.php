@@ -62,6 +62,22 @@ class GatewayCredentialsResolver
         ];
     }
 
+    /**
+     * Default ON/OFF state for all Admin-managed external providers.
+     *
+     * @var array<string, bool>
+     */
+    public const PROVIDER_DEFAULTS = [
+        'whatsapp' => true,
+        'map' => true,
+        'dana' => true,
+        'ovo' => false,
+        'ipaymu' => true,
+        'rajaongkir' => true,
+        'xendit' => true,
+        'doku' => true,
+    ];
+
     public function isEnabled(string $providerCode, bool $default = true): bool
     {
         if (! Schema::hasTable('settings')) {
@@ -74,6 +90,50 @@ class GatewayCredentialsResolver
         }
 
         return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Check whether an external provider is active using its canonical Admin default.
+     */
+    public function isProviderEnabled(string $providerCode): bool
+    {
+        $code = strtolower($providerCode);
+        $default = self::PROVIDER_DEFAULTS[$code] ?? true;
+
+        return $this->isEnabled($code, $default);
+    }
+
+    /**
+     * Check whether a provider was explicitly disabled via Admin toggle ('0' / false).
+     */
+    public function isExplicitlyDisabled(string $providerCode): bool
+    {
+        if (! Schema::hasTable('settings')) {
+            return false;
+        }
+
+        $code = strtolower($providerCode);
+        $raw = Setting::get("{$code}_enabled");
+        if ($raw === null || $raw === '') {
+            return false;
+        }
+
+        return ! filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Return ON/OFF states for all 8 Admin-managed external providers.
+     *
+     * @return array<string, bool>
+     */
+    public function allProviderStates(): array
+    {
+        $states = [];
+        foreach (self::PROVIDER_DEFAULTS as $code => $default) {
+            $states[$code] = $this->isEnabled($code, $default);
+        }
+
+        return $states;
     }
 
     public function saveEncryptedSecret(string $key, ?string $plainValue, string $group): void

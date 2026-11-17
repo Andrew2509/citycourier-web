@@ -46,6 +46,18 @@ class WithdrawalController extends Controller
             ], 422);
         }
 
+        if (!\App\Services\iPaymuService::isEnabled()) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'available'    => false,
+                    'account_name' => null,
+                    'status'       => 'provider_disabled',
+                    'destination'  => $phone,
+                ],
+            ]);
+        }
+
         $result = (new \App\Services\iPaymuService())->inquireAccountName($phone);
 
         if (!$result['available']) {
@@ -117,10 +129,13 @@ class WithdrawalController extends Controller
             ], $statusCode);
         }
 
+        $statusCode = ($result['error_code'] ?? null) === 'PROVIDER_DISABLED' ? 403 : 400;
+
         return response()->json([
-            'success' => false,
-            'message' => $result['error'] ?? 'Gagal memproses penarikan.',
-        ], 400);
+            'success'    => false,
+            'error_code' => $result['error_code'] ?? null,
+            'message'    => $result['error'] ?? 'Gagal memproses penarikan.',
+        ], $statusCode);
     }
 
     /**

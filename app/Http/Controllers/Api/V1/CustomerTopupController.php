@@ -63,10 +63,19 @@ class CustomerTopupController extends Controller
                 'message' => $e->getMessage(),
             ], 422);
         } catch (RuntimeException $e) {
+            $msg = $e->getMessage();
+            if (str_starts_with($msg, 'PROVIDER_DISABLED:')) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'PROVIDER_DISABLED',
+                    'message' => substr($msg, strlen('PROVIDER_DISABLED:')),
+                ], 403);
+            }
+
             return response()->json([
                 'success' => false,
                 'error_code' => 'TOPUP_FAILED',
-                'message' => $e->getMessage(),
+                'message' => $msg,
             ], 422);
         }
     }

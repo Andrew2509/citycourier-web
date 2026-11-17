@@ -40,7 +40,27 @@ class PaymentController extends Controller
      */
     public function methods(): JsonResponse
     {
+        if (!\App\Services\iPaymuService::isEnabled()) {
+            return response()->json([
+                'success'        => true,
+                'ipaymu_enabled' => false,
+                'disabled'       => true,
+                'message'        => 'Pembayaran iPaymu (VA & QRIS) sedang dinonaktifkan oleh Admin.',
+                'data'           => [],
+            ]);
+        }
+
         $result = $this->paymentService->getPaymentMethods();
+
+        if (!empty($result['disabled'])) {
+            return response()->json([
+                'success'        => true,
+                'ipaymu_enabled' => false,
+                'disabled'       => true,
+                'message'        => $result['message'] ?? 'Pembayaran iPaymu sedang dinonaktifkan oleh Admin.',
+                'data'           => [],
+            ]);
+        }
 
         if (!$result['success']) {
             return response()->json([
@@ -50,8 +70,9 @@ class PaymentController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'data'    => $result['methods'],
+            'success'        => true,
+            'ipaymu_enabled' => true,
+            'data'           => $result['methods'],
         ]);
     }
 
@@ -94,6 +115,14 @@ class PaymentController extends Controller
      */
     private function createPayment(Request $request): JsonResponse
     {
+        if (!\App\Services\iPaymuService::isEnabled()) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'PROVIDER_DISABLED',
+                'message'    => 'Pembayaran iPaymu (VA & QRIS) sedang dinonaktifkan oleh Admin.',
+            ], 403);
+        }
+
         $user = $request->user();
 
         $validator = Validator::make($request->all(), [

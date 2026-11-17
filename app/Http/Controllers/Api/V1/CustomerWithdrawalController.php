@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Modules\Payout\Models\PayoutTransaction;
 use App\Modules\Payout\Services\PayoutService;
+use App\Services\AccountSecurityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -14,7 +15,8 @@ use RuntimeException;
 class CustomerWithdrawalController extends Controller
 {
     public function __construct(
-        private readonly PayoutService $payoutService
+        private readonly PayoutService $payoutService,
+        private readonly AccountSecurityService $accountSecurity,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -47,7 +49,31 @@ class CustomerWithdrawalController extends Controller
             'amount' => ['required', 'integer', 'min:1000'],
             'destination_id' => ['required', 'integer'],
             'idempotency_key' => ['nullable', 'string', 'max:120'],
+            'transaction_pin' => ['nullable', 'string', 'regex:/^\d{6}$/'],
         ]);
+
+        $user = $request->user();
+        if ($user->hasTransactionPin()) {
+            $pin = (string) ($validated['transaction_pin'] ?? '');
+            if ($pin === '') {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'TRANSACTION_PIN_REQUIRED',
+                    'message' => 'Masukkan PIN transaksi 6 digit untuk menarik saldo.',
+                ], 422);
+            }
+
+            $pinCheck = $this->accountSecurity->verifyPin($user, $pin, $request);
+            if (! ($pinCheck['ok'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => $pinCheck['code'] ?? 'PIN_INVALID',
+                    'message' => $pinCheck['message'] ?? 'PIN transaksi salah.',
+                    'attempts_left' => $pinCheck['attempts_left'] ?? null,
+                    'retry_after' => $pinCheck['retry_after'] ?? null,
+                ], (int) ($pinCheck['status_code'] ?? 422));
+            }
+        }
 
         $idempotencyKey = (string) ($request->header('Idempotency-Key')
             ?: ($validated['idempotency_key'] ?? Str::uuid()->toString()));
@@ -75,6 +101,13 @@ class CustomerWithdrawalController extends Controller
             ], 422);
         } catch (RuntimeException $e) {
             $msg = $e->getMessage();
+            if (str_starts_with($msg, 'PROVIDER_DISABLED:')) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'PROVIDER_DISABLED',
+                    'message' => substr($msg, strlen('PROVIDER_DISABLED:')),
+                ], 403);
+            }
             if (str_starts_with($msg, 'CUSTOMER_WITHDRAWAL_DISABLED_IN_PRODUCTION:')) {
                 return response()->json([
                     'success' => false,

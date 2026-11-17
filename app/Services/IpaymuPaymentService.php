@@ -45,6 +45,15 @@ class IpaymuPaymentService
      */
     public function getPaymentMethods(): array
     {
+        if (!iPaymuService::isEnabled()) {
+            return [
+                'success'  => true,
+                'disabled' => true,
+                'methods'  => [],
+                'message'  => 'Pembayaran iPaymu (VA & QRIS) sedang dinonaktifkan oleh Admin.',
+            ];
+        }
+
         if (!iPaymuService::isConfigured()) {
             return [
                 'success' => false,
@@ -131,6 +140,12 @@ class IpaymuPaymentService
             'va_number' => null, 'qr_string' => null, 'payment_url' => null,
             'expired_at' => null, 'http_code' => null, 'raw' => null,
         ];
+
+        if (!iPaymuService::isEnabled()) {
+            $none['error'] = 'Pembayaran iPaymu (VA & QRIS) sedang dinonaktifkan oleh Admin.';
+            $none['disabled'] = true;
+            return $none;
+        }
 
         if (!iPaymuService::isConfigured()) {
             $none['error'] = 'iPaymu belum terkonfigurasi. Set kredensial di Admin > Pengaturan.';
@@ -281,6 +296,12 @@ class IpaymuPaymentService
             'success' => false, 'error' => null, 'session_id' => null,
             'payment_url' => null, 'expired_at' => null, 'http_code' => null, 'raw' => null,
         ];
+
+        if (!iPaymuService::isEnabled()) {
+            $none['error'] = 'Pembayaran iPaymu (VA & QRIS) sedang dinonaktifkan oleh Admin.';
+            $none['disabled'] = true;
+            return $none;
+        }
 
         if (!iPaymuService::isConfigured()) {
             $none['error'] = 'iPaymu belum terkonfigurasi. Set kredensial di Admin > Pengaturan.';

@@ -68,6 +68,12 @@ class DanaService
      * Provider yang aktif (Official bila mode sandbox/production & kredensial ada).
      * Dipakai halaman admin utk tes koneksi tanpa menyimpan baris ke DB.
      */
+    public static function isEnabled(): bool
+    {
+        return app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)
+            ->isProviderEnabled('dana');
+    }
+
     public function activeProvider(): DanaProvider
     {
         $cfg = $this->providerConfig();

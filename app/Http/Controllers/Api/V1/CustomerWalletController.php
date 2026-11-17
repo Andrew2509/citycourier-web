@@ -23,6 +23,15 @@ class CustomerWalletController extends Controller
         $wallet = $this->walletManager->getOrCreateCustomerWallet($user);
         $balance = $wallet->balanceRecord;
         $mode = $this->providerResolver->currentMode();
+        $activeTopupProvider = $this->providerResolver->safePaymentProviderCode();
+        $topupProviderEnabled = ! $this->providerResolver->isPaymentProviderDisabled();
+        $payoutProviderEnabled = ! $this->providerResolver->isPayoutProviderDisabled();
+        $withdrawalEnabled = $this->providerResolver->isCustomerWithdrawalEnabled() && $payoutProviderEnabled;
+        $withdrawalBlockedReason = ! $this->providerResolver->isCustomerWithdrawalEnabled()
+            ? 'Penarikan dana wallet pelanggan dinonaktifkan di production hingga persetujuan regulasi dan penyedia pembayaran.'
+            : (! $payoutProviderEnabled
+                ? 'Gateway pencairan sedang dinonaktifkan oleh Admin.'
+                : null);
 
         return response()->json([
             'success' => true,
@@ -42,12 +51,16 @@ class CustomerWalletController extends Controller
                 'total_debited' => (int) ($balance?->total_debited ?? 0),
                 'mode' => $mode,
                 'is_sandbox_or_demo' => $mode !== 'production',
-                'active_payment_provider' => $this->providerResolver->resolvePaymentProvider()->providerCode(),
+                'active_payment_provider' => $activeTopupProvider,
+                'topup_provider_enabled' => $topupProviderEnabled,
+                'security' => [
+                    'has_transaction_pin' => $user->hasTransactionPin(),
+                    'biometric_enabled' => (bool) ($user->getAttribute('biometric_enabled') ?? false),
+                ],
                 'withdrawal_policy' => [
-                    'enabled' => $this->providerResolver->isCustomerWithdrawalEnabled(),
-                    'blocked_reason' => $this->providerResolver->isCustomerWithdrawalEnabled()
-                        ? null
-                        : 'Penarikan dana wallet pelanggan dinonaktifkan di production hingga persetujuan regulasi dan penyedia pembayaran.',
+                    'enabled' => $withdrawalEnabled,
+                    'provider_enabled' => $payoutProviderEnabled,
+                    'blocked_reason' => $withdrawalBlockedReason,
                     'min_amount_idr' => (int) config('payment_wallet.customer_withdrawal_min_amount_idr', 10000),
                     'max_amount_idr' => (int) config('payment_wallet.customer_withdrawal_max_amount_idr', 5000000),
                 ],

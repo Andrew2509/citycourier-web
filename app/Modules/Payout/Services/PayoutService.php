@@ -166,6 +166,10 @@ class PayoutService
             return ['released_earnings' => $released, 'scheduled_payouts' => 0];
         }
 
+        if ($this->providerResolver->isPayoutProviderDisabled()) {
+            return ['released_earnings' => $released, 'scheduled_payouts' => 0];
+        }
+
         $minPayout = $this->minCourierPayoutIdr();
         $fee = (int) config('payment_wallet.courier_payout.fee_idr', 0);
         $requireVerified = (bool) config('payment_wallet.courier_payout.require_verified_destination', true);
@@ -313,7 +317,18 @@ class PayoutService
             return $this->markPayoutFailedAndRelease($payout, 'MISSING_DESTINATION', 'Payout destination not found.');
         }
 
-        $provider = $this->providerResolver->resolvePayoutProvider($payout->provider);
+        try {
+            $provider = $this->providerResolver->resolvePayoutProvider($payout->provider);
+        } catch (RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'PROVIDER_DISABLED:')) {
+                return $this->markPayoutFailedAndRelease(
+                    $payout,
+                    'PROVIDER_DISABLED',
+                    substr($e->getMessage(), strlen('PROVIDER_DISABLED:'))
+                );
+            }
+            throw $e;
+        }
 
         DB::transaction(function () use ($payout) {
             $locked = PayoutTransaction::where('id', $payout->id)->lockForUpdate()->firstOrFail();

@@ -91,6 +91,7 @@ class WithdrawalService
                     'success'    => false,
                     'withdrawal' => null,
                     'error'      => $validation['error'],
+                    'error_code' => $validation['error_code'] ?? null,
                 ], false];
             }
 
@@ -291,6 +292,14 @@ class WithdrawalService
      */
     private function validate(int $courierId, float $amount, ?string $destinationPhone = null): array
     {
+        if (!iPaymuService::isEnabled()) {
+            return [
+                'valid'      => false,
+                'error'      => 'Layanan pencairan iPaymu sedang dinonaktifkan oleh Admin.',
+                'error_code' => 'PROVIDER_DISABLED',
+            ];
+        }
+
         $feeConfig = $this->getFeeConfig();
 
         if ($amount <= 0) {
