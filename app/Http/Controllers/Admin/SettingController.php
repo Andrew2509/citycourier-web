@@ -93,7 +93,18 @@ class SettingController extends Controller
             'is_active_payment' => Setting::get('payment_active_provider', config('payment_wallet.active_payment_provider', 'xendit')) === 'doku',
         ];
 
-        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo', 'ipaymu', 'xendit', 'doku'));
+        $providerStates = [
+            'whatsapp' => $gatewayResolver->isEnabled('whatsapp', true),
+            'map' => $gatewayResolver->isEnabled('map', true),
+            'dana' => $gatewayResolver->isEnabled('dana', true),
+            'ovo' => $gatewayResolver->isEnabled('ovo', false),
+            'ipaymu' => $gatewayResolver->isEnabled('ipaymu', true),
+            'rajaongkir' => $gatewayResolver->isEnabled('rajaongkir', true),
+            'xendit' => $xenditRaw['enabled'],
+            'doku' => $dokuRaw['enabled'],
+        ];
+
+        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo', 'ipaymu', 'xendit', 'doku', 'providerStates'));
     }
 
     // iPaymu (Payout/Disbursement) Settings
@@ -764,6 +775,79 @@ class SettingController extends Controller
     // ─────────────────────────────────────────────────────────────
     // Xendit & DOKU Payment/Payout Gateway Settings (Database UI)
     // ─────────────────────────────────────────────────────────────
+
+    public function toggleProvider(Request $request, string $provider, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    {
+        $allowed = [
+            'whatsapp' => ['label' => 'WhatsApp Gateway', 'group' => 'whatsapp', 'default' => true],
+            'map' => ['label' => 'Peta & Geocoding', 'group' => 'map', 'default' => true],
+            'dana' => ['label' => 'DANA Widget Binding', 'group' => 'dana', 'default' => true],
+            'ovo' => ['label' => 'OVO SNAP', 'group' => 'ovo', 'default' => false],
+            'ipaymu' => ['label' => 'iPaymu Payout', 'group' => 'ipaymu', 'default' => true],
+            'rajaongkir' => ['label' => 'Tarif Ekspedisi (RajaOngkir)', 'group' => 'rajaongkir', 'default' => true],
+            'xendit' => ['label' => 'Xendit Gateway', 'group' => 'xendit', 'default' => true],
+            'doku' => ['label' => 'DOKU Jokul Gateway', 'group' => 'doku', 'default' => true],
+        ];
+
+        $provider = strtolower($provider);
+        if (! isset($allowed[$provider])) {
+            abort(404);
+        }
+
+        $meta = $allowed[$provider];
+        $current = $resolver->isEnabled($provider, $meta['default']);
+        $next = $request->has('enabled')
+            ? $request->boolean('enabled')
+            : ! $current;
+
+        Setting::set("{$provider}_enabled", $next ? '1' : '0', $meta['group']);
+
+        if ($provider === 'ipaymu') {
+            Setting::set('ipaymu_payout_enabled', $next ? '1' : '0', 'ipaymu');
+            \App\Services\iPaymuService::flushCredentialsCache();
+        }
+
+        if (in_array($provider, ['xendit', 'doku', 'ipaymu', 'dana', 'ovo'], true)) {
+            $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
+            $resolver->syncProviderConfigRecord(
+                $provider,
+                $meta['label'],
+                $mode,
+                $next,
+                in_array($provider, ['xendit', 'doku', 'ipaymu'], true),
+                in_array($provider, ['xendit', 'ipaymu', 'dana', 'ovo'], true),
+                ['enabled' => $next]
+            );
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('wallet_audit_logs')) {
+                app(\App\Modules\Wallet\Services\WalletLedgerManager::class)->writeAuditLog(
+                    \Illuminate\Support\Facades\Auth::id(),
+                    'admin',
+                    null,
+                    'provider_toggled',
+                    null,
+                    null,
+                    ['provider' => $provider, 'enabled' => $current],
+                    ['provider' => $provider, 'enabled' => $next],
+                    $meta['label'] . ($next ? ' diaktifkan' : ' dimatikan') . ' melalui halaman Provider',
+                    $request->ip(),
+                    $request->userAgent()
+                );
+            }
+        }
+
+        $statusWord = $next ? 'diaktifkan (ON)' : 'dimatikan (OFF)';
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'provider' => $provider,
+                'enabled' => $next,
+                'message' => "{$meta['label']} berhasil {$statusWord}.",
+            ]);
+        }
+
+        return redirect()->back()->with('success', "{$meta['label']} berhasil {$statusWord}.");
+    }
 
     public function updateXendit(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
     {

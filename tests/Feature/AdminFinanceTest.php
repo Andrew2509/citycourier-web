@@ -232,4 +232,74 @@ class AdminFinanceTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('success', true);
     }
+
+    public function test_admin_can_toggle_every_provider_on_and_off_with_real_runtime_gating(): void
+    {
+        $admin = User::create([
+            'name' => 'Toggle Admin',
+            'email' => 'toggle-admin@city.test',
+            'role' => 'admin',
+        ]);
+        $admin->assignRole('super-admin');
+
+        $customer = User::create([
+            'name' => 'Non Admin',
+            'email' => 'not-admin@city.test',
+            'role' => 'customer',
+        ]);
+
+        // Non-admin blocked
+        $this->actingAs($customer)
+            ->postJson('/admin/providers/xendit/toggle', ['enabled' => 0])
+            ->assertStatus(403);
+
+        $this->actingAs($admin);
+
+        // Save Xendit key first
+        $this->post('/admin/settings/xendit', [
+            'xendit_base_url' => 'https://api.xendit.co',
+            'xendit_secret_key' => 'xnd_development_toggle_test_12345',
+        ])->assertRedirect();
+
+        $xenditPayment = app(\App\Modules\Payment\Providers\XenditPaymentProvider::class);
+        $xenditPayout = app(\App\Modules\Payment\Providers\XenditPayoutProvider::class);
+        $this->assertTrue($xenditPayment->isConfigured());
+        $this->assertTrue($xenditPayout->isConfigured());
+
+        // Turn Xendit OFF -> immediately disabled at runtime without erasing saved keys
+        $this->post('/admin/providers/xendit/toggle', ['enabled' => 0])->assertRedirect();
+        $this->assertFalse($xenditPayment->isConfigured());
+        $this->assertFalse($xenditPayout->isConfigured());
+
+        // Turn Xendit back ON -> saved encrypted keys still intact and active
+        $this->post('/admin/providers/xendit/toggle', ['enabled' => 1])->assertRedirect();
+        $this->assertTrue($xenditPayment->isConfigured());
+
+        // Turn WhatsApp, Map, and RajaOngkir OFF -> runtime services report disabled cleanly
+        foreach (['whatsapp', 'map', 'rajaongkir', 'doku', 'ipaymu', 'dana', 'ovo'] as $provider) {
+            $this->postJson("/admin/providers/{$provider}/toggle", ['enabled' => 0])
+                ->assertStatus(200)
+                ->assertJsonPath('enabled', false);
+        }
+
+        $waResult = app(\App\Services\WhatsAppManager::class)->sendMessage('081234567890', 'Halo');
+        $this->assertFalse($waResult['success']);
+        $this->assertTrue($waResult['disabled'] ?? false);
+
+        $mapResult = app(\App\Services\MapService::class)->getRoute('106.8,-6.2', '106.9,-6.3');
+        $this->assertFalse($mapResult['success']);
+        $this->assertTrue($mapResult['disabled'] ?? false);
+
+        Setting::set('rajaongkir_api_key', 'test-key-123');
+        $this->assertFalse((new \App\Services\RajaOngkirService())->hasValidKey());
+
+        // Unknown provider returns 404
+        $this->post('/admin/providers/unknown_gw/toggle')->assertStatus(404);
+
+        // Providers view renders toggle controls for all 8 providers
+        $html = $this->get('/admin/providers')->assertStatus(200)->getContent();
+        foreach (['whatsapp', 'map', 'dana', 'ovo', 'ipaymu', 'rajaongkir', 'xendit', 'doku'] as $provider) {
+            $this->assertStringContainsString("/admin/providers/{$provider}/toggle", $html);
+        }
+    }
 }

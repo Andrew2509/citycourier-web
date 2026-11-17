@@ -144,6 +144,7 @@ class CheckMenuPermission
 
             // Settings
             'admin.settings.providers' => 'settings.view',
+            'admin.settings.providers.toggle' => 'settings.edit',
             'admin.settings.whatsapp' => 'settings.view',
             'admin.settings.whatsapp.update' => 'settings.edit',
             'admin.settings.whatsapp.test' => 'settings.edit',

@@ -21,7 +21,9 @@ class XenditPaymentProvider implements PaymentProviderInterface
 
     public function isConfigured(): bool
     {
-        return $this->credentials->xendit()['configured'];
+        $creds = $this->credentials->xendit();
+
+        return $creds['enabled'] && $creds['configured'];
     }
 
     public function availableChannels(string $mode): array

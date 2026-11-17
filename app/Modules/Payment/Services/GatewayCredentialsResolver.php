@@ -24,6 +24,7 @@ class GatewayCredentialsResolver
             : ((string) $this->readPlain('payment_wallet_mode', (string) config('payment_wallet.mode', 'sandbox')) !== 'production');
 
         return [
+            'enabled' => $this->isEnabled('xendit', true),
             'base_url' => rtrim($baseUrl ?: 'https://api.xendit.co', '/'),
             'public_key' => trim($publicKey),
             'secret_key' => trim($secretKey),
@@ -49,6 +50,7 @@ class GatewayCredentialsResolver
         $configured = trim($clientId) !== '' && trim($secretKey) !== '';
 
         return [
+            'enabled' => $this->isEnabled('doku', true),
             'sandbox_url' => rtrim($sandboxUrl ?: 'https://api-sandbox.doku.com', '/'),
             'production_url' => rtrim($productionUrl ?: 'https://api.doku.com', '/'),
             'client_id' => trim($clientId),
@@ -58,6 +60,20 @@ class GatewayCredentialsResolver
             'secret_masked' => $this->maskSecret($secretKey),
             'source' => $this->hasDbSetting('doku_secret_key') ? 'database' : ($configured ? 'env' : 'none'),
         ];
+    }
+
+    public function isEnabled(string $providerCode, bool $default = true): bool
+    {
+        if (! Schema::hasTable('settings')) {
+            return $default;
+        }
+
+        $raw = Setting::get("{$providerCode}_enabled");
+        if ($raw === null || $raw === '') {
+            return $default;
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
     }
 
     public function saveEncryptedSecret(string $key, ?string $plainValue, string $group): void

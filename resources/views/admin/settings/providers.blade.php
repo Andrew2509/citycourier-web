@@ -21,7 +21,7 @@
     {{-- Grid Kartu Provider --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {{-- KARTU 1: WhatsApp Fonnte API --}}
-        <div class="card flex flex-col justify-between">
+        <div class="card flex flex-col justify-between {{ !($providerStates['whatsapp'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -33,11 +33,14 @@
                             <div class="card-subtitle">Notifikasi order instan, QR code resi, dan live tracking</div>
                         </div>
                     </div>
-                    @if(!empty($whatsapp['token']))
-                        <span class="badge badge-green">Terhubung</span>
-                    @else
-                        <span class="badge badge-amber">Belum Aktif</span>
-                    @endif
+                    <div class="flex items-center gap-2">
+                        @if(!empty($whatsapp['token']))
+                            <span class="badge badge-green">Terhubung</span>
+                        @else
+                            <span class="badge badge-amber">Belum Aktif</span>
+                        @endif
+                        @include('admin.settings._provider_toggle', ['provider' => 'whatsapp', 'enabled' => $providerStates['whatsapp'] ?? true])
+                    </div>
                 </div>
 
                 <div class="card-body space-y-3">
@@ -82,7 +85,7 @@
         </div>
 
         {{-- KARTU 2: Peta & Geolocation Routing --}}
-        <div class="card flex flex-col justify-between">
+        <div class="card flex flex-col justify-between {{ !($providerStates['map'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -94,9 +97,12 @@
                             <div class="card-subtitle">Perhitungan jarak KM, rute instan, dan live tracking kurir</div>
                         </div>
                     </div>
-                    <span class="badge badge-indigo">
-                        {{ strtoupper($map['provider'] ?? 'OSRM') }}
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-indigo">
+                            {{ strtoupper($map['provider'] ?? 'OSRM') }}
+                        </span>
+                        @include('admin.settings._provider_toggle', ['provider' => 'map', 'enabled' => $providerStates['map'] ?? true])
+                    </div>
                 </div>
 
                 <div class="card-body space-y-3">
@@ -149,7 +155,7 @@
         </div>
 
         {{-- KARTU 3: DANA WIDGET BINDING (Metode Pencairan Aktif) --}}
-        <div class="card flex flex-col justify-between border-sky-200">
+        <div class="card flex flex-col justify-between border-sky-200 {{ !($providerStates['dana'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -162,10 +168,10 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="badge badge-green">Aktif</span>
                         <span class="badge {{ ($dana['mode'] ?? 'mock') === 'production' ? 'badge-green' : (($dana['mode'] ?? 'mock') === 'sandbox' ? 'badge-indigo' : 'badge-amber') }}">
                             {{ strtoupper($dana['mode'] ?? 'MOCK') }}
                         </span>
+                        @include('admin.settings._provider_toggle', ['provider' => 'dana', 'enabled' => $providerStates['dana'] ?? true])
                     </div>
                 </div>
 
@@ -229,7 +235,7 @@
         </div>
 
         {{-- KARTU 4: OVO SNAP (Arsip — nonaktif) --}}
-        <div class="card flex flex-col justify-between border-purple-200">
+        <div class="card flex flex-col justify-between border-purple-200 {{ !($providerStates['ovo'] ?? false) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -241,9 +247,12 @@
                             <div class="card-subtitle">Disimpan untuk riwayat transaksi; pencairan baru memakai DANA</div>
                         </div>
                     </div>
-                    <span class="badge {{ ($ovo['mode'] ?? 'mock') === 'production' ? 'badge-green' : 'badge-amber' }}">
-                        {{ strtoupper($ovo['mode'] ?? 'MOCK') }}
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="badge {{ ($ovo['mode'] ?? 'mock') === 'production' ? 'badge-green' : 'badge-amber' }}">
+                            {{ strtoupper($ovo['mode'] ?? 'MOCK') }}
+                        </span>
+                        @include('admin.settings._provider_toggle', ['provider' => 'ovo', 'enabled' => $providerStates['ovo'] ?? false])
+                    </div>
                 </div>
 
                 <div class="card-body space-y-3">
@@ -303,7 +312,7 @@
         </div>
 
         {{-- KARTU: iPaymu Payout (Disbursement Pencairan Kurir) --}}
-        <div class="card flex flex-col justify-between border-slate-200">
+        <div class="card flex flex-col justify-between border-slate-200 {{ !($providerStates['ipaymu'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -315,10 +324,8 @@
                             <div class="card-subtitle">Disbursement saldo kurir ke akun DANA via iPaymu</div>
                         </div>
                     </div>
-                    <div class="flex flex-col items-end gap-1">
-                        <span class="badge {{ ($ipaymu['payout_enabled'] ?? false) ? 'badge-green' : 'badge-amber' }}">
-                            {{ ($ipaymu['payout_enabled'] ?? false) ? 'Payout Aktif' : 'Payout Nonaktif' }}
-                        </span>
+                    <div class="flex flex-col items-end gap-1.5">
+                        @include('admin.settings._provider_toggle', ['provider' => 'ipaymu', 'enabled' => $providerStates['ipaymu'] ?? true])
                         <span class="badge {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'badge-indigo' : 'badge-green' }}">
                             {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'SANDBOX' : 'PRODUCTION' }}
                         </span>
@@ -398,7 +405,7 @@
         </div>
 
         {{-- KARTU 4: Tarif RajaOngkir / Ekspedisi --}}
-        <div class="card flex flex-col justify-between">
+        <div class="card flex flex-col justify-between {{ !($providerStates['rajaongkir'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -410,11 +417,14 @@
                             <div class="card-subtitle">Integrasi referensi tarif reguler antar-kota di Indonesia</div>
                         </div>
                     </div>
-                    @if(!empty($rajaongkir['api_key']))
-                        <span class="badge badge-green">Terkoneksi</span>
-                    @else
-                        <span class="badge badge-gray">Standar Lokal</span>
-                    @endif
+                    <div class="flex items-center gap-2">
+                        @if(!empty($rajaongkir['api_key']))
+                            <span class="badge badge-green">Terkoneksi</span>
+                        @else
+                            <span class="badge badge-gray">Standar Lokal</span>
+                        @endif
+                        @include('admin.settings._provider_toggle', ['provider' => 'rajaongkir', 'enabled' => $providerStates['rajaongkir'] ?? true])
+                    </div>
                 </div>
 
                 <div class="card-body space-y-3">
@@ -462,7 +472,7 @@
         </div>
 
         {{-- KARTU 5: Xendit Payment & Payouts v2/v3 --}}
-        <div class="card flex flex-col justify-between border-indigo-200">
+        <div class="card flex flex-col justify-between border-indigo-200 {{ !($providerStates['xendit'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -474,15 +484,18 @@
                             <div class="card-subtitle">Top-Up VA/QRIS/E-Wallet v3 &amp; Auto-Payout Kurir v2</div>
                         </div>
                     </div>
-                    <div class="flex flex-col items-end gap-1">
-                        @if(!empty($xendit['configured']))
-                            <span class="badge badge-green">Terkonfigurasi ({{ strtoupper($xendit['source'] ?? 'DB') }})</span>
-                        @else
-                            <span class="badge badge-amber">Belum Diisi</span>
-                        @endif
-                        <span class="badge {{ ($xendit['is_sandbox'] ?? true) ? 'badge-indigo' : 'badge-green' }}">
-                            {{ ($xendit['is_sandbox'] ?? true) ? 'SANDBOX' : 'PRODUCTION' }}
-                        </span>
+                    <div class="flex flex-col items-end gap-1.5">
+                        @include('admin.settings._provider_toggle', ['provider' => 'xendit', 'enabled' => $providerStates['xendit'] ?? true])
+                        <div class="flex items-center gap-1">
+                            @if(!empty($xendit['configured']))
+                                <span class="badge badge-green">Terkonfigurasi</span>
+                            @else
+                                <span class="badge badge-amber">Belum Diisi</span>
+                            @endif
+                            <span class="badge {{ ($xendit['is_sandbox'] ?? true) ? 'badge-indigo' : 'badge-green' }}">
+                                {{ ($xendit['is_sandbox'] ?? true) ? 'SANDBOX' : 'PRODUCTION' }}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -577,7 +590,7 @@
         </div>
 
         {{-- KARTU 6: DOKU Jokul Gateway --}}
-        <div class="card flex flex-col justify-between border-rose-200">
+        <div class="card flex flex-col justify-between border-rose-200 {{ !($providerStates['doku'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
@@ -589,15 +602,18 @@
                             <div class="card-subtitle">Kandidat alternatif VA, QRIS &amp; Checkout HMAC-SHA256</div>
                         </div>
                     </div>
-                    <div class="flex flex-col items-end gap-1">
-                        @if(!empty($doku['configured']))
-                            <span class="badge badge-green">Terkonfigurasi ({{ strtoupper($doku['source'] ?? 'DB') }})</span>
-                        @else
-                            <span class="badge badge-amber">Belum Diisi</span>
-                        @endif
-                        @if(!empty($doku['is_active_payment']))
-                            <span class="badge badge-indigo">AKTIF</span>
-                        @endif
+                    <div class="flex flex-col items-end gap-1.5">
+                        @include('admin.settings._provider_toggle', ['provider' => 'doku', 'enabled' => $providerStates['doku'] ?? true])
+                        <div class="flex items-center gap-1">
+                            @if(!empty($doku['configured']))
+                                <span class="badge badge-green">Terkonfigurasi</span>
+                            @else
+                                <span class="badge badge-amber">Belum Diisi</span>
+                            @endif
+                            @if(!empty($doku['is_active_payment']))
+                                <span class="badge badge-indigo">AKTIF</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
 

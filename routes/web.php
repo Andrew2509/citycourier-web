@@ -106,6 +106,7 @@ Route::middleware('auth')->group(function () {
 
         // Settings / Provider (Unified)
         Route::get('/providers', [\App\Http\Controllers\Admin\SettingController::class, 'providers'])->name('settings.providers');
+        Route::post('/providers/{provider}/toggle', [\App\Http\Controllers\Admin\SettingController::class, 'toggleProvider'])->name('settings.providers.toggle');
 
         // Legacy individual settings (kept for direct access / bookmarks)
         Route::get('/settings/whatsapp', [\App\Http\Controllers\Admin\SettingController::class, 'whatsapp'])->name('settings.whatsapp');

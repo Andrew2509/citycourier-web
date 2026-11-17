@@ -198,6 +198,8 @@ trait CreatesPaymentWalletSchema
 
         \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
         \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
+        \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'settings.view', 'guard_name' => 'web']);
+        \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'settings.edit', 'guard_name' => 'web']);
 
         $permMigration = require database_path('migrations/2026_11_17_000013_seed_finance_menu_permissions.php');
         $permMigration->up();

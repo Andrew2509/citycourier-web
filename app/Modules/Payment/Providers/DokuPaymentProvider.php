@@ -24,7 +24,9 @@ class DokuPaymentProvider implements PaymentProviderInterface
 
     public function isConfigured(): bool
     {
-        return $this->credentials->doku()['configured'];
+        $creds = $this->credentials->doku();
+
+        return $creds['enabled'] && $creds['configured'];
     }
 
     public function availableChannels(string $mode): array

@@ -39,6 +39,10 @@ class WhatsAppManager implements WhatsAppServiceInterface
      */
     public function sendMessage(string $to, string $message, ?string $mediaUrl = null): array
     {
+        if (\Illuminate\Support\Facades\Schema::hasTable('settings') && \App\Models\Setting::get('whatsapp_enabled', '1') === '0') {
+            return ['success' => false, 'disabled' => true, 'message' => 'WhatsApp gateway sedang dimatikan oleh Admin.'];
+        }
+
         return $this->getService()->sendMessage($to, $message, $mediaUrl);
     }
 
@@ -47,6 +51,10 @@ class WhatsAppManager implements WhatsAppServiceInterface
      */
     public function sendOtp(string $phone, string $otp): array
     {
+        if (\Illuminate\Support\Facades\Schema::hasTable('settings') && \App\Models\Setting::get('whatsapp_enabled', '1') === '0') {
+            return ['success' => false, 'disabled' => true, 'message' => 'WhatsApp gateway sedang dimatikan oleh Admin.'];
+        }
+
         return $this->getService()->sendOtp($phone, $otp);
     }
 

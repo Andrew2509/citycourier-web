@@ -74,6 +74,14 @@ class MapService
      */
     public function getRoute($origin, $destination, $vias = [])
     {
+        if (\Illuminate\Support\Facades\Schema::hasTable('settings') && Setting::get('map_enabled', '1') === '0') {
+            return [
+                'success' => false,
+                'disabled' => true,
+                'message' => 'Provider Peta & Geocoding sedang dimatikan oleh Admin.',
+            ];
+        }
+
         try {
             $coordinates = $origin;
             if (!empty($vias)) {

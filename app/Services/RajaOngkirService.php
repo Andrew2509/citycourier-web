@@ -39,6 +39,10 @@ class RajaOngkirService
      */
     public function hasValidKey(): bool
     {
+        if (\Illuminate\Support\Facades\Schema::hasTable('settings') && \App\Models\Setting::get('rajaongkir_enabled', '1') === '0') {
+            return false;
+        }
+
         return !empty($this->apiKey) && $this->apiKey !== 'YOUR_API_KEY_HERE';
     }
 

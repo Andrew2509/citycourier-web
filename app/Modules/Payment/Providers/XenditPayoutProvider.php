@@ -20,7 +20,9 @@ class XenditPayoutProvider implements PayoutProviderInterface
 
     public function isConfigured(): bool
     {
-        return $this->credentials->xendit()['configured'];
+        $creds = $this->credentials->xendit();
+
+        return $creds['enabled'] && $creds['configured'];
     }
 
     public function validateDestination(string $channelCode, string $accountNumber, string $accountHolderName): array
