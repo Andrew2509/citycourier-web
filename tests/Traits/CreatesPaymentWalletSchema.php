@@ -81,7 +81,6 @@ trait CreatesPaymentWalletSchema
         if (! Schema::hasTable('orders')) {
             Schema::create('orders', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('shipment_id')->nullable()->constrained('shipments')->nullOnDelete();
                 $table->foreignId('courier_id')->nullable()->constrained('couriers')->nullOnDelete();
                 $table->string('order_number')->unique()->nullable();
                 $table->string('customer_name')->nullable();

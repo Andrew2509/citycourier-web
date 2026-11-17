@@ -87,7 +87,7 @@ class CourierEarningService
                 'courier_id' => $order->courier_id,
                 'wallet_id' => $wallet->id,
                 'order_id' => $order->id,
-                'shipment_id' => $order->shipment_id,
+                'shipment_id' => $order->shipment?->id ?? (Schema::hasColumn('orders', 'shipment_id') ? $order->shipment_id : null),
                 'gross_amount' => $grossAmount,
                 'commission_rate' => $commissionRate,
                 'commission_amount' => $commissionAmount,

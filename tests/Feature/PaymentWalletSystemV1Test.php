@@ -130,6 +130,13 @@ class PaymentWalletSystemV1Test extends TestCase
             'total_cost' => 45000,
             'status' => 'pending',
         ]);
+        Order::create([
+            'order_number' => 'SHP-WALLET-001',
+            'customer_name' => $customer->name,
+            'customer_phone' => '081200000001',
+            'price' => 45000,
+            'status' => 'pending',
+        ]);
 
         // Cross-user payment blocked
         Sanctum::actingAs($otherUser);

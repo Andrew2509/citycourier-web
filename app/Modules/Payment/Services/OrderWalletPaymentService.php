@@ -11,6 +11,7 @@ use App\Modules\Payment\Models\PaymentTransaction;
 use App\Modules\Payment\Providers\ProviderResolver;
 use App\Modules\Wallet\Services\WalletLedgerManager;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
@@ -61,12 +62,10 @@ class OrderWalletPaymentService
                 if ((int) $shipment->user_id !== (int) $user->id) {
                     throw new RuntimeException('Anda tidak memiliki akses ke shipment ini.');
                 }
-                $order = Order::where('shipment_id', $shipment->id)->lockForUpdate()->first();
+                $order = $this->findOrderForShipment($shipment);
             } elseif ($orderId) {
                 $order = Order::where('id', $orderId)->lockForUpdate()->firstOrFail();
-                if ($order->shipment_id) {
-                    $shipment = Shipment::where('id', $order->shipment_id)->lockForUpdate()->first();
-                }
+                $shipment = $this->findShipmentForOrder($order);
                 if ($shipment && (int) $shipment->user_id !== (int) $user->id) {
                     throw new RuntimeException('Anda tidak memiliki akses ke order ini.');
                 }
@@ -198,5 +197,40 @@ class OrderWalletPaymentService
                 'idempotent_replay' => false,
             ];
         });
+    }
+
+    private function findOrderForShipment(Shipment $shipment): ?Order
+    {
+        $hasShipmentIdCol = Schema::hasColumn('orders', 'shipment_id');
+        if (! $hasShipmentIdCol && empty($shipment->shipment_number)) {
+            return null;
+        }
+
+        return Order::query()
+            ->where(function ($q) use ($shipment, $hasShipmentIdCol) {
+                if ($hasShipmentIdCol) {
+                    $q->where('shipment_id', $shipment->id);
+                }
+                if (! empty($shipment->shipment_number)) {
+                    $hasShipmentIdCol
+                        ? $q->orWhere('order_number', $shipment->shipment_number)
+                        : $q->where('order_number', $shipment->shipment_number);
+                }
+            })
+            ->lockForUpdate()
+            ->first();
+    }
+
+    private function findShipmentForOrder(Order $order): ?Shipment
+    {
+        if (Schema::hasColumn('orders', 'shipment_id') && ! empty($order->shipment_id)) {
+            return Shipment::where('id', $order->shipment_id)->lockForUpdate()->first();
+        }
+
+        if (! empty($order->order_number)) {
+            return Shipment::where('shipment_number', $order->order_number)->lockForUpdate()->first();
+        }
+
+        return null;
     }
 }
