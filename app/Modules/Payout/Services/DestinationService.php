@@ -4,11 +4,16 @@ namespace App\Modules\Payout\Services;
 
 use App\Models\Courier;
 use App\Models\User;
+use App\Modules\Payment\Providers\MockPaymentProvider;
 use App\Modules\Payment\Providers\ProviderResolver;
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use App\Modules\Wallet\Models\PayoutDestination;
 use App\Modules\Wallet\Services\WalletLedgerManager;
+use App\Services\OvoProvider;
+use App\Services\iPaymuService;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use RuntimeException;
 
 class DestinationService
 {
@@ -35,6 +40,221 @@ class DestinationService
         private readonly ProviderResolver $providerResolver,
         private readonly WalletLedgerManager $walletManager
     ) {}
+
+    public function inquireDestination(User $user, array $input): array
+    {
+        $destType = strtolower((string) ($input['destination_type'] ?? 'bank'));
+        if (! in_array($destType, ['bank', 'ewallet'], true)) {
+            throw new InvalidArgumentException('destination_type harus bank atau ewallet.');
+        }
+
+        $channelCode = $this->normalizeChannelCode((string) ($input['channel_code'] ?? ''));
+        $accountNumber = $this->normalizeInquiryNumber($destType, (string) ($input['account_number'] ?? ''));
+        $mode = $this->providerResolver->currentMode();
+        $isSandbox = $mode !== 'production';
+
+        $minLen = $destType === 'ewallet' ? 10 : 8;
+        if (strlen($accountNumber) < $minLen) {
+            return $this->inquiryEnvelope(
+                supported: true,
+                found: false,
+                holderName: null,
+                channelCode: $channelCode,
+                accountNumber: $accountNumber,
+                mode: $mode,
+                isSimulated: $isSandbox,
+                provider: $this->providerResolver->safePayoutProviderCode(),
+                message: $destType === 'ewallet'
+                    ? 'Masukkan minimal 10 digit nomor HP e-wallet.'
+                    : 'Masukkan minimal 8 digit nomor rekening bank.'
+            );
+        }
+
+        // 1. Cek daftar rekening/e-wallet tersimpan milik pengguna sendiri.
+        $existing = PayoutDestination::where('user_id', $user->id)
+            ->where('channel_code', $channelCode)
+            ->where('account_number', $accountNumber)
+            ->where('is_active', true)
+            ->where('is_verified', true)
+            ->first();
+        if ($existing && trim((string) $existing->account_holder_name) !== '') {
+            return $this->inquiryEnvelope(
+                supported: true,
+                found: true,
+                holderName: strtoupper(trim((string) $existing->account_holder_name)),
+                channelCode: $channelCode,
+                accountNumber: $accountNumber,
+                mode: $mode,
+                isSimulated: false,
+                provider: 'saved_destination',
+                message: 'Nama pemilik ditemukan dari rekening tersimpan.'
+            );
+        }
+
+        // 2. Cek integrasi e-wallet khusus bila aktif (OVO SNAP / iPaymu DANA).
+        if ($destType === 'ewallet') {
+            $specialized = $this->trySpecializedEwalletInquiry($channelCode, $accountNumber, $mode);
+            if ($specialized !== null) {
+                return $specialized;
+            }
+        }
+
+        // 3. Di mode Sandbox/Demo, cocokkan nomor HP akun pengguna yang login agar terasa nyata.
+        if ($isSandbox && $destType === 'ewallet') {
+            $userPhone = $this->normalizeInquiryNumber('ewallet', (string) ($user->phone ?? ''));
+            if ($userPhone !== '' && $userPhone === $accountNumber && trim((string) $user->name) !== '') {
+                return $this->inquiryEnvelope(
+                    supported: true,
+                    found: true,
+                    holderName: strtoupper(trim((string) $user->name)),
+                    channelCode: $channelCode,
+                    accountNumber: $accountNumber,
+                    mode: $mode,
+                    isSimulated: true,
+                    provider: 'mock',
+                    message: 'Nama pemilik ditemukan sesuai profil akun (Simulasi Sandbox).'
+                );
+            }
+        }
+
+        // 4. Delegasikan ke provider payout aktif.
+        try {
+            $provider = $this->providerResolver->resolvePayoutProvider();
+            $result = $provider->inquireDestination($destType, $channelCode, $accountNumber);
+
+            if (! ($result['supported'] ?? false) && $isSandbox) {
+                $result = app(MockPaymentProvider::class)->inquireDestination($destType, $channelCode, $accountNumber);
+            }
+
+            return $this->inquiryEnvelope(
+                supported: (bool) ($result['supported'] ?? false),
+                found: (bool) ($result['found'] ?? false),
+                holderName: $result['account_holder_name'] ?? null,
+                channelCode: $channelCode,
+                accountNumber: $accountNumber,
+                mode: $mode,
+                isSimulated: ($result['provider'] ?? '') === 'mock' || $isSandbox,
+                provider: (string) ($result['provider'] ?? $provider->providerCode()),
+                message: $result['message'] ?? null
+            );
+        } catch (RuntimeException $e) {
+            $cleanMessage = str_starts_with($e->getMessage(), 'PROVIDER_DISABLED:')
+                ? substr($e->getMessage(), strlen('PROVIDER_DISABLED:'))
+                : $e->getMessage();
+
+            return $this->inquiryEnvelope(
+                supported: false,
+                found: false,
+                holderName: null,
+                channelCode: $channelCode,
+                accountNumber: $accountNumber,
+                mode: $mode,
+                isSimulated: $isSandbox,
+                provider: $this->providerResolver->safePayoutProviderCode(),
+                message: $cleanMessage
+            );
+        }
+    }
+
+    private function trySpecializedEwalletInquiry(string $channelCode, string $accountNumber, string $mode): ?array
+    {
+        $creds = app(GatewayCredentialsResolver::class);
+
+        if ($channelCode === 'ID_OVO' && $creds->isProviderEnabled('ovo') && $mode === 'production') {
+            try {
+                $res = app(OvoProvider::class)->accountInquiry($accountNumber);
+                if ($res['success'] ?? false) {
+                    return $this->inquiryEnvelope(
+                        supported: true,
+                        found: true,
+                        holderName: strtoupper(trim((string) ($res['customer_name'] ?? ''))),
+                        channelCode: $channelCode,
+                        accountNumber: $accountNumber,
+                        mode: $mode,
+                        isSimulated: false,
+                        provider: 'ovo',
+                        message: 'Akun OVO terverifikasi.'
+                    );
+                }
+
+                if (($res['error_code'] ?? '') === 'OVO_ACCOUNT_NOT_FOUND') {
+                    return $this->inquiryEnvelope(
+                        supported: true,
+                        found: false,
+                        holderName: null,
+                        channelCode: $channelCode,
+                        accountNumber: $accountNumber,
+                        mode: $mode,
+                        isSimulated: false,
+                        provider: 'ovo',
+                        message: $res['error'] ?? 'Nomor OVO tidak terdaftar.'
+                    );
+                }
+            } catch (\Throwable) {
+                // Fall through cleanly ke resolver standar bila driver OVO tidak tersedia.
+            }
+        }
+
+        if ($channelCode === 'ID_DANA' && $creds->isProviderEnabled('ipaymu') && $mode === 'production') {
+            try {
+                $res = (new iPaymuService())->inquireAccountName($accountNumber);
+                if ($res['available'] ?? false) {
+                    return $this->inquiryEnvelope(
+                        supported: true,
+                        found: true,
+                        holderName: strtoupper(trim((string) ($res['account_name'] ?? ''))),
+                        channelCode: $channelCode,
+                        accountNumber: $accountNumber,
+                        mode: $mode,
+                        isSimulated: false,
+                        provider: 'ipaymu',
+                        message: 'Akun DANA terverifikasi via iPaymu.'
+                    );
+                }
+            } catch (\Throwable) {
+                // Fall through cleanly ke resolver standar.
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function inquiryEnvelope(
+        bool $supported,
+        bool $found,
+        ?string $holderName,
+        string $channelCode,
+        string $accountNumber,
+        string $mode,
+        bool $isSimulated,
+        string $provider,
+        ?string $message
+    ): array {
+        return [
+            'supported' => $supported,
+            'found' => $found,
+            'account_holder_name' => $found && $holderName !== null ? trim($holderName) : null,
+            'channel_code' => $channelCode,
+            'account_number' => $accountNumber,
+            'mode' => $mode,
+            'is_simulated' => $isSimulated,
+            'provider' => $provider,
+            'message' => $message,
+        ];
+    }
+
+    private function normalizeInquiryNumber(string $destType, string $raw): string
+    {
+        $digits = preg_replace('/\D+/', '', $raw) ?? '';
+        if ($destType === 'ewallet' && str_starts_with($digits, '62')) {
+            return '0'.substr($digits, 2);
+        }
+
+        return $digits;
+    }
 
     public function listDestinations(User $user, string $ownerType)
     {

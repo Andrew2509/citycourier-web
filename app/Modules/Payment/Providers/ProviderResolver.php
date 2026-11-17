@@ -171,6 +171,20 @@ class ProviderResolver
         return $this->resolvePaymentProvider($code)->providerCode();
     }
 
+    public function safePayoutProviderCode(?string $forcedCode = null): string
+    {
+        $mode = $this->currentMode();
+        $code = $forcedCode ? strtolower($forcedCode) : $this->activePayoutProviderCode();
+        if ($mode === 'demo' || $code === 'mock') {
+            return 'mock';
+        }
+        if ($this->isPayoutProviderDisabled($code)) {
+            return $code;
+        }
+
+        return $this->resolvePayoutProvider($code)->providerCode();
+    }
+
     public function resolvePayoutProvider(?string $forcedCode = null): PayoutProviderInterface
     {
         $mode = $this->currentMode();

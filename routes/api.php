@@ -247,6 +247,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/refunds', [\App\Http\Controllers\Api\V1\CustomerRefundController::class, 'store']);
 
             Route::get('/destinations', [\App\Http\Controllers\Api\V1\CustomerDestinationController::class, 'index']);
+            Route::post('/destinations/inquiry', [\App\Http\Controllers\Api\V1\CustomerDestinationController::class, 'inquire']);
             Route::post('/destinations', [\App\Http\Controllers\Api\V1\CustomerDestinationController::class, 'store']);
             Route::patch('/destinations/{id}', [\App\Http\Controllers\Api\V1\CustomerDestinationController::class, 'update']);
         });
@@ -261,8 +262,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/payouts/{id}', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'payoutDetail']);
             Route::get('/notifications', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'notifications']);
             Route::get('/destinations', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'destinations']);
+            Route::post('/destinations/inquiry', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'inquireDestination']);
             Route::post('/destinations', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'storeDestination']);
             Route::patch('/destinations/{id}/default', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'setDefaultDestination']);
+            Route::post('/withdrawals', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'storeWithdrawal']);
         });
     });
 });

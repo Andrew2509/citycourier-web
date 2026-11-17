@@ -77,4 +77,29 @@ class CustomerDestinationController extends Controller
             'data' => $updated->toApiArray(),
         ]);
     }
+
+    public function inquire(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'destination_type' => ['required', 'string', 'in:bank,ewallet'],
+            'channel_code' => ['required', 'string', 'max:64'],
+            'account_number' => ['required', 'string', 'min:6', 'max:40'],
+        ]);
+
+        try {
+            $result = $this->destinationService->inquireDestination($request->user(), $validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? 'Hasil pengecekan rekening dimuat.',
+                'data' => $result,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'VALIDATION_ERROR',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
 }

@@ -93,28 +93,121 @@ class PayoutService
             throw new InvalidArgumentException('Nominal penarikan harus lebih besar dari biaya admin.');
         }
 
-        $payout = DB::transaction(function () use ($user, $amount, $fee, $destination, $idempotencyKey) {
-            $wallet = $this->walletManager->getOrCreateCustomerWallet($user);
+        $payout = $this->createManualPayoutTransaction(
+            $user,
+            'customer',
+            null,
+            $destination,
+            'customer_withdrawal',
+            'WD-CUST-'.now()->format('YmdHis').'-'.strtoupper(Str::random(6)),
+            $amount,
+            $fee,
+            $idempotencyKey,
+            'Withdrawal requested'
+        );
+
+        return ['payout' => $payout, 'idempotent_replay' => false];
+    }
+
+    /**
+     * Courier manual withdrawal via v1 Sandbox/Production Payout Provider & PayoutDestination.
+     */
+    public function requestCourierWithdrawal(
+        User $user,
+        Courier $courier,
+        int $amount,
+        int $destinationId,
+        string $idempotencyKey
+    ): array {
+        $min = $this->minCourierPayoutIdr();
+        $max = (int) config('payment_wallet.courier_payout.max_amount_idr', 5000000);
+        if ($amount < $min || $amount > $max) {
+            throw new InvalidArgumentException("Nominal penarikan kurir harus antara Rp {$min} dan Rp {$max}.");
+        }
+
+        $existing = PayoutTransaction::where('idempotency_key', $idempotencyKey)
+            ->where('courier_id', $courier->id)
+            ->first();
+        if ($existing) {
+            return ['payout' => $existing, 'idempotent_replay' => true];
+        }
+
+        $destination = PayoutDestination::where('id', $destinationId)
+            ->where('user_id', $user->id)
+            ->where('owner_type', 'courier')
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $fee = (int) config('payment_wallet.courier_payout.fee_idr', 0);
+        if ($amount <= $fee) {
+            throw new InvalidArgumentException('Nominal penarikan harus lebih besar dari biaya admin.');
+        }
+
+        $payout = $this->createManualPayoutTransaction(
+            $user,
+            'courier',
+            $courier,
+            $destination,
+            'courier_manual_withdrawal',
+            'WD-CUR-'.$courier->id.'-'.now()->format('YmdHis').'-'.strtoupper(Str::random(4)),
+            $amount,
+            $fee,
+            $idempotencyKey,
+            'Courier manual withdrawal requested'
+        );
+
+        return ['payout' => $payout, 'idempotent_replay' => false];
+    }
+
+    private function createManualPayoutTransaction(
+        User $user,
+        string $ownerType,
+        ?Courier $courier,
+        PayoutDestination $destination,
+        string $payoutType,
+        string $reference,
+        int $amount,
+        int $fee,
+        string $idempotencyKey,
+        string $historyPrefix
+    ): PayoutTransaction {
+        $payout = DB::transaction(function () use (
+            $user,
+            $ownerType,
+            $courier,
+            $destination,
+            $payoutType,
+            $reference,
+            $amount,
+            $fee,
+            $idempotencyKey,
+            $historyPrefix
+        ) {
+            $wallet = $ownerType === 'courier' && $courier !== null
+                ? $this->walletManager->getOrCreateCourierWallet($courier)
+                : $this->walletManager->getOrCreateCustomerWallet($user);
+
+            $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->firstOrFail();
             $this->walletManager->assertNotFrozen($wallet);
 
-            $available = (int) round((float) ($wallet->balanceRecord?->available_balance ?? $wallet->available_balance));
+            $balance = $this->walletManager->ensureBalanceProjection($wallet);
+            $available = (int) round((float) $balance->available_balance);
             if ($available < $amount) {
                 throw new RuntimeException("INSUFFICIENT_BALANCE:Saldo tersedia Rp {$available} tidak mencukupi.");
             }
 
             $mode = $this->providerResolver->currentMode();
             $provider = $this->providerResolver->resolvePayoutProvider();
-            $reference = 'WD-CUST-'.now()->format('YmdHis').'-'.strtoupper(Str::random(6));
 
             $payout = PayoutTransaction::create([
                 'reference' => $reference,
                 'idempotency_key' => $idempotencyKey,
-                'owner_type' => 'customer',
+                'owner_type' => $ownerType,
                 'user_id' => $user->id,
-                'courier_id' => null,
+                'courier_id' => $courier?->id,
                 'wallet_id' => $wallet->id,
                 'payout_destination_id' => $destination->id,
-                'payout_type' => 'customer_withdrawal',
+                'payout_type' => $payoutType,
                 'provider' => $provider->providerCode(),
                 'mode' => $mode,
                 'is_simulated' => $provider->providerCode() === 'mock',
@@ -127,7 +220,7 @@ class PayoutService
                 'status' => 'pending',
                 'scheduled_at' => now(),
             ]);
-            $payout->appendStatusHistory('pending', "Withdrawal requested ({$mode} mode)");
+            $payout->appendStatusHistory('pending', "{$historyPrefix} ({$mode} mode)");
             $payout->save();
 
             $this->walletManager->reserveForPayout(
@@ -139,7 +232,7 @@ class PayoutService
                 PayoutTransaction::class,
                 $payout->id,
                 $mode,
-                ['payout_id' => $payout->id, 'payout_type' => 'customer_withdrawal']
+                ['payout_id' => $payout->id, 'payout_type' => $payoutType]
             );
 
             return $payout;
@@ -147,7 +240,7 @@ class PayoutService
 
         PayoutProcessingJob::dispatch($payout->id)->afterCommit();
 
-        return ['payout' => $payout->fresh(), 'idempotent_replay' => false];
+        return $payout->fresh();
     }
 
     /**

@@ -37,6 +37,21 @@ class XenditPayoutProvider implements PayoutProviderInterface
         ];
     }
 
+    public function inquireDestination(string $destinationType, string $channelCode, string $accountNumber): array
+    {
+        $isEwallet = strtolower($destinationType) === 'ewallet';
+
+        return [
+            'supported' => false,
+            'found' => false,
+            'account_holder_name' => null,
+            'message' => $isEwallet
+                ? 'Cek nama e-wallet otomatis belum didukung oleh Xendit. Masukkan nama sesuai akun.'
+                : 'Cek nama bank otomatis belum diaktifkan pada Xendit Production. Masukkan nama sesuai rekening.',
+            'provider' => 'xendit',
+        ];
+    }
+
     /**
      * Dispatch payout via Xendit Payouts API v2 (POST /v2/payouts).
      */

@@ -164,6 +164,60 @@ class MockPaymentProvider implements PaymentProviderInterface, PayoutProviderInt
         ];
     }
 
+    public function inquireDestination(string $destinationType, string $channelCode, string $accountNumber): array
+    {
+        $this->assertNotProduction();
+
+        $digits = preg_replace('/\D+/', '', $accountNumber) ?? '';
+        $isEwallet = strtolower($destinationType) === 'ewallet';
+        if ($isEwallet && str_starts_with($digits, '62')) {
+            $digits = '0'.substr($digits, 2);
+        }
+
+        $minLen = $isEwallet ? 10 : 8;
+        if (strlen($digits) < $minLen) {
+            return [
+                'supported' => true,
+                'found' => false,
+                'account_holder_name' => null,
+                'message' => $isEwallet
+                    ? 'Masukkan minimal 10 digit nomor HP e-wallet.'
+                    : 'Masukkan minimal 8 digit nomor rekening.',
+                'provider' => 'mock',
+            ];
+        }
+
+        if (str_ends_with($digits, '0000') || str_contains($digits, '999999')) {
+            return [
+                'supported' => true,
+                'found' => false,
+                'account_holder_name' => null,
+                'message' => 'Nomor rekening/e-wallet tidak terdaftar (Simulasi Sandbox).',
+                'provider' => 'mock',
+            ];
+        }
+
+        $sampleNames = [
+            'BUDI SANTOSO',
+            'SITI RAHAYU',
+            'ANDI PRATAMA',
+            'DEWI LESTARI',
+            'HENDRA WIJAYA',
+            'RINA KUSUMA',
+            'FAJAR NUGROHO',
+            'MAYA PUTRI',
+        ];
+        $idx = abs(crc32(strtoupper($channelCode).':'.$digits)) % count($sampleNames);
+
+        return [
+            'supported' => true,
+            'found' => true,
+            'account_holder_name' => $sampleNames[$idx],
+            'message' => 'Nama pemilik ditemukan (Simulasi Sandbox).',
+            'provider' => 'mock',
+        ];
+    }
+
     public function createPayout(array $payload): array
     {
         $this->assertNotProduction();

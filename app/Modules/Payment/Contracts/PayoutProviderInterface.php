@@ -16,6 +16,19 @@ interface PayoutProviderInterface
     public function validateDestination(string $channelCode, string $accountNumber, string $accountHolderName): array;
 
     /**
+     * Look up registered account holder name for bank or e-wallet destination.
+     *
+     * @return array{
+     *   supported: bool,
+     *   found: bool,
+     *   account_holder_name: string|null,
+     *   message: string|null,
+     *   provider: string
+     * }
+     */
+    public function inquireDestination(string $destinationType, string $channelCode, string $accountNumber): array;
+
+    /**
      * Submit idempotent money-out payout request.
      *
      * @param  array<string, mixed>  $payload

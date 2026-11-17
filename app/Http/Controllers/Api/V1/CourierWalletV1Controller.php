@@ -13,10 +13,13 @@ use App\Modules\Payout\Services\DestinationService;
 use App\Modules\Payout\Services\PayoutService;
 use App\Modules\Wallet\Models\PayoutDestination;
 use App\Modules\Wallet\Services\WalletLedgerManager;
+use App\Services\AccountSecurityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
+use RuntimeException;
 
 class CourierWalletV1Controller extends Controller
 {
@@ -25,7 +28,8 @@ class CourierWalletV1Controller extends Controller
         private readonly CourierEarningService $earningService,
         private readonly DestinationService $destinationService,
         private readonly PayoutService $payoutService,
-        private readonly ProviderResolver $providerResolver
+        private readonly ProviderResolver $providerResolver,
+        private readonly ?AccountSecurityService $accountSecurity = null
     ) {}
 
     public function show(Request $request): JsonResponse
@@ -66,11 +70,16 @@ class CourierWalletV1Controller extends Controller
                 'reserved_balance' => (int) ($balance?->reserved_balance ?? ($wallet->reserved_balance ?? 0)),
                 'mode' => $mode,
                 'is_sandbox_or_demo' => $mode !== 'production',
-                'active_payout_provider' => $this->providerResolver->resolvePayoutProvider()->providerCode(),
+                'active_payout_provider' => $this->providerResolver->safePayoutProviderCode(),
+                'security' => [
+                    'has_transaction_pin' => $request->user()->hasTransactionPin(),
+                ],
                 'earnings_summary' => $this->earningService->getCourierEarningsSummary($courier),
                 'payout_policy' => [
                     'auto_payout_enabled' => $autoEnabled,
+                    'provider_enabled' => ! $this->providerResolver->isPayoutProviderDisabled(),
                     'min_payout_idr' => $minPayout,
+                    'max_payout_idr' => (int) config('payment_wallet.courier_payout.max_amount_idr', 5000000),
                     'fee_idr' => (int) config('payment_wallet.courier_payout.fee_idr', 0),
                     'schedule_cron' => (string) config('payment_wallet.courier_payout.schedule_cron', '0 * * * *'),
                     'eligible_for_next_auto_payout' => $autoEnabled
@@ -395,6 +404,124 @@ class CourierWalletV1Controller extends Controller
             'message' => 'Rekening/e-wallet default berhasil diperbarui.',
             'data' => $updated->toApiArray(),
         ]);
+    }
+
+    public function inquireDestination(Request $request): JsonResponse
+    {
+        $courier = $this->resolveCourier($request);
+        if (! $courier) {
+            return $this->missingCourierResponse();
+        }
+
+        $validated = $request->validate([
+            'destination_type' => ['required', 'string', 'in:bank,ewallet'],
+            'channel_code' => ['required', 'string', 'max:64'],
+            'account_number' => ['required', 'string', 'min:6', 'max:40'],
+        ]);
+
+        try {
+            $result = $this->destinationService->inquireDestination($request->user(), $validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? 'Hasil pengecekan rekening dimuat.',
+                'data' => $result,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'VALIDATION_ERROR',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function storeWithdrawal(Request $request): JsonResponse
+    {
+        $courier = $this->resolveCourier($request);
+        if (! $courier) {
+            return $this->missingCourierResponse();
+        }
+
+        $validated = $request->validate([
+            'amount' => ['required', 'integer', 'min:1000'],
+            'destination_id' => ['required', 'integer'],
+            'idempotency_key' => ['nullable', 'string', 'max:120'],
+            'transaction_pin' => ['nullable', 'string', 'regex:/^\d{6}$/'],
+        ]);
+
+        $user = $request->user();
+        if ($user->hasTransactionPin()) {
+            $pin = (string) ($validated['transaction_pin'] ?? '');
+            if ($pin === '') {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'TRANSACTION_PIN_REQUIRED',
+                    'message' => 'Masukkan PIN transaksi 6 digit untuk menarik saldo.',
+                ], 422);
+            }
+
+            $security = $this->accountSecurity ?? app(AccountSecurityService::class);
+            $pinCheck = $security->verifyPin($user, $pin, $request);
+            if (! ($pinCheck['ok'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => $pinCheck['code'] ?? 'PIN_INVALID',
+                    'message' => $pinCheck['message'] ?? 'PIN transaksi salah.',
+                    'attempts_left' => $pinCheck['attempts_left'] ?? null,
+                    'retry_after' => $pinCheck['retry_after'] ?? null,
+                ], (int) ($pinCheck['status_code'] ?? 422));
+            }
+        }
+
+        $idempotencyKey = (string) ($request->header('Idempotency-Key')
+            ?: ($validated['idempotency_key'] ?? Str::uuid()->toString()));
+
+        try {
+            $result = $this->payoutService->requestCourierWithdrawal(
+                $user,
+                $courier,
+                (int) $validated['amount'],
+                (int) $validated['destination_id'],
+                $idempotencyKey
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permintaan penarikan saldo kurir berhasil diajukan.',
+                'data' => array_merge($result['payout']->toApiArray(), [
+                    'idempotent_replay' => $result['idempotent_replay'],
+                ]),
+            ], $result['idempotent_replay'] ? 200 : 201);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'VALIDATION_ERROR',
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (RuntimeException $e) {
+            $msg = $e->getMessage();
+            if (str_starts_with($msg, 'PROVIDER_DISABLED:')) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'PROVIDER_DISABLED',
+                    'message' => substr($msg, strlen('PROVIDER_DISABLED:')),
+                ], 403);
+            }
+            if (str_starts_with($msg, 'INSUFFICIENT_BALANCE:')) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'INSUFFICIENT_BALANCE',
+                    'message' => substr($msg, strlen('INSUFFICIENT_BALANCE:')),
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error_code' => 'WITHDRAWAL_FAILED',
+                'message' => $msg,
+            ], 422);
+        }
     }
 
     private function resolveCourier(Request $request): ?Courier
