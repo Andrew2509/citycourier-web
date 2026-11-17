@@ -64,7 +64,36 @@ class SettingController extends Controller
         $ipaymu = \App\Services\iPaymuService::credentials();
         $ipaymu['webhook_url'] = url('/api/ipaymu/webhook');
 
-        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo', 'ipaymu'));
+        $gatewayResolver = app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class);
+        $xenditRaw = $gatewayResolver->xendit();
+        $xendit = [
+            'base_url' => $xenditRaw['base_url'],
+            'public_key' => $xenditRaw['public_key'],
+            'configured' => $xenditRaw['configured'],
+            'has_callback_token' => $xenditRaw['has_callback_token'],
+            'is_sandbox' => $xenditRaw['is_sandbox'],
+            'secret_masked' => $xenditRaw['secret_masked'],
+            'callback_masked' => $xenditRaw['callback_masked'],
+            'source' => $xenditRaw['source'],
+            'payment_webhook_url' => url('/api/v1/webhooks/xendit/payment'),
+            'payout_webhook_url' => url('/api/v1/webhooks/xendit/payout'),
+            'is_active_payment' => Setting::get('payment_active_provider', config('payment_wallet.active_payment_provider', 'xendit')) === 'xendit',
+            'is_active_payout' => Setting::get('payout_active_provider', config('payment_wallet.active_payout_provider', 'xendit')) === 'xendit',
+        ];
+
+        $dokuRaw = $gatewayResolver->doku();
+        $doku = [
+            'sandbox_url' => $dokuRaw['sandbox_url'],
+            'production_url' => $dokuRaw['production_url'],
+            'client_id' => $dokuRaw['client_id'],
+            'configured' => $dokuRaw['configured'],
+            'secret_masked' => $dokuRaw['secret_masked'],
+            'source' => $dokuRaw['source'],
+            'webhook_url' => url('/api/v1/webhooks/doku'),
+            'is_active_payment' => Setting::get('payment_active_provider', config('payment_wallet.active_payment_provider', 'xendit')) === 'doku',
+        ];
+
+        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo', 'ipaymu', 'xendit', 'doku'));
     }
 
     // iPaymu (Payout/Disbursement) Settings
@@ -728,6 +757,205 @@ class SettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Xendit & DOKU Payment/Payout Gateway Settings (Database UI)
+    // ─────────────────────────────────────────────────────────────
+
+    public function updateXendit(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    {
+        $validated = $request->validate([
+            'xendit_base_url' => ['required', 'url', 'max:255'],
+            'xendit_public_key' => ['nullable', 'string', 'max:255'],
+            'xendit_secret_key' => ['nullable', 'string', 'min:10', 'max:255'],
+            'xendit_callback_token' => ['nullable', 'string', 'min:8', 'max:255'],
+            'clear_xendit_secrets' => ['nullable', 'boolean'],
+            'activate_xendit' => ['nullable', 'boolean'],
+        ]);
+
+        Setting::set('xendit_base_url', rtrim($validated['xendit_base_url'], '/'), 'xendit');
+        Setting::set('xendit_public_key', trim((string) ($validated['xendit_public_key'] ?? '')), 'xendit');
+
+        if ($request->boolean('clear_xendit_secrets')) {
+            Setting::set('xendit_secret_key', '', 'xendit');
+            Setting::set('xendit_callback_token', '', 'xendit');
+        } else {
+            if ($request->filled('xendit_secret_key')) {
+                $resolver->saveEncryptedSecret('xendit_secret_key', $request->string('xendit_secret_key')->toString(), 'xendit');
+            }
+            if ($request->filled('xendit_callback_token')) {
+                $resolver->saveEncryptedSecret('xendit_callback_token', $request->string('xendit_callback_token')->toString(), 'xendit');
+            }
+        }
+
+        if ($request->boolean('activate_xendit')) {
+            Setting::set('payment_active_provider', 'xendit', 'finance');
+            Setting::set('payout_active_provider', 'xendit', 'finance');
+        }
+
+        $xendit = $resolver->xendit();
+        $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
+        $resolver->syncProviderConfigRecord(
+            'xendit',
+            'Xendit Payment & Payouts',
+            $mode,
+            Setting::get('payment_active_provider', 'xendit') === 'xendit',
+            true,
+            true,
+            [
+                'base_url' => $xendit['base_url'],
+                'has_public_key' => $xendit['public_key'] !== '',
+                'has_secret_key' => $xendit['configured'],
+                'has_callback_token' => $xendit['has_callback_token'],
+            ]
+        );
+
+        return redirect()->back()->with('success', 'Konfigurasi API Xendit berhasil disimpan terenkripsi ke database.');
+    }
+
+    public function testXendit(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    {
+        try {
+            $saved = $resolver->xendit();
+            $baseUrl = rtrim((string) ($request->input('xendit_base_url') ?: $saved['base_url']), '/');
+            $secretKey = trim((string) ($request->input('xendit_secret_key') ?: $saved['secret_key']));
+
+            if ($secretKey === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Xendit Secret Key belum diisi.',
+                ], 422);
+            }
+
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withBasicAuth($secretKey, '')
+                ->get("{$baseUrl}/balance");
+
+            if ($response->successful()) {
+                $balance = $response->json('balance');
+                $resolver->syncProviderConfigRecord('xendit', 'Xendit Payment & Payouts', $saved['is_sandbox'] ? 'sandbox' : 'production', true, true, true, ['base_url' => $baseUrl], 'healthy');
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Koneksi Xendit Berhasil!' . ($balance !== null ? ' Saldo akun: Rp ' . number_format((int) $balance, 0, ',', '.') : ''),
+                ]);
+            }
+
+            $resolver->syncProviderConfigRecord('xendit', 'Xendit Payment & Payouts', $saved['is_sandbox'] ? 'sandbox' : 'production', true, true, true, ['base_url' => $baseUrl], 'error');
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Xendit merespons HTTP ' . $response->status() . ': ' . ($response->json('message') ?? 'Periksa kembali Secret Key.'),
+            ], 400);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghubungi Xendit: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updateDoku(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    {
+        $validated = $request->validate([
+            'doku_sandbox_url' => ['required', 'url', 'max:255'],
+            'doku_production_url' => ['required', 'url', 'max:255'],
+            'doku_client_id' => ['nullable', 'string', 'max:150'],
+            'doku_secret_key' => ['nullable', 'string', 'min:8', 'max:255'],
+            'clear_doku_secrets' => ['nullable', 'boolean'],
+            'activate_doku' => ['nullable', 'boolean'],
+        ]);
+
+        Setting::set('doku_sandbox_url', rtrim($validated['doku_sandbox_url'], '/'), 'doku');
+        Setting::set('doku_production_url', rtrim($validated['doku_production_url'], '/'), 'doku');
+        Setting::set('doku_client_id', trim((string) ($validated['doku_client_id'] ?? '')), 'doku');
+
+        if ($request->boolean('clear_doku_secrets')) {
+            Setting::set('doku_secret_key', '', 'doku');
+        } elseif ($request->filled('doku_secret_key')) {
+            $resolver->saveEncryptedSecret('doku_secret_key', $request->string('doku_secret_key')->toString(), 'doku');
+        }
+
+        if ($request->boolean('activate_doku')) {
+            Setting::set('payment_active_provider', 'doku', 'finance');
+        }
+
+        $doku = $resolver->doku();
+        $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
+        $resolver->syncProviderConfigRecord(
+            'doku',
+            'DOKU Jokul Gateway',
+            $mode,
+            Setting::get('payment_active_provider', 'xendit') === 'doku',
+            true,
+            false,
+            [
+                'sandbox_url' => $doku['sandbox_url'],
+                'production_url' => $doku['production_url'],
+                'client_id' => $doku['client_id'],
+                'has_secret_key' => $doku['configured'],
+            ]
+        );
+
+        return redirect()->back()->with('success', 'Konfigurasi API DOKU berhasil disimpan terenkripsi ke database.');
+    }
+
+    public function testDoku(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    {
+        try {
+            $saved = $resolver->doku();
+            $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
+            $baseUrl = rtrim((string) ($mode === 'production'
+                ? ($request->input('doku_production_url') ?: $saved['production_url'])
+                : ($request->input('doku_sandbox_url') ?: $saved['sandbox_url'])), '/');
+            $clientId = trim((string) ($request->input('doku_client_id') ?: $saved['client_id']));
+            $secretKey = trim((string) ($request->input('doku_secret_key') ?: $saved['secret_key']));
+
+            if ($clientId === '' || $secretKey === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'DOKU Client-Id dan Secret Key wajib diisi.',
+                ], 422);
+            }
+
+            $requestTarget = '/orders/v1/status/TEST-CONN-' . time();
+            $requestId = (string) \Illuminate\Support\Str::uuid();
+            $timestamp = now('UTC')->format('Y-m-d\TH:i:s\Z');
+            $component = "Client-Id:{$clientId}\nRequest-Id:{$requestId}\nRequest-Timestamp:{$timestamp}\nRequest-Target:{$requestTarget}";
+            $signature = 'HMACSHA256=' . base64_encode(hash_hmac('sha256', $component, $secretKey, true));
+
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withHeaders([
+                    'Client-Id' => $clientId,
+                    'Request-Id' => $requestId,
+                    'Request-Timestamp' => $timestamp,
+                    'Signature' => $signature,
+                ])
+                ->get($baseUrl . $requestTarget);
+
+            // 404 (order not found) proves authentication & signature succeeded! 401/403 means invalid Client-Id/Secret.
+            if ($response->successful() || $response->status() === 404) {
+                $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, false, ['client_id' => $clientId], 'healthy');
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Koneksi & Signature HMAC DOKU Valid (' . strtoupper($mode) . ')!',
+                ]);
+            }
+
+            $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, false, ['client_id' => $clientId], 'error');
+
+            return response()->json([
+                'success' => false,
+                'message' => 'DOKU menolak autentikasi (HTTP ' . $response->status() . '). Periksa Client-Id & Secret Key.',
+            ], 400);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghubungi DOKU: ' . $e->getMessage(),
             ], 500);
         }
     }

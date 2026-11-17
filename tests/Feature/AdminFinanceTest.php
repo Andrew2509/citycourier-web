@@ -145,4 +145,91 @@ class AdminFinanceTest extends TestCase
         $this->post('/admin/finance/reconciliation/run')->assertRedirect();
         $this->assertTrue(app(LedgerReconciliationService::class)->runReconciliation()['is_clean']);
     }
+
+    public function test_admin_can_configure_xendit_and_doku_credentials_from_providers_page_without_env(): void
+    {
+        $admin = User::create([
+            'name' => 'Super Admin',
+            'email' => 'provider-admin@city.test',
+            'role' => 'admin',
+        ]);
+        $admin->assignRole('super-admin');
+
+        config([
+            'payment_wallet.xendit.secret_key' => '',
+            'payment_wallet.xendit.callback_token' => '',
+            'payment_wallet.doku.client_id' => '',
+            'payment_wallet.doku.secret_key' => '',
+        ]);
+
+        $this->actingAs($admin);
+
+        // Render unified Providers page
+        $this->get('/admin/providers')
+            ->assertStatus(200)
+            ->assertSee('Xendit Gateway (Money-In &amp; Payouts)', false)
+            ->assertSee('DOKU Jokul Gateway (Money-In)');
+
+        // Save Xendit keys via Admin UI
+        $xenditSecret = 'xnd_development_manual_secret_987654321';
+        $xenditToken = 'cb_token_manual_123456';
+
+        $this->post('/admin/settings/xendit', [
+            'xendit_base_url' => 'https://api.xendit.co',
+            'xendit_public_key' => 'xnd_public_development_abc',
+            'xendit_secret_key' => $xenditSecret,
+            'xendit_callback_token' => $xenditToken,
+            'activate_xendit' => 1,
+        ])->assertRedirect();
+
+        // Stored encrypted at rest (not plaintext) and NEVER echoed raw into HTML
+        $rawStored = Setting::get('xendit_secret_key');
+        $this->assertStringStartsWith('enc:', (string) $rawStored);
+        $this->assertStringNotContainsString($xenditSecret, (string) $rawStored);
+
+        $providersHtml = $this->get('/admin/providers')->assertStatus(200)->getContent();
+        $this->assertStringNotContainsString($xenditSecret, $providersHtml);
+        $this->assertStringNotContainsString($xenditToken, $providersHtml);
+
+        // Saving again with blank secret preserves existing encrypted secret
+        $this->post('/admin/settings/xendit', [
+            'xendit_base_url' => 'https://api.xendit.co',
+            'xendit_public_key' => 'xnd_public_development_updated',
+        ])->assertRedirect();
+
+        $xenditProvider = app(\App\Modules\Payment\Providers\XenditPaymentProvider::class);
+        $this->assertTrue($xenditProvider->isConfigured());
+        $this->assertTrue($xenditProvider->verifyWebhookSignature(['x-callback-token' => $xenditToken], '{}', []));
+
+        // Save DOKU keys via Admin UI
+        $dokuSecret = 'SK-DOKU-MANUAL-SECRET-999';
+        $this->post('/admin/settings/doku', [
+            'doku_sandbox_url' => 'https://api-sandbox.doku.com',
+            'doku_production_url' => 'https://api.doku.com',
+            'doku_client_id' => 'BRN-MANUAL-001',
+            'doku_secret_key' => $dokuSecret,
+            'activate_doku' => 1,
+        ])->assertRedirect();
+
+        $this->assertStringStartsWith('enc:', (string) Setting::get('doku_secret_key'));
+        $dokuHtml = $this->get('/admin/providers')->assertStatus(200)->getContent();
+        $this->assertStringNotContainsString($dokuSecret, $dokuHtml);
+
+        $dokuProvider = app(\App\Modules\Payment\Providers\DokuPaymentProvider::class);
+        $this->assertTrue($dokuProvider->isConfigured());
+
+        // Test connection endpoints with mocked HTTP responses
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.xendit.co/balance' => \Illuminate\Support\Facades\Http::response(['balance' => 1500000], 200),
+            'https://api-sandbox.doku.com/*' => \Illuminate\Support\Facades\Http::response(['message' => 'Not found'], 404),
+        ]);
+
+        $this->postJson('/admin/settings/xendit/test')
+            ->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $this->postJson('/admin/settings/doku/test')
+            ->assertStatus(200)
+            ->assertJsonPath('success', true);
+    }
 }

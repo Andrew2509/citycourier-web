@@ -159,6 +159,13 @@ class CheckMenuPermission
             'admin.settings.dana' => 'settings.view',
             'admin.settings.dana.update' => 'settings.edit',
             'admin.settings.dana.test' => 'settings.edit',
+            'admin.settings.ipaymu' => 'settings.view',
+            'admin.settings.ipaymu.update' => 'settings.edit',
+            'admin.settings.ipaymu.test' => 'settings.edit',
+            'admin.settings.xendit.update' => 'settings.edit',
+            'admin.settings.xendit.test' => 'settings.edit',
+            'admin.settings.doku.update' => 'settings.edit',
+            'admin.settings.doku.test' => 'settings.edit',
 
             // Research Study (Studi Pendahuluan)
             'admin.research.index' => 'research_study.view',

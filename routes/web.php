@@ -136,6 +136,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/ipaymu', [\App\Http\Controllers\Admin\SettingController::class, 'updateIpaymu'])->name('settings.ipaymu.update');
         Route::post('/settings/ipaymu/test', [\App\Http\Controllers\Admin\SettingController::class, 'testIpaymu'])->name('settings.ipaymu.test');
 
+        Route::post('/settings/xendit', [\App\Http\Controllers\Admin\SettingController::class, 'updateXendit'])->name('settings.xendit.update');
+        Route::post('/settings/xendit/test', [\App\Http\Controllers\Admin\SettingController::class, 'testXendit'])->name('settings.xendit.test');
+        Route::post('/settings/doku', [\App\Http\Controllers\Admin\SettingController::class, 'updateDoku'])->name('settings.doku.update');
+        Route::post('/settings/doku/test', [\App\Http\Controllers\Admin\SettingController::class, 'testDoku'])->name('settings.doku.test');
+
 
         // Drop Points
         Route::get('drop-points/export', [\App\Http\Controllers\Admin\DropPointController::class, 'exportCsv'])->name('drop-points.export');

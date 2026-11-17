@@ -14,7 +14,7 @@
                     Gateway Operasional
                 </span>
             </div>
-            <p class="page-subtitle">Pusat orkestrasi integrasi gateway WhatsApp Fonnte, peta geolokasi, pembayaran digital (DANA), dan tarif ongkir.</p>
+            <p class="page-subtitle">Pusat orkestrasi integrasi gateway Xendit, DOKU, iPaymu, WhatsApp Fonnte, peta geolokasi, pembayaran digital (DANA/OVO), dan tarif ongkir. API key tersimpan terenkripsi di database.</p>
         </div>
     </div>
 
@@ -460,6 +460,260 @@
                 </div>
             </div>
         </div>
+
+        {{-- KARTU 5: Xendit Payment & Payouts v2/v3 --}}
+        <div class="card flex flex-col justify-between border-indigo-200">
+            <div>
+                <div class="card-header">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-indigo-50 text-indigo-700">
+                            <span class="material-symbols-outlined text-[20px]">payments</span>
+                        </div>
+                        <div>
+                            <div class="card-title">Xendit Gateway (Money-In &amp; Payouts)</div>
+                            <div class="card-subtitle">Top-Up VA/QRIS/E-Wallet v3 &amp; Auto-Payout Kurir v2</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        @if(!empty($xendit['configured']))
+                            <span class="badge badge-green">Terkonfigurasi ({{ strtoupper($xendit['source'] ?? 'DB') }})</span>
+                        @else
+                            <span class="badge badge-amber">Belum Diisi</span>
+                        @endif
+                        <span class="badge {{ ($xendit['is_sandbox'] ?? true) ? 'badge-indigo' : 'badge-green' }}">
+                            {{ ($xendit['is_sandbox'] ?? true) ? 'SANDBOX' : 'PRODUCTION' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body space-y-3">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Masukkan API key Xendit langsung di sini tanpa perlu mengedit file <code class="font-mono">.env</code>. Secret Key dan Callback Token dienkripsi otomatis di database.
+                    </p>
+
+                    <div class="rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 space-y-1 font-mono border border-slate-200">
+                        <div>Webhook Payment: <span class="text-slate-900 select-all">{{ $xendit['payment_webhook_url'] ?? url('/api/v1/webhooks/xendit/payment') }}</span></div>
+                        <div>Webhook Payout: <span class="text-slate-900 select-all">{{ $xendit['payout_webhook_url'] ?? url('/api/v1/webhooks/xendit/payout') }}</span></div>
+                    </div>
+
+                    <form method="POST" action="{{ route('admin.settings.xendit.update') }}" id="xenditForm" class="space-y-3 pt-1">
+                        @csrf
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">API Base URL</label>
+                                <input type="url"
+                                       name="xendit_base_url"
+                                       value="{{ $xendit['base_url'] ?? 'https://api.xendit.co' }}"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Public Key</label>
+                                <input type="text"
+                                       name="xendit_public_key"
+                                       value="{{ $xendit['public_key'] ?? '' }}"
+                                       placeholder="xnd_public_development_..."
+                                       class="form-input font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label text-xs">
+                                Secret API Key
+                                @if(!empty($xendit['secret_masked']))
+                                    <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $xendit['secret_masked'] }}</code>)</span>
+                                @endif
+                            </label>
+                            <input type="password"
+                                   name="xendit_secret_key"
+                                   value=""
+                                   placeholder="{{ !empty($xendit['secret_masked']) ? 'Biarkan kosong untuk mempertahankan key tersimpan' : 'xnd_development_... atau xnd_production_...' }}"
+                                   autocomplete="new-password"
+                                   class="form-input font-mono text-xs">
+                        </div>
+
+                        <div>
+                            <label class="form-label text-xs">
+                                Webhook Callback Token (<code class="font-mono">x-callback-token</code>)
+                                @if(!empty($xendit['callback_masked']))
+                                    <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $xendit['callback_masked'] }}</code>)</span>
+                                @endif
+                            </label>
+                            <input type="password"
+                                   name="xendit_callback_token"
+                                   value=""
+                                   placeholder="{{ !empty($xendit['callback_masked']) ? 'Biarkan kosong untuk mempertahankan token tersimpan' : 'Token verifikasi webhook Xendit...' }}"
+                                   autocomplete="new-password"
+                                   class="form-input font-mono text-xs">
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <label class="text-xs flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="activate_xendit" value="1"
+                                       {{ ($xendit['is_active_payment'] ?? false) ? 'checked' : '' }}
+                                       class="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-slate-600">Jadikan Xendit provider aktif (Payment &amp; Payout)</span>
+                            </label>
+                            <label class="text-xs flex items-center gap-1.5 cursor-pointer text-red-600">
+                                <input type="checkbox" name="clear_xendit_secrets" value="1" class="h-3.5 w-3.5 rounded border-slate-300">
+                                <span>Hapus Secret Tersimpan</span>
+                            </label>
+                        </div>
+
+                        <div id="xenditTestResult" class="hidden rounded-md p-2.5 text-xs"></div>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <button type="button"
+                                    onclick="testPaymentGateway('xendit', '{{ route('admin.settings.xendit.test') }}', 'xenditForm', 'xenditTestResult')"
+                                    class="btn btn-sm btn-secondary">
+                                Test Koneksi Xendit
+                            </button>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                Simpan Xendit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- KARTU 6: DOKU Jokul Gateway --}}
+        <div class="card flex flex-col justify-between border-rose-200">
+            <div>
+                <div class="card-header">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-rose-50 text-rose-700">
+                            <span class="material-symbols-outlined text-[20px]">credit_card</span>
+                        </div>
+                        <div>
+                            <div class="card-title">DOKU Jokul Gateway (Money-In)</div>
+                            <div class="card-subtitle">Kandidat alternatif VA, QRIS &amp; Checkout HMAC-SHA256</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        @if(!empty($doku['configured']))
+                            <span class="badge badge-green">Terkonfigurasi ({{ strtoupper($doku['source'] ?? 'DB') }})</span>
+                        @else
+                            <span class="badge badge-amber">Belum Diisi</span>
+                        @endif
+                        @if(!empty($doku['is_active_payment']))
+                            <span class="badge badge-indigo">AKTIF</span>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="card-body space-y-3">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Simpan Client-Id dan Secret Key DOKU Jokul langsung melalui Admin tanpa mengubah file <code class="font-mono">.env</code>. Secret Key dienkripsi sebelum disimpan.
+                    </p>
+
+                    <div class="rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 font-mono border border-slate-200">
+                        Webhook URL: <span class="text-slate-900 select-all">{{ $doku['webhook_url'] ?? url('/api/v1/webhooks/doku') }}</span>
+                    </div>
+
+                    <form method="POST" action="{{ route('admin.settings.doku.update') }}" id="dokuForm" class="space-y-3 pt-1">
+                        @csrf
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">Sandbox Base URL</label>
+                                <input type="url"
+                                       name="doku_sandbox_url"
+                                       value="{{ $doku['sandbox_url'] ?? 'https://api-sandbox.doku.com' }}"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Production Base URL</label>
+                                <input type="url"
+                                       name="doku_production_url"
+                                       value="{{ $doku['production_url'] ?? 'https://api.doku.com' }}"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label text-xs">DOKU Client-Id</label>
+                            <input type="text"
+                                   name="doku_client_id"
+                                   value="{{ $doku['client_id'] ?? '' }}"
+                                   placeholder="BRN-.... atau MCH-...."
+                                   class="form-input font-mono text-xs">
+                        </div>
+
+                        <div>
+                            <label class="form-label text-xs">
+                                DOKU Secret Key
+                                @if(!empty($doku['secret_masked']))
+                                    <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $doku['secret_masked'] }}</code>)</span>
+                                @endif
+                            </label>
+                            <input type="password"
+                                   name="doku_secret_key"
+                                   value=""
+                                   placeholder="{{ !empty($doku['secret_masked']) ? 'Biarkan kosong untuk mempertahankan key tersimpan' : 'SK-....' }}"
+                                   autocomplete="new-password"
+                                   class="form-input font-mono text-xs">
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <label class="text-xs flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="activate_doku" value="1"
+                                       {{ ($doku['is_active_payment'] ?? false) ? 'checked' : '' }}
+                                       class="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                <span class="text-slate-600">Jadikan DOKU provider Money-In aktif</span>
+                            </label>
+                            <label class="text-xs flex items-center gap-1.5 cursor-pointer text-red-600">
+                                <input type="checkbox" name="clear_doku_secrets" value="1" class="h-3.5 w-3.5 rounded border-slate-300">
+                                <span>Hapus Secret Tersimpan</span>
+                            </label>
+                        </div>
+
+                        <div id="dokuTestResult" class="hidden rounded-md p-2.5 text-xs"></div>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <button type="button"
+                                    onclick="testPaymentGateway('doku', '{{ route('admin.settings.doku.test') }}', 'dokuForm', 'dokuTestResult')"
+                                    class="btn btn-sm btn-secondary">
+                                Test Koneksi DOKU
+                            </button>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                Simpan DOKU
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+async function testPaymentGateway(name, endpoint, formId, resultBoxId) {
+    const form = document.getElementById(formId);
+    const box = document.getElementById(resultBoxId);
+    if (!form || !box) return;
+
+    box.className = 'rounded-md p-2.5 text-xs bg-slate-100 text-slate-700';
+    box.textContent = 'Menguji koneksi ke ' + name.toUpperCase() + '...';
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+            },
+            body: new FormData(form),
+        });
+        const json = await res.json();
+        box.className = json.success
+            ? 'rounded-md p-2.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200'
+            : 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
+        box.textContent = json.message || ('HTTP ' + res.status);
+    } catch (err) {
+        box.className = 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
+        box.textContent = 'Gagal menguji koneksi: ' + err.message;
+    }
+}
+</script>
+@endpush
 @endsection

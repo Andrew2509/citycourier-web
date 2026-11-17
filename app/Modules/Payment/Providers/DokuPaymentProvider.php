@@ -2,14 +2,21 @@
 
 namespace App\Modules\Payment\Providers;
 
+use App\Models\Setting;
 use App\Modules\Payment\Contracts\PaymentProviderInterface;
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 class DokuPaymentProvider implements PaymentProviderInterface
 {
+    public function __construct(
+        private readonly GatewayCredentialsResolver $credentials
+    ) {}
+
     public function providerCode(): string
     {
         return 'doku';
@@ -17,8 +24,7 @@ class DokuPaymentProvider implements PaymentProviderInterface
 
     public function isConfigured(): bool
     {
-        return trim((string) config('payment_wallet.doku.client_id', '')) !== ''
-            && trim((string) config('payment_wallet.doku.secret_key', '')) !== '';
+        return $this->credentials->doku()['configured'];
     }
 
     public function availableChannels(string $mode): array
@@ -50,18 +56,19 @@ class DokuPaymentProvider implements PaymentProviderInterface
      */
     public function createTopupPayment(array $payload): array
     {
-        if (! $this->isConfigured()) {
+        $creds = $this->credentials->doku();
+        if (! $creds['configured']) {
             throw new RuntimeException('DOKU Client-Id and Secret Key are not configured.');
         }
 
-        $mode = (string) config('payment_wallet.mode', 'sandbox');
-        $baseUrl = rtrim((string) ($mode === 'production'
-            ? config('payment_wallet.doku.production_url', 'https://api.doku.com')
-            : config('payment_wallet.doku.sandbox_url', 'https://api-sandbox.doku.com')), '/');
+        $mode = Schema::hasTable('settings')
+            ? ((string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox')))
+            : (string) config('payment_wallet.mode', 'sandbox');
+        $baseUrl = $mode === 'production' ? $creds['production_url'] : $creds['sandbox_url'];
 
-        $clientId = (string) config('payment_wallet.doku.client_id');
-        $secretKey = (string) config('payment_wallet.doku.secret_key');
-        $timeout = (int) config('payment_wallet.doku.timeout_seconds', 30);
+        $clientId = $creds['client_id'];
+        $secretKey = $creds['secret_key'];
+        $timeout = $creds['timeout_seconds'];
 
         $requestTarget = '/checkout/v1/payment';
         $requestId = (string) Str::uuid();
@@ -137,8 +144,9 @@ class DokuPaymentProvider implements PaymentProviderInterface
 
     public function verifyWebhookSignature(array $headers, string $rawBody, array $payload): bool
     {
-        $clientId = (string) config('payment_wallet.doku.client_id', '');
-        $secretKey = (string) config('payment_wallet.doku.secret_key', '');
+        $creds = $this->credentials->doku();
+        $clientId = $creds['client_id'];
+        $secretKey = $creds['secret_key'];
         if ($clientId === '' || $secretKey === '') {
             return false;
         }

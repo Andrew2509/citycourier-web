@@ -270,8 +270,8 @@ class FinanceController extends Controller
             'auto_payout_enabled' => $this->payoutService->isCourierAutoPayoutEnabled(),
             'customer_withdrawal_enabled' => $this->providerResolver->isCustomerWithdrawalEnabled(),
             'regulatory_approved' => (bool) config('payment_wallet.customer_withdrawal_regulatory_approved', false),
-            'xendit_configured' => trim((string) config('payment_wallet.xendit.secret_key', '')) !== '',
-            'doku_configured' => trim((string) config('payment_wallet.doku.client_id', '')) !== '',
+            'xendit_configured' => app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->xendit()['configured'],
+            'doku_configured' => app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->doku()['configured'],
         ];
 
         return view('admin.finance.settings', compact('config'));

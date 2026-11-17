@@ -76,13 +76,13 @@
         <h2 class="text-sm font-semibold text-slate-900">Status Kredensial &amp; Regulasi</h2>
         <div class="text-xs space-y-2">
             <div class="flex justify-between">
-                <span>Xendit Secret Key (.env)</span>
+                <span>Xendit Credentials</span>
                 <span class="font-semibold {{ $config['xendit_configured'] ? 'text-emerald-700' : 'text-amber-700' }}">
                     {{ $config['xendit_configured'] ? 'Terkonfigurasi' : 'Kosong (Sandbox Fallback ke Mock)' }}
                 </span>
             </div>
             <div class="flex justify-between">
-                <span>DOKU Jokul Credentials (.env)</span>
+                <span>DOKU Jokul Credentials</span>
                 <span class="font-semibold {{ $config['doku_configured'] ? 'text-emerald-700' : 'text-slate-500' }}">
                     {{ $config['doku_configured'] ? 'Terkonfigurasi' : 'Belum Diisi' }}
                 </span>
@@ -94,8 +94,8 @@
                 </span>
             </div>
         </div>
-        <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-            Secret API keys hanya dibaca dari environment server (<code class="font-mono">.env</code>) dan tidak pernah dikirim ke aplikasi Flutter atau HTML.
+        <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 space-y-2">
+            <div>Secret API keys tersimpan terenkripsi di database (via <a href="{{ route('admin.settings.providers') }}" class="font-semibold text-orange-600 hover:underline">Provider &amp; Integrasi Eksternal</a>) atau dari <code class="font-mono">.env</code> dan tidak pernah dikirim ke Flutter atau HTML.</div>
         </div>
     </div>
 </div>

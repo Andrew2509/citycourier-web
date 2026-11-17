@@ -3,12 +3,17 @@
 namespace App\Modules\Payment\Providers;
 
 use App\Modules\Payment\Contracts\PaymentProviderInterface;
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class XenditPaymentProvider implements PaymentProviderInterface
 {
+    public function __construct(
+        private readonly GatewayCredentialsResolver $credentials
+    ) {}
+
     public function providerCode(): string
     {
         return 'xendit';
@@ -16,7 +21,7 @@ class XenditPaymentProvider implements PaymentProviderInterface
 
     public function isConfigured(): bool
     {
-        return trim((string) config('payment_wallet.xendit.secret_key', '')) !== '';
+        return $this->credentials->xendit()['configured'];
     }
 
     public function availableChannels(string $mode): array
@@ -72,14 +77,15 @@ class XenditPaymentProvider implements PaymentProviderInterface
      */
     public function createTopupPayment(array $payload): array
     {
-        if (! $this->isConfigured()) {
+        $creds = $this->credentials->xendit();
+        if (! $creds['configured']) {
             throw new RuntimeException('Xendit secret key is not configured.');
         }
 
-        $baseUrl = rtrim((string) config('payment_wallet.xendit.base_url', 'https://api.xendit.co'), '/');
-        $secretKey = (string) config('payment_wallet.xendit.secret_key');
-        $apiVersion = (string) config('payment_wallet.xendit.api_version', '2024-11-11');
-        $timeout = (int) config('payment_wallet.xendit.timeout_seconds', 30);
+        $baseUrl = $creds['base_url'];
+        $secretKey = $creds['secret_key'];
+        $apiVersion = $creds['api_version'];
+        $timeout = $creds['timeout_seconds'];
 
         $reference = (string) $payload['reference'];
         $paymentType = strtolower((string) $payload['payment_type']);
@@ -172,14 +178,15 @@ class XenditPaymentProvider implements PaymentProviderInterface
 
     public function getPaymentStatus(string $providerReference): array
     {
-        if (! $this->isConfigured()) {
+        $creds = $this->credentials->xendit();
+        if (! $creds['configured']) {
             throw new RuntimeException('Xendit secret key is not configured.');
         }
 
-        $baseUrl = rtrim((string) config('payment_wallet.xendit.base_url', 'https://api.xendit.co'), '/');
-        $secretKey = (string) config('payment_wallet.xendit.secret_key');
-        $apiVersion = (string) config('payment_wallet.xendit.api_version', '2024-11-11');
-        $timeout = (int) config('payment_wallet.xendit.timeout_seconds', 30);
+        $baseUrl = $creds['base_url'];
+        $secretKey = $creds['secret_key'];
+        $apiVersion = $creds['api_version'];
+        $timeout = $creds['timeout_seconds'];
 
         $response = Http::timeout($timeout)
             ->withBasicAuth($secretKey, '')
@@ -202,7 +209,7 @@ class XenditPaymentProvider implements PaymentProviderInterface
 
     public function verifyWebhookSignature(array $headers, string $rawBody, array $payload): bool
     {
-        $configuredToken = (string) config('payment_wallet.xendit.callback_token', '');
+        $configuredToken = $this->credentials->xendit()['callback_token'];
         if ($configuredToken === '') {
             return false;
         }
