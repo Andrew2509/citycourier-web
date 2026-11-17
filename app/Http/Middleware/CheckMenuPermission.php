@@ -160,11 +160,46 @@ class CheckMenuPermission
             'admin.settings.dana.update' => 'settings.edit',
             'admin.settings.dana.test' => 'settings.edit',
 
+            // Research Study (Studi Pendahuluan)
+            'admin.research.index' => 'research_study.view',
+            'admin.research.show' => 'research_study.view',
+            'admin.research.pdf-detail' => 'research_study.view',
+            'admin.research.destroy' => 'research_study.delete',
+            'admin.research.export.excel' => 'research_study.export',
+            'admin.research.export.csv' => 'research_study.export',
+            'admin.research.export.pdf' => 'research_study.export',
+
             // App Download
             'admin.app-download' => 'app_download.view',
             'admin.app-download.store' => 'app_download.create',
             'admin.app-download.destroy' => 'app_download.delete',
             'admin.app-download.set-active' => 'app_download.edit',
+
+            // Finance & Wallet v1
+            'admin.finance.index' => 'finance_dashboard.view',
+            'admin.finance.wallets' => 'finance_wallets.view',
+            'admin.finance.wallets.freeze' => 'finance_wallets.edit',
+            'admin.finance.wallets.unfreeze' => 'finance_wallets.edit',
+            'admin.finance.topups' => 'finance_payouts.view',
+            'admin.finance.topups.simulate' => 'finance_payouts.edit',
+            'admin.finance.payments' => 'finance_payouts.view',
+            'admin.finance.withdrawals' => 'finance_payouts.view',
+            'admin.finance.earnings' => 'finance_payouts.view',
+            'admin.finance.earnings.release' => 'finance_payouts.edit',
+            'admin.finance.payouts' => 'finance_payouts.view',
+            'admin.finance.payouts.run-auto' => 'finance_payouts.edit',
+            'admin.finance.payouts.verify' => 'finance_payouts.edit',
+            'admin.finance.refunds' => 'finance_payouts.view',
+            'admin.finance.refunds.approve' => 'finance_payouts.edit',
+            'admin.finance.refunds.reject' => 'finance_payouts.edit',
+            'admin.finance.destinations' => 'finance_payouts.view',
+            'admin.finance.settings' => 'finance_settings.view',
+            'admin.finance.settings.update' => 'finance_settings.edit',
+            'admin.finance.reconciliation' => 'finance_wallets.view',
+            'admin.finance.reconciliation.run' => 'finance_wallets.edit',
+            'admin.finance.reports' => 'finance_reports.view',
+            'admin.finance.reports.export' => 'finance_reports.view',
+            'admin.finance.audit-logs' => 'finance_reports.view',
         ];
 
         // Try exact match first

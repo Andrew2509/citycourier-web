@@ -240,6 +240,11 @@
                     <p class="text-[11px] text-slate-400 mt-2">
                         &copy; {{ date('Y') }} CityCourier. Seluruh hak cipta dilindungi.
                     </p>
+                    <p class="mt-2">
+                        <a href="{{ route('research.create') }}" class="text-[11px] text-slate-400 hover:text-brand-600 underline decoration-slate-300 underline-offset-2 transition-colors">
+                            Ikut Studi Pendahuluan (formulir penelitian)
+                        </a>
+                    </p>
                 </div>
             </div>
         </div>

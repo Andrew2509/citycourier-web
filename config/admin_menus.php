@@ -22,6 +22,8 @@ return [
         'menu_utama' => 'Menu Utama',
         'manajemen' => 'Manajemen',
         'ci_work' => 'City-Work Operasional',
+        'keuangan' => 'Keuangan & Wallet',
+        'penelitian' => 'Penelitian',
         'sistem_keamanan' => 'Sistem & Keamanan',
         'unduh_aplikasi' => 'Unduh Aplikasi',
     ],
@@ -124,6 +126,17 @@ return [
             'description' => 'Daftar dan verifikasi penarikan saldo ke DANA',
         ],
 
+        // ─── Penelitian ────────────────────────────────────────
+        [
+            'id' => 'research_study',
+            'name' => 'Studi Pendahuluan',
+            'icon' => 'science',
+            'section' => 'penelitian',
+            'actions' => ['view', 'export', 'delete'],
+            'route' => 'admin.research.index',
+            'description' => 'Lihat, analisis, ekspor, dan hapus jawaban Studi Pendahuluan',
+        ],
+
         // ─── Sistem & Keamanan ────────────────────────────────
         [
             'id' => 'users',
@@ -180,6 +193,53 @@ return [
             'actions' => ['view', 'create', 'edit', 'delete'],
             'route' => 'admin.app-download',
             'description' => 'Kelola file APK aplikasi mobile',
+        ],
+
+        // ─── Keuangan & Wallet ────────────────────────────────
+        [
+            'id' => 'finance_dashboard',
+            'name' => 'Payment & Wallet',
+            'icon' => 'account_balance_wallet',
+            'section' => 'keuangan',
+            'actions' => ['view', 'edit'],
+            'route' => 'admin.finance.index',
+            'description' => 'Dashboard monitoring sistem payment & wallet',
+        ],
+        [
+            'id' => 'finance_wallets',
+            'name' => 'Dompet & Rekonsiliasi',
+            'icon' => 'balance',
+            'section' => 'keuangan',
+            'actions' => ['view', 'edit'],
+            'route' => 'admin.finance.wallets',
+            'description' => 'Kelola saldo, freeze wallet, dan rekonsiliasi ledger',
+        ],
+        [
+            'id' => 'finance_payouts',
+            'name' => 'Top-Up, Payout & Refund',
+            'icon' => 'currency_exchange',
+            'section' => 'keuangan',
+            'actions' => ['view', 'edit'],
+            'route' => 'admin.finance.payouts',
+            'description' => 'Monitor top-up, pembayaran, earnings kurir, auto-payout, dan refund',
+        ],
+        [
+            'id' => 'finance_reports',
+            'name' => 'Laporan & Audit Keuangan',
+            'icon' => 'summarize',
+            'section' => 'keuangan',
+            'actions' => ['view'],
+            'route' => 'admin.finance.reports',
+            'description' => 'Laporan keuangan, ekspor CSV, dan audit log',
+        ],
+        [
+            'id' => 'finance_settings',
+            'name' => 'Gateway & Komisi',
+            'icon' => 'tune',
+            'section' => 'keuangan',
+            'actions' => ['view', 'edit'],
+            'route' => 'admin.finance.settings',
+            'description' => 'Konfigurasi mode demo/sandbox/production, komisi, dan min payout',
         ],
     ],
 

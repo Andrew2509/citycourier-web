@@ -344,6 +344,46 @@
             </a>
             @endcanPerm
 
+            <div class="nav-group">Keuangan &amp; Wallet</div>
+            @canPerm('finance_dashboard.view')
+            <a href="{{ route('admin.finance.index') }}" class="{{ $navActive(request()->routeIs('admin.finance.index')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">account_balance_wallet</span>Payment &amp; Wallet</span>
+            </a>
+            @endcanPerm
+            @canPerm('finance_wallets.view')
+            <a href="{{ route('admin.finance.wallets') }}" class="{{ $navActive(request()->routeIs('admin.finance.wallets*', 'admin.finance.reconciliation*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">balance</span>Dompet &amp; Rekonsiliasi</span>
+            </a>
+            @endcanPerm
+            @canPerm('finance_payouts.view')
+            <a href="{{ route('admin.finance.payouts') }}" class="{{ $navActive(request()->routeIs('admin.finance.topups*', 'admin.finance.payments*', 'admin.finance.withdrawals*', 'admin.finance.earnings*', 'admin.finance.payouts*', 'admin.finance.refunds*', 'admin.finance.destinations*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">currency_exchange</span>Top-Up, Payout &amp; Refund</span>
+            </a>
+            @endcanPerm
+            @canPerm('finance_reports.view')
+            <a href="{{ route('admin.finance.reports') }}" class="{{ $navActive(request()->routeIs('admin.finance.reports*', 'admin.finance.audit-logs*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">summarize</span>Laporan &amp; Audit</span>
+            </a>
+            @endcanPerm
+            @canPerm('finance_settings.view')
+            <a href="{{ route('admin.finance.settings') }}" class="{{ $navActive(request()->routeIs('admin.finance.settings*')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">tune</span>Gateway &amp; Komisi</span>
+            </a>
+            @endcanPerm
+
+            @canPerm('research_study.view')
+            <div class="nav-group">Penelitian</div>
+            <a href="{{ route('admin.research.index') }}" class="{{ $navActive(request()->routeIs('admin.research*') && !request()->routeIs('admin.research.show')) }}">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">science</span>Studi Pendahuluan</span>
+            </a>
+            <a href="{{ route('admin.research.index') }}#responden" class="nav-item">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">table_view</span>Data Responden</span>
+            </a>
+            <a href="{{ route('admin.research.index') }}#analisis" class="nav-item">
+                <span class="flex items-center gap-2.5"><span class="material-symbols-outlined">analytics</span>Analisis Hasil</span>
+            </a>
+            @endcanPerm
+
             <div class="nav-group">Sistem &amp; Keamanan</div>
             @canPerm('users.view')
             <a href="{{ route('admin.users.index') }}" class="{{ $navActive(request()->routeIs('admin.users*')) }}">

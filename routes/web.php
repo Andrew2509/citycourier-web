@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\ResearchStudyAdminController;
+use App\Http\Controllers\ResearchStudyController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Guest Routes ────────────────────────────────────────────
@@ -53,6 +55,13 @@ Route::get('/track/{number}/data', [\App\Http\Controllers\TrackingWebController:
 Route::get('/track/{number}/qrcode.png', [\App\Http\Controllers\TrackingWebController::class, 'qrcode'])->name('tracking.qrcode');
 Route::get('/shipments/{number}/qrcode.png', [\App\Http\Controllers\TrackingWebController::class, 'qrcode'])->name('shipments.qrcode');
 
+// ─── Public Research Study Form (Tugas Akhir UI/UX) ──────────
+Route::get('/studi-pendahuluan', [ResearchStudyController::class, 'show'])->name('research.create');
+Route::post('/studi-pendahuluan', [ResearchStudyController::class, 'store'])
+    ->middleware('throttle:12,1')
+    ->name('research.store');
+Route::get('/studi-pendahuluan/terima-kasih', [ResearchStudyController::class, 'thankyou'])->name('research.thankyou');
+
 
 // ─── Auth Routes ─────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
@@ -91,7 +100,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/shipments/delete-all', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroyAll'])->name('shipments.destroy-all');
         Route::get('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'show'])->name('shipments.show');
         Route::patch('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'update'])->name('shipments.update');
-        Route::post('/shipments/{shipment}/logs', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.logs.store');
+        Route::post('/shipments/{shipment}/logs', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.logs.store');
         Route::post('/shipments/{shipment}/send-whatsapp', [\App\Http\Controllers\Admin\ShipmentController::class, 'sendWhatsapp'])->name('shipments.send-whatsapp');
         Route::delete('/shipments/{shipment}', [\App\Http\Controllers\Admin\ShipmentController::class, 'destroy'])->name('shipments.destroy');
 
@@ -158,6 +167,55 @@ Route::middleware('auth')->group(function () {
             Route::post('/finance/withdrawal/{id}', [\App\Http\Controllers\Admin\CiWorkController::class, 'updateWithdrawalStatus'])->name('finance.withdrawal.update');
             Route::post('/finance/withdrawal/{id}/check', [\App\Http\Controllers\Admin\CiWorkController::class, 'checkWithdrawalStatus'])->name('finance.withdrawal.check');
         Route::get('/finance/dana-transactions', [\App\Http\Controllers\Admin\CiWorkController::class, 'danaTransactions'])->name('finance.dana-transactions');
+        });
+
+        // Penelitian — Studi Pendahuluan (khusus admin)
+        Route::prefix('studi-pendahuluan')->name('research.')->middleware('admin')->group(function () {
+            Route::get('/', [ResearchStudyAdminController::class, 'index'])->name('index');
+            Route::get('/export/excel', [ResearchStudyAdminController::class, 'exportExcel'])->name('export.excel');
+            Route::get('/export/csv', [ResearchStudyAdminController::class, 'exportCsv'])->name('export.csv');
+            Route::get('/export/pdf', [ResearchStudyAdminController::class, 'exportPdf'])->name('export.pdf');
+            Route::get('/{submission}', [ResearchStudyAdminController::class, 'show'])->name('show');
+            Route::get('/{submission}/pdf', [ResearchStudyAdminController::class, 'exportDetailPdf'])->name('pdf-detail');
+            Route::delete('/{submission}', [ResearchStudyAdminController::class, 'destroy'])->name('destroy');
+        });
+
+        // Payment & Wallet Finance Command Center (Admin Only)
+        Route::prefix('finance')->name('finance.')->middleware('admin')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\FinanceController::class, 'index'])->name('index');
+            Route::get('/wallets', [\App\Http\Controllers\Admin\FinanceController::class, 'wallets'])->name('wallets');
+            Route::post('/wallets/{wallet}/freeze', [\App\Http\Controllers\Admin\FinanceController::class, 'freezeWallet'])->name('wallets.freeze');
+            Route::post('/wallets/{wallet}/unfreeze', [\App\Http\Controllers\Admin\FinanceController::class, 'unfreezeWallet'])->name('wallets.unfreeze');
+
+            Route::get('/topups', [\App\Http\Controllers\Admin\FinanceController::class, 'topups'])->name('topups');
+            Route::post('/topups/{topup}/simulate', [\App\Http\Controllers\Admin\FinanceController::class, 'simulateTopupPaid'])->name('topups.simulate');
+
+            Route::get('/payments', [\App\Http\Controllers\Admin\FinanceController::class, 'payments'])->name('payments');
+            Route::get('/withdrawals', [\App\Http\Controllers\Admin\FinanceController::class, 'withdrawals'])->name('withdrawals');
+
+            Route::get('/earnings', [\App\Http\Controllers\Admin\FinanceController::class, 'earnings'])->name('earnings');
+            Route::post('/earnings/release', [\App\Http\Controllers\Admin\FinanceController::class, 'releaseMatureEarnings'])->name('earnings.release');
+
+            Route::get('/payouts', [\App\Http\Controllers\Admin\FinanceController::class, 'payouts'])->name('payouts');
+            Route::post('/payouts/run-auto', [\App\Http\Controllers\Admin\FinanceController::class, 'triggerAutoPayouts'])->name('payouts.run-auto');
+            Route::post('/payouts/{payout}/verify', [\App\Http\Controllers\Admin\FinanceController::class, 'verifyPayout'])->name('payouts.verify');
+
+            Route::get('/refunds', [\App\Http\Controllers\Admin\FinanceController::class, 'refunds'])->name('refunds');
+            Route::post('/refunds/{refund}/approve', [\App\Http\Controllers\Admin\FinanceController::class, 'approveRefund'])->name('refunds.approve');
+            Route::post('/refunds/{refund}/reject', [\App\Http\Controllers\Admin\FinanceController::class, 'rejectRefund'])->name('refunds.reject');
+
+            Route::get('/destinations', [\App\Http\Controllers\Admin\FinanceController::class, 'destinations'])->name('destinations');
+
+            Route::get('/settings', [\App\Http\Controllers\Admin\FinanceController::class, 'settings'])->name('settings');
+            Route::post('/settings', [\App\Http\Controllers\Admin\FinanceController::class, 'updateSettings'])->name('settings.update');
+
+            Route::get('/reconciliation', [\App\Http\Controllers\Admin\FinanceController::class, 'reconciliation'])->name('reconciliation');
+            Route::post('/reconciliation/run', [\App\Http\Controllers\Admin\FinanceController::class, 'runReconciliationNow'])->name('reconciliation.run');
+
+            Route::get('/reports', [\App\Http\Controllers\Admin\FinanceController::class, 'reports'])->name('reports');
+            Route::get('/reports/export', [\App\Http\Controllers\Admin\FinanceController::class, 'exportReport'])->name('reports.export');
+
+            Route::get('/audit-logs', [\App\Http\Controllers\Admin\FinanceController::class, 'auditLogs'])->name('audit-logs');
         });
     });
 });

@@ -195,3 +195,58 @@ Route::get('/ipaymu/return', [\App\Http\Controllers\Api\IpaymuReturnController::
     ->name('ipaymu.return');
 Route::get('/ipaymu/cancel', [\App\Http\Controllers\Api\IpaymuReturnController::class, 'cancelled'])
     ->name('ipaymu.cancel');
+
+/*
+|--------------------------------------------------------------------------
+| Payment & Wallet System v1 API
+|--------------------------------------------------------------------------
+*/
+Route::prefix('v1')->group(function () {
+    // Public signed gateway webhooks
+    Route::post('/webhooks/xendit/payment', [\App\Http\Controllers\Api\V1\WebhookV1Controller::class, 'xenditPayment'])
+        ->name('api.v1.webhooks.xendit.payment');
+    Route::post('/webhooks/xendit/payout', [\App\Http\Controllers\Api\V1\WebhookV1Controller::class, 'xenditPayout'])
+        ->name('api.v1.webhooks.xendit.payout');
+    Route::post('/webhooks/doku', [\App\Http\Controllers\Api\V1\WebhookV1Controller::class, 'doku'])
+        ->name('api.v1.webhooks.doku');
+
+    Route::middleware('auth:sanctum')->group(function () {
+        // Customer Wallet & Payment APIs
+        Route::prefix('customer/wallet')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\V1\CustomerWalletController::class, 'show']);
+            Route::get('/transactions', [\App\Http\Controllers\Api\V1\CustomerWalletController::class, 'transactions']);
+            Route::get('/transactions/{id}', [\App\Http\Controllers\Api\V1\CustomerWalletController::class, 'transactionDetail']);
+
+            Route::get('/topups/methods', [\App\Http\Controllers\Api\V1\CustomerTopupController::class, 'methods']);
+            Route::post('/topups', [\App\Http\Controllers\Api\V1\CustomerTopupController::class, 'store']);
+            Route::get('/topups/{id}', [\App\Http\Controllers\Api\V1\CustomerTopupController::class, 'show']);
+            Route::post('/topups/{id}/simulate-paid', [\App\Http\Controllers\Api\V1\CustomerTopupController::class, 'simulatePaid']);
+
+            Route::post('/payments', [\App\Http\Controllers\Api\V1\CustomerWalletPaymentController::class, 'store']);
+
+            Route::get('/withdrawals', [\App\Http\Controllers\Api\V1\CustomerWithdrawalController::class, 'index']);
+            Route::post('/withdrawals', [\App\Http\Controllers\Api\V1\CustomerWithdrawalController::class, 'store']);
+
+            Route::get('/refunds', [\App\Http\Controllers\Api\V1\CustomerRefundController::class, 'index']);
+            Route::post('/refunds', [\App\Http\Controllers\Api\V1\CustomerRefundController::class, 'store']);
+
+            Route::get('/destinations', [\App\Http\Controllers\Api\V1\CustomerDestinationController::class, 'index']);
+            Route::post('/destinations', [\App\Http\Controllers\Api\V1\CustomerDestinationController::class, 'store']);
+            Route::patch('/destinations/{id}', [\App\Http\Controllers\Api\V1\CustomerDestinationController::class, 'update']);
+        });
+
+        // Courier Wallet, Earnings & Auto-Payout APIs
+        Route::prefix('courier/wallet')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'show']);
+            Route::get('/transactions', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'transactions']);
+            Route::get('/transactions/{id}', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'transactionDetail']);
+            Route::get('/earnings', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'earnings']);
+            Route::get('/payouts', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'payouts']);
+            Route::get('/payouts/{id}', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'payoutDetail']);
+            Route::get('/notifications', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'notifications']);
+            Route::get('/destinations', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'destinations']);
+            Route::post('/destinations', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'storeDestination']);
+            Route::patch('/destinations/{id}/default', [\App\Http\Controllers\Api\V1\CourierWalletV1Controller::class, 'setDefaultDestination']);
+        });
+    });
+});

@@ -392,6 +392,10 @@ class OrderController extends Controller
                 }
             }
 
+            if ($newStatus === 'delivered' && $previousOrderStatus !== 'delivered' && \Illuminate\Support\Facades\Schema::hasTable('courier_earnings')) {
+                \App\Modules\Earnings\Jobs\CourierEarningJob::dispatch($order->id)->afterCommit();
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Status order berhasil diperbarui.',
