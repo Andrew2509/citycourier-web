@@ -4,7 +4,24 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
+use App\Modules\Payout\Services\DokuKirimAccountInquiryService;
+use App\Modules\Wallet\Services\WalletLedgerManager;
+use App\Services\DanaService;
+use App\Services\FonnteWhatsAppService;
+use App\Services\IpaymuPaymentService;
+use App\Services\iPaymuService;
+use App\Services\KomercePaymentService;
+use App\Services\MapService;
+use App\Services\OvoService;
+use App\Services\RajaOngkirService;
+use App\Services\WhatsAppManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class SettingController extends Controller
 {
@@ -14,58 +31,58 @@ class SettingController extends Controller
     public function providers()
     {
         $whatsapp = [
-            'token'       => Setting::get('fonnte_token', env('FONNTE_TOKEN')),
+            'token' => Setting::get('fonnte_token', env('FONNTE_TOKEN')),
             'send_number' => Setting::get('fonnte_send_number', env('FONNTE_SEND_NUMBER', '')),
-            'provider'    => Setting::get('whatsapp_provider', env('WHATSAPP_PROVIDER', 'fonnte')),
+            'provider' => Setting::get('whatsapp_provider', env('WHATSAPP_PROVIDER', 'fonnte')),
         ];
 
         $rajaongkir = [
-            'api_key'      => Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY')),
+            'api_key' => Setting::get('rajaongkir_api_key', env('RAJAONGKIR_API_KEY')),
             'account_type' => Setting::get('rajaongkir_account_type', env('RAJAONGKIR_ACCOUNT_TYPE', 'starter')),
-            'provider'     => Setting::get('rajaongkir_provider', 'rajaongkir'),
+            'provider' => Setting::get('rajaongkir_provider', 'rajaongkir'),
         ];
         $rajaongkir_sandbox = Setting::get('rajaongkir_sandbox');
 
         $payment = [
-            'api_key'      => Setting::get('komerce_payment_api_key', env('KOMERCE_PAYMENT_API_KEY', '')),
-            'env'          => Setting::get('komerce_payment_env', env('KOMERCE_PAYMENT_ENV', 'sandbox')),
+            'api_key' => Setting::get('komerce_payment_api_key', env('KOMERCE_PAYMENT_API_KEY', '')),
+            'env' => Setting::get('komerce_payment_env', env('KOMERCE_PAYMENT_ENV', 'sandbox')),
             'callback_key' => Setting::get('komerce_payment_callback_key', env('KOMERCE_PAYMENT_CALLBACK_KEY', '')),
         ];
 
         $mapProvider = Setting::get('map_provider', env('MAP_PROVIDER', 'osrm'));
         $map = [
             'provider' => $mapProvider,
-            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', \App\Services\MapService::defaultBaseUrl($mapProvider))),
-            'api_key'  => Setting::get('map_api_key', env('MAP_API_KEY', '')),
+            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', MapService::defaultBaseUrl($mapProvider))),
+            'api_key' => Setting::get('map_api_key', env('MAP_API_KEY', '')),
         ];
 
         $dana = [
-            'mode'          => Setting::get('dana_mode', 'mock'),
-            'api_base_url'  => Setting::get('dana_api_base_url', 'https://api.sandbox.dana.id'),
-            'client_id'     => Setting::get('dana_client_id', ''),
+            'mode' => Setting::get('dana_mode', 'mock'),
+            'api_base_url' => Setting::get('dana_api_base_url', 'https://api.sandbox.dana.id'),
+            'client_id' => Setting::get('dana_client_id', ''),
             'client_secret' => Setting::get('dana_client_secret', ''),
-            'merchant_id'   => Setting::get('dana_merchant_id', ''),
-            'public_key'    => Setting::get('dana_public_key', ''),
-            'private_key'   => Setting::get('dana_private_key', ''),
-            'callback_url'  => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
+            'merchant_id' => Setting::get('dana_merchant_id', ''),
+            'public_key' => Setting::get('dana_public_key', ''),
+            'private_key' => Setting::get('dana_private_key', ''),
+            'callback_url' => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
         ];
 
         $ovo = [
-            'mode'          => Setting::get('ovo_mode', 'mock'),
-            'api_base_url'  => Setting::get('ovo_api_base_url', 'https://api.ovo.id'),
-            'client_id'     => Setting::get('ovo_client_id', ''),
+            'mode' => Setting::get('ovo_mode', 'mock'),
+            'api_base_url' => Setting::get('ovo_api_base_url', 'https://api.ovo.id'),
+            'client_id' => Setting::get('ovo_client_id', ''),
             'client_secret' => Setting::get('ovo_client_secret', ''),
-            'partner_id'    => Setting::get('ovo_partner_id', ''),
-            'merchant_id'   => Setting::get('ovo_merchant_id', ''),
-            'public_key'    => Setting::get('ovo_public_key', ''),
-            'private_key'   => Setting::get('ovo_private_key', ''),
+            'partner_id' => Setting::get('ovo_partner_id', ''),
+            'merchant_id' => Setting::get('ovo_merchant_id', ''),
+            'public_key' => Setting::get('ovo_public_key', ''),
+            'private_key' => Setting::get('ovo_private_key', ''),
         ];
 
-        $ipaymu = \App\Services\iPaymuService::credentials();
+        $ipaymu = iPaymuService::credentials();
         $ipaymu['webhook_url'] = url('/api/ipaymu/webhook');
-        $ipaymu['configured'] = !empty($ipaymu['api_key']) && !empty($ipaymu['merchant_id'] ?: $ipaymu['va']);
+        $ipaymu['configured'] = ! empty($ipaymu['api_key']) && ! empty($ipaymu['merchant_id'] ?: $ipaymu['va']);
 
-        $gatewayResolver = app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class);
+        $gatewayResolver = app(GatewayCredentialsResolver::class);
         $xenditRaw = $gatewayResolver->xendit();
         $xendit = [
             'base_url' => $xenditRaw['base_url'],
@@ -123,7 +140,7 @@ class SettingController extends Controller
      */
     public function ipaymu()
     {
-        $settings = \App\Services\iPaymuService::credentials();
+        $settings = iPaymuService::credentials();
         $settings['webhook_url'] = url('/api/ipaymu/webhook');
 
         return view('admin.settings.ipaymu', compact('settings'));
@@ -135,15 +152,15 @@ class SettingController extends Controller
     public function updateIpaymu(Request $request)
     {
         $request->validate([
-            'ipaymu_base_url'    => 'required|url',
-            'ipaymu_va'          => 'required|string|max:64',
-            'ipaymu_api_key'     => 'required|string|min:8',
+            'ipaymu_base_url' => 'required|url',
+            'ipaymu_va' => 'required|string|max:64',
+            'ipaymu_api_key' => 'required|string|min:8',
             'ipaymu_buyer_email' => 'nullable|email|max:150',
             'ipaymu_payment_mode' => 'nullable|in:direct,redirect,auto',
-            'ipaymu_timeout'     => 'nullable|integer|min:5|max:120',
+            'ipaymu_timeout' => 'nullable|integer|min:5|max:120',
         ]);
 
-        $normalizedBaseUrl = \App\Services\iPaymuService::normalizeBaseUrl($request->ipaymu_base_url);
+        $normalizedBaseUrl = iPaymuService::normalizeBaseUrl($request->ipaymu_base_url);
         Setting::set('ipaymu_base_url', $normalizedBaseUrl, 'ipaymu');
         Setting::set('ipaymu_va', $request->ipaymu_va, 'ipaymu');
         Setting::set('ipaymu_api_key', trim($request->ipaymu_api_key), 'ipaymu');
@@ -170,7 +187,7 @@ class SettingController extends Controller
             }
         }
 
-        \App\Services\iPaymuService::flushCredentialsCache();
+        iPaymuService::flushCredentialsCache();
 
         return redirect()->back()->with('success', 'Pengaturan iPaymu berhasil diperbarui.');
     }
@@ -182,19 +199,19 @@ class SettingController extends Controller
     public function testIpaymu(Request $request)
     {
         try {
-            $current = \App\Services\iPaymuService::credentials();
+            $current = iPaymuService::credentials();
 
             $override = [
-                'base_url'   => \App\Services\iPaymuService::normalizeBaseUrl(
+                'base_url' => iPaymuService::normalizeBaseUrl(
                     (string) ($request->input('ipaymu_base_url') ?: $current['base_url'])
                 ),
-                'va'         => trim((string) ($request->input('ipaymu_va') ?: $current['va'])),
+                'va' => trim((string) ($request->input('ipaymu_va') ?: $current['va'])),
                 'merchant_id' => trim((string) ($request->input('ipaymu_merchant_id') ?: $current['merchant_id'])),
-                'api_key'    => trim((string) ($request->input('ipaymu_api_key') ?: $current['api_key'])),
+                'api_key' => trim((string) ($request->input('ipaymu_api_key') ?: $current['api_key'])),
                 'secret_key' => $request->filled('ipaymu_secret_key')
                     ? trim((string) $request->input('ipaymu_secret_key'))
                     : $current['secret_key'],
-                'timeout'    => (int) ($request->input('ipaymu_timeout') ?: $current['timeout']),
+                'timeout' => (int) ($request->input('ipaymu_timeout') ?: $current['timeout']),
             ];
 
             if (empty($override['api_key']) || empty($override['va'] ?: $override['merchant_id'])) {
@@ -204,8 +221,8 @@ class SettingController extends Controller
                 ], 422);
             }
 
-            $service = new \App\Services\iPaymuService($override);
-            $result = $service->inquire('CITY-COURIER-TEST-CONNECTION-' . time());
+            $service = new iPaymuService($override);
+            $result = $service->inquire('CITY-COURIER-TEST-CONNECTION-'.time());
 
             // interpretResponse() mengembalikan http_code terstruktur di level
             // hasil, dan raw = isi body provider (bukan envelope HTTP).
@@ -232,7 +249,7 @@ class SettingController extends Controller
             // error bisnis) atau HTTP < 400 sama-sama membuktikan server dijangkau,
             // tanda tangan, dan kredensial diterima. Sekalian uji GET payment-channels
             // agar Admin tahu apakah saluran VA & QRIS Checkout ikut aktif.
-            if ($httpCode > 0 && (($isDataNotFound && !$isRouteNotFound) || $httpCode < 400)) {
+            if ($httpCode > 0 && (($isDataNotFound && ! $isRouteNotFound) || $httpCode < 400)) {
                 $channelSummary = $this->probeIpaymuCheckoutChannels($service);
                 $baseMsg = $isDataNotFound
                     ? "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons, tanda tangan & kredensial API diterima."
@@ -240,9 +257,9 @@ class SettingController extends Controller
 
                 return response()->json([
                     'success' => $channelSummary['ok'],
-                    'message' => $baseMsg . ' ' . $channelSummary['message'],
-                    'data'    => [
-                        'inquire'  => $result,
+                    'message' => $baseMsg.' '.$channelSummary['message'],
+                    'data' => [
+                        'inquire' => $result,
                         'channels' => $channelSummary['summary'],
                     ],
                 ], $channelSummary['ok'] ? 200 : 400);
@@ -254,7 +271,7 @@ class SettingController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Endpoint iPaymu tidak ditemukan (HTTP 404). Periksa API Base URL: harusnya hanya host, '
-                        . "mis. https://sandbox.ipaymu.com — path /api/v2/... ditambahkan otomatis oleh backend. Diterima: {$override['base_url']}",
+                        ."mis. https://sandbox.ipaymu.com — path /api/v2/... ditambahkan otomatis oleh backend. Diterima: {$override['base_url']}",
                 ], 400);
             }
 
@@ -270,14 +287,14 @@ class SettingController extends Controller
                 'success' => false,
                 'message' => $isAuthIssue
                     ? 'Server iPaymu menolak kredensial. Periksa API Key, VA, atau mode sandbox/production.'
-                        . ($providerMsg !== '' ? ' Alasan server: ' . $providerMsg : '.')
-                    : 'Koneksi Gagal: ' . ($result['error'] ?? 'Tidak dapat menghubungi server iPaymu.'),
-                'data'    => $result,
+                        .($providerMsg !== '' ? ' Alasan server: '.$providerMsg : '.')
+                    : 'Koneksi Gagal: '.($result['error'] ?? 'Tidak dapat menghubungi server iPaymu.'),
+                'data' => $result,
             ], $isAuthIssue ? 401 : 400);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+                'message' => 'Koneksi Gagal (Exception): '.$e->getMessage(),
             ], 400);
         }
     }
@@ -288,33 +305,34 @@ class SettingController extends Controller
      *
      * @return array{ok:bool, message:string, summary:array<string, mixed>}
      */
-    private function probeIpaymuCheckoutChannels(\App\Services\iPaymuService $service): array
+    private function probeIpaymuCheckoutChannels(iPaymuService $service): array
     {
         $channelsRes = $service->paymentChannels();
-        if (!($channelsRes['success'] ?? false) || !is_array($channelsRes['data'] ?? null)) {
+        if (! ($channelsRes['success'] ?? false) || ! is_array($channelsRes['data'] ?? null)) {
             $err = (string) ($channelsRes['error'] ?? 'gagal membaca payment-channels');
+
             return [
-                'ok'      => false,
+                'ok' => false,
                 'message' => "Namun saluran Checkout (VA & QRIS) gagal dimuat: {$err}.",
                 'summary' => ['va_count' => 0, 'qris_count' => 0, 'error' => $err],
             ];
         }
 
-        $methods = app(\App\Services\IpaymuPaymentService::class)
+        $methods = app(IpaymuPaymentService::class)
             ->extractActiveCheckoutMethods($channelsRes['data']);
         $vaCount = count(array_filter($methods, fn ($m) => ($m['group'] ?? '') === 'virtual_account'));
         $qrisCount = count(array_filter($methods, fn ($m) => ($m['group'] ?? '') === 'qris'));
 
         if ($vaCount + $qrisCount === 0) {
             return [
-                'ok'      => false,
+                'ok' => false,
                 'message' => 'Saluran Checkout (VA & QRIS) belum ada yang aktif pada akun iPaymu ini, sehingga tidak tampil di halaman Checkout.',
                 'summary' => ['va_count' => 0, 'qris_count' => 0],
             ];
         }
 
         return [
-            'ok'      => true,
+            'ok' => true,
             'message' => "Saluran Checkout aktif siap tampil: {$vaCount} Virtual Account, {$qrisCount} QRIS.",
             'summary' => ['va_count' => $vaCount, 'qris_count' => $qrisCount],
         ];
@@ -326,9 +344,9 @@ class SettingController extends Controller
     public function whatsapp()
     {
         $settings = [
-            'token'       => Setting::get('fonnte_token', env('FONNTE_TOKEN')),
+            'token' => Setting::get('fonnte_token', env('FONNTE_TOKEN')),
             'send_number' => Setting::get('fonnte_send_number', env('FONNTE_SEND_NUMBER', '')),
-            'provider'    => Setting::get('whatsapp_provider', env('WHATSAPP_PROVIDER', 'fonnte')),
+            'provider' => Setting::get('whatsapp_provider', env('WHATSAPP_PROVIDER', 'fonnte')),
         ];
 
         return view('admin.settings.whatsapp', compact('settings'));
@@ -340,9 +358,9 @@ class SettingController extends Controller
     public function updateWhatsapp(Request $request)
     {
         $request->validate([
-            'fonnte_token'       => 'required|string',
+            'fonnte_token' => 'required|string',
             'fonnte_send_number' => 'nullable|string',
-            'whatsapp_provider'  => 'nullable|in:fonnte,orbitwa,mock,auto',
+            'whatsapp_provider' => 'nullable|in:fonnte,orbitwa,mock,auto',
         ]);
 
         Setting::set('fonnte_token', $request->fonnte_token, 'whatsapp');
@@ -355,11 +373,11 @@ class SettingController extends Controller
     /**
      * Test the WhatsApp connection.
      */
-    public function testWhatsapp(Request $request, \App\Services\WhatsAppManager $whatsapp)
+    public function testWhatsapp(Request $request, WhatsAppManager $whatsapp)
     {
         $request->validate([
-            'phone'              => 'required|string',
-            'token'              => 'nullable|string',
+            'phone' => 'required|string',
+            'token' => 'nullable|string',
             'fonnte_send_number' => 'nullable|string',
         ]);
 
@@ -367,17 +385,17 @@ class SettingController extends Controller
             $testToken = $request->input('token');
             $sendNumber = $request->input('fonnte_send_number');
 
-            if (!empty($testToken)) {
-                $service = new \App\Services\FonnteWhatsAppService(trim($testToken), $sendNumber);
+            if (! empty($testToken)) {
+                $service = new FonnteWhatsAppService(trim($testToken), $sendNumber);
                 $response = $service->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
             } else {
                 $response = $whatsapp->sendMessage($request->phone, 'Test koneksi WhatsApp dari City Courier Admin Panel. Jika Anda menerima ini, konfigurasi Fonnte sudah benar.');
             }
 
             $isSuccess = $response['success'] ?? false;
-            $msg = $isSuccess 
-                ? ('Pesan test berhasil dikirim ke ' . $request->phone)
-                : ('Gagal mengirim pesan: ' . ($response['message'] ?? 'Kesalahan tidak diketahui'));
+            $msg = $isSuccess
+                ? ('Pesan test berhasil dikirim ke '.$request->phone)
+                : ('Gagal mengirim pesan: '.($response['message'] ?? 'Kesalahan tidak diketahui'));
 
             if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -395,11 +413,11 @@ class SettingController extends Controller
             if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Exception: ' . $e->getMessage(),
+                    'message' => 'Exception: '.$e->getMessage(),
                 ], 500);
             }
 
-            return redirect()->back()->with('error', 'Exception: ' . $e->getMessage())->with('provider', 'whatsapp');
+            return redirect()->back()->with('error', 'Exception: '.$e->getMessage())->with('provider', 'whatsapp');
         }
     }
 
@@ -439,7 +457,7 @@ class SettingController extends Controller
     /**
      * Test the RajaOngkir connection.
      */
-    public function testRajaongkir(\App\Services\RajaOngkirService $service)
+    public function testRajaongkir(RajaOngkirService $service)
     {
         try {
             if ($service->getProvider() === 'komerce') {
@@ -447,27 +465,29 @@ class SettingController extends Controller
             } else {
                 $response = $service->getProvinces();
             }
-            
+
             // Standard RajaOngkir logic
             if (isset($response['rajaongkir']['status']['code']) && $response['rajaongkir']['status']['code'] == 200) {
                 $count = count($response['rajaongkir']['results']);
+
                 return response()->json([
                     'success' => true,
                     'message' => "Koneksi Berhasil! Terdeteksi $count provinsi.",
-                    'data' => array_slice($response['rajaongkir']['results'], 0, 5)
+                    'data' => array_slice($response['rajaongkir']['results'], 0, 5),
                 ]);
             }
 
             // Komerce logic (New platform structure)
-            $isKomerceSuccess = (isset($response['status']) && $response['status'] == true) || 
+            $isKomerceSuccess = (isset($response['status']) && $response['status'] == true) ||
                                (isset($response['meta']['status']) && $response['meta']['status'] == 'success');
 
             if ($isKomerceSuccess) {
                 $count = count($response['data']);
+
                 return response()->json([
                     'success' => true,
                     'message' => "Koneksi Berhasil (Komerce)! Terdeteksi $count provinsi.",
-                    'data' => array_slice($response['data'], 0, 5)
+                    'data' => array_slice($response['data'], 0, 5),
                 ]);
             }
 
@@ -488,20 +508,20 @@ class SettingController extends Controller
             }
 
             // If empty response or unexpected structure
-            if (!$response || (isset($response['status']) && $response['status'] == false) || (isset($response['meta']['status']) && $response['meta']['status'] == 'failed')) {
+            if (! $response || (isset($response['status']) && $response['status'] == false) || (isset($response['meta']['status']) && $response['meta']['status'] == 'failed')) {
                 $errorMessage = $response['meta']['message'] ?? ($response['message'] ?? ($response['error'] ?? 'Response Kosong atau Tidak Valid'));
             }
 
             return response()->json([
                 'success' => false,
-                'message' => "Koneksi Gagal: " . $errorMessage,
-                'raw' => $response // For debugging
+                'message' => 'Koneksi Gagal: '.$errorMessage,
+                'raw' => $response, // For debugging
             ], 400);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => "Koneksi Gagal (Exception): " . $e->getMessage()
+                'message' => 'Koneksi Gagal (Exception): '.$e->getMessage(),
             ], 500);
         }
     }
@@ -516,8 +536,8 @@ class SettingController extends Controller
     public function payment()
     {
         $settings = [
-            'api_key'      => Setting::get('komerce_payment_api_key', env('KOMERCE_PAYMENT_API_KEY', '')),
-            'env'          => Setting::get('komerce_payment_env', env('KOMERCE_PAYMENT_ENV', 'sandbox')),
+            'api_key' => Setting::get('komerce_payment_api_key', env('KOMERCE_PAYMENT_API_KEY', '')),
+            'env' => Setting::get('komerce_payment_env', env('KOMERCE_PAYMENT_ENV', 'sandbox')),
             'callback_key' => Setting::get('komerce_payment_callback_key', env('KOMERCE_PAYMENT_CALLBACK_KEY', '')),
         ];
 
@@ -530,13 +550,13 @@ class SettingController extends Controller
     public function updatePayment(Request $request)
     {
         $request->validate([
-            'komerce_payment_api_key'      => 'required|string|min:10',
-            'komerce_payment_env'          => 'required|in:sandbox,production',
+            'komerce_payment_api_key' => 'required|string|min:10',
+            'komerce_payment_env' => 'required|in:sandbox,production',
             'komerce_payment_callback_key' => 'nullable|string',
         ]);
 
-        Setting::set('komerce_payment_api_key',      $request->komerce_payment_api_key,      'payment');
-        Setting::set('komerce_payment_env',          $request->komerce_payment_env,          'payment');
+        Setting::set('komerce_payment_api_key', $request->komerce_payment_api_key, 'payment');
+        Setting::set('komerce_payment_env', $request->komerce_payment_env, 'payment');
         Setting::set('komerce_payment_callback_key', $request->komerce_payment_callback_key ?? '', 'payment');
 
         return redirect()->back()->with('success', 'Pengaturan Komerce Payment berhasil diperbarui.');
@@ -545,33 +565,34 @@ class SettingController extends Controller
     /**
      * Test koneksi ke Komerce Payment API.
      */
-    public function testPayment(\App\Services\KomercePaymentService $paymentService)
+    public function testPayment(KomercePaymentService $paymentService)
     {
         try {
             $result = $paymentService->getPaymentMethods();
 
-            $code    = $result['meta']['code'] ?? 0;
+            $code = $result['meta']['code'] ?? 0;
             $message = $result['meta']['message'] ?? 'Tidak ada respons';
 
             if ($code === 200) {
                 $count = count($result['data'] ?? []);
+
                 return response()->json([
                     'success' => true,
                     'message' => "Koneksi Berhasil! Terdeteksi {$count} metode pembayaran.",
-                    'data'    => $result['data'] ?? [],
+                    'data' => $result['data'] ?? [],
                 ]);
             }
 
             return response()->json([
                 'success' => false,
                 'message' => "Koneksi Gagal: {$message}",
-                'raw'     => $result,
+                'raw' => $result,
             ], 400);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+                'message' => 'Koneksi Gagal (Exception): '.$e->getMessage(),
             ], 500);
         }
     }
@@ -588,7 +609,7 @@ class SettingController extends Controller
         $provider = Setting::get('map_provider', env('MAP_PROVIDER', 'osrm'));
         $settings = [
             'provider' => $provider,
-            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', \App\Services\MapService::defaultBaseUrl($provider))),
+            'base_url' => Setting::get('map_base_url', env('MAP_BASE_URL', MapService::defaultBaseUrl($provider))),
             'api_key' => Setting::get('map_api_key', env('MAP_API_KEY', '')),
         ];
 
@@ -617,7 +638,7 @@ class SettingController extends Controller
     /**
      * Test map connection with a simple search.
      */
-    public function testMap(\App\Services\MapService $mapService)
+    public function testMap(MapService $mapService)
     {
         try {
             // Test call to searchPOI with Surabaya coordinates
@@ -626,6 +647,7 @@ class SettingController extends Controller
             if ($result['success']) {
                 $features = $result['data']['features'] ?? [];
                 $count = count($features);
+
                 return response()->json([
                     'success' => true,
                     'message' => "Koneksi Berhasil! Ditemukan {$count} lokasi untuk pencarian 'Surabaya'.",
@@ -635,14 +657,14 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => "Koneksi Gagal: " . ($result['message'] ?? 'Kesalahan tidak diketahui'),
+                'message' => 'Koneksi Gagal: '.($result['message'] ?? 'Kesalahan tidak diketahui'),
                 'raw' => $result,
             ], 400);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+                'message' => 'Koneksi Gagal (Exception): '.$e->getMessage(),
             ], 500);
         }
     }
@@ -657,14 +679,14 @@ class SettingController extends Controller
     public function dana()
     {
         $settings = [
-            'mode'          => Setting::get('dana_mode', 'mock'),
-            'api_base_url'  => Setting::get('dana_api_base_url', 'https://api.sandbox.dana.id'),
-            'client_id'     => Setting::get('dana_client_id', ''),
+            'mode' => Setting::get('dana_mode', 'mock'),
+            'api_base_url' => Setting::get('dana_api_base_url', 'https://api.sandbox.dana.id'),
+            'client_id' => Setting::get('dana_client_id', ''),
             'client_secret' => Setting::get('dana_client_secret', ''),
-            'merchant_id'   => Setting::get('dana_merchant_id', ''),
-            'public_key'    => Setting::get('dana_public_key', ''),
-            'private_key'   => Setting::get('dana_private_key', ''),
-            'callback_url'  => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
+            'merchant_id' => Setting::get('dana_merchant_id', ''),
+            'public_key' => Setting::get('dana_public_key', ''),
+            'private_key' => Setting::get('dana_private_key', ''),
+            'callback_url' => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
         ];
 
         return view('admin.settings.dana', compact('settings'));
@@ -676,14 +698,14 @@ class SettingController extends Controller
     public function updateDana(Request $request)
     {
         $request->validate([
-            'dana_mode'          => 'required|in:mock,sandbox,production',
-            'dana_api_base_url'  => 'required|url',
-            'dana_client_id'     => 'required|string|max:64',
+            'dana_mode' => 'required|in:mock,sandbox,production',
+            'dana_api_base_url' => 'required|url',
+            'dana_client_id' => 'required|string|max:64',
             'dana_client_secret' => 'nullable|string',
-            'dana_merchant_id'   => 'required|string|max:64',
-            'dana_public_key'    => 'nullable|string',
-            'dana_private_key'   => 'nullable|string',
-            'dana_callback_url'  => 'required|url',
+            'dana_merchant_id' => 'required|string|max:64',
+            'dana_public_key' => 'nullable|string',
+            'dana_private_key' => 'nullable|string',
+            'dana_callback_url' => 'required|url',
         ]);
 
         Setting::set('dana_mode', $request->dana_mode, 'dana');
@@ -711,28 +733,28 @@ class SettingController extends Controller
         try {
             // activeProvider() tidak menyimpan baris DB — hanya validasi kredensial
             // & membangun URL binding (khusus OfficialDanaProvider).
-            $service = new \App\Services\DanaService();
+            $service = new DanaService;
             $provider = $service->activeProvider();
             $result = $provider->applyOTT(null);
 
-            if ($result['success'] && !empty($result['redirect_url'])) {
+            if ($result['success'] && ! empty($result['redirect_url'])) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Koneksi DANA Berhasil! URL binding berhasil dibuat.',
-                    'data'    => ['redirect_url' => $result['redirect_url']],
+                    'data' => ['redirect_url' => $result['redirect_url']],
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi Gagal: ' . ($result['error'] ?? 'Tidak dapat membuat URL binding.'),
-                'detail'  => $result['exception'] ?? null,
-                'data'    => $result,
+                'message' => 'Koneksi Gagal: '.($result['error'] ?? 'Tidak dapat membuat URL binding.'),
+                'detail' => $result['exception'] ?? null,
+                'data' => $result,
             ], 400);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+                'message' => 'Koneksi Gagal (Exception): '.$e->getMessage(),
             ], 500);
         }
     }
@@ -746,14 +768,14 @@ class SettingController extends Controller
     public function ovo()
     {
         $settings = [
-            'mode'          => Setting::get('ovo_mode', 'mock'),
-            'api_base_url'  => Setting::get('ovo_api_base_url', 'https://api.ovo.id'),
-            'client_id'     => Setting::get('ovo_client_id', ''),
+            'mode' => Setting::get('ovo_mode', 'mock'),
+            'api_base_url' => Setting::get('ovo_api_base_url', 'https://api.ovo.id'),
+            'client_id' => Setting::get('ovo_client_id', ''),
             'client_secret' => Setting::get('ovo_client_secret', ''),
-            'partner_id'    => Setting::get('ovo_partner_id', ''),
-            'merchant_id'   => Setting::get('ovo_merchant_id', ''),
-            'public_key'    => Setting::get('ovo_public_key', ''),
-            'private_key'   => Setting::get('ovo_private_key', ''),
+            'partner_id' => Setting::get('ovo_partner_id', ''),
+            'merchant_id' => Setting::get('ovo_merchant_id', ''),
+            'public_key' => Setting::get('ovo_public_key', ''),
+            'private_key' => Setting::get('ovo_private_key', ''),
         ];
 
         return view('admin.settings.ovo', compact('settings'));
@@ -765,14 +787,14 @@ class SettingController extends Controller
     public function updateOvo(Request $request)
     {
         $request->validate([
-            'ovo_mode'         => 'required|in:mock,sandbox,production',
+            'ovo_mode' => 'required|in:mock,sandbox,production',
             'ovo_api_base_url' => 'required|url',
-            'ovo_client_id'    => 'nullable|string|max:100',
-            'ovo_client_secret'=> 'nullable|string',
-            'ovo_partner_id'   => 'nullable|string|max:100',
-            'ovo_merchant_id'  => 'nullable|string|max:100',
-            'ovo_public_key'   => 'nullable|string',
-            'ovo_private_key'  => 'nullable|string',
+            'ovo_client_id' => 'nullable|string|max:100',
+            'ovo_client_secret' => 'nullable|string',
+            'ovo_partner_id' => 'nullable|string|max:100',
+            'ovo_merchant_id' => 'nullable|string|max:100',
+            'ovo_public_key' => 'nullable|string',
+            'ovo_private_key' => 'nullable|string',
         ]);
 
         Setting::set('ovo_mode', $request->ovo_mode, 'ovo');
@@ -793,27 +815,27 @@ class SettingController extends Controller
     public function testOvo()
     {
         try {
-            $service = new \App\Services\OvoService();
+            $service = new OvoService;
             $provider = $service->activeProvider();
             $result = $provider->balanceInquiry();
 
             if ($result['success']) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Koneksi OVO SNAP Berhasil! Saldo deposit mitra terverifikasi: Rp ' . number_format($result['balance'] ?? 0, 0, ',', '.'),
-                    'data'    => $result,
+                    'message' => 'Koneksi OVO SNAP Berhasil! Saldo deposit mitra terverifikasi: Rp '.number_format($result['balance'] ?? 0, 0, ',', '.'),
+                    'data' => $result,
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi OVO Gagal: ' . ($result['error'] ?? 'Tidak dapat terhubung ke server OVO.'),
-                'data'    => $result,
+                'message' => 'Koneksi OVO Gagal: '.($result['error'] ?? 'Tidak dapat terhubung ke server OVO.'),
+                'data' => $result,
             ], 400);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
+                'message' => 'Koneksi Gagal (Exception): '.$e->getMessage(),
             ], 400);
         }
     }
@@ -822,7 +844,7 @@ class SettingController extends Controller
     // Xendit & DOKU Payment/Payout Gateway Settings (Database UI)
     // ─────────────────────────────────────────────────────────────
 
-    public function toggleProvider(Request $request, string $provider, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    public function toggleProvider(Request $request, string $provider, GatewayCredentialsResolver $resolver)
     {
         $allowed = [
             'whatsapp' => ['label' => 'WhatsApp Gateway', 'group' => 'whatsapp', 'default' => true],
@@ -850,7 +872,7 @@ class SettingController extends Controller
 
         if ($provider === 'ipaymu') {
             Setting::set('ipaymu_payout_enabled', $next ? '1' : '0', 'ipaymu');
-            \App\Services\iPaymuService::flushCredentialsCache();
+            iPaymuService::flushCredentialsCache();
         }
 
         if (in_array($provider, ['xendit', 'doku', 'ipaymu', 'dana', 'ovo'], true)) {
@@ -865,9 +887,9 @@ class SettingController extends Controller
                 ['enabled' => $next]
             );
 
-            if (\Illuminate\Support\Facades\Schema::hasTable('wallet_audit_logs')) {
-                app(\App\Modules\Wallet\Services\WalletLedgerManager::class)->writeAuditLog(
-                    \Illuminate\Support\Facades\Auth::id(),
+            if (Schema::hasTable('wallet_audit_logs')) {
+                app(WalletLedgerManager::class)->writeAuditLog(
+                    Auth::id(),
                     'admin',
                     null,
                     'provider_toggled',
@@ -875,7 +897,7 @@ class SettingController extends Controller
                     null,
                     ['provider' => $provider, 'enabled' => $current],
                     ['provider' => $provider, 'enabled' => $next],
-                    $meta['label'] . ($next ? ' diaktifkan' : ' dimatikan') . ' melalui halaman Provider',
+                    $meta['label'].($next ? ' diaktifkan' : ' dimatikan').' melalui halaman Provider',
                     $request->ip(),
                     $request->userAgent()
                 );
@@ -895,7 +917,7 @@ class SettingController extends Controller
         return redirect()->back()->with('success', "{$meta['label']} berhasil {$statusWord}.");
     }
 
-    public function updateXendit(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    public function updateXendit(Request $request, GatewayCredentialsResolver $resolver)
     {
         $validated = $request->validate([
             'xendit_base_url' => ['required', 'url', 'max:255'],
@@ -946,7 +968,7 @@ class SettingController extends Controller
         return redirect()->back()->with('success', 'Konfigurasi API Xendit berhasil disimpan terenkripsi ke database.');
     }
 
-    public function testXendit(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    public function testXendit(Request $request, GatewayCredentialsResolver $resolver)
     {
         try {
             $saved = $resolver->xendit();
@@ -960,7 +982,7 @@ class SettingController extends Controller
                 ], 422);
             }
 
-            $response = \Illuminate\Support\Facades\Http::timeout(15)
+            $response = Http::timeout(15)
                 ->withBasicAuth($secretKey, '')
                 ->get("{$baseUrl}/balance");
 
@@ -970,7 +992,7 @@ class SettingController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Koneksi Xendit Berhasil!' . ($balance !== null ? ' Saldo akun: Rp ' . number_format((int) $balance, 0, ',', '.') : ''),
+                    'message' => 'Koneksi Xendit Berhasil!'.($balance !== null ? ' Saldo akun: Rp '.number_format((int) $balance, 0, ',', '.') : ''),
                 ]);
             }
 
@@ -978,17 +1000,17 @@ class SettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Xendit merespons HTTP ' . $response->status() . ': ' . ($response->json('message') ?? 'Periksa kembali Secret Key.'),
+                'message' => 'Xendit merespons HTTP '.$response->status().': '.($response->json('message') ?? 'Periksa kembali Secret Key.'),
             ], 400);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghubungi Xendit: ' . $e->getMessage(),
+                'message' => 'Gagal menghubungi Xendit: '.$e->getMessage(),
             ], 500);
         }
     }
 
-    public function updateDoku(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    public function updateDoku(Request $request, GatewayCredentialsResolver $resolver)
     {
         $validated = $request->validate([
             'doku_sandbox_url' => ['required', 'url', 'max:255'],
@@ -1025,7 +1047,7 @@ class SettingController extends Controller
             }
             if ($request->filled('doku_private_key')) {
                 $priv = trim($request->string('doku_private_key')->toString());
-                if (\App\Modules\Payment\Services\GatewayCredentialsResolver::derivePublicKeyPem($priv) === '') {
+                if (GatewayCredentialsResolver::derivePublicKeyPem($priv) === '') {
                     return redirect()->back()->withErrors(['doku_private_key' => 'Format DOKU Private Key RSA PEM tidak valid.']);
                 }
                 $resolver->saveEncryptedSecret('doku_private_key', $priv, 'doku');
@@ -1036,7 +1058,7 @@ class SettingController extends Controller
             Setting::set('payment_active_provider', 'doku', 'finance');
         }
 
-        app(\App\Modules\Payout\Services\DokuKirimAccountInquiryService::class)->forgetTokenCache();
+        app(DokuKirimAccountInquiryService::class)->forgetTokenCache();
 
         $doku = $resolver->doku();
         $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
@@ -1063,7 +1085,7 @@ class SettingController extends Controller
     public function generateDokuRsaKeyPair()
     {
         try {
-            $pair = \App\Modules\Payout\Services\DokuKirimAccountInquiryService::generateRsaKeyPair();
+            $pair = DokuKirimAccountInquiryService::generateRsaKeyPair();
 
             return response()->json([
                 'success' => true,
@@ -1078,7 +1100,7 @@ class SettingController extends Controller
         }
     }
 
-    public function testDoku(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
+    public function testDoku(Request $request, GatewayCredentialsResolver $resolver)
     {
         try {
             $saved = $resolver->doku();
@@ -1098,28 +1120,28 @@ class SettingController extends Controller
                 ], 422);
             }
 
-            $requestTarget = '/orders/v1/status/TEST-CONN-' . time();
-            $requestId = (string) \Illuminate\Support\Str::uuid();
+            $requestTarget = '/orders/v1/status/TEST-CONN-'.time();
+            $requestId = (string) Str::uuid();
             $timestamp = now('UTC')->format('Y-m-d\TH:i:s\Z');
             $component = "Client-Id:{$clientId}\nRequest-Id:{$requestId}\nRequest-Timestamp:{$timestamp}\nRequest-Target:{$requestTarget}";
-            $signature = 'HMACSHA256=' . base64_encode(hash_hmac('sha256', $component, $secretKey, true));
+            $signature = 'HMACSHA256='.base64_encode(hash_hmac('sha256', $component, $secretKey, true));
 
-            $response = \Illuminate\Support\Facades\Http::timeout(15)
+            $response = Http::timeout(15)
                 ->withHeaders([
                     'Client-Id' => $clientId,
                     'Request-Id' => $requestId,
                     'Request-Timestamp' => $timestamp,
                     'Signature' => $signature,
                 ])
-                ->get($baseUrl . $requestTarget);
+                ->get($baseUrl.$requestTarget);
 
             // 404 (order not found) proves authentication & signature succeeded! 401/403 means invalid Client-Id/Secret.
             if ($response->successful() || $response->status() === 404) {
                 $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, $privateKey !== '', ['client_id' => $clientId], 'healthy');
-                $msg = 'Koneksi & Signature HMAC DOKU Valid (' . strtoupper($mode) . ')!';
+                $msg = 'Koneksi & Signature HMAC DOKU Valid ('.strtoupper($mode).')!';
 
                 if ($privateKey !== '') {
-                    $kirimProbe = app(\App\Modules\Payout\Services\DokuKirimAccountInquiryService::class)->probeCredentials([
+                    $kirimProbe = app(DokuKirimAccountInquiryService::class)->probeCredentials([
                         'sandbox_url' => $sandboxUrl,
                         'production_url' => $productionUrl,
                         'client_id' => $clientId,
@@ -1130,10 +1152,10 @@ class SettingController extends Controller
                     if (! ($kirimProbe['success'] ?? false)) {
                         return response()->json([
                             'success' => false,
-                            'message' => $msg . ' Namun Token B2B Kirim DOKU gagal: ' . ($kirimProbe['message'] ?? 'Periksa Private/Public Key & aktivasi Kirim DOKU.'),
+                            'message' => $msg.' Namun Token B2B Kirim DOKU gagal: '.($kirimProbe['message'] ?? 'Periksa Private/Public Key & aktivasi Kirim DOKU.'),
                         ], 400);
                     }
-                    $msg .= ' ' . $kirimProbe['message'];
+                    $msg .= ' '.$kirimProbe['message'];
                 } else {
                     $msg .= ' (Isi/Generate RSA Private Key bila ingin mengaktifkan cek nama Kirim DOKU SNAP.)';
                 }
@@ -1146,14 +1168,40 @@ class SettingController extends Controller
 
             $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, false, ['client_id' => $clientId], 'error');
 
+            // Sertakan body error DOKU agar penyebab penolakan terdiagnosis
+            // (invalid_client_id, request_time_out_of_range, invalid_header_request, dst).
+            $body = $response->json();
+            $errCode = is_array($body) ? strtolower((string) (data_get($body, 'error.code') ?? data_get($body, 'responseCode') ?? '')) : '';
+            $errMsg = is_array($body) ? trim((string) (data_get($body, 'error.message') ?? data_get($body, 'responseMessage') ?? '')) : '';
+
+            Log::warning('[SettingController] Tes koneksi DOKU ditolak', [
+                'mode' => $mode,
+                'http_status' => $response->status(),
+                'error_code' => $errCode,
+                'error_message' => $errMsg,
+                'base_url' => $baseUrl,
+            ]);
+
+            $detail = $errMsg !== '' ? " DOKU: {$errMsg}".($errCode !== '' ? " ({$errCode})" : '') : '.';
+
+            if ($errCode === 'invalid_client_id') {
+                $message = "DOKU menolak Client-Id ini (HTTP 400, invalid_client_id). Pastikan Client-Id benar & merchant sudah teraktivasi di DOKU, dan Client-Id sesuai mode yang dipilih ({$mode}).{$detail}";
+            } elseif ($errCode === 'request_time_out_of_range') {
+                $message = "DOKU menolak request karena jam server tidak sinkron (HTTP 400).{$detail}";
+            } elseif ($errCode === 'invalid_header_request') {
+                $message = "DOKU menolak format header request (HTTP 400).{$detail}";
+            } else {
+                $message = 'DOKU menolak request (HTTP '.$response->status().").{$detail} Periksa Client-Id & Secret Key.";
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'DOKU menolak autentikasi (HTTP ' . $response->status() . '). Periksa Client-Id & Secret Key.',
+                'message' => $message,
             ], 400);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghubungi DOKU: ' . $e->getMessage(),
+                'message' => 'Gagal menghubungi DOKU: '.$e->getMessage(),
             ], 400);
         }
     }
