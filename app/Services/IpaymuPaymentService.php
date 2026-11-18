@@ -55,15 +55,20 @@ class IpaymuPaymentService
         }
 
         if (!iPaymuService::isConfigured()) {
+            Log::warning('IpaymuPaymentService: kredensial iPaymu belum diisi saat memuat metode checkout.');
             return [
                 'success' => false,
                 'methods' => [],
-                'message' => 'iPaymu belum terkonfigurasi. Set kredensial di Admin > Pengaturan.',
+                'message' => 'iPaymu belum terkonfigurasi. Isi VA & API Key iPaymu di Admin > Provider.',
             ];
         }
 
         $res = $this->ipaymu->paymentChannels();
         if (!$res['success'] || !is_array($res['data'])) {
+            Log::warning('IpaymuPaymentService: gagal mengambil payment-channels iPaymu', [
+                'http_code' => $res['http_code'] ?? null,
+                'error'     => $res['error'] ?? null,
+            ]);
             return [
                 'success' => false,
                 'methods' => [],
@@ -71,10 +76,45 @@ class IpaymuPaymentService
             ];
         }
 
+        $methods = $this->extractActiveCheckoutMethods($res['data']);
+
+        if (empty($methods)) {
+            $groupCodes = array_values(array_filter(array_map(
+                fn ($g) => is_array($g) ? ($g['Code'] ?? null) : null,
+                $res['data']
+            )));
+            Log::warning('IpaymuPaymentService: payment-channels merespons 0 saluran VA/QRIS aktif', [
+                'group_codes' => $groupCodes,
+            ]);
+
+            return [
+                'success' => true,
+                'methods' => [],
+                'message' => 'Saluran Virtual Account & QRIS belum aktif pada akun merchant iPaymu Anda.',
+            ];
+        }
+
+        return ['success' => true, 'methods' => $methods, 'message' => null];
+    }
+
+    /**
+     * Ekstrak daftar saluran VA & QRIS aktif dari payload /api/v2/payment-channels.
+     *
+     * @param array<int, mixed> $groups
+     * @return array<int, array<string, mixed>>
+     */
+    public function extractActiveCheckoutMethods(array $groups): array
+    {
         $methods = [];
-        foreach ($res['data'] as $group) {
+        foreach ($groups as $group) {
+            if (!is_array($group)) {
+                continue;
+            }
             $methodCode = strtolower((string) ($group['Code'] ?? ''));
             foreach (($group['Channels'] ?? []) as $channel) {
+                if (!is_array($channel)) {
+                    continue;
+                }
                 $active = strtolower((string) ($channel['FeatureStatus'] ?? '')) === 'active'
                     && strtolower((string) ($channel['HealthStatus'] ?? 'online')) !== 'offline';
                 if (!$active) {
@@ -113,7 +153,7 @@ class IpaymuPaymentService
             }
         }
 
-        return ['success' => true, 'methods' => $methods, 'message' => null];
+        return $methods;
     }
 
     // ─── Buat transaksi pembayaran (POST /payment/create) ────────────

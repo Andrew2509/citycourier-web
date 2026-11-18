@@ -311,7 +311,7 @@
             </div>
         </div>
 
-        {{-- KARTU: iPaymu Payout (Disbursement Pencairan Kurir) --}}
+        {{-- KARTU: iPaymu (Checkout VA/QRIS & Pencairan Kurir) --}}
         <div class="card flex flex-col justify-between border-slate-200 {{ !($providerStates['ipaymu'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
@@ -320,24 +320,31 @@
                             <span class="material-symbols-outlined text-[20px]">payments</span>
                         </div>
                         <div>
-                            <div class="card-title">iPaymu Payout (Pencairan Kurir)</div>
-                            <div class="card-subtitle">Disbursement saldo kurir ke akun DANA via iPaymu</div>
+                            <div class="card-title">iPaymu (Checkout VA/QRIS &amp; Payout)</div>
+                            <div class="card-subtitle">Pembayaran Checkout (VA &amp; QRIS) + pencairan saldo kurir</div>
                         </div>
                     </div>
                     <div class="flex flex-col items-end gap-1.5">
                         @include('admin.settings._provider_toggle', ['provider' => 'ipaymu', 'enabled' => $providerStates['ipaymu'] ?? true])
-                        <span class="badge {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'badge-indigo' : 'badge-green' }}">
-                            {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'SANDBOX' : 'PRODUCTION' }}
-                        </span>
+                        <div class="flex items-center gap-1">
+                            @if(!empty($ipaymu['configured']))
+                                <span class="badge badge-green">Terkonfigurasi</span>
+                            @else
+                                <span class="badge badge-amber">Belum Diisi</span>
+                            @endif
+                            <span class="badge {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'badge-indigo' : 'badge-green' }}">
+                                {{ str_contains(($ipaymu['base_url'] ?? ''), 'sandbox') ? 'SANDBOX' : 'PRODUCTION' }}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="card-body space-y-3">
                     <p class="text-xs text-slate-500 leading-relaxed">
-                        Gateway pencairan saldo kurir ke DANA (tanpa binding: kurir memasukkan nomor tujuan saat penarikan). Status penarikan hanya "Berhasil" bila dikonfirmasi resmi oleh iPaymu.
+                        Toggle <strong>ON/OFF</strong> di atas mengontrol tampil/tidaknya <strong>Virtual Account &amp; QRIS</strong> di Checkout sekaligus pencairan kurir ke DANA. Pastikan <strong>VA</strong> &amp; <strong>API Key</strong> terisi agar saluran Checkout muncul.
                     </p>
 
-                    <form method="POST" action="{{ route('admin.settings.ipaymu.update') }}" class="space-y-3 pt-1">
+                    <form method="POST" action="{{ route('admin.settings.ipaymu.update') }}" id="ipaymuForm" class="space-y-3 pt-1">
                         @csrf
 
                         <div class="grid grid-cols-2 gap-3">
@@ -346,13 +353,16 @@
                                 <input type="text"
                                        name="ipaymu_base_url"
                                        value="{{ $ipaymu['base_url'] ?? 'https://sandbox.ipaymu.com' }}"
+                                       placeholder="https://sandbox.ipaymu.com"
                                        class="form-input font-mono text-xs">
+                                <p class="text-[10px] text-slate-400 mt-1">Sandbox: sandbox.ipaymu.com · Prod: my.ipaymu.com</p>
                             </div>
                             <div>
                                 <label class="form-label text-xs">Virtual Account (VA)</label>
                                 <input type="text"
                                        name="ipaymu_va"
                                        value="{{ $ipaymu['va'] ?? '' }}"
+                                       placeholder="VA Merchant iPaymu"
                                        class="form-input font-mono text-xs">
                             </div>
                         </div>
@@ -363,6 +373,7 @@
                                    name="ipaymu_api_key"
                                    value="{{ $ipaymu['api_key'] ?? '' }}"
                                    autocomplete="off"
+                                   placeholder="API Key iPaymu..."
                                    class="form-input font-mono text-xs">
                         </div>
 
@@ -391,13 +402,22 @@
                             <span class="text-slate-600">Aktifkan Payout (setelah iPaymu konfirmasi aktivasi merchant)</span>
                         </label>
 
-                        <div class="flex items-center justify-between pt-2">
+                        <div id="ipaymuTestResult" class="hidden rounded-md p-2.5 text-xs"></div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
                             <a href="{{ route('admin.settings.ipaymu') }}" class="text-xs text-orange-700 hover:underline font-medium inline-flex items-center gap-1">
-                                Konfigurasi Lengkap iPaymu (secret, webhook, dsb.) &rarr;
+                                Konfigurasi Lengkap &rarr;
                             </a>
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                Simpan iPaymu
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button type="button"
+                                        onclick="testPaymentGateway('ipaymu', '{{ route('admin.settings.ipaymu.test') }}', 'ipaymuForm', 'ipaymuTestResult')"
+                                        class="btn btn-sm btn-secondary">
+                                    Test Koneksi &amp; Channel
+                                </button>
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    Simpan iPaymu
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>

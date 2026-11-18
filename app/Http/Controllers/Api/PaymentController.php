@@ -69,11 +69,16 @@ class PaymentController extends Controller
             ], 502);
         }
 
-        return response()->json([
+        $payload = [
             'success'        => true,
             'ipaymu_enabled' => true,
             'data'           => $result['methods'],
-        ]);
+        ];
+        if (!empty($result['message'])) {
+            $payload['message'] = $result['message'];
+        }
+
+        return response()->json($payload);
     }
 
     // ─── 2. Buat pembayaran baru ─────────────────────────────────

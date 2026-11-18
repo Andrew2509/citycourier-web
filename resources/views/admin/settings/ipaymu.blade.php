@@ -11,8 +11,8 @@
                 <span class="material-symbols-outlined text-[18px]">arrow_back</span>
             </a>
             <div>
-                <h1 class="page-title">Pengaturan iPaymu (Payout &amp; Disbursement)</h1>
-                <p class="page-subtitle">Gateway pencairan saldo kurir ke akun DANA. Nilai tersimpan ke database — env hanya fallback.</p>
+                <h1 class="page-title">Pengaturan iPaymu (Checkout VA/QRIS &amp; Payout Kurir)</h1>
+                <p class="page-subtitle">Gateway pembayaran Checkout (Virtual Account &amp; QRIS) dan pencairan saldo kurir ke DANA. Nilai tersimpan ke database — env hanya fallback.</p>
             </div>
         </div>
 
@@ -46,7 +46,7 @@
                                    placeholder="https://sandbox.ipaymu.com"
                                    required
                                    class="form-input font-mono text-xs">
-                            <p class="form-help">Sandbox: https://sandbox.ipaymu.com — Production: https://api.ipaymu.com</p>
+                            <p class="form-help">Sandbox: https://sandbox.ipaymu.com — Production: https://my.ipaymu.com</p>
                         </div>
 
                         <div>

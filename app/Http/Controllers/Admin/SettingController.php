@@ -63,6 +63,7 @@ class SettingController extends Controller
 
         $ipaymu = \App\Services\iPaymuService::credentials();
         $ipaymu['webhook_url'] = url('/api/ipaymu/webhook');
+        $ipaymu['configured'] = !empty($ipaymu['api_key']) && !empty($ipaymu['merchant_id'] ?: $ipaymu['va']);
 
         $gatewayResolver = app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class);
         $xenditRaw = $gatewayResolver->xendit();
@@ -136,7 +137,8 @@ class SettingController extends Controller
             'ipaymu_timeout'     => 'nullable|integer|min:5|max:120',
         ]);
 
-        Setting::set('ipaymu_base_url', $request->ipaymu_base_url, 'ipaymu');
+        $normalizedBaseUrl = \App\Services\iPaymuService::normalizeBaseUrl($request->ipaymu_base_url);
+        Setting::set('ipaymu_base_url', $normalizedBaseUrl, 'ipaymu');
         Setting::set('ipaymu_va', $request->ipaymu_va, 'ipaymu');
         Setting::set('ipaymu_api_key', trim($request->ipaymu_api_key), 'ipaymu');
         // Form Provider ringkas tidak mengirim field ini → jangan menimpa
@@ -177,7 +179,9 @@ class SettingController extends Controller
             $current = \App\Services\iPaymuService::credentials();
 
             $override = [
-                'base_url'   => trim((string) ($request->input('ipaymu_base_url') ?: $current['base_url'])),
+                'base_url'   => \App\Services\iPaymuService::normalizeBaseUrl(
+                    (string) ($request->input('ipaymu_base_url') ?: $current['base_url'])
+                ),
                 'va'         => trim((string) ($request->input('ipaymu_va') ?: $current['va'])),
                 'merchant_id' => trim((string) ($request->input('ipaymu_merchant_id') ?: $current['merchant_id'])),
                 'api_key'    => trim((string) ($request->input('ipaymu_api_key') ?: $current['api_key'])),
@@ -215,29 +219,23 @@ class SettingController extends Controller
             $isRouteNotFound = str_contains($providerMsg, 'could not be found');
 
             // Respons bisnis "transaksi not found" (iPaymu balas HTTP 400 untuk
-            // error bisnis) tetap membuktikan: server dijangkau, tanda tangan
-            // DAN kredensial diterima — hanya id dummy yang memang tidak ada.
-            // Respons bisnis "transaksi not found" (iPaymu balas HTTP 400 untuk
-            // error bisnis) tetap membuktikan: server dijangkau, tanda tangan
-            // DAN kredensial diterima — hanya id dummy yang memang tidak ada.
-            if ($httpCode > 0 && $isDataNotFound && !$isRouteNotFound) {
-                return response()->json([
-                    'success' => true,
-                    'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons, tanda tangan & kredensial API diterima "
-                        . "(id transaksi dummy memang tidak ditemukan — ini normal dan justru membuktikan koneksi valid).",
-                    'data'    => $result,
-                ]);
-            }
+            // error bisnis) atau HTTP < 400 sama-sama membuktikan server dijangkau,
+            // tanda tangan, dan kredensial diterima. Sekalian uji GET payment-channels
+            // agar Admin tahu apakah saluran VA & QRIS Checkout ikut aktif.
+            if ($httpCode > 0 && (($isDataNotFound && !$isRouteNotFound) || $httpCode < 400)) {
+                $channelSummary = $this->probeIpaymuCheckoutChannels($service);
+                $baseMsg = $isDataNotFound
+                    ? "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons, tanda tangan & kredensial API diterima."
+                    : "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons (HTTP {$httpCode}) dan tanda tangan API diterima.";
 
-            // Server merespons dengan HTTP < 400 → request tersambung dan
-            // tanda tangan diterima.
-            if ($httpCode > 0 && $httpCode < 400) {
                 return response()->json([
-                    'success' => true,
-                    'message' => "Koneksi iPaymu Berhasil! Server {$override['base_url']} merespons (HTTP {$httpCode}) dan tanda tangan API diterima."
-                        . ($isDataNotFound ? ' (Transaksi dummy memang tidak ada — ini normal untuk tes koneksi.)' : ''),
-                    'data'    => $result,
-                ]);
+                    'success' => $channelSummary['ok'],
+                    'message' => $baseMsg . ' ' . $channelSummary['message'],
+                    'data'    => [
+                        'inquire'  => $result,
+                        'channels' => $channelSummary['summary'],
+                    ],
+                ], $channelSummary['ok'] ? 200 : 400);
             }
 
             // HTTP 404 rute → base URL / path endpoint keliru (bukan masalah
@@ -272,6 +270,44 @@ class SettingController extends Controller
                 'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Probe saluran Checkout (VA & QRIS) langsung ke GET /api/v2/payment-channels
+     * memakai instance iPaymuService hasil form saat ini.
+     *
+     * @return array{ok:bool, message:string, summary:array<string, mixed>}
+     */
+    private function probeIpaymuCheckoutChannels(\App\Services\iPaymuService $service): array
+    {
+        $channelsRes = $service->paymentChannels();
+        if (!($channelsRes['success'] ?? false) || !is_array($channelsRes['data'] ?? null)) {
+            $err = (string) ($channelsRes['error'] ?? 'gagal membaca payment-channels');
+            return [
+                'ok'      => false,
+                'message' => "Namun saluran Checkout (VA & QRIS) gagal dimuat: {$err}.",
+                'summary' => ['va_count' => 0, 'qris_count' => 0, 'error' => $err],
+            ];
+        }
+
+        $methods = app(\App\Services\IpaymuPaymentService::class)
+            ->extractActiveCheckoutMethods($channelsRes['data']);
+        $vaCount = count(array_filter($methods, fn ($m) => ($m['group'] ?? '') === 'virtual_account'));
+        $qrisCount = count(array_filter($methods, fn ($m) => ($m['group'] ?? '') === 'qris'));
+
+        if ($vaCount + $qrisCount === 0) {
+            return [
+                'ok'      => false,
+                'message' => 'Saluran Checkout (VA & QRIS) belum ada yang aktif pada akun iPaymu ini, sehingga tidak tampil di halaman Checkout.',
+                'summary' => ['va_count' => 0, 'qris_count' => 0],
+            ];
+        }
+
+        return [
+            'ok'      => true,
+            'message' => "Saluran Checkout aktif siap tampil: {$vaCount} Virtual Account, {$qrisCount} QRIS.",
+            'summary' => ['va_count' => $vaCount, 'qris_count' => $qrisCount],
+        ];
     }
 
     /**
@@ -783,7 +819,7 @@ class SettingController extends Controller
             'map' => ['label' => 'Peta & Geocoding', 'group' => 'map', 'default' => true],
             'dana' => ['label' => 'DANA Widget Binding', 'group' => 'dana', 'default' => true],
             'ovo' => ['label' => 'OVO SNAP', 'group' => 'ovo', 'default' => false],
-            'ipaymu' => ['label' => 'iPaymu Payout', 'group' => 'ipaymu', 'default' => true],
+            'ipaymu' => ['label' => 'iPaymu (Checkout & Payout)', 'group' => 'ipaymu', 'default' => true],
             'rajaongkir' => ['label' => 'Tarif Ekspedisi (RajaOngkir)', 'group' => 'rajaongkir', 'default' => true],
             'xendit' => ['label' => 'Xendit Gateway', 'group' => 'xendit', 'default' => true],
             'doku' => ['label' => 'DOKU Jokul Gateway', 'group' => 'doku', 'default' => true],

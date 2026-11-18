@@ -83,7 +83,7 @@ class iPaymuService
         };
 
         $credentials = [
-            'base_url'       => $string('ipaymu_base_url', $fallback['base_url']),
+            'base_url'       => self::normalizeBaseUrl($string('ipaymu_base_url', $fallback['base_url'])),
             'merchant_id'    => $string('ipaymu_merchant_id', $fallback['merchant_id']),
             'va'             => $string('ipaymu_va', $fallback['va']),
             'api_key'        => $string('ipaymu_api_key', $fallback['api_key']),
@@ -99,6 +99,23 @@ class iPaymuService
         ];
 
         return self::$credentialCache = $credentials;
+    }
+
+    /**
+     * Normalisasi host iPaymu (endpoint produksi resmi adalah my.ipaymu.com,
+     * sedangkan api.ipaymu.com mengembalikan 404 pada /api/v2/*).
+     */
+    public static function normalizeBaseUrl(?string $url): string
+    {
+        $trimmed = rtrim(trim((string) $url), '/');
+        if ($trimmed === '') {
+            return 'https://sandbox.ipaymu.com';
+        }
+        if (strcasecmp($trimmed, 'https://api.ipaymu.com') === 0 || strcasecmp($trimmed, 'http://api.ipaymu.com') === 0) {
+            return 'https://my.ipaymu.com';
+        }
+
+        return $trimmed;
     }
 
     /** Reset cache credentials (dipakai setelah admin menyimpan pengaturan). */

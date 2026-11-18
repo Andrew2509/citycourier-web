@@ -174,6 +174,54 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->assertSame('QRIS', $data[1]['code']);
     }
 
+    public function test_normalize_base_url_rewrites_broken_api_host_to_my_ipaymu_com(): void
+    {
+        $this->assertSame('https://my.ipaymu.com', iPaymuService::normalizeBaseUrl('https://api.ipaymu.com'));
+        $this->assertSame('https://my.ipaymu.com', iPaymuService::normalizeBaseUrl('https://api.ipaymu.com/'));
+        $this->assertSame('https://my.ipaymu.com', iPaymuService::normalizeBaseUrl('https://my.ipaymu.com/'));
+        $this->assertSame('https://sandbox.ipaymu.com', iPaymuService::normalizeBaseUrl('https://sandbox.ipaymu.com/'));
+    }
+
+    public function test_methods_reports_clear_message_when_ipaymu_returns_no_active_va_or_qris(): void
+    {
+        $this->makeConfigured();
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        $fakeIpaymu = new class extends iPaymuService {
+            public function __construct() {}
+
+            public function paymentChannels(): array
+            {
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'http_code' => 200,
+                    'data' => [
+                        [
+                            'Code' => 'va',
+                            'Channels' => [
+                                ['Code' => 'bca', 'Name' => 'BCA', 'FeatureStatus' => 'inactive', 'HealthStatus' => 'online'],
+                            ],
+                        ],
+                    ],
+                    'raw' => [],
+                ];
+            }
+        };
+
+        $this->app->instance(IpaymuPaymentService::class, new IpaymuPaymentService($fakeIpaymu));
+
+        $response = $this->getJson('/api/payment/methods');
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'ipaymu_enabled' => true,
+                'data' => [],
+            ]);
+        $this->assertStringContainsString('belum aktif', (string) $response->json('message'));
+    }
+
     // ─── 2. create() ────────────────────────────────────────────
 
     public function test_create_validation_amount_min(): void
