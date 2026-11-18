@@ -5,9 +5,12 @@ namespace App\Modules\Earnings\Services;
 use App\Models\Courier;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Models\WalletTransaction;
 use App\Modules\Earnings\Models\CourierEarning;
+use App\Modules\Ledger\Models\WalletLedgerEntry;
 use App\Modules\Payment\Providers\ProviderResolver;
 use App\Modules\Wallet\Services\WalletLedgerManager;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -77,7 +80,9 @@ class CourierEarningService
 
             $wallet = $this->walletManager->getOrCreateCourierWallet($order->courier);
             $mode = $this->providerResolver->currentMode();
-            $earnedAt = $order->delivered_at ? \Illuminate\Support\Carbon::parse($order->delivered_at) : now();
+            $earnedAt = $order->delivered_at
+                ? Carbon::parse($order->delivered_at)
+                : ($order->updated_at ? Carbon::parse($order->updated_at) : now());
             $waitingMinutes = $this->settlementWaitingMinutes();
             $availableAt = $earnedAt->copy()->addMinutes($waitingMinutes);
             $reference = 'ERN-ORD-'.$order->id.'-'.strtoupper(substr(md5((string) $order->id), 0, 4));
@@ -181,11 +186,91 @@ class CourierEarningService
      */
     public function releaseMatureEarnings(): int
     {
-        $matureIds = CourierEarning::where('status', 'pending')
+        return $this->releaseMatureEarningsQuery(null);
+    }
+
+    public function releaseMatureEarningsForCourier(int $courierId): int
+    {
+        return $this->releaseMatureEarningsQuery($courierId);
+    }
+
+    /**
+     * Synchronize delivered courier orders missing from courier_earnings / ledger
+     * (e.g. orders completed before queue worker or v1 ledger ran) and release mature ones.
+     */
+    public function syncDeliveredOrdersForCourier(Courier $courier): int
+    {
+        if (
+            ! Schema::hasTable('orders')
+            || ! Schema::hasTable('courier_earnings')
+            || ! Schema::hasTable('wallet_balances')
+            || ! Schema::hasTable('wallet_ledger_entries')
+        ) {
+            return 0;
+        }
+
+        $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
+        $openingEntry = WalletLedgerEntry::where('reference', 'OPENING-WALLET-'.$wallet->id)->first();
+        $openingCutoff = $openingEntry?->created_at;
+
+        $existingOrderIds = CourierEarning::where('courier_id', $courier->id)
+            ->pluck('order_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $legacyTxOrderIds = [];
+        if (Schema::hasTable('wallet_transactions') && Schema::hasColumn('wallet_transactions', 'order_id')) {
+            $legacyTxOrderIds = WalletTransaction::where('wallet_id', $wallet->id)
+                ->where('type', 'earning')
+                ->whereNotNull('order_id')
+                ->pluck('order_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        $skipOrderIds = array_flip(array_merge($existingOrderIds, $legacyTxOrderIds));
+        $deliveredOrders = Order::where('courier_id', $courier->id)
+            ->where('status', 'delivered')
+            ->orderBy('id')
+            ->get();
+
+        $syncedCount = 0;
+        foreach ($deliveredOrders as $order) {
+            if (isset($skipOrderIds[(int) $order->id])) {
+                continue;
+            }
+
+            $orderTime = $order->delivered_at ?? $order->updated_at ?? $order->created_at;
+            if ($openingCutoff !== null && $orderTime !== null && Carbon::parse($orderTime)->lte($openingCutoff)) {
+                continue;
+            }
+
+            try {
+                if ($this->recordDeliveredOrderEarning((int) $order->id) !== null) {
+                    $syncedCount++;
+                }
+            } catch (\Throwable) {
+                // Concurrent request or unique guard already recorded this order.
+            }
+        }
+
+        $this->releaseMatureEarningsForCourier($courier->id);
+
+        return $syncedCount;
+    }
+
+    private function releaseMatureEarningsQuery(?int $courierId): int
+    {
+        $query = CourierEarning::where('status', 'pending')
             ->where(function ($q) {
                 $q->whereNull('available_at')->orWhere('available_at', '<=', now());
-            })
-            ->pluck('id');
+            });
+
+        if ($courierId !== null) {
+            $query->where('courier_id', $courierId);
+        }
+
+        $matureIds = $query->pluck('id');
 
         $releasedCount = 0;
         foreach ($matureIds as $id) {

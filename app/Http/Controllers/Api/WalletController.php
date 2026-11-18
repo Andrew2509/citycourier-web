@@ -41,6 +41,8 @@ class WalletController extends Controller
             ], 404);
         }
 
+        $this->syncDeliveredEarningsIfReady($courier);
+
         $balance = $this->walletService->getBalance($courier->id);
 
         return response()->json([
@@ -65,6 +67,8 @@ class WalletController extends Controller
                 'message' => 'Profil kurir tidak ditemukan.',
             ], 404);
         }
+
+        $this->syncDeliveredEarningsIfReady($courier);
 
         $page    = max(1, (int) $request->input('page', 1));
         $perPage = min(50, max(5, (int) $request->input('per_page', 15)));
@@ -117,6 +121,8 @@ class WalletController extends Controller
                 'message' => 'Profil kurir tidak ditemukan.',
             ], 404);
         }
+
+        $this->syncDeliveredEarningsIfReady($courier);
 
         $page = (int) $request->input('page', 1);
         $result = $this->walletService->getLedger($courier->id, $page);
@@ -282,5 +288,15 @@ class WalletController extends Controller
             $orderId,
             $description ?? 'Pengantaran #' . $orderId,
         );
+    }
+
+    private function syncDeliveredEarningsIfReady(\App\Models\Courier $courier): void
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('courier_earnings')) {
+            return;
+        }
+
+        app(\App\Modules\Earnings\Services\CourierEarningService::class)
+            ->syncDeliveredOrdersForCourier($courier);
     }
 }

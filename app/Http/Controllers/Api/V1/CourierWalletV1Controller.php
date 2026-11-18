@@ -39,6 +39,7 @@ class CourierWalletV1Controller extends Controller
             return $this->missingCourierResponse();
         }
 
+        $this->earningService->syncDeliveredOrdersForCourier($courier);
         $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
         $balance = $wallet->balanceRecord;
         $mode = $this->providerResolver->currentMode();
@@ -180,6 +181,7 @@ class CourierWalletV1Controller extends Controller
             return $this->missingCourierResponse();
         }
 
+        $this->earningService->syncDeliveredOrdersForCourier($courier);
         $perPage = min(50, max(1, (int) $request->integer('per_page', 15)));
         $status = $request->string('status')->toString();
 
@@ -213,6 +215,7 @@ class CourierWalletV1Controller extends Controller
             return $this->missingCourierResponse();
         }
 
+        $this->earningService->syncDeliveredOrdersForCourier($courier);
         $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
         $perPage = min(50, max(1, (int) $request->integer('per_page', 15)));
 
@@ -442,6 +445,8 @@ class CourierWalletV1Controller extends Controller
         if (! $courier) {
             return $this->missingCourierResponse();
         }
+
+        $this->earningService->syncDeliveredOrdersForCourier($courier);
 
         $validated = $request->validate([
             'amount' => ['required', 'integer', 'min:1000'],

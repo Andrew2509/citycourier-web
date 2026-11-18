@@ -247,7 +247,9 @@ class OrderController extends Controller
         }
 
         // 3. Operasi pada pesanan yang sudah dimiliki kurir (dengan DB Transaction & Row Locking)
-        return DB::transaction(function () use ($request, $courier, $newStatus) {
+        $creditedOrderId = null;
+
+        $response = DB::transaction(function () use ($request, $courier, $newStatus, &$creditedOrderId) {
             $order = Order::where('id', $request->order_id)->lockForUpdate()->first();
 
             if (!$order) {
@@ -393,7 +395,7 @@ class OrderController extends Controller
             }
 
             if ($newStatus === 'delivered' && $previousOrderStatus !== 'delivered' && \Illuminate\Support\Facades\Schema::hasTable('courier_earnings')) {
-                \App\Modules\Earnings\Jobs\CourierEarningJob::dispatch($order->id)->afterCommit();
+                $creditedOrderId = $order->id;
             }
 
             return response()->json([
@@ -402,6 +404,12 @@ class OrderController extends Controller
                 'data'    => $order->fresh(['shipment']),
             ]);
         });
+
+        if ($creditedOrderId !== null) {
+            \App\Modules\Earnings\Jobs\CourierEarningJob::dispatchSync($creditedOrderId);
+        }
+
+        return $response;
     }
 
     /**

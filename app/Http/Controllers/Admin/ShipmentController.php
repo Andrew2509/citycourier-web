@@ -242,7 +242,11 @@ class ShipmentController extends Controller
         // Sinkronisasi ke Order jika ada
         $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
         if ($order) {
+            $previousOrderStatus = $order->status;
             $orderUpdate = ['status' => $newStatus];
+            if ($newStatus === 'delivered' && $order->delivered_at === null) {
+                $orderUpdate['delivered_at'] = $now;
+            }
             if ($newStatus === 'cancelled' && $oldStatus !== 'cancelled') {
                 $orderUpdate['cancelled_at'] = $now;
                 $orderUpdate['cancelled_by'] = 'admin';
@@ -250,6 +254,15 @@ class ShipmentController extends Controller
                 $orderUpdate['cancelled_from_status'] = $order->status;
             }
             $order->update($orderUpdate);
+
+            if (
+                $newStatus === 'delivered'
+                && $previousOrderStatus !== 'delivered'
+                && $order->courier_id
+                && \Illuminate\Support\Facades\Schema::hasTable('courier_earnings')
+            ) {
+                \App\Modules\Earnings\Jobs\CourierEarningJob::dispatchSync($order->id);
+            }
         }
 
         // Auto log status change

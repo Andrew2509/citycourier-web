@@ -399,4 +399,69 @@ class PaymentWalletSystemV1Test extends TestCase
         $this->assertTrue(PaymentWebhook::where('provider', 'xendit')->count() >= 2);
         $this->assertTrue(app(LedgerReconciliationService::class)->runReconciliation()['is_clean']);
     }
+
+    public function test_historical_and_newly_delivered_orders_sync_into_courier_wallet_without_queue_worker(): void
+    {
+        Setting::set('courier_commission_rate_percent', '10');
+        Setting::set('courier_settlement_waiting_minutes', '1440');
+
+        $courierUser = User::create([
+            'name' => 'Kurir Sync',
+            'email' => 'sync.kurir@city.test',
+            'role' => 'courier',
+        ]);
+        $courier = Courier::create([
+            'user_id' => $courierUser->id,
+            'phone' => '081200001234',
+            'vehicle_type' => 'motor',
+            'is_verified' => true,
+            'is_active' => true,
+        ]);
+
+        // Historical delivered order (gross 47.400 -> 90% net = 42.660) never processed by queue/cron
+        Order::create([
+            'courier_id' => $courier->id,
+            'order_number' => 'SHP-HIST-42660',
+            'price' => 47400,
+            'status' => 'delivered',
+            'delivered_at' => now()->subDays(2),
+        ]);
+
+        // Recent delivering order that courier marks delivered synchronously
+        $activeOrder = Order::create([
+            'courier_id' => $courier->id,
+            'order_number' => 'SHP-LIVE-20000',
+            'price' => 20000,
+            'status' => 'delivering',
+        ]);
+
+        Sanctum::actingAs($courierUser);
+
+        // Opening Dompet / V1 wallet immediately backfills and releases mature historical earnings
+        $this->getJson('/api/v1/courier/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.available_balance', 42660)
+            ->assertJsonPath('data.pending_balance', 0)
+            ->assertJsonPath('data.earnings_summary.available_earnings', 42660);
+
+        // Repeated loads + legacy /api/courier/wallet remain strictly idempotent
+        $this->getJson('/api/courier/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.available_balance', 42660)
+            ->assertJsonPath('data.total_balance', 42660);
+
+        // Marking new order delivered synchronously records pending earning immediately (no queue worker needed)
+        $this->postJson('/api/update-status-order', [
+            'order_id' => $activeOrder->id,
+            'status' => 'delivered',
+        ])->assertOk();
+
+        $this->getJson('/api/v1/courier/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.available_balance', 42660)
+            ->assertJsonPath('data.pending_balance', 18000);
+
+        $this->assertSame(2, CourierEarning::where('courier_id', $courier->id)->count());
+        $this->assertTrue(app(LedgerReconciliationService::class)->runReconciliation()['is_clean']);
+    }
 }
