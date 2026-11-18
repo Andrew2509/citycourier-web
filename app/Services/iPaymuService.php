@@ -439,7 +439,42 @@ class iPaymuService
     private function call(string $method, string $path, ?string $body): array
     {
         $url = $this->baseUrl . $path;
+        $attempt = $this->executeCurl($method, $url, $body);
 
+        // Server produksi my.ipaymu.com mengirim leaf cert tanpa intermediate
+        // CA (OpenSSL verify 20 / CURLE_SSL_CACERT 60). Gunakan bundle rantai
+        // DigiCert/Thawte terverifikasi khusus host *.ipaymu.com tanpa pernah
+        // mematikan SSL_VERIFYPEER/VERIFYHOST.
+        $sslCaErrors = [60, 77]; // CURLE_SSL_CACERT, CURLE_SSL_CACERT_BADFILE
+        if (in_array($attempt['errno'], $sslCaErrors, true)) {
+            $bundlePath = self::resolveIpaymuCaBundlePath($url);
+            if ($bundlePath !== null) {
+                $attempt = $this->executeCurl($method, $url, $body, $bundlePath);
+            }
+        }
+
+        if ($attempt['errno'] !== 0 || $attempt['response'] === false) {
+            // Jaringan gagal sebelum mendapat jawaban → hasil TIDAK diketahui.
+            $error = $attempt['error'] ?: ('curl_error(' . $attempt['errno'] . ')');
+            return ['reachable' => false, 'http_code' => 0, 'body' => null, 'error' => $error];
+        }
+
+        $data = json_decode((string) $attempt['response'], true);
+        return [
+            'reachable' => true,
+            'http_code' => $attempt['http_code'],
+            'body'      => json_last_error() === JSON_ERROR_NONE && is_array($data) ? $data : null,
+            'error'     => json_last_error() === JSON_ERROR_NONE ? null : 'Respons iPaymu tidak valid: ' . substr((string) $attempt['response'], 0, 500),
+        ];
+    }
+
+    /**
+     * Eksekusi cURL sekali jalan dengan verifikasi TLS penuh.
+     *
+     * @return array{response:string|false, errno:int, error:string, http_code:int}
+     */
+    private function executeCurl(string $method, string $url, ?string $body, ?string $caInfoPath = null): array
+    {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -447,7 +482,12 @@ class iPaymuService
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_HTTPHEADER     => $this->buildHeaders($method, $body),
             CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
+
+        if ($caInfoPath !== null) {
+            curl_setopt($ch, CURLOPT_CAINFO, $caInfoPath);
+        }
 
         if (strtoupper($method) === 'POST' && $body !== null) {
             curl_setopt($ch, CURLOPT_POST, true);
@@ -460,18 +500,27 @@ class iPaymuService
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($errno !== 0 || $response === false) {
-            // Jaringan gagal sebelum mendapat jawaban → hasil TIDAK diketahui.
-            return ['reachable' => false, 'http_code' => 0, 'body' => null, 'error' => $error ?: "curl_error($errno)"];
+        return [
+            'response'  => $response,
+            'errno'     => $errno,
+            'error'     => $error,
+            'http_code' => $httpCode,
+        ];
+    }
+
+    /**
+     * Kembalikan path bundle CA terverifikasi untuk domain *.ipaymu.com.
+     */
+    public static function resolveIpaymuCaBundlePath(string $url): ?string
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        if ($host !== 'ipaymu.com' && !str_ends_with($host, '.ipaymu.com')) {
+            return null;
         }
 
-        $data = json_decode((string) $response, true);
-        return [
-            'reachable' => true,
-            'http_code' => $httpCode,
-            'body'      => json_last_error() === JSON_ERROR_NONE && is_array($data) ? $data : null,
-            'error'     => json_last_error() === JSON_ERROR_NONE ? null : 'Respons iPaymu tidak valid: ' . substr((string) $response, 0, 500),
-        ];
+        $bundlePath = dirname(__DIR__, 2) . '/resources/certs/ipaymu-chain-bundle.pem';
+
+        return is_file($bundlePath) ? $bundlePath : null;
     }
 
     /** Normalize provider response into a predictable envelope. */

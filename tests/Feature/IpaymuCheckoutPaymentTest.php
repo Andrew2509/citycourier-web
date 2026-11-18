@@ -222,6 +222,28 @@ class IpaymuCheckoutPaymentTest extends TestCase
         $this->assertStringContainsString('belum aktif', (string) $response->json('message'));
     }
 
+    public function test_ipaymu_ca_bundle_resolves_only_for_ipaymu_hosts_and_contains_valid_chain(): void
+    {
+        $myPath = iPaymuService::resolveIpaymuCaBundlePath('https://my.ipaymu.com/api/v2/payment-channels');
+        $sandboxPath = iPaymuService::resolveIpaymuCaBundlePath('https://sandbox.ipaymu.com/api/v2/transaction');
+
+        $this->assertNotNull($myPath);
+        $this->assertFileExists($myPath);
+        $this->assertSame($myPath, $sandboxPath);
+
+        $this->assertNull(iPaymuService::resolveIpaymuCaBundlePath('https://evil-ipaymu.com/api'));
+        $this->assertNull(iPaymuService::resolveIpaymuCaBundlePath('https://example.com/api'));
+
+        $pemContent = file_get_contents($myPath);
+        $this->assertIsString($pemContent);
+        preg_match_all('/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/s', $pemContent, $matches);
+        $this->assertCount(3, $matches[0]);
+
+        [$interPem, $crossPem, $rootPem] = $matches[0];
+        $this->assertSame(1, openssl_x509_verify($interPem, openssl_pkey_get_public($crossPem)));
+        $this->assertSame(1, openssl_x509_verify($crossPem, openssl_pkey_get_public($rootPem)));
+    }
+
     // ─── 2. create() ────────────────────────────────────────────
 
     public function test_create_validation_amount_min(): void
