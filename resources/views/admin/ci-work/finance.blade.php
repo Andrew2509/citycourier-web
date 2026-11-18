@@ -1072,5 +1072,9 @@ $financeData = $recaps->map(function ($c) {
             });
         }
     });
+
+    // Inisialisasi tab withdrawal saat halaman dimuat — tanpa ini semua
+    // baris (semua status) tampil tercampur dalam satu tabel.
+    setWdTab('pending', document.querySelector('[data-wd-tab="pending"]'));
 </script>
 @endpush
