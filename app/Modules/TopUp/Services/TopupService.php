@@ -172,7 +172,7 @@ class TopupService
             throw new RuntimeException('Simulasi pembayaran top-up dilarang pada mode production.');
         }
         if (! $topup->is_simulated && $topup->provider !== 'mock' && $currentMode !== 'demo' && $currentMode !== 'sandbox') {
-            throw new RuntimeException('Transaksi ini bukan transaksi simulasi demo/sandbox.');
+            throw new RuntimeException('Transaksi ini tidak mendukung simulasi pembayaran.');
         }
 
         return $this->markPaidAndSettle($topup, $topup->provider_reference, ['simulated_by' => 'sandbox_endpoint']);

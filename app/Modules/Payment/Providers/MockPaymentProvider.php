@@ -29,7 +29,7 @@ class MockPaymentProvider implements PaymentProviderInterface, PayoutProviderInt
             [
                 'payment_type' => 'qris',
                 'channel_code' => 'QRIS',
-                'label' => 'QRIS (Demo/Sandbox Simulasi)',
+                'label' => 'QRIS (Simulasi)',
                 'fee_idr' => 0,
             ],
             [
@@ -91,14 +91,14 @@ class MockPaymentProvider implements PaymentProviderInterface, PayoutProviderInt
                 'Buka aplikasi m-Banking / ATM sesuai bank pilihan Anda.',
                 'Pilih menu Transfer Virtual Account dan masukkan nomor: '.$vaNumber,
                 'Pastikan nominal tepat Rp '.number_format($amount, 0, ',', '.').'.',
-                'Pada mode Sandbox/Demo, tekan tombol "Simulasikan Pembayaran Berhasil" untuk pengujian.',
+                'Tekan tombol "Simulasikan Pembayaran Berhasil" untuk pengujian pembayaran.',
             ],
             'qris' => [
-                'Scan QRIS simulasi di bawah ini atau gunakan tombol Simulasi Pembayaran di Sandbox/Demo.',
+                'Scan QRIS di bawah ini atau gunakan tombol "Simulasikan Pembayaran Berhasil" untuk pengujian.',
                 'Nominal pembayaran: Rp '.number_format($amount, 0, ',', '.').'.',
             ],
             default => [
-                'Selesaikan pembayaran melalui aplikasi e-wallet '.$channelCode.' (Simulasi Sandbox/Demo).',
+                'Selesaikan pembayaran melalui aplikasi e-wallet '.$channelCode.' (Simulasi).',
             ],
         };
 
@@ -160,7 +160,7 @@ class MockPaymentProvider implements PaymentProviderInterface, PayoutProviderInt
         return [
             'valid' => $valid,
             'account_holder_name' => $valid ? trim($accountHolderName) : null,
-            'message' => $valid ? 'Format rekening valid (Sandbox/Demo check).' : 'Nomor rekening/e-wallet harus berisi minimal 6 digit angka.',
+            'message' => $valid ? 'Format rekening valid.' : 'Nomor rekening/e-wallet harus berisi minimal 6 digit angka.',
         ];
     }
 
