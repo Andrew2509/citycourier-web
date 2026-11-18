@@ -10,6 +10,7 @@
  * Tailwind seperti `text-[14px]` tetap berfungsi tanpa markup baru.
  */
 import {
+    createIcons,
     Landmark,
     Wallet,
     Plus,
