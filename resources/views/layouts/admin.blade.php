@@ -9,7 +9,17 @@
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-    @vite('resources/css/admin.css')
+    @vite(['resources/css/admin.css', 'resources/js/admin-ui.js'])
+    <script>
+    // Kelas awal animasi entrance. Fallback: bila bundle JS gagal dimuat,
+    // kelas dilepas agar seluruh UI tampil pada state final.
+    document.documentElement.classList.add('cc-anim');
+    window.addEventListener('load', function () {
+        setTimeout(function () {
+            if (!window.__ccReady) document.documentElement.classList.remove('cc-anim');
+        }, 1800);
+    });
+    </script>
     @stack('styles')
 </head>
 <body>

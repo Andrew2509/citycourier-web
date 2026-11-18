@@ -1,17 +1,23 @@
 {
   "resources/css/admin.css": {
-    "file": "assets/admin-CcxiDVnw.css",
+    "file": "assets/admin-CTIEDG_G.css",
     "src": "resources/css/admin.css",
     "isEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-JInApExe.css",
+    "file": "assets/app-CUk3ymS_.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/css/public.css": {
-    "file": "assets/public-qG7asVsf.css",
+    "file": "assets/public-P0zmX6bC.css",
     "src": "resources/css/public.css",
+    "isEntry": true
+  },
+  "resources/js/admin-ui.js": {
+    "file": "assets/admin-ui-DHQX07xg.js",
+    "name": "admin-ui",
+    "src": "resources/js/admin-ui.js",
     "isEntry": true
   },
   "resources/js/app.js": {

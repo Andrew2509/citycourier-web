@@ -445,4 +445,16 @@
         );
         background-size: 100% 25%;
     }
+
+    /* ── State awal animasi entrance (dilepas bila JS gagal/reduced-motion) ── */
+    html.cc-anim .card {
+        opacity: 0;
+    }
+    html.cc-anim [data-cc-bar] {
+        transform: scaleY(0);
+        transform-origin: bottom;
+    }
+    html.cc-anim [data-cc-bar] > span {
+        opacity: 0;
+    }
 }

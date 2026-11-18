@@ -46,7 +46,7 @@
                 <div class="min-w-0">
                     <div class="stat-label">Total Pengiriman</div>
                     <div class="stat-value">
-                        {{ number_format($stats['total_orders'] ?? 0) }}
+                        <span data-cc-count="{{ $stats['total_orders'] ?? 0 }}">{{ number_format($stats['total_orders'] ?? 0) }}</span>
                     </div>
                 </div>
                 <div class="stat-icon bg-brand-50 text-brand-600">
@@ -68,7 +68,7 @@
                 <div class="min-w-0">
                     <div class="stat-label">Sedang Berlangsung</div>
                     <div class="stat-value text-blue-700">
-                        {{ number_format($stats['active_shipments'] ?? 0) }}
+                        <span data-cc-count="{{ $stats['active_shipments'] ?? 0 }}">{{ number_format($stats['active_shipments'] ?? 0) }}</span>
                     </div>
                 </div>
                 <div class="stat-icon bg-blue-50 text-blue-600">
@@ -89,7 +89,7 @@
                 <div class="min-w-0">
                     <div class="stat-label">Pengiriman Selesai</div>
                     <div class="stat-value text-emerald-700">
-                        {{ number_format($stats['completed_orders'] ?? 0) }}
+                        <span data-cc-count="{{ $stats['completed_orders'] ?? 0 }}">{{ number_format($stats['completed_orders'] ?? 0) }}</span>
                     </div>
                 </div>
                 <div class="stat-icon bg-emerald-50 text-emerald-600">
@@ -112,7 +112,7 @@
                 <div class="min-w-0">
                     <div class="stat-label">Pengiriman Bermasalah</div>
                     <div class="stat-value text-red-700">
-                        {{ number_format($stats['cancelled_orders'] ?? 0) }}
+                        <span data-cc-count="{{ $stats['cancelled_orders'] ?? 0 }}">{{ number_format($stats['cancelled_orders'] ?? 0) }}</span>
                     </div>
                 </div>
                 <div class="stat-icon bg-red-50 text-red-600">
@@ -163,12 +163,12 @@
                             <div class="flex h-full w-full items-end justify-center gap-1"
                                  title="{{ $day['date'] }} &mdash; {{ $day['orders'] }} dibuat, {{ $day['completed'] }} selesai">
                                 @if($hOrders > 0)
-                                    <div class="relative w-2.5 rounded-t-sm bg-brand-500 sm:w-3.5" style="height: {{ $hOrders }}%">
+                                    <div data-cc-bar class="relative w-2.5 rounded-t-sm bg-brand-500 sm:w-3.5" style="height: {{ $hOrders }}%">
                                         <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-slate-600">{{ $day['orders'] }}</span>
                                     </div>
                                 @endif
                                 @if($hDone > 0)
-                                    <div class="relative w-2.5 rounded-t-sm bg-emerald-500 sm:w-3.5" style="height: {{ $hDone }}%">
+                                    <div data-cc-bar class="relative w-2.5 rounded-t-sm bg-emerald-500 sm:w-3.5" style="height: {{ $hDone }}%">
                                         <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-emerald-700">{{ $day['completed'] }}</span>
                                     </div>
                                 @endif
@@ -196,6 +196,8 @@
             </div>
         </div>
 
+        {{-- Kolom kanan: ringkasan pendapatan + distribusi status --}}
+        <div class="flex flex-col gap-5">
         {{-- Ringkasan pendapatan --}}
         <div class="card flex flex-col">
             <div class="card-header">
@@ -214,14 +216,14 @@
                 <div>
                     <div class="stat-label">Hari Ini</div>
                     <div class="stat-value text-2xl">
-                        Rp {{ number_format($stats['today_revenue'] ?? 0, 0, ',', '.') }}
+                        Rp <span data-cc-count="{{ $stats['today_revenue'] ?? 0 }}">{{ number_format($stats['today_revenue'] ?? 0, 0, ',', '.') }}</span>
                     </div>
                 </div>
 
                 <div class="mt-4 space-y-3 border-t border-slate-100 pt-3.5">
                     <div class="flex items-center justify-between text-xs">
                         <span class="text-slate-500">Total pendapatan</span>
-                        <span class="font-semibold text-slate-900">Rp {{ number_format($stats['total_revenue'] ?? 0, 0, ',', '.') }}</span>
+                        <span class="font-semibold text-slate-900">Rp <span data-cc-count="{{ $stats['total_revenue'] ?? 0 }}">{{ number_format($stats['total_revenue'] ?? 0, 0, ',', '.') }}</span></span>
                     </div>
                     <div class="flex items-center justify-between text-xs">
                         <span class="text-slate-500">Pesanan selesai hari ini</span>
@@ -245,6 +247,81 @@
                 </div>
                 @endcanPerm
             </div>
+        </div>
+
+        {{-- Distribusi status pengiriman (donut SVG, data nyata dari $stats) --}}
+        <div class="card flex flex-col">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Status Pengiriman</div>
+                    <div class="card-subtitle">Distribusi seluruh pesanan</div>
+                </div>
+            </div>
+
+            <div class="card-body flex flex-1 flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
+                @php
+                    $dTotal = (int) ($stats['total_orders'] ?? 0);
+                    $dSegs = [
+                        ['label' => 'Selesai', 'v' => (int) ($stats['completed_orders'] ?? 0), 'color' => '#10b981'],
+                        ['label' => 'Berlangsung', 'v' => (int) ($stats['active_shipments'] ?? 0), 'color' => '#3b82f6'],
+                        ['label' => 'Bermasalah', 'v' => (int) ($stats['cancelled_orders'] ?? 0), 'color' => '#ef4444'],
+                        ['label' => 'Menunggu', 'v' => max(0, $dTotal - (int) ($stats['completed_orders'] ?? 0) - (int) ($stats['active_shipments'] ?? 0) - (int) ($stats['cancelled_orders'] ?? 0)), 'color' => '#cbd5e1'],
+                    ];
+                    $dR = 40;
+                    $dC = 2 * M_PI * $dR;
+                    $dAccDeg = 0;
+                @endphp
+
+                @if($dTotal <= 0)
+                    <div class="flex flex-1 flex-col items-center justify-center gap-1 py-8 text-center">
+                        <span class="material-symbols-outlined text-3xl text-slate-300">donut_large</span>
+                        <div class="text-[13px] font-medium text-slate-400">Belum ada pesanan</div>
+                        <div class="text-[11.5px] text-slate-400">Distribusi status tampil otomatis dari data nyata.</div>
+                    </div>
+                @else
+                <div class="relative shrink-0">
+                    <svg viewBox="0 0 100 100" class="h-32 w-32 -rotate-90" role="img" aria-label="Distribusi status pengiriman">
+                        <circle cx="50" cy="50" r="{{ $dR }}" fill="none" stroke="#f1f5f9" stroke-width="11" />
+                        @foreach($dSegs as $seg)
+                            @continue(($seg['v'] ?? 0) <= 0)
+                            @php
+                                $segLen = $dC * $seg['v'] / $dTotal;
+                                $segDeg = $seg['v'] / $dTotal * 360;
+                                static $accDeg = 0;
+                            @endphp
+                            <circle data-cc-donut-seg="{{ $segLen }}" data-cc-donut-c="{{ $dC }}"
+                                    cx="50" cy="50" r="{{ $dR }}" fill="none"
+                                    stroke="{{ $seg['color'] }}" stroke-width="11"
+                                    stroke-dasharray="{{ $segLen }} {{ $dC - $segLen }}" stroke-dashoffset="0"
+                                    transform="rotate({{ $dAccDeg }} 50 50)">
+                                <title>{{ $seg['label'] }}: {{ $seg['v'] }} pesanan ({{ round($seg['v'] / $dTotal * 100) }}%)</title>
+                            </circle>
+                            @php $dAccDeg += $segDeg; @endphp
+                        @endforeach
+                    </svg>
+                    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                        <div class="text-lg font-bold leading-none text-slate-900">
+                            <span data-cc-count="{{ $stats['total_orders'] ?? 0 }}">{{ number_format($stats['total_orders'] ?? 0) }}</span>
+                        </div>
+                        <div class="mt-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">Total</div>
+                    </div>
+                </div>
+
+                <ul class="w-full space-y-2 text-xs">
+                    @foreach($dSegs as $seg)
+                        @continue(($seg['v'] ?? 0) <= 0)
+                        <li class="flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-2 text-slate-600">
+                                <span class="h-2 w-2 shrink-0 rounded-sm" style="background: {{ $seg['color'] }}"></span>
+                                {{ $seg['label'] }}
+                            </span>
+                            <span class="font-semibold text-slate-900">{{ number_format($seg['v']) }} <span class="font-normal text-slate-400">({{ round($seg['v'] / $dTotal * 100) }}%)</span></span>
+                        </li>
+                    @endforeach
+                </ul>
+                @endif
+            </div>
+        </div>
         </div>
     </div>
 
