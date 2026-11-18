@@ -89,9 +89,9 @@ class DokuKirimAccountInquiryService
             return $this->unavailable('Fitur cek nama Kirim DOKU belum diaktifkan di Admin.');
         }
 
-        if ($cfg['client_id'] === '' || $cfg['secret_key'] === '' || $cfg['private_key'] === '') {
+        if ($cfg['partner_id'] === '' || $cfg['secret_key'] === '' || $cfg['private_key'] === '') {
             return $this->unavailable(
-                'Kredensial Kirim DOKU (Client-Id, Secret Key, dan Private Key RSA) belum lengkap di Admin.'
+                'Kredensial Kirim DOKU (Client-Id/Partner-Id, Secret Key, dan Private Key RSA) belum lengkap di Admin.'
             );
         }
 
@@ -154,15 +154,15 @@ class DokuKirimAccountInquiryService
     public function probeCredentials(array $override = []): array
     {
         $cfg = $this->resolveConfig($override);
-        if ($cfg['client_id'] === '' || $cfg['secret_key'] === '' || $cfg['private_key'] === '') {
+        if ($cfg['partner_id'] === '' || $cfg['secret_key'] === '' || $cfg['private_key'] === '') {
             return [
                 'success' => false,
-                'message' => 'Private Key RSA Kirim DOKU belum diisi.',
+                'message' => 'Client-Id/Partner-Id, Secret Key, atau Private Key RSA Kirim DOKU belum diisi.',
             ];
         }
 
         $res = $this->getB2BAccessToken($cfg, true);
-        if (! $res['success']) {
+        if (! $res['success'] || empty($res['access_token'])) {
             return [
                 'success' => false,
                 'message' => (string) ($res['message'] ?? 'Token B2B Kirim DOKU ditolak.'),
@@ -170,9 +170,54 @@ class DokuKirimAccountInquiryService
             ];
         }
 
+        // Uji juga endpoint inquiry agar status pendaftaran X-PARTNER-ID Kirim DOKU langsung terdeteksi.
+        $inquiryPath = (string) config('payment_wallet.doku.kirim_inquiry_path', '/snap/v1.1/emoney/bank-account-inquiry');
+        $probeResp = $this->sendInquiryRequest(
+            $cfg,
+            $inquiryPath,
+            (string) $res['access_token'],
+            $cfg['customer_number'],
+            '0000000000',
+            '014'
+        );
+        $probeStatus = (int) ($probeResp['http_status'] ?? 0);
+        $probeJson = is_array($probeResp['json'] ?? null) ? $probeResp['json'] : [];
+        $probeMsg = trim((string) ($probeJson['responseMessage'] ?? ''));
+
+        if ($probeStatus === 0) {
+            return [
+                'success' => false,
+                'message' => 'Token B2B berhasil, tetapi endpoint Kirim DOKU tidak dapat dihubungi'
+                    .(! empty($probeResp['error']) ? ': '.$probeResp['error'] : '.'),
+                'mode' => $cfg['mode'],
+            ];
+        }
+
+        if ($probeStatus === 403) {
+            return [
+                'success' => false,
+                'message' => 'Token B2B valid, TETAPI Kirim DOKU SNAP menolak akses (HTTP 403'
+                    .($probeMsg !== '' ? ': '.$probeMsg : '')
+                    .'). Pastikan Partner ID (' . $cfg['partner_id'] . ') sudah diaktifkan untuk produk Kirim DOKU di mode '
+                    .strtoupper($cfg['mode'])
+                    .' oleh tim DOKU (care@doku.com), atau isi Partner ID Kirim DOKU bila terpisah dari Client-Id Checkout.',
+                'mode' => $cfg['mode'],
+            ];
+        }
+
+        if ($probeStatus === 401) {
+            return [
+                'success' => false,
+                'message' => 'Token B2B valid, tetapi endpoint inquiry menolak signature/otorisasi (HTTP 401'
+                    .($probeMsg !== '' ? ': '.$probeMsg : '')
+                    .'). Periksa Secret Key dan Partner ID DOKU.',
+                'mode' => $cfg['mode'],
+            ];
+        }
+
         return [
             'success' => true,
-            'message' => 'Token B2B Kirim DOKU SNAP aktif (RSA-SHA256 terverifikasi).',
+            'message' => 'Token B2B & endpoint Kirim DOKU SNAP aktif dan Partner ID terdaftar!',
             'mode' => $cfg['mode'],
         ];
     }
@@ -315,12 +360,17 @@ class DokuKirimAccountInquiryService
             ? (string) ($override['production_url'] ?? $creds['production_url'])
             : (string) ($override['sandbox_url'] ?? $creds['sandbox_url']);
 
+        $clientId = trim((string) ($override['client_id'] ?? $creds['client_id']));
+        $kirimPartnerId = trim((string) ($override['kirim_partner_id'] ?? ($creds['kirim_partner_id'] ?? '')));
+        $partnerId = $kirimPartnerId !== '' ? $kirimPartnerId : $clientId;
+
         return [
             'enabled' => (bool) ($override['enabled'] ?? $creds['enabled']),
             'kirim_inquiry_enabled' => (bool) ($override['kirim_inquiry_enabled'] ?? $creds['kirim_inquiry_enabled']),
             'mode' => $mode,
             'base_url' => rtrim($baseUrl, '/'),
-            'client_id' => trim((string) ($override['client_id'] ?? $creds['client_id'])),
+            'client_id' => $clientId,
+            'partner_id' => $partnerId,
             'secret_key' => trim((string) ($override['secret_key'] ?? $creds['secret_key'])),
             'private_key' => trim((string) ($override['private_key'] ?? $creds['private_key'])),
             'channel_id' => trim((string) ($override['channel_id'] ?? $creds['kirim_channel_id'])) ?: 'H2H',
@@ -350,7 +400,7 @@ class DokuKirimAccountInquiryService
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
         try {
-            $signature = $this->generateAsymmetricSignature($cfg['client_id'], $timestamp, $cfg['private_key']);
+            $signature = $this->generateAsymmetricSignature($cfg['partner_id'], $timestamp, $cfg['private_key']);
         } catch (RuntimeException $e) {
             return ['success' => false, 'access_token' => null, 'message' => $e->getMessage()];
         }
@@ -358,7 +408,7 @@ class DokuKirimAccountInquiryService
         try {
             $response = Http::timeout($cfg['timeout'])
                 ->withHeaders([
-                    'X-CLIENT-KEY' => $cfg['client_id'],
+                    'X-CLIENT-KEY' => $cfg['partner_id'],
                     'X-TIMESTAMP' => $timestamp,
                     'X-SIGNATURE' => $signature,
                     'Content-Type' => 'application/json',
@@ -451,7 +501,7 @@ class DokuKirimAccountInquiryService
             $response = Http::timeout($cfg['timeout'])
                 ->withHeaders([
                     'Authorization' => 'Bearer '.$accessToken,
-                    'X-PARTNER-ID' => $cfg['client_id'],
+                    'X-PARTNER-ID' => $cfg['partner_id'],
                     'X-EXTERNAL-ID' => $externalId,
                     'X-TIMESTAMP' => $timestamp,
                     'X-SIGNATURE' => $signature,
@@ -539,6 +589,12 @@ class DokuKirimAccountInquiryService
             'response_message' => $respMsg,
         ]);
 
+        if ($status === 401 || $status === 403) {
+            return $this->unavailable(
+                'Cek nama otomatis Kirim DOKU belum aktif pada akun merchant. Silakan isi nama pemilik akun secara manual.'
+            );
+        }
+
         return $this->unavailable(
             'Cek nama Kirim DOKU gagal (HTTP '.$status.')'
             .($respMsg !== '' ? ": {$respMsg}" : '.')
@@ -575,7 +631,7 @@ class DokuKirimAccountInquiryService
 
     private function tokenCacheKey(array $cfg): string
     {
-        return 'doku:kirim:b2b:token:'.md5($cfg['client_id'].'|'.$cfg['base_url']);
+        return 'doku:kirim:b2b:token:'.md5($cfg['partner_id'].'|'.$cfg['base_url']);
     }
 
     private function unavailable(string $message): array

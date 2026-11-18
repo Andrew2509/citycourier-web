@@ -670,13 +670,23 @@
                             </div>
                         </div>
 
-                        <div>
-                            <label class="form-label text-xs">DOKU Client-Id</label>
-                            <input type="text"
-                                   name="doku_client_id"
-                                   value="{{ $doku['client_id'] ?? '' }}"
-                                   placeholder="BRN-.... atau MCH-...."
-                                   class="form-input font-mono text-xs">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">DOKU Client-Id (Checkout &amp; Default)</label>
+                                <input type="text"
+                                       name="doku_client_id"
+                                       value="{{ $doku['client_id'] ?? '' }}"
+                                       placeholder="BRN-.... atau MCH-...."
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Partner ID Kirim DOKU (Opsional)</label>
+                                <input type="text"
+                                       name="doku_kirim_partner_id"
+                                       value="{{ $doku['kirim_partner_id'] ?? '' }}"
+                                       placeholder="Kosongkan jika sama dengan Client-Id"
+                                       class="form-input font-mono text-xs">
+                            </div>
                         </div>
 
                         <div>

@@ -45,6 +45,7 @@ class GatewayCredentialsResolver
         $sandboxUrl = $this->readPlain('doku_sandbox_url', (string) config('payment_wallet.doku.sandbox_url', 'https://api-sandbox.doku.com'));
         $productionUrl = $this->readPlain('doku_production_url', (string) config('payment_wallet.doku.production_url', 'https://api.doku.com'));
         $clientId = trim($this->readPlain('doku_client_id', (string) config('payment_wallet.doku.client_id', '')));
+        $kirimPartnerId = trim($this->readPlain('doku_kirim_partner_id', (string) config('payment_wallet.doku.kirim_partner_id', '')));
         $secretKey = trim($this->readSecret('doku_secret_key', (string) config('payment_wallet.doku.secret_key', '')));
         $privateKey = trim($this->readSecret('doku_private_key', (string) config('payment_wallet.doku.private_key', '')));
         $kirimChannelId = trim($this->readPlain('doku_kirim_channel_id', (string) config('payment_wallet.doku.kirim_channel_id', 'H2H')));
@@ -61,6 +62,7 @@ class GatewayCredentialsResolver
             'sandbox_url' => rtrim($sandboxUrl ?: 'https://api-sandbox.doku.com', '/'),
             'production_url' => rtrim($productionUrl ?: 'https://api.doku.com', '/'),
             'client_id' => $clientId,
+            'kirim_partner_id' => $kirimPartnerId,
             'secret_key' => $secretKey,
             'private_key' => $privateKey,
             'has_private_key' => $hasPrivateKey,

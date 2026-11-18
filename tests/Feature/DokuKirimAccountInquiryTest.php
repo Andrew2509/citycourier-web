@@ -332,4 +332,85 @@ class DokuKirimAccountInquiryTest extends TestCase
 
         $this->assertFalse(app(DokuKirimAccountInquiryService::class)->isAvailable());
     }
+
+    public function test_kirim_doku_unregistered_partner_id_403_is_caught_by_admin_test_and_friendly_on_mobile(): void
+    {
+        $this->configureDokuKirim('sandbox');
+        Setting::set('doku_kirim_partner_id', 'BRN-KIRIM-ONLY-999', 'doku');
+
+        $admin = User::create([
+            'name' => 'Admin Probe DOKU',
+            'email' => 'admin.probe.doku@city.test',
+            'role' => 'admin',
+            'password' => Hash::make('secret123'),
+        ]);
+        $admin->assignRole('super-admin');
+
+        $courier = $this->createCourier();
+        $capturedHeaders = [];
+
+        Http::fake(function ($request) use (&$capturedHeaders) {
+            $url = $request->url();
+            $capturedHeaders[] = [
+                'url' => $url,
+                'client_id' => $request->header('Client-Id')[0] ?? null,
+                'x_client_key' => $request->header('X-CLIENT-KEY')[0] ?? null,
+                'x_partner_id' => $request->header('X-PARTNER-ID')[0] ?? null,
+            ];
+
+            if (str_contains($url, '/orders/v1/status/')) {
+                return Http::response(['message' => 'Not found'], 404);
+            }
+
+            if (str_ends_with($url, '/authorization/v1/access-token/b2b')) {
+                return Http::response([
+                    'responseCode' => '2007300',
+                    'accessToken' => 'snap-token-403-check',
+                    'expiresIn' => 900,
+                ], 200);
+            }
+
+            if (str_ends_with($url, '/snap/v1.1/emoney/bank-account-inquiry')) {
+                return Http::response([
+                    'responseCode' => '4034215',
+                    'responseMessage' => 'Transaction Not Permitted. [Partner Id has not been registered]',
+                ], 403);
+            }
+
+            return Http::response([], 404);
+        });
+
+        // Admin Test Koneksi immediately exposes HTTP 403 unregistered Partner ID diagnostic
+        $testRes = $this->actingAs($admin)
+            ->postJson('/admin/settings/doku/test')
+            ->assertStatus(400)
+            ->assertJsonPath('success', false);
+
+        $adminMsg = (string) $testRes->json('message');
+        $this->assertStringContainsString('HTTP 403', $adminMsg);
+        $this->assertStringContainsString('Partner Id has not been registered', $adminMsg);
+        $this->assertStringContainsString('BRN-KIRIM-ONLY-999', $adminMsg);
+
+        // Mobile inquiry uses the clean Indonesian fallback message (without raw HTTP 403 stack)
+        Sanctum::actingAs($courier);
+        $mobileRes = $this->postJson('/api/v1/courier/wallet/destinations/inquiry', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => '081343323155',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', false)
+            ->assertJsonPath('data.found', false);
+
+        $mobileMsg = (string) $mobileRes->json('data.message');
+        $this->assertStringNotContainsString('HTTP 403', $mobileMsg);
+        $this->assertStringNotContainsString('Transaction Not Permitted', $mobileMsg);
+        $this->assertStringContainsString('manual', strtolower($mobileMsg));
+
+        // Confirm optional doku_kirim_partner_id overrides X-CLIENT-KEY & X-PARTNER-ID cleanly
+        $tokenCall = collect($capturedHeaders)->first(fn ($h) => str_ends_with($h['url'], '/access-token/b2b'));
+        $inquiryCall = collect($capturedHeaders)->first(fn ($h) => str_ends_with($h['url'], '/bank-account-inquiry'));
+        $this->assertSame('BRN-KIRIM-ONLY-999', $tokenCall['x_client_key'] ?? null);
+        $this->assertSame('BRN-KIRIM-ONLY-999', $inquiryCall['x_partner_id'] ?? null);
+    }
 }

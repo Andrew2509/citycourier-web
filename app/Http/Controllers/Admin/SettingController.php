@@ -1016,6 +1016,7 @@ class SettingController extends Controller
             'doku_sandbox_url' => ['required', 'url', 'max:255'],
             'doku_production_url' => ['required', 'url', 'max:255'],
             'doku_client_id' => ['nullable', 'string', 'max:150'],
+            'doku_kirim_partner_id' => ['nullable', 'string', 'max:150'],
             'doku_secret_key' => ['nullable', 'string', 'min:8', 'max:255'],
             'doku_private_key' => ['nullable', 'string', 'max:10000'],
             'doku_kirim_channel_id' => ['nullable', 'string', 'max:30'],
@@ -1028,6 +1029,7 @@ class SettingController extends Controller
         Setting::set('doku_sandbox_url', rtrim($validated['doku_sandbox_url'], '/'), 'doku');
         Setting::set('doku_production_url', rtrim($validated['doku_production_url'], '/'), 'doku');
         Setting::set('doku_client_id', trim((string) ($validated['doku_client_id'] ?? '')), 'doku');
+        Setting::set('doku_kirim_partner_id', trim((string) ($validated['doku_kirim_partner_id'] ?? '')), 'doku');
         Setting::set('doku_kirim_inquiry_enabled', $request->boolean('doku_kirim_inquiry_enabled') ? '1' : '0', 'doku');
         Setting::set(
             'doku_kirim_channel_id',
@@ -1109,6 +1111,7 @@ class SettingController extends Controller
             $productionUrl = rtrim((string) ($request->input('doku_production_url') ?: $saved['production_url']), '/');
             $baseUrl = $mode === 'production' ? $productionUrl : $sandboxUrl;
             $clientId = trim((string) ($request->input('doku_client_id') ?: $saved['client_id']));
+            $kirimPartnerId = trim((string) ($request->input('doku_kirim_partner_id') ?? ($saved['kirim_partner_id'] ?? '')));
             $secretKey = trim((string) ($request->input('doku_secret_key') ?: $saved['secret_key']));
             $privateKey = trim((string) ($request->input('doku_private_key') ?: $saved['private_key']));
             $channelId = trim((string) ($request->input('doku_kirim_channel_id') ?: $saved['kirim_channel_id'])) ?: 'H2H';
@@ -1145,6 +1148,7 @@ class SettingController extends Controller
                         'sandbox_url' => $sandboxUrl,
                         'production_url' => $productionUrl,
                         'client_id' => $clientId,
+                        'kirim_partner_id' => $kirimPartnerId,
                         'secret_key' => $secretKey,
                         'private_key' => $privateKey,
                         'channel_id' => $channelId,
@@ -1152,7 +1156,7 @@ class SettingController extends Controller
                     if (! ($kirimProbe['success'] ?? false)) {
                         return response()->json([
                             'success' => false,
-                            'message' => $msg.' Namun Token B2B Kirim DOKU gagal: '.($kirimProbe['message'] ?? 'Periksa Private/Public Key & aktivasi Kirim DOKU.'),
+                            'message' => $msg.' Namun Kirim DOKU gagal: '.($kirimProbe['message'] ?? 'Periksa Private/Public Key & aktivasi Kirim DOKU.'),
                         ], 400);
                     }
                     $msg .= ' '.$kirimProbe['message'];
