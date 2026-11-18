@@ -12,6 +12,12 @@
  */
 import { animate, stagger } from "motion";
 import { animate as animeAnimate, stagger as animeStagger } from "animejs";
+import { initIcons } from "./cc-icons";
+
+// Konversi ikon dijalankan lebih dulu (bukan bagian dari layer animasi),
+// agar placeholder ikon tidak sempat terlihat dan animasi kartu bekerja
+// pada markup final.
+initIcons();
 
 const EASE_OUT_EXPO = [0.22, 1, 0.36, 1];
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

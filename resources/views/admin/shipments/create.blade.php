@@ -17,7 +17,7 @@
         justify-content: center;
         width: 32px;
         height: 32px;
-        background: #ec5b13;
+        background: #0647FF;
         color: white;
         border-radius: 50% 50% 50% 0;
         transform: rotate(-45deg);
@@ -37,7 +37,7 @@
     }
     .autocomplete-items {
         position: absolute;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #E5E7EB;
         border-top: none;
         z-index: 99;
         top: 100%;
@@ -54,12 +54,12 @@
         cursor: pointer;
         font-size: 13px;
         line-height: 1.35;
-        border-bottom: 1px solid #f1f5f9;
-        color: #334155;
+        border-bottom: 1px solid #E5E7EB;
+        color: #36435C;
     }
     .autocomplete-item:hover {
-        background-color: #f8fafc;
-        color: #ec5b13;
+        background-color: #FAF7EA;
+        color: #0647FF;
     }
 </style>
 @endpush
@@ -70,9 +70,9 @@
     <div class="flex flex-col gap-2">
         <nav class="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
             <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-800 transition">Dashboard</a>
-            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span class="cc-icon text-[14px]">chevron_right</span>
             <a href="{{ route('admin.shipments.index') }}" class="hover:text-slate-800 transition">Pengiriman</a>
-            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span class="cc-icon text-[14px]">chevron_right</span>
             <span class="text-slate-900 font-semibold">Tambah Pengiriman Baru</span>
         </nav>
         <div class="page-header">
@@ -84,7 +84,7 @@
             </div>
             <div class="page-actions">
                 <a href="{{ route('admin.shipments.index') }}" class="btn btn-secondary btn-sm">
-                    <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                    <span class="cc-icon text-[18px]">arrow_back</span>
                     <span>Kembali ke Daftar</span>
                 </a>
             </div>
@@ -103,7 +103,7 @@
                 <div class="card p-5 space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-brand-600 flex items-center justify-center font-bold text-sm">
+                            <div class="w-8 h-8 rounded-lg bg-primary-50 border border-primary-200 text-primary-600 flex items-center justify-center font-bold text-sm">
                                 1
                             </div>
                             <div>
@@ -166,8 +166,8 @@
                             <label class="form-label mb-0" for="sender_address">Alamat Lengkap Pengirim <span class="text-red-500">*</span></label>
                             <button type="button"
                                     onclick="openMapModal('sender')"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-200 rounded-md hover:bg-brand-100 transition shadow-2xs">
-                                <span class="material-symbols-outlined text-[16px]">location_on</span>
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-primary-600 bg-primary-50 border border-primary-200 rounded-md hover:bg-primary-100 transition shadow-2xs">
+                                <span class="cc-icon text-[16px]">location_on</span>
                                 <span>Pilih dari Peta</span>
                             </button>
                         </div>
@@ -180,9 +180,9 @@
                                       class="form-input pr-10">{{ old('sender_address') }}</textarea>
                             <button type="button"
                                     onclick="openMapModal('sender')"
-                                    class="absolute right-2.5 top-2.5 text-slate-400 hover:text-brand-600 transition"
+                                    class="absolute right-2.5 top-2.5 text-slate-400 hover:text-primary-600 transition"
                                     title="Buka Peta Interaktif">
-                                <span class="material-symbols-outlined text-[20px]">map</span>
+                                <span class="cc-icon text-[20px]">map</span>
                             </button>
                         </div>
                         @error('sender_address')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
@@ -203,7 +203,7 @@
                         {{-- Display Wilayah Terdeteksi --}}
                         <div id="senderRegionDisplay" class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
                             <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-slate-400 text-[18px]">verified</span>
+                                <span class="cc-icon text-slate-400 text-[18px]">verified</span>
                                 <div>
                                     <span id="senderRegionText" class="text-xs font-semibold text-slate-800">
                                         {{ old('origin_name') ?: 'Pilih lokasi dari peta atau tentukan wilayah manual' }}
@@ -259,7 +259,7 @@
                 {{-- 2. PENERIMA (DESTINATION) --}}
                 <div class="card p-5 space-y-4">
                     <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-                        <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-brand-600 flex items-center justify-center font-bold text-sm">
+                        <div class="w-8 h-8 rounded-lg bg-primary-50 border border-primary-200 text-primary-600 flex items-center justify-center font-bold text-sm">
                             2
                         </div>
                         <div>
@@ -300,8 +300,8 @@
                             <label class="form-label mb-0" for="receiver_address">Alamat Lengkap Penerima <span class="text-red-500">*</span></label>
                             <button type="button"
                                     onclick="openMapModal('receiver')"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-200 rounded-md hover:bg-brand-100 transition shadow-2xs">
-                                <span class="material-symbols-outlined text-[16px]">location_on</span>
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-primary-600 bg-primary-50 border border-primary-200 rounded-md hover:bg-primary-100 transition shadow-2xs">
+                                <span class="cc-icon text-[16px]">location_on</span>
                                 <span>Pilih dari Peta</span>
                             </button>
                         </div>
@@ -314,9 +314,9 @@
                                       class="form-input pr-10">{{ old('receiver_address') }}</textarea>
                             <button type="button"
                                     onclick="openMapModal('receiver')"
-                                    class="absolute right-2.5 top-2.5 text-slate-400 hover:text-brand-600 transition"
+                                    class="absolute right-2.5 top-2.5 text-slate-400 hover:text-primary-600 transition"
                                     title="Buka Peta Interaktif">
-                                <span class="material-symbols-outlined text-[20px]">map</span>
+                                <span class="cc-icon text-[20px]">map</span>
                             </button>
                         </div>
                         @error('receiver_address')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
@@ -337,7 +337,7 @@
                         {{-- Display Wilayah Terdeteksi --}}
                         <div id="receiverRegionDisplay" class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
                             <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-slate-400 text-[18px]">verified</span>
+                                <span class="cc-icon text-slate-400 text-[18px]">verified</span>
                                 <div>
                                     <span id="receiverRegionText" class="text-xs font-semibold text-slate-800">
                                         {{ old('destination_name') ?: 'Pilih lokasi dari peta atau tentukan wilayah manual' }}
@@ -393,7 +393,7 @@
                 {{-- 3. DETAIL BARANG / PAKET --}}
                 <div class="card p-5 space-y-4">
                     <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-                        <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-brand-600 flex items-center justify-center font-bold text-sm">
+                        <div class="w-8 h-8 rounded-lg bg-primary-50 border border-primary-200 text-primary-600 flex items-center justify-center font-bold text-sm">
                             3
                         </div>
                         <div>
@@ -460,16 +460,16 @@
                     <div>
                         <label class="form-label">Tipe Kendaraan Kurir <span class="text-red-500">*</span></label>
                         <div class="grid grid-cols-2 gap-3">
-                            <label class="vehicle-option relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition text-center border-brand-600 bg-brand-50" id="vehicleCardMotor">
+                            <label class="vehicle-option relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition text-center border-primary-600 bg-primary-50" id="vehicleCardMotor">
                                 <input type="radio" name="vehicle" value="motor" checked onchange="onVehicleChange('motor')" class="sr-only">
-                                <span class="material-symbols-outlined text-2xl text-brand-600 mb-1">two_wheeler</span>
+                                <span class="cc-icon text-2xl text-primary-600 mb-1">two_wheeler</span>
                                 <span class="text-xs font-bold text-slate-900">Motor</span>
                                 <span class="text-[10px] text-slate-500">Maks. 20 kg</span>
                             </label>
 
                             <label class="vehicle-option relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition text-center border-slate-200 hover:border-slate-300" id="vehicleCardMobil">
                                 <input type="radio" name="vehicle" value="mobil" onchange="onVehicleChange('mobil')" class="sr-only">
-                                <span class="material-symbols-outlined text-2xl text-slate-600 mb-1">local_shipping</span>
+                                <span class="cc-icon text-2xl text-slate-600 mb-1">local_shipping</span>
                                 <span class="text-xs font-bold text-slate-900">Mobil</span>
                                 <span class="text-[10px] text-slate-500">Maks. 150 kg</span>
                             </label>
@@ -488,7 +488,7 @@
                     {{-- Indikator Jarak --}}
                     <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
                         <div class="flex items-center gap-2 text-slate-600">
-                            <span class="material-symbols-outlined text-slate-400 text-[18px]">straighten</span>
+                            <span class="cc-icon text-slate-400 text-[18px]">straighten</span>
                             <span>Estimasi Jarak</span>
                         </div>
                         <span id="labelDistance" class="font-bold text-slate-900">0.0 km</span>
@@ -520,7 +520,7 @@
                         <div class="pt-3 border-t border-slate-200 flex items-baseline justify-between">
                             <span class="text-xs font-bold text-slate-900">Total Biaya</span>
                             <div class="text-right">
-                                <div class="text-lg font-bold text-brand-600" id="labelTotalCost">Rp8.000</div>
+                                <div class="text-lg font-bold text-primary-600" id="labelTotalCost">Rp8.000</div>
                                 <input type="hidden" name="total_cost" id="total_cost" value="{{ old('total_cost', '8000') }}">
                                 <span class="text-[10.5px] text-slate-400">Termasuk pajak &amp; asuransi standar</span>
                             </div>
@@ -539,7 +539,7 @@
                     {{-- Tombol Submit --}}
                     <div class="space-y-2 pt-3">
                         <button type="submit" class="btn btn-primary w-full py-2.5 justify-center shadow-md">
-                            <span class="material-symbols-outlined text-[18px]">send</span>
+                            <span class="cc-icon text-[18px]">send</span>
                             <span>Buat Pengiriman &amp; Resi</span>
                         </button>
                         <a href="{{ route('admin.shipments.index') }}" class="btn btn-ghost w-full py-2 justify-center text-xs text-slate-500">
@@ -557,23 +557,23 @@
 <div id="mapModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {{-- Overlay --}}
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" onclick="closeMapModal()"></div>
+        <div class="fixed inset-0 bg-slate-900/60 xs transition-opacity" onclick="closeMapModal()"></div>
 
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         {{-- Dialog Modal Box --}}
         <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full border border-slate-200">
             {{-- Modal Header --}}
-            <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <div class="px-5 py-4 bg-ink-900 text-white flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-brand-400">map</span>
+                    <span class="cc-icon text-primary-400">map</span>
                     <div>
                         <h3 class="text-sm font-bold text-white" id="modalMapTitle">Pilih Titik Lokasi dari Peta</h3>
                         <p class="text-[11.5px] text-slate-300">Peta interaktif dengan reverse geocoding &amp; pencocokan wilayah RajaOngkir otomatis.</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeMapModal()" class="text-slate-400 hover:text-white transition">
-                    <span class="material-symbols-outlined">close</span>
+                    <span class="cc-icon">close</span>
                 </button>
             </div>
 
@@ -587,9 +587,9 @@
                                    id="mapSearchInput"
                                    placeholder="Cari nama jalan, gedung, atau kelurahan..."
                                    class="form-input text-xs pl-8 pr-8 py-2 w-full bg-white shadow-2xs">
-                            <span class="material-symbols-outlined absolute left-2.5 top-2 text-slate-400 text-[18px]">search</span>
+                            <span class="cc-icon absolute left-2.5 top-2 text-slate-400 text-[18px]">search</span>
                             <button type="button" id="btnClearMapSearch" onclick="clearMapSearch()" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-slate-600">
-                                <span class="material-symbols-outlined text-[16px]">close</span>
+                                <span class="cc-icon text-[16px]">close</span>
                             </button>
                         </div>
                         <div id="autocompleteResults" class="autocomplete-items hidden"></div>
@@ -599,8 +599,8 @@
                     <button type="button"
                             id="btnCurrentLocation"
                             onclick="getCurrentBrowserLocation()"
-                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 border border-slate-700 rounded-lg shadow-2xs transition whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[16px] text-brand-400">my_location</span>
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition whitespace-nowrap">
+                        <span class="cc-icon text-[16px] text-primary-400">my_location</span>
                         <span id="btnCurrentLocationText">Gunakan Lokasi Saya</span>
                     </button>
                 </div>
@@ -612,8 +612,8 @@
                     <div id="leafletMap" class="map-container"></div>
 
                     {{-- Loading Indicator Overlay --}}
-                    <div id="mapLoadingOverlay" class="absolute inset-0 bg-white/70 backdrop-blur-2xs z-20 flex flex-col items-center justify-center hidden rounded-lg">
-                        <div class="w-7 h-7 border-3 border-brand-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <div id="mapLoadingOverlay" class="absolute inset-0 bg-white/70 2xs z-20 flex flex-col items-center justify-center hidden rounded-lg">
+                        <div class="w-7 h-7 border-3 border-primary-500 border-t-transparent rounded-full animate-spin mb-2"></div>
                         <span class="text-xs font-semibold text-slate-800" id="mapLoadingText">Memeriksa lokasi &amp; mencocokkan wilayah RajaOngkir...</span>
                     </div>
                 </div>
@@ -622,7 +622,7 @@
                 <div id="locationPreviewCard" class="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2.5">
                     <div class="flex items-center justify-between border-b border-slate-200/80 pb-1.5">
                         <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[16px] text-brand-600">near_me</span>
+                            <span class="cc-icon text-[16px] text-primary-600">near_me</span>
                             Preview Lokasi Pengiriman
                         </span>
                         {{-- Status Pills --}}
@@ -655,7 +655,7 @@
                     <div class="pt-2 border-t border-slate-200/80 flex items-center justify-between">
                         <div>
                             <span class="text-[11px] font-medium text-slate-400 block mb-0.5">Wilayah RajaOngkir</span>
-                            <p id="previewRegionText" class="font-bold text-brand-700">
+                            <p id="previewRegionText" class="font-bold text-primary-700">
                                 Menunggu pilihan titik...
                             </p>
                         </div>
@@ -666,7 +666,7 @@
 
                     {{-- Alert jika wilayah tidak cocok otomatis (Poin 6) --}}
                     <div id="unmatchedAlert" class="hidden p-2.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-start gap-2">
-                        <span class="material-symbols-outlined text-[18px] text-amber-600 mt-0.5">warning</span>
+                        <span class="cc-icon text-[18px] text-amber-600 mt-0.5">warning</span>
                         <span>Wilayah belum dapat dicocokkan secara otomatis. Silakan pilih wilayah secara manual di form setelah menerapkan lokasi ini.</span>
                     </div>
                 </div>
@@ -682,7 +682,7 @@
                         Ubah Lokasi
                     </button>
                     <button type="button" id="btnApplyLocation" onclick="applySelectedLocation()" class="btn btn-primary btn-sm flex-1 sm:flex-none justify-center">
-                        <span class="material-symbols-outlined text-[16px]">check</span>
+                        <span class="cc-icon text-[16px]">check</span>
                         <span>Gunakan Lokasi Ini</span>
                     </button>
                 </div>
@@ -825,7 +825,7 @@
             // Custom Icon Pin
             const customIcon = L.divIcon({
                 className: 'custom-div-icon',
-                html: `<div class="custom-map-pin"><div class="pin-inner"><span class="material-symbols-outlined text-[16px]">location_on</span></div></div>`,
+                html: `<div class="custom-map-pin"><div class="pin-inner"><span class="cc-icon text-[16px]">location_on</span></div></div>`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -32]
@@ -1234,14 +1234,14 @@
         const cardMobil = document.getElementById('vehicleCardMobil');
 
         if (v === 'motor') {
-            cardMotor.classList.add('border-brand-600', 'bg-brand-50');
+            cardMotor.classList.add('border-primary-600', 'bg-primary-50');
             cardMotor.classList.remove('border-slate-200');
-            cardMobil.classList.remove('border-brand-600', 'bg-brand-50');
+            cardMobil.classList.remove('border-primary-600', 'bg-primary-50');
             cardMobil.classList.add('border-slate-200');
         } else {
-            cardMobil.classList.add('border-brand-600', 'bg-brand-50');
+            cardMobil.classList.add('border-primary-600', 'bg-primary-50');
             cardMobil.classList.remove('border-slate-200');
-            cardMotor.classList.remove('border-brand-600', 'bg-brand-50');
+            cardMotor.classList.remove('border-primary-600', 'bg-primary-50');
             cardMotor.classList.add('border-slate-200');
         }
 

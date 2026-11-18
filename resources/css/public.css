@@ -12,26 +12,41 @@
 @theme {
     /* ── Tipografi ─────────────────────────────────────────────── */
     --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-    --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-    --font-mono:
-        "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-    /* ── Brand City Courier (oranye, #FF5A00 sebagai anchor) ───── */
-    --color-brand-50: #fff5ed;
-    --color-brand-100: #ffe6d8;
-    --color-brand-200: #fecfb5;
-    --color-brand-300: #fdaa7d;
-    --color-brand-400: #fb8a45;
-    --color-brand-500: #ff5a00;
-    --color-brand-600: #eb5100;
-    --color-brand-700: #c74200;
-    --color-brand-800: #9e3600;
-    --color-brand-900: #7c2a00;
+    /* ── Primary City Courier (biru #0647FF) ───────────────────── */
+    --color-primary-50: #eef2ff;
+    --color-primary-100: #e0e8ff;
+    --color-primary-200: #c3d2ff;
+    --color-primary-300: #9ab2ff;
+    --color-primary-400: #6488ff;
+    --color-primary-500: #2f63ff;
+    --color-primary-600: #0647ff;
+    --color-primary-700: #0539cc;
+    --color-primary-800: #063280;
+    --color-primary-900: #082866;
 
-    /* ── Navy / sekunder ──────────────────────────────────────── */
-    --color-navy-800: #1e293b;
-    --color-navy-900: #0f172a;
-    --color-navy-950: #0b132b;
+    /* ── Accent orange (hanya highlight) ───────────────────────── */
+    --color-brand-50: #fff4e5;
+    --color-brand-100: #ffe8c7;
+    --color-brand-200: #ffd294;
+    --color-brand-300: #ffb952;
+    --color-brand-400: #ffa226;
+    --color-brand-500: #ff910f;
+    --color-brand-600: #db7a00;
+    --color-brand-700: #b26300;
+    --color-brand-800: #8a4d00;
+    --color-brand-900: #613600;
+
+    /* ── Ink (teks gelap #172033) ──────────────────────────────── */
+    --color-navy-800: #253047;
+    --color-navy-900: #172033;
+    --color-navy-950: #0e1422;
+
+    /* ── Align biru info ke brand primary ─────────────────────── */
+    --color-blue-500: #2f63ff;
+    --color-blue-600: #0647ff;
 
     /* ── Animasi shake untuk pesan error login ─────────────────── */
     --animate-shake: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
@@ -63,11 +78,22 @@
 }
 
 @layer base {
-    .material-symbols-outlined {
-        font-variation-settings:
-            "FILL" 0,
-            "wght" 400,
-            "GRAD" 0,
-            "opsz" 24;
+    /* Ikon Lucide: runtime konversi .cc-icon → SVG (admin-ui.js) */
+    .cc-icon {
+        display: inline-block;
+        flex-shrink: 0;
+        line-height: 1;
+        font-size: 20px;
+    }
+
+    /* Placeholder sebelum runtime Lucide aktif: sembunyikan teks nama ikon */
+    html.cc-icons-pending .cc-icon {
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        overflow: hidden;
+        vertical-align: text-bottom;
+        color: transparent;
+        user-select: none;
     }
 }

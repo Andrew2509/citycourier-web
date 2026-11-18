@@ -6,17 +6,23 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk Admin - CityCourier</title>
     
-    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    @vite('resources/css/public.css')
+    @vite(['resources/css/public.css', 'resources/js/admin-ui.js'])
+    <script>
+    // Sembunyikan teks nama ikon (placeholder Lucide) sampai runtime konversi aktif.
+    document.documentElement.classList.add('cc-icons-pending');
+    window.addEventListener('load', function () {
+        setTimeout(function () {
+            if (!window.__ccIconsDone) document.documentElement.classList.remove('cc-icons-pending');
+        }, 3000);
+    });
+    </script>
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
@@ -25,13 +31,13 @@
         <!-- Left Column: Modern Hero Branding Showcase (Desktop Only) -->
         <div class="hidden lg:flex lg:w-1/2 xl:w-5/12 bg-navy-950 flex-col justify-between p-12 relative overflow-hidden text-white border-r border-slate-800">
             <!-- Subtle Radial Glow Background -->
-            <div class="absolute -top-24 -left-24 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary-600/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <!-- Top Brand Header -->
             <div class="relative z-10 flex items-center gap-3">
                 <img src="{{ asset('images/logo-city-courier.png') }}" alt="City Courier" class="h-10 w-auto max-w-[160px] object-contain shrink-0">
-                <span class="text-[11px] font-semibold uppercase tracking-widest text-brand-500 font-mono">Operations Portal</span>
+                <span class="text-[11px] font-semibold uppercase tracking-widest text-primary-500 font-mono">Operations Portal</span>
             </div>
 
             <!-- Middle Value Pitch -->
@@ -42,7 +48,7 @@
                 </div>
 
                 <h1 class="font-display text-3xl xl:text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
-                    Pantau rute, armada kurir, dan pesanan secara <span class="text-brand-500">real-time</span>.
+                    Pantau rute, armada kurir, dan pesanan secara <span class="text-primary-500">real-time</span>.
                 </h1>
 
                 <p class="text-slate-400 text-sm leading-relaxed mb-8">
@@ -52,8 +58,8 @@
                 <!-- 3 Feature Chips -->
                 <div class="space-y-3.5">
                     <div class="flex items-center gap-3 text-slate-300 text-xs bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-                        <div class="w-8 h-8 rounded-lg bg-brand-600/10 text-brand-500 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[18px]">two_wheeler</span>
+                        <div class="w-8 h-8 rounded-lg bg-primary-600/10 text-primary-500 flex items-center justify-center shrink-0">
+                            <span class="cc-icon text-[18px]">two_wheeler</span>
                         </div>
                         <div>
                             <span class="font-semibold text-white block">Armada Motor &amp; Mobil</span>
@@ -63,7 +69,7 @@
 
                     <div class="flex items-center gap-3 text-slate-300 text-xs bg-slate-900/60 border border-slate-800 rounded-xl p-3">
                         <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[18px]">chat</span>
+                            <span class="cc-icon text-[18px]">chat</span>
                         </div>
                         <div>
                             <span class="font-semibold text-white block">Notifikasi WhatsApp Fonnte</span>
@@ -73,7 +79,7 @@
 
                     <div class="flex items-center gap-3 text-slate-300 text-xs bg-slate-900/60 border border-slate-800 rounded-xl p-3">
                         <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[18px]">map</span>
+                            <span class="cc-icon text-[18px]">map</span>
                         </div>
                         <div>
                             <span class="font-semibold text-white block">Live Courier Tracking</span>
@@ -86,7 +92,7 @@
             <!-- Bottom Security Footer -->
             <div class="relative z-10 pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[16px] text-slate-400">lock</span>
+                    <span class="cc-icon text-[16px] text-slate-400">lock</span>
                     <span>Enkripsi Sesi TLS 256-Bit</span>
                 </div>
                 <span>City Courier v2.4</span>
@@ -100,7 +106,7 @@
                 <!-- Mobile Only Brand Header -->
                 <div class="lg:hidden flex items-center gap-3 mb-8">
                     <img src="{{ asset('images/logo-city-courier.png') }}" alt="City Courier" class="h-9 w-auto max-w-[140px] object-contain shrink-0">
-                    <span class="text-[11px] font-semibold text-brand-600 font-mono">Operations Portal</span>
+                    <span class="text-[11px] font-semibold text-primary-600 font-mono">Operations Portal</span>
                 </div>
 
                 <!-- Form Box Header -->
@@ -114,7 +120,7 @@
                 <!-- Error Alert -->
                 @if ($errors->any())
                 <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-start gap-3 shadow-sm animate-shake">
-                    <span class="material-symbols-outlined text-red-600 text-[20px] shrink-0 mt-0.5">error</span>
+                    <span class="cc-icon text-red-600 text-[20px] shrink-0 mt-0.5">error</span>
                     <div class="text-sm">
                         <p class="font-semibold">Gagal Masuk</p>
                         <p class="text-red-700 mt-0.5 text-xs leading-relaxed">{{ $errors->first() }}</p>
@@ -133,14 +139,14 @@
                         </label>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <span class="material-symbols-outlined text-[20px]">mail</span>
+                                <span class="cc-icon text-[20px]">mail</span>
                             </span>
                             <input
                                 type="email"
                                 id="email"
                                 name="email"
                                 value="{{ old('email') }}"
-                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition-all shadow-sm"
+                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 transition-all shadow-sm"
                                 placeholder="nama@citycourier.com"
                                 required
                                 autofocus
@@ -157,13 +163,13 @@
                         </div>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <span class="material-symbols-outlined text-[20px]">lock</span>
+                                <span class="cc-icon text-[20px]">lock</span>
                             </span>
                             <input
                                 type="password"
                                 id="password"
                                 name="password"
-                                class="w-full pl-11 pr-11 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition-all shadow-sm"
+                                class="w-full pl-11 pr-11 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 transition-all shadow-sm"
                                 placeholder="••••••••"
                                 required
                             >
@@ -173,7 +179,8 @@
                                 class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                                 title="Tampilkan sandi"
                             >
-                                <span class="material-symbols-outlined text-[20px]" id="togglePasswordIcon">visibility</span>
+                                <span class="cc-icon text-[20px]" id="togglePasswordIcon">visibility</span>
+                            <span class="cc-icon hidden text-[20px]" id="togglePasswordIconOff">visibility_off</span>
                             </button>
                         </div>
                     </div>
@@ -185,7 +192,7 @@
                                 type="checkbox"
                                 id="remember"
                                 name="remember"
-                                class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 focus:ring-offset-0 transition-colors"
+                                class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500 focus:ring-offset-0 transition-colors"
                             >
                             <span class="text-xs font-medium text-slate-600">Ingat sesi saya</span>
                         </label>
@@ -195,10 +202,10 @@
                     <!-- Submit Button -->
                     <button
                         type="submit"
-                        class="w-full py-3.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-display font-bold text-sm tracking-wide shadow-md shadow-brand-600/25 hover:shadow-lg hover:shadow-brand-600/35 transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                        class="w-full py-3.5 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-display font-bold text-sm tracking-wide shadow-md shadow-primary-600/25 hover:shadow-lg hover:shadow-primary-600/35 transition-all flex items-center justify-center gap-2 group cursor-pointer"
                     >
                         <span>Masuk ke Dashboard</span>
-                        <span class="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+                        <span class="cc-icon text-[18px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
                     </button>
                 </form>
 
@@ -211,7 +218,7 @@
                         &copy; {{ date('Y') }} CityCourier. Seluruh hak cipta dilindungi.
                     </p>
                     <p class="mt-2">
-                        <a href="{{ route('research.create') }}" class="text-[11px] text-slate-400 hover:text-brand-600 underline decoration-slate-300 underline-offset-2 transition-colors">
+                        <a href="{{ route('research.create') }}" class="text-[11px] text-slate-400 hover:text-primary-600 underline decoration-slate-300 underline-offset-2 transition-colors">
                             Ikut Studi Pendahuluan (formulir penelitian)
                         </a>
                     </p>
@@ -224,13 +231,15 @@
     document.addEventListener('DOMContentLoaded', function () {
         const passwordInput = document.getElementById('password');
         const toggleBtn = document.getElementById('togglePasswordBtn');
-        const toggleIcon = document.getElementById('togglePasswordIcon');
+        const iconOn = document.getElementById('togglePasswordIcon');
+        const iconOff = document.getElementById('togglePasswordIconOff');
 
-        if (toggleBtn && passwordInput && toggleIcon) {
+        if (toggleBtn && passwordInput && iconOn && iconOff) {
             toggleBtn.addEventListener('click', function () {
                 const isPassword = passwordInput.getAttribute('type') === 'password';
                 passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-                toggleIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+                iconOn.classList.toggle('hidden', isPassword);
+                iconOff.classList.toggle('hidden', !isPassword);
             });
         }
     });

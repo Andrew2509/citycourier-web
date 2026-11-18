@@ -51,8 +51,8 @@
     @foreach ($tabs as $tab)
         @php $active = request()->routeIs($tab['route']); @endphp
         <a href="{{ route($tab['route']) }}"
-           class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition {{ $active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
-            <span class="material-symbols-outlined !text-[16px]">{{ $tab['icon'] }}</span>
+           class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition {{ $active ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+            <span class="cc-icon !text-[16px]">{{ $tab['icon'] }}</span>
             {{ $tab['label'] }}
         </a>
     @endforeach

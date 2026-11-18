@@ -28,7 +28,7 @@
         <div class="page-actions">
             @canPerm('users.create')
             <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
-                <span class="material-symbols-outlined">person_add</span>
+                <span class="cc-icon">person_add</span>
                 <span>Tambah Pengguna</span>
             </a>
             @endcanPerm
@@ -44,7 +44,7 @@
         </div>
         <div class="card p-3.5">
             <div class="stat-label">Administrator</div>
-            <div class="stat-value text-brand-700">{{ $adminCount }}</div>
+            <div class="stat-value text-primary-700">{{ $adminCount }}</div>
             <div class="stat-meta">Akses penuh admin</div>
         </div>
         <div class="card p-3.5">
@@ -69,22 +69,22 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="filter-tabs">
                 <a href="{{ route('admin.users.index') }}" class="filter-tab is-active">
-                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    <span class="cc-icon text-[16px]">group</span>
                     <span>Daftar Pengguna</span>
                     <span class="filter-count">{{ $totalUsers }}</span>
                 </a>
                 <a href="{{ route('admin.roles.index') }}" class="filter-tab">
-                    <span class="material-symbols-outlined text-[16px]">security</span>
+                    <span class="cc-icon text-[16px]">security</span>
                     <span>Role &amp; Jabatan</span>
                 </a>
                 <a href="{{ route('admin.permissions.index') }}" class="filter-tab">
-                    <span class="material-symbols-outlined text-[16px]">key</span>
+                    <span class="cc-icon text-[16px]">key</span>
                     <span>Permissions</span>
                 </a>
             </div>
 
             <div class="search-box w-full sm:w-72">
-                <span class="material-symbols-outlined">search</span>
+                <span class="cc-icon">search</span>
                 <input type="text"
                        id="filter-user-search"
                        onkeyup="filterUserTable()"
@@ -122,7 +122,7 @@
                         {{-- Pengguna (Avatar & Nama) --}}
                         <td>
                             <div class="flex items-center gap-2.5">
-                                <div class="avatar bg-brand-50 text-brand-700 font-bold shrink-0">
+                                <div class="avatar bg-primary-50 text-primary-700 font-bold shrink-0">
                                     @if($user->photo_url)
                                         <img src="{{ $user->photo_url }}"
                                              alt="{{ $user->name }}"
@@ -229,7 +229,7 @@
                                 <a href="{{ route('admin.users.edit', $user) }}"
                                    class="btn-icon"
                                    title="Edit Pengguna">
-                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    <span class="cc-icon text-[18px]">edit</span>
                                 </a>
                                 @endcanPerm
 
@@ -242,7 +242,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus Akun">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        <span class="cc-icon text-[18px]">delete</span>
                                     </button>
                                 </form>
                                 @endif
@@ -265,7 +265,7 @@
         </div>
         @else
         <div class="empty-state">
-            <span class="material-symbols-outlined">group</span>
+            <span class="cc-icon">group</span>
             <div class="empty-title">Tidak ada pengguna ditemukan</div>
             <div class="empty-text">Tambahkan pengguna baru untuk memberikan akses sistem.</div>
         </div>

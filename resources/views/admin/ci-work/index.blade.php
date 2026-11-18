@@ -8,10 +8,10 @@
     #featuredMapStrip.leaflet-container { pointer-events: none; }
     #featuredMapStrip img.leaflet-tile { filter: saturate(.9) contrast(1.02); }
     .strip-dot, .strip-dot-live {
-        width: 14px; height: 14px; border-radius: 999px; background: #ea580c; border: 2.5px solid #fff;
+        width: 14px; height: 14px; border-radius: 999px; background: #FF910F; border: 2.5px solid #fff;
         box-shadow: 0 1px 6px rgba(0,0,0,.35); position: relative;
     }
-    .strip-dot::after { content: ''; position: absolute; inset: -5px; border-radius: 999px; background: rgba(234,88,12,.35); }
+    .strip-dot::after { content: ''; position: absolute; inset: -5px; border-radius: 999px; background: rgba(255,145,15,.35); }
     .strip-pin {
         width: 13px; height: 13px; border-radius: 999px; background: #059669; border: 2.5px solid #fff;
         box-shadow: 0 1px 6px rgba(0,0,0,.3);
@@ -45,12 +45,12 @@
         </div>
         <div class="flex items-center gap-2 self-start sm:self-auto">
             <button id="btn-refresh" type="button" class="btn btn-secondary text-xs h-9 px-3 gap-1.5">
-                <span class="material-symbols-outlined text-[17px] text-slate-500">refresh</span>
+                <span class="cc-icon text-[17px] text-slate-500">refresh</span>
                 <span>Segarkan</span>
                 <span class="tick text-[11px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">00:15</span>
             </button>
             <button id="btn-auto-assign" data-act="auto-assign" type="button" class="btn btn-primary text-xs h-9 px-3.5 gap-1.5 shadow-sm">
-                <span class="material-symbols-outlined text-[17px]">bolt</span>
+                <span class="cc-icon text-[17px]">bolt</span>
                 <span>Auto-Assign Tugas</span>
             </button>
         </div>
@@ -69,7 +69,7 @@
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">two_wheeler</span>
+                    <span class="cc-icon text-[20px]">two_wheeler</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -92,7 +92,7 @@
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">local_shipping</span>
+                    <span class="cc-icon text-[20px]">local_shipping</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -115,12 +115,12 @@
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">task_alt</span>
+                    <span class="cc-icon text-[20px]">task_alt</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span class="inline-flex items-center gap-1 font-semibold text-emerald-700">
-                    <span class="material-symbols-outlined text-[15px]">check_circle</span>
+                    <span class="cc-icon text-[15px]">check_circle</span>
                     {{ $stats['on_time_pct'] }}% Tepat Waktu
                 </span>
                 <span id="kpi3-sub" class="text-slate-500 font-mono text-[11px]">SLA Terpenuhi</span>
@@ -137,7 +137,7 @@
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">payments</span>
+                    <span class="cc-icon text-[20px]">payments</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -161,14 +161,14 @@
             <!-- Tautan Cepat & Aksi Dispatcher Card -->
             <div class="card p-4">
                 <div class="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
-                    <span class="material-symbols-outlined text-[18px] text-slate-500">bolt</span>
+                    <span class="cc-icon text-[18px] text-slate-500">bolt</span>
                     <h2 class="text-sm font-bold text-slate-800">Aksi &amp; Navigasi Operasional</h2>
                 </div>
                 <div class="space-y-2">
                     <a class="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors group" href="{{ route('admin.ci-work.attendance') }}">
                         <div class="flex items-center gap-2.5 min-w-0">
                             <div class="w-8 h-8 rounded bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-[18px]">badge</span>
+                                <span class="cc-icon text-[18px]">badge</span>
                             </div>
                             <div class="truncate">
                                 <div class="text-xs font-semibold text-slate-800 group-hover:text-primary-600 transition-colors">Presensi &amp; Telemetri Kurir</div>
@@ -183,20 +183,20 @@
                     <a class="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors group" href="{{ route('admin.ci-work.tasks') }}">
                         <div class="flex items-center gap-2.5 min-w-0">
                             <div class="w-8 h-8 rounded bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-[18px]">swap_calls</span>
+                                <span class="cc-icon text-[18px]">swap_calls</span>
                             </div>
                             <div class="truncate">
                                 <div class="text-xs font-semibold text-slate-800 group-hover:text-primary-600 transition-colors">Manajemen Seluruh Tugas</div>
                                 <div class="text-[11px] text-slate-400">Pipeline tugas &amp; bukti foto</div>
                             </div>
                         </div>
-                        <span class="material-symbols-outlined text-slate-400 text-[18px] group-hover:translate-x-0.5 transition-transform">chevron_right</span>
+                        <span class="cc-icon text-slate-400 text-[18px] group-hover:translate-x-0.5 transition-transform">chevron_right</span>
                     </a>
 
                     <a class="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors group" href="{{ route('admin.ci-work.finance') }}">
                         <div class="flex items-center gap-2.5 min-w-0">
                             <div class="w-8 h-8 rounded bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-[18px]">account_balance</span>
+                                <span class="cc-icon text-[18px]">account_balance</span>
                             </div>
                             <div class="truncate">
                                 <div class="text-xs font-semibold text-slate-800 group-hover:text-primary-600 transition-colors">Rekonsiliasi Kas &amp; COD</div>
@@ -211,7 +211,7 @@
                     <a class="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors group" href="{{ route('admin.couriers') }}">
                         <div class="flex items-center gap-2.5 min-w-0">
                             <div class="w-8 h-8 rounded bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-[18px]">person_add</span>
+                                <span class="cc-icon text-[18px]">person_add</span>
                             </div>
                             <div class="truncate">
                                 <div class="text-xs font-semibold text-slate-800 group-hover:text-primary-600 transition-colors">Verifikasi Mitra Kurir</div>
@@ -229,7 +229,7 @@
             <div class="card p-4 space-y-3.5">
                 <div class="flex items-center justify-between pb-2 border-b border-slate-100">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px] text-slate-500">commute</span>
+                        <span class="cc-icon text-[18px] text-slate-500">commute</span>
                         <h2 class="text-sm font-bold text-slate-800">Ringkasan Armada</h2>
                     </div>
                     <span class="font-mono text-[11px] text-slate-400">Surabaya Hub</span>
@@ -272,7 +272,7 @@
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                     <div class="flex items-center gap-2">
                         <div class="w-6 h-6 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[15px]">location_on</span>
+                            <span class="cc-icon text-[15px]">location_on</span>
                         </div>
                         <div>
                             <span id="dp-name" class="font-semibold text-slate-800 block">{{ $stats['drop_point'] }}</span>
@@ -286,7 +286,7 @@
             <!-- Hub Bantuan & Dispatch Protocol -->
             <div class="card p-3.5 bg-slate-50 border-slate-200/80 flex items-center gap-3">
                 <div class="w-8 h-8 rounded bg-white text-primary-600 flex items-center justify-center shrink-0 border border-slate-200">
-                    <span class="material-symbols-outlined text-[18px]">support_agent</span>
+                    <span class="cc-icon text-[18px]">support_agent</span>
                 </div>
                 <div class="flex-1 min-w-0">
                     <span class="text-xs font-semibold text-slate-800 block truncate">SOP &amp; Protokol Dispatcher</span>
@@ -301,12 +301,12 @@
 </div>
 
 {{-- Track Live Modal --}}
-<div id="trackModal" class="hidden fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+<div id="trackModal" class="hidden fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-slate-900/60">
     <div class="card w-full max-w-2xl overflow-hidden shadow-xl border-slate-200">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[18px]">live_tv</span>
+                    <span class="cc-icon text-[18px]">live_tv</span>
                 </div>
                 <div>
                     <h3 class="text-sm font-bold text-slate-900">Lacak Kurir Live</h3>
@@ -314,7 +314,7 @@
                 </div>
             </div>
             <button data-act="close-track" class="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors">
-                <span class="material-symbols-outlined text-[20px]">close</span>
+                <span class="cc-icon text-[20px]">close</span>
             </button>
         </div>
         <div class="p-4 space-y-4">
@@ -344,45 +344,45 @@
         </div>
         <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
             <a id="track-call" href="#" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                <span class="material-symbols-outlined text-[15px] text-slate-500">call</span> Telepon
+                <span class="cc-icon text-[15px] text-slate-500">call</span> Telepon
             </a>
             <a id="track-wa" href="#" target="_blank" rel="noopener" class="btn btn-primary text-xs h-8 px-3.5 gap-1 shadow-sm">
-                <span class="material-symbols-outlined text-[15px]">chat</span> Chat WhatsApp
+                <span class="cc-icon text-[15px]">chat</span> Chat WhatsApp
             </a>
         </div>
     </div>
 </div>
 
 {{-- SOP Modal --}}
-<div id="sopModal" class="hidden fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+<div id="sopModal" class="hidden fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-slate-900/60">
     <div class="card w-full max-w-lg overflow-hidden shadow-xl border-slate-200">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[20px] text-primary-600">support_agent</span>
+                <span class="cc-icon text-[20px] text-primary-600">support_agent</span>
                 <h3 class="text-sm font-bold text-slate-900">Panduan Operasional &amp; SOP Dispatcher</h3>
             </div>
             <button data-act="close-sop" class="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors">
-                <span class="material-symbols-outlined text-[20px]">close</span>
+                <span class="cc-icon text-[20px]">close</span>
             </button>
         </div>
         <div class="p-5 space-y-3 text-xs">
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-100">
                 <div class="font-semibold text-slate-800 flex items-center gap-1.5 mb-1">
-                    <span class="material-symbols-outlined text-[16px] text-amber-600">location_off</span>
+                    <span class="cc-icon text-[16px] text-amber-600">location_off</span>
                     Kendala Alamat Tidak Ditemukan
                 </div>
                 <p class="text-slate-500 leading-relaxed">Hubungi kurir via WhatsApp untuk meminta share lokasi terkini. Bila penerima tidak merespon dalam 15 menit, arahkan kurir melanjutkan ke order berikutnya atau kembalikan barang ke Hub.</p>
             </div>
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-100">
                 <div class="font-semibold text-slate-800 flex items-center gap-1.5 mb-1">
-                    <span class="material-symbols-outlined text-[16px] text-red-600">cancel</span>
+                    <span class="cc-icon text-[16px] text-red-600">cancel</span>
                     Pembatalan Paket di Lapangan
                 </div>
                 <p class="text-slate-500 leading-relaxed">Ubah status pesanan lewat menu Manajemen Pesanan. Pastikan kurir menyerahkan barang fisik ke drop point penerima dan catat keterangan di riwayat pelacakan.</p>
             </div>
             <div class="p-3 rounded-lg bg-primary-50/50 border border-primary-100">
                 <div class="font-semibold text-slate-900 flex items-center gap-1.5 mb-1">
-                    <span class="material-symbols-outlined text-[16px] text-primary-600">sos</span>
+                    <span class="cc-icon text-[16px] text-primary-600">sos</span>
                     Kontak Darurat Ops Lead
                 </div>
                 <p class="text-slate-600 leading-relaxed">Ops Lead: <strong class="text-slate-900 font-mono font-semibold">0813-4332-3155</strong> (WhatsApp) — Layanan koordinasi aktif 06:00 – 22:00 WIB.</p>
@@ -447,7 +447,7 @@
         L.marker([lat, lng], { icon: L.divIcon({ className: 'leaf-div-icon', html: '<div class="strip-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }) }).addTo(featuredMap);
         if (dlat && dlng) {
             L.marker([dlat, dlng], { icon: L.divIcon({ className: 'leaf-div-icon', html: '<div class="strip-pin"></div>', iconSize: [13, 13], iconAnchor: [6.5, 6.5] }) }).addTo(featuredMap);
-            L.polyline([[lat, lng], [dlat, dlng]], { color: '#ea580c', weight: 2.5, opacity: .85, dashArray: '2 6' }).addTo(featuredMap);
+            L.polyline([[lat, lng], [dlat, dlng]], { color: '#FF910F', weight: 2.5, opacity: .85, dashArray: '2 6' }).addTo(featuredMap);
         }
         setTimeout(() => featuredMap && featuredMap.invalidateSize(), 150);
     }
@@ -515,7 +515,7 @@
     paintTick();
 
     $id('btn-refresh').addEventListener('click', () => {
-        const icon = $id('btn-refresh').querySelector('.material-symbols-outlined');
+        const icon = $id('btn-refresh').querySelector('.cc-icon');
         if (icon) { icon.classList.add('animate-spin'); setTimeout(() => icon.classList.remove('animate-spin'), 800); }
         resetCountdown(); pollNow();
     });
@@ -553,7 +553,7 @@
             c.openPopup();
             if (dlat && dlng) {
                 L.marker([dlat, dlng], { icon: L.divIcon({ className: 'leaf-div-icon', html: '<div class="strip-pin"></div>', iconSize: [13, 13], iconAnchor: [6.5, 6.5] }) }).addTo(trackMap).bindPopup('<b>Tujuan</b><br/><span style="font-size:11px;color:#6b7280">' + (d.address || '') + '</span>');
-                L.polyline([[lat, lng], [dlat, dlng]], { color: '#ea580c', weight: 2.5, dashArray: '2 6' }).addTo(trackMap);
+                L.polyline([[lat, lng], [dlat, dlng]], { color: '#FF910F', weight: 2.5, dashArray: '2 6' }).addTo(trackMap);
             }
         }
 

@@ -6,28 +6,28 @@
 <style>
     .detail-shell { display: flex; flex-direction: column; gap: 16px; }
     .detail-top {
-        border: 1px solid #E2E8F0; border-radius: 14px; background: #fff; padding: 18px 20px;
+        border: 1px solid #E5E7EB; border-radius: 14px; background: #fff; padding: 18px 20px;
     }
-    .detail-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 22px; font-weight: 700; color: #0F172A; letter-spacing: .01em; }
+    .detail-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 22px; font-weight: 700; color: #172033; letter-spacing: .01em; }
     .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .meta-item { border: 1px solid #E8EEF5; border-radius: 10px; background: #F8FAFC; padding: 10px 12px; }
+    .meta-item { border: 1px solid #E5E7EB; border-radius: 10px; background: #FAF7EA; padding: 10px 12px; }
     .meta-item .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: #94A3B8; margin-bottom: 2px; }
-    .meta-item .v { font-size: 12.5px; color: #1E293B; font-weight: 500; }
-    .answer-section { border: 1px solid #E2E8F0; border-radius: 14px; background: #fff; overflow: hidden; }
-    .answer-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #EDF2F8; background: #FBFDFF; }
-    .answer-key { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: #EAF6FF; color: #0079CE; font-size: 11px; font-weight: 700; }
-    .answer-title { font-size: 13px; font-weight: 600; color: #1E293B; }
+    .meta-item .v { font-size: 12.5px; color: #172033; font-weight: 500; }
+    .answer-section { border: 1px solid #E5E7EB; border-radius: 14px; background: #fff; overflow: hidden; }
+    .answer-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #E5E7EB; background: #FBFDFF; }
+    .answer-key { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: #E0E8FF; color: #0647FF; font-size: 11px; font-weight: 700; }
+    .answer-title { font-size: 13px; font-weight: 600; color: #172033; }
     .answer-count { margin-left: auto; font-size: 10.5px; color: #94A3B8; }
-    .qa { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; padding: 13px 16px; border-bottom: 1px dashed #EDF2F8; }
+    .qa { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; padding: 13px 16px; border-bottom: 1px dashed #E5E7EB; }
     .qa:last-child { border-bottom: 0; }
     .qa-q { font-size: 12px; color: #64748B; line-height: 1.6; }
     .qa-q .num { font-family: ui-monospace, monospace; font-size: 10.5px; color: #94A3B8; margin-right: 4px; }
-    .qa-a { font-size: 12.5px; color: #1E293B; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-line; }
-    .qa-a.is-empty { color: #A3B1C0; font-style: italic; }
+    .qa-a { font-size: 12.5px; color: #172033; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-line; }
+    .qa-a.is-empty { color: #B0BACB; font-style: italic; }
     .chip-list { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; list-style: none; }
-    .chip-list li { border: 1px solid #DDEBF7; border-radius: 6px; background: #F4FAFF; color: #27546E; padding: 3px 7px; font-size: 11.5px; line-height: 1.4; }
-    .contact-box { display: flex; align-items: flex-start; gap: 8px; border: 1px solid #FDE3C8; border-radius: 9px; background: #FFFBF5; padding: 9px 11px; }
-    .contact-box .material-symbols-outlined { font-size: 17px; color: #C2410C; }
+    .chip-list li { border: 1px solid #DCE6FF; border-radius: 6px; background: #EEF2FF; color: #0539CC; padding: 3px 7px; font-size: 11.5px; line-height: 1.4; }
+    .contact-box { display: flex; align-items: flex-start; gap: 8px; border: 1px solid #FFE8C7; border-radius: 9px; background: #FFFBF5; padding: 9px 11px; }
+    .contact-box .cc-icon { font-size: 17px; color: #B26300; }
     .skip-note { display: flex; align-items: flex-start; gap: 8px; border: 1px solid #E6EEF7; border-radius: 10px; background: #F9FBFE; padding: 10px 12px; color: #64748B; font-size: 11.5px; line-height: 1.6; }
     @media (max-width: 767px) { .qa { grid-template-columns: 1fr; gap: 5px; } .meta-grid { grid-template-columns: 1fr; } }
     @media print { .no-print { display: none !important; } }
@@ -39,12 +39,12 @@
     {{-- Navigasi --}}
     <div class="no-print flex flex-wrap items-center justify-between gap-2">
         <a href="{{ route('admin.research.index') }}" class="btn btn-secondary btn-sm">
-            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="cc-icon">arrow_back</span>
             <span>Kembali ke daftar responden</span>
         </a>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('admin.research.pdf-detail', $submission) }}" class="btn btn-secondary btn-sm">
-                <span class="material-symbols-outlined">picture_as_pdf</span>
+                <span class="cc-icon">picture_as_pdf</span>
                 <span>Unduh PDF</span>
             </a>
             @canPerm('research_study.delete')
@@ -53,7 +53,7 @@
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="btn btn-sm bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">
-                    <span class="material-symbols-outlined">delete</span>
+                    <span class="cc-icon">delete</span>
                     <span>Hapus data</span>
                 </button>
             </form>
@@ -113,7 +113,7 @@
 
         @if($submission->contact)
         <div class="contact-box mt-3">
-            <span class="material-symbols-outlined">contact_phone</span>
+            <span class="cc-icon">contact_phone</span>
             <div>
                 <div class="text-[10.5px] font-medium uppercase tracking-wide text-orange-700">Kontak wawancara — hanya untuk admin</div>
                 <div class="mt-0.5 font-mono text-[12.5px] text-slate-800">{{ $submission->contact }}</div>
@@ -125,7 +125,7 @@
     {{-- Catatan bagian yang dilewati --}}
     @if(! $submission->customer_section_applicable || ! $submission->courier_section_applicable)
         <div class="skip-note">
-            <span class="material-symbols-outlined text-[17px] text-slate-400">info</span>
+            <span class="cc-icon text-[17px] text-slate-400">info</span>
             <div>
                 @if(! $submission->customer_section_applicable)
                     Bagian Customer tidak ditampilkan karena responden tidak pernah menggunakan layanan pengiriman.
@@ -182,7 +182,7 @@
 
     <div class="no-print flex justify-end">
         <a href="{{ route('admin.research.index') }}" class="btn btn-secondary">
-            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="cc-icon">arrow_back</span>
             <span>Kembali ke daftar</span>
         </a>
     </div>

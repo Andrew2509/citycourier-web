@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.permissions.index') }}" class="back-link" title="Kembali ke Daftar Permission">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Tambah Permission Baru</h1>
@@ -46,7 +46,7 @@
                         Batal
                     </a>
                     <button type="submit" class="btn btn-primary">
-                        <span class="material-symbols-outlined">save</span>
+                        <span class="cc-icon">save</span>
                         Simpan Permission
                     </button>
                 </div>

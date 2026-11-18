@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.users.index') }}" class="back-link" title="Kembali ke Daftar Pengguna">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Tambah Pengguna Baru</h1>
@@ -142,7 +142,7 @@
                         Batal
                     </a>
                     <button type="submit" class="btn btn-primary">
-                        <span class="material-symbols-outlined">person_add</span>
+                        <span class="cc-icon">person_add</span>
                         Simpan Pengguna
                     </button>
                 </div>

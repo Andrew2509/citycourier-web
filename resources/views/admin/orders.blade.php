@@ -54,7 +54,7 @@
             {{-- Kolom Cari --}}
             <div class="lg:ml-auto flex items-center gap-2">
                 <div class="search-box w-full sm:w-72">
-                    <span class="material-symbols-outlined">search</span>
+                    <span class="cc-icon">search</span>
                     <input type="text"
                            name="search"
                            value="{{ request('search') }}"
@@ -69,7 +69,7 @@
                 </button>
                 @if(request('search') || request('status'))
                     <a href="{{ route('admin.orders') }}" class="btn btn-ghost" title="Reset filter">
-                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span class="cc-icon">restart_alt</span>
                     </a>
                 @endif
             </div>
@@ -130,7 +130,7 @@
                         <td class="whitespace-nowrap">
                             <div class="flex items-center gap-1.5">
                                 <a href="{{ route('admin.orders.detail', $order->id) }}"
-                                   class="font-mono text-[13px] font-semibold text-brand-700 hover:text-brand-800 hover:underline">
+                                   class="font-mono text-[13px] font-semibold text-primary-700 hover:text-primary-800 hover:underline">
                                     {{ $resi }}
                                 </a>
                                 @if($order->tracking_number)
@@ -138,7 +138,7 @@
                                         onclick="copyResi('{{ $order->tracking_number }}')"
                                         class="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors"
                                         title="Salin Resi">
-                                    <span class="material-symbols-outlined text-[15px]">content_copy</span>
+                                    <span class="cc-icon text-[15px]">content_copy</span>
                                 </button>
                                 @endif
                             </div>
@@ -179,7 +179,7 @@
                         <td class="whitespace-nowrap">
                             @if($courierName)
                             <div class="flex items-center gap-1.5 text-xs text-slate-800 font-medium">
-                                <span class="material-symbols-outlined text-[16px] text-emerald-600">two_wheeler</span>
+                                <span class="cc-icon text-[16px] text-emerald-600">two_wheeler</span>
                                 <span>{{ $courierName }}</span>
                             </div>
                             @else
@@ -209,7 +209,7 @@
                                    rel="noopener"
                                    class="btn-icon"
                                    title="Buka Live Tracking Web">
-                                    <span class="material-symbols-outlined text-[18px]">map</span>
+                                    <span class="cc-icon text-[18px]">map</span>
                                 </a>
                                 @endif
 
@@ -229,7 +229,7 @@
                                     <button type="submit"
                                             class="btn-icon btn-icon-danger"
                                             title="Hapus Pesanan">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        <span class="cc-icon text-[18px]">delete</span>
                                     </button>
                                 </form>
                                 @endcanPerm
@@ -252,7 +252,7 @@
         </div>
         @else
         <div class="empty-state">
-            <span class="material-symbols-outlined">inventory_2</span>
+            <span class="cc-icon">inventory_2</span>
             <div class="empty-title">Tidak ada pesanan ditemukan</div>
             <div class="empty-text">
                 @if(request('search'))
@@ -273,7 +273,7 @@
 
 {{-- Toast Resi Clipboard --}}
 <div id="copyToast" class="fixed bottom-5 right-5 z-50 hidden items-center gap-2 rounded-md bg-navy-900 px-3.5 py-2.5 text-xs font-medium text-white shadow-xl transition-all">
-    <span class="material-symbols-outlined text-brand-400 text-[18px]">check_circle</span>
+    <span class="cc-icon text-primary-400 text-[18px]">check_circle</span>
     <span id="toastMessage">Nomor resi berhasil disalin!</span>
 </div>
 

@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.drop-points.index') }}" class="back-link" title="Kembali ke Daftar Drop Point">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Tambah Drop Point Baru</h1>
@@ -135,7 +135,7 @@
                         Batal
                     </a>
                     <button type="submit" class="btn btn-primary">
-                        <span class="material-symbols-outlined">save</span>
+                        <span class="cc-icon">save</span>
                         Simpan Drop Point
                     </button>
                 </div>

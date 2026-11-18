@@ -40,13 +40,13 @@
                     @if ($paginator->onFirstPage())
                         <li>
                             <span class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-300 inline-flex items-center justify-center cursor-not-allowed">
-                                <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                                <span class="cc-icon text-[16px]">chevron_left</span>
                             </span>
                         </li>
                     @else
                         <li>
                             <a href="{{ $paginator->previousPageUrl() }}" class="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 inline-flex items-center justify-center transition-colors">
-                                <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                                <span class="cc-icon text-[16px]">chevron_left</span>
                             </a>
                         </li>
                     @endif
@@ -84,13 +84,13 @@
                     @if ($paginator->hasMorePages())
                         <li>
                             <a href="{{ $paginator->nextPageUrl() }}" class="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 inline-flex items-center justify-center transition-colors">
-                                <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                                <span class="cc-icon text-[16px]">chevron_right</span>
                             </a>
                         </li>
                     @else
                         <li>
                             <span class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-300 inline-flex items-center justify-center cursor-not-allowed">
-                                <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                                <span class="cc-icon text-[16px]">chevron_right</span>
                             </span>
                         </li>
                     @endif

@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.shipments.index') }}" class="back-link" title="Kembali ke Daftar Pengiriman">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <div class="flex items-center gap-2">
@@ -44,7 +44,7 @@
                     </span>
                 </div>
                 <div class="page-subtitle font-mono">
-                    Resi: <strong class="text-brand-700 font-semibold">{{ $trackingNum }}</strong>
+                    Resi: <strong class="text-primary-700 font-semibold">{{ $trackingNum }}</strong>
                     <span class="mx-1 text-slate-300">&bull;</span>
                     No. Pengiriman: #{{ $shipment->shipment_number }}
                 </div>
@@ -57,7 +57,7 @@
                rel="noopener"
                class="btn btn-primary"
                title="Buka Halaman Live Tracking Publik">
-                <span class="material-symbols-outlined">map</span>
+                <span class="cc-icon">map</span>
                 Buka Live Tracking
             </a>
         </div>
@@ -73,7 +73,7 @@
             <div class="card border border-red-200 bg-red-50/40">
                 <div class="card-header bg-red-50 border-b border-red-200 flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-red-600">cancel</span>
+                        <span class="cc-icon text-red-600">cancel</span>
                         <div>
                             <div class="card-title text-sm text-red-900">Informasi Pembatalan Pesanan</div>
                             <div class="card-subtitle text-xs text-red-700">Detail riwayat pembatalan pengiriman</div>
@@ -132,7 +132,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-brand-600">payments</span>
+                        <span class="cc-icon text-primary-600">payments</span>
                         <div>
                             <div class="card-title text-sm">Pembayaran iPaymu</div>
                             <div class="card-subtitle text-xs">Status transaksi, pembatalan, dan refund</div>
@@ -245,7 +245,7 @@
                             @if(!empty($cancel['refund_required']))
                             <div class="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-[11px] text-amber-900">
                                 <div class="font-semibold flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-[14px]">warning</span>
+                                    <span class="cc-icon text-[14px]">warning</span>
                                     Refund diperlukan (manual)
                                 </div>
                                 <p class="mt-1">
@@ -283,7 +283,7 @@
             <div class="card border {{ $isPendingApproval ? 'border-amber-300 bg-amber-50/40' : 'border-orange-200 bg-orange-50/30' }}">
                 <div class="card-header {{ $isPendingApproval ? 'bg-amber-50 border-b border-amber-200' : 'bg-orange-50 border-b border-orange-200' }} flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined {{ $isPendingApproval ? 'text-amber-600' : 'text-orange-600' }}">person_cancel</span>
+                        <span class="cc-icon {{ $isPendingApproval ? 'text-amber-600' : 'text-orange-600' }}">person_cancel</span>
                         <div>
                             <div class="card-title text-sm text-slate-900">Informasi Pembatalan Penugasan Kurir</div>
                             <div class="card-subtitle text-xs text-slate-600">Detail alasan pelepasan atau pengajuan pembatalan tugas oleh kurir</div>
@@ -363,7 +363,7 @@
             <div class="card border border-rose-200 bg-rose-50/30">
                 <div class="card-header bg-rose-50/70 border-b border-rose-200 flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-rose-600">person_cancel</span>
+                        <span class="cc-icon text-rose-600">person_cancel</span>
                         <div>
                             <div class="card-title text-sm text-slate-900">Riwayat Penolakan Tawaran Kurir</div>
                             <div class="card-subtitle text-xs text-slate-600">Daftar kurir yang menolak penawaran pesanan sebelum diterima</div>
@@ -411,7 +411,7 @@
             <div class="card bg-white border border-slate-200">
                 <div class="card-header bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-brand-600">calendar_clock</span>
+                        <span class="cc-icon text-primary-600">calendar_clock</span>
                         <div>
                             <div class="card-title text-sm">Jadwal &amp; Kendaraan Penjemputan</div>
                             <div class="card-subtitle text-xs">Penjadwalan pickup pelanggan dan alokasi armada</div>
@@ -439,14 +439,14 @@
                         </div>
                         <div class="p-3 rounded-lg border border-slate-100 bg-slate-50/40">
                             <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Jam Pickup (12 Jam)</div>
-                            <div class="text-sm font-bold text-brand-600 font-mono mt-1">
+                            <div class="text-sm font-bold text-primary-600 font-mono mt-1">
                                 {{ $shipment->pickup_time ?: ($shipment->pickup_scheduled_at ? $shipment->pickup_scheduled_at->format('h:i A') : 'Fleksibel / Segera') }}
                             </div>
                         </div>
                         <div class="p-3 rounded-lg border border-slate-100 bg-slate-50/40">
                             <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Jenis Kendaraan</div>
                             <div class="text-sm font-bold text-slate-800 mt-1 flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-[18px] text-slate-600">
+                                <span class="cc-icon text-[18px] text-slate-600">
                                     {{ strtolower($shipment->vehicle ?? '') === 'mobil' ? 'directions_car' : 'two_wheeler' }}
                                 </span>
                                 {{ ucfirst($shipment->vehicle ?? (strtolower($shipment->courier_code) === 'mobil' ? 'mobil' : 'motor')) }}
@@ -477,7 +477,7 @@
                         {{-- Titik Pickup --}}
                         <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 space-y-2">
                             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-700">
-                                <span class="material-symbols-outlined text-[16px]">upload</span>
+                                <span class="cc-icon text-[16px]">upload</span>
                                 Titik Penjemputan (Pickup)
                             </div>
                             <div>
@@ -485,8 +485,8 @@
                                 <div class="text-xs text-slate-500 font-mono mt-0.5">
                                     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $shipment->sender_phone) }}"
                                        target="_blank"
-                                       class="text-brand-700 hover:underline inline-flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[14px]">call</span>
+                                       class="text-primary-700 hover:underline inline-flex items-center gap-1">
+                                        <span class="cc-icon text-[14px]">call</span>
                                         {{ $shipment->sender_phone ?? '-' }}
                                     </a>
                                 </div>
@@ -498,8 +498,8 @@
 
                         {{-- Titik Dropoff --}}
                         <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 space-y-2">
-                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-700">
-                                <span class="material-symbols-outlined text-[16px]">download</span>
+                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-700">
+                                <span class="cc-icon text-[16px]">download</span>
                                 Titik Penerima (Dropoff)
                             </div>
                             <div>
@@ -507,8 +507,8 @@
                                 <div class="text-xs text-slate-500 font-mono mt-0.5">
                                     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $shipment->receiver_phone) }}"
                                        target="_blank"
-                                       class="text-brand-700 hover:underline inline-flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[14px]">call</span>
+                                       class="text-primary-700 hover:underline inline-flex items-center gap-1">
+                                        <span class="cc-icon text-[14px]">call</span>
                                         {{ $shipment->receiver_phone ?? '-' }}
                                     </a>
                                 </div>
@@ -568,7 +568,7 @@
                         @endif
                         <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-sm font-semibold text-slate-900">
                             <span>Total Pembayaran:</span>
-                            <span class="font-mono text-brand-700">Rp {{ number_format($shipment->total_cost ?? 0, 0, ',', '.') }}</span>
+                            <span class="font-mono text-primary-700">Rp {{ number_format($shipment->total_cost ?? 0, 0, ',', '.') }}</span>
                         </div>
                     </div>
                 </div>
@@ -584,7 +584,7 @@
                     <button type="button"
                             onclick="openLogModal()"
                             class="btn btn-sm btn-secondary">
-                        <span class="material-symbols-outlined">add</span>
+                        <span class="cc-icon">add</span>
                         Tambah Log
                     </button>
                 </div>
@@ -593,7 +593,7 @@
                     <div class="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                         @foreach($logsList->sortByDesc('created_at') as $log)
                         <div class="relative group">
-                            <span class="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-white {{ $log->status === 'cancelled' ? 'bg-red-600 ring-red-100' : 'bg-brand-600 ring-brand-100' }} ring-2"></span>
+                            <span class="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-white {{ $log->status === 'cancelled' ? 'bg-red-600 ring-red-100' : 'bg-primary-600 ring-primary-100' }} ring-2"></span>
                             <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
                                 <span class="text-xs font-semibold text-slate-900 uppercase tracking-wide">
                                     {{ $log->status }}
@@ -613,7 +613,7 @@
                     </div>
                     @else
                     <div class="empty-state py-8">
-                        <span class="material-symbols-outlined">route</span>
+                        <span class="cc-icon">route</span>
                         <div class="empty-title">Belum ada riwayat pergerakan</div>
                         <div class="empty-text">Klik tombol "Tambah Log" untuk mencatat checkpoint kurir.</div>
                     </div>
@@ -650,7 +650,7 @@
                 <a href="{{ route('tracking.qrcode', $shipment->tracking_number) }}"
                    download="QR-{{ $shipment->tracking_number }}.png"
                    class="btn btn-sm btn-secondary w-full mt-3">
-                    <span class="material-symbols-outlined text-[16px]">download</span>
+                    <span class="cc-icon text-[16px]">download</span>
                     Unduh QR Code
                 </a>
                 @endif
@@ -684,7 +684,7 @@
                     <form method="POST" action="{{ route('admin.shipments.send-whatsapp', $shipment) }}" class="pt-2">
                         @csrf
                         <button type="submit" class="btn btn-sm btn-dark w-full">
-                            <span class="material-symbols-outlined">send</span>
+                            <span class="cc-icon">send</span>
                             Kirim Ulang WA Resi
                         </button>
                     </form>
@@ -780,7 +780,7 @@
         <div class="modal-header">
             <div class="modal-title">Tambah Log Perjalanan</div>
             <button type="button" class="btn-icon" onclick="closeLogModal()" aria-label="Tutup">
-                <span class="material-symbols-outlined">close</span>
+                <span class="cc-icon">close</span>
             </button>
         </div>
         <form action="{{ route('admin.shipments.logs.store', $shipment) }}" method="POST">

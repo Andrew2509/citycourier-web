@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.settings.providers') }}" class="back-link" title="Kembali ke Integrasi Provider">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Integrasi WhatsApp (Fonnte API)</h1>
@@ -40,9 +40,9 @@
                         <div class="card-title">Kredensial API Fonnte</div>
                         <div class="card-subtitle">Masukkan token perangkat aktif dari dashboard resmi Fonnte</div>
                     </div>
-                    <a href="https://fonnte.com" target="_blank" rel="noopener" class="text-xs text-brand-700 hover:underline inline-flex items-center gap-1 font-medium">
+                    <a href="https://fonnte.com" target="_blank" rel="noopener" class="text-xs text-primary-700 hover:underline inline-flex items-center gap-1 font-medium">
                         Buka Fonnte.com
-                        <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+                        <span class="cc-icon text-[14px]">open_in_new</span>
                     </a>
                 </div>
                 <div class="card-body">
@@ -82,7 +82,7 @@
 
                         <div class="pt-2 flex justify-end">
                             <button type="submit" class="btn btn-primary">
-                                <span class="material-symbols-outlined">save</span>
+                                <span class="cc-icon">save</span>
                                 Simpan Kredensial
                             </button>
                         </div>
@@ -96,7 +96,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 space-y-1">
                         <div class="font-semibold text-slate-800 flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-brand-600 text-[18px]">mark_email_read</span>
+                            <span class="cc-icon text-primary-600 text-[18px]">mark_email_read</span>
                             Pesanan Berhasil Dibuat
                         </div>
                         <p class="text-slate-500">
@@ -105,7 +105,7 @@
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 space-y-1">
                         <div class="font-semibold text-slate-800 flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-brand-600 text-[18px]">qr_code</span>
+                            <span class="cc-icon text-primary-600 text-[18px]">qr_code</span>
                             QR Code &amp; Live Tracking
                         </div>
                         <p class="text-slate-500">
@@ -114,7 +114,7 @@
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 space-y-1">
                         <div class="font-semibold text-slate-800 flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-brand-600 text-[18px]">password</span>
+                            <span class="cc-icon text-primary-600 text-[18px]">password</span>
                             Verifikasi OTP Kurir
                         </div>
                         <p class="text-slate-500">
@@ -123,7 +123,7 @@
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 space-y-1">
                         <div class="font-semibold text-slate-800 flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-brand-600 text-[18px]">sync</span>
+                            <span class="cc-icon text-primary-600 text-[18px]">sync</span>
                             Kirim Ulang Manual
                         </div>
                         <p class="text-slate-500">
@@ -162,7 +162,7 @@
                         </div>
 
                         <button type="submit" class="btn btn-secondary w-full">
-                            <span class="material-symbols-outlined">send</span>
+                            <span class="cc-icon">send</span>
                             Kirim Pesan Uji Coba
                         </button>
                     </form>

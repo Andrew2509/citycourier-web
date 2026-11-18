@@ -13,33 +13,48 @@
 
 <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
     <h2 class="mb-4 text-sm font-semibold text-slate-900">Riwayat Penarikan Dana Pelanggan</h2>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-            <thead class="border-b border-slate-200 text-slate-500">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <th class="py-2 pr-3">Reference</th>
-                    <th class="py-2 pr-3">Pelanggan</th>
-                    <th class="py-2 pr-3">Tujuan</th>
-                    <th class="py-2 pr-3">Mode</th>
-                    <th class="py-2 pr-3 text-right">Nominal (IDR)</th>
-                    <th class="py-2">Status</th>
+                    <th>Reference</th>
+                    <th>Pelanggan</th>
+                    <th>Tujuan</th>
+                    <th>Mode</th>
+                    <th class="text-right">Nominal (IDR)</th>
+                    <th>Status</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
                 @forelse ($withdrawals as $w)
                     <tr>
-                        <td class="py-2.5 pr-3 font-mono">{{ $w->reference }}</td>
-                        <td class="py-2.5 pr-3">{{ $w->user?->name ?? '#'.$w->user_id }}</td>
-                        <td class="py-2.5 pr-3">{{ $w->channel_code }} &bull; {{ $w->account_number_masked }}</td>
-                        <td class="py-2.5 pr-3 uppercase">{{ $w->mode }}</td>
-                        <td class="py-2.5 pr-3 text-right font-semibold">Rp {{ number_format($w->amount, 0, ',', '.') }}</td>
-                        <td class="py-2.5 uppercase font-semibold">{{ $w->status }}</td>
+                        <td class="cell-mono">{{ $w->reference }}</td>
+                        <td class="cell-primary">{{ $w->user?->name ?? '#'.$w->user_id }}</td>
+                        <td>{{ $w->channel_code }} &bull; {{ $w->account_number_masked }}</td>
+                        <td class="uppercase">{{ $w->mode }}</td>
+                        <td class="text-right font-semibold tabular-nums">Rp {{ number_format($w->amount, 0, ',', '.') }}</td>
+                        <td>
+                            @php
+                                $stBadge = match ($w->status) {
+                                    'success', 'paid', 'settled' => 'badge-green',
+                                    'failed', 'rejected' => 'badge-red',
+                                    default => 'badge-amber',
+                                };
+                            @endphp
+                            <span class="badge {{ $stBadge }}"><span class="badge-dot"></span>{{ strtoupper($w->status) }}</span>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-6 text-center text-slate-400">Belum ada permintaan withdrawal pelanggan.</td></tr>
                 @endforelse
             </tbody>
         </table>
+        @if ($withdrawals->isEmpty())
+            <div class="empty-state">
+                <span class="cc-icon">payments</span>
+                <div class="empty-title">Belum ada permintaan withdrawal</div>
+                <div class="empty-text">Penarikan dana pelanggan akan muncul di sini.</div>
+            </div>
+        @endif
     </div>
     <div class="mt-4">{{ $withdrawals->links() }}</div>
 </div>

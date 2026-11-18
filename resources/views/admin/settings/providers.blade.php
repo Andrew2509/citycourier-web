@@ -26,7 +26,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
-                            <span class="material-symbols-outlined text-[20px]">chat</span>
+                            <span class="cc-icon text-[20px]">chat</span>
                         </div>
                         <div>
                             <div class="card-title">WhatsApp Gateway (Fonnte)</div>
@@ -72,7 +72,7 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
-                            <a href="{{ route('admin.settings.whatsapp') }}" class="text-xs text-brand-700 hover:underline font-medium inline-flex items-center gap-1">
+                            <a href="{{ route('admin.settings.whatsapp') }}" class="text-xs text-primary-700 hover:underline font-medium inline-flex items-center gap-1">
                                 Konfigurasi Lengkap &rarr;
                             </a>
                             <button type="submit" class="btn btn-sm btn-primary">
@@ -90,7 +90,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-blue-700">
-                            <span class="material-symbols-outlined text-[20px]">map</span>
+                            <span class="cc-icon text-[20px]">map</span>
                         </div>
                         <div>
                             <div class="card-title">Peta &amp; Geocoding</div>
@@ -142,7 +142,7 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
-                            <a href="{{ route('admin.settings.map') }}" class="text-xs text-brand-700 hover:underline font-medium inline-flex items-center gap-1">
+                            <a href="{{ route('admin.settings.map') }}" class="text-xs text-primary-700 hover:underline font-medium inline-flex items-center gap-1">
                                 Konfigurasi Lengkap &rarr;
                             </a>
                             <button type="submit" class="btn btn-sm btn-primary">
@@ -160,7 +160,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-sky-50 text-sky-700">
-                            <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                            <span class="cc-icon text-[20px]">account_balance_wallet</span>
                         </div>
                         <div>
                             <div class="card-title">DANA Widget Binding (Pencairan Kurir)</div>
@@ -240,7 +240,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-purple-50 text-purple-700">
-                            <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                            <span class="cc-icon text-[20px]">account_balance_wallet</span>
                         </div>
                         <div>
                             <div class="card-title">OVO SNAP (Arsip &mdash; Nonaktif)</div>
@@ -317,7 +317,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-orange-50 text-orange-700">
-                            <span class="material-symbols-outlined text-[20px]">payments</span>
+                            <span class="cc-icon text-[20px]">payments</span>
                         </div>
                         <div>
                             <div class="card-title">iPaymu (Checkout VA/QRIS &amp; Payout)</div>
@@ -430,7 +430,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-amber-50 text-amber-700">
-                            <span class="material-symbols-outlined text-[20px]">local_shipping</span>
+                            <span class="cc-icon text-[20px]">local_shipping</span>
                         </div>
                         <div>
                             <div class="card-title">Tarif Ekspedisi (RajaOngkir)</div>
@@ -479,7 +479,7 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
-                            <a href="{{ route('admin.settings.rajaongkir') }}" class="text-xs text-brand-700 hover:underline font-medium inline-flex items-center gap-1">
+                            <a href="{{ route('admin.settings.rajaongkir') }}" class="text-xs text-primary-700 hover:underline font-medium inline-flex items-center gap-1">
                                 Konfigurasi Lengkap &rarr;
                             </a>
                             <button type="submit" class="btn btn-sm btn-primary">
@@ -497,7 +497,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-indigo-50 text-indigo-700">
-                            <span class="material-symbols-outlined text-[20px]">payments</span>
+                            <span class="cc-icon text-[20px]">payments</span>
                         </div>
                         <div>
                             <div class="card-title">Xendit Gateway (Money-In &amp; Payouts)</div>
@@ -615,7 +615,7 @@
                 <div class="card-header">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-md bg-rose-50 text-rose-700">
-                            <span class="material-symbols-outlined text-[20px]">credit_card</span>
+                            <span class="cc-icon text-[20px]">credit_card</span>
                         </div>
                         <div>
                             <div class="card-title">DOKU Jokul &amp; Kirim DOKU (Inquiry)</div>

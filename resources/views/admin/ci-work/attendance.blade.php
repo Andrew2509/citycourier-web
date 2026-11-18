@@ -5,7 +5,7 @@
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-    .chip-btn.active { background: #0f172a; color: #fff; }
+    .chip-btn.active { background: #0647FF; color: #fff; }
     .chip-btn .chip-count { font-size: 10px; background: rgba(0,0,0,.08); border-radius: 999px; padding: 1px 6px; font-weight: 700; }
     .chip-btn.active .chip-count { background: rgba(255,255,255,.25); color: #fff; }
     @keyframes pulsate { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .45; } }
@@ -91,7 +91,7 @@ $hudDefault = $mapMarks->first();
     <!-- Flash Message -->
     @if(session('success'))
     <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold flex items-center gap-2">
-        <span class="material-symbols-outlined text-[17px]">check_circle</span>
+        <span class="cc-icon text-[17px]">check_circle</span>
         {{ session('success') }}
     </div>
     @endif
@@ -113,16 +113,16 @@ $hudDefault = $mapMarks->first();
 
         <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
             <button type="button" onclick="openDateModal()" class="btn btn-secondary text-xs h-9 px-3 gap-1.5">
-                <span class="material-symbols-outlined text-[16px] text-slate-500">calendar_today</span>
+                <span class="cc-icon text-[16px] text-slate-500">calendar_today</span>
                 <span>{{ $dateLabel }}</span>
-                <span class="material-symbols-outlined text-[15px] text-slate-400">expand_more</span>
+                <span class="cc-icon text-[15px] text-slate-400">expand_more</span>
             </button>
             <a href="{{ route('admin.ci-work.attendance.export', ['date' => $date]) }}" class="btn btn-secondary text-xs h-9 px-3 gap-1.5">
-                <span class="material-symbols-outlined text-[16px] text-slate-500">download</span>
+                <span class="cc-icon text-[16px] text-slate-500">download</span>
                 <span>Ekspor CSV</span>
             </a>
             <button type="button" onclick="refreshSignal()" class="btn btn-primary text-xs h-9 px-3.5 gap-1.5 shadow-sm">
-                <span class="material-symbols-outlined text-[16px]">sync</span>
+                <span class="cc-icon text-[16px]">sync</span>
                 <span>Refresh Sinyal</span>
             </button>
             <span class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px] text-slate-500">
@@ -145,7 +145,7 @@ $hudDefault = $mapMarks->first();
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">how_to_reg</span>
+                    <span class="cc-icon text-[20px]">how_to_reg</span>
                 </div>
             </div>
             <div class="mt-3 space-y-1.5">
@@ -169,7 +169,7 @@ $hudDefault = $mapMarks->first();
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">radar</span>
+                    <span class="cc-icon text-[20px]">radar</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -187,7 +187,7 @@ $hudDefault = $mapMarks->first();
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">alarm</span>
+                    <span class="cc-icon text-[20px]">alarm</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -208,7 +208,7 @@ $hudDefault = $mapMarks->first();
                     </div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">free_breakfast</span>
+                    <span class="cc-icon text-[20px]">free_breakfast</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -222,7 +222,7 @@ $hudDefault = $mapMarks->first();
     <div class="card overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-slate-500">map</span>
+                <span class="cc-icon text-[18px] text-slate-500">map</span>
                 <div>
                     <h2 class="text-xs font-bold text-slate-900">Peta Live Tracking Kurir</h2>
                     <span class="text-[11px] text-slate-400">Surabaya &amp; Sekitarnya • Jangkauan {{ $mapCouriers->count() > 0 ? 'radius ±' . round(($mapBounds['latMax'] - $mapBounds['latMin']) * 55) . ' km' : '—' }}</span>
@@ -230,16 +230,16 @@ $hudDefault = $mapMarks->first();
             </div>
             <div class="flex items-center gap-1">
                 <button type="button" onclick="mapCenter()" title="Pusatkan peta" class="btn btn-secondary text-xs p-1.5 h-7 w-7">
-                    <span class="material-symbols-outlined text-[16px]">center_focus_strong</span>
+                    <span class="cc-icon text-[16px]">center_focus_strong</span>
                 </button>
                 <button type="button" onclick="mapZoom(1)" title="Perbesar" class="btn btn-secondary text-xs p-1.5 h-7 w-7">
-                    <span class="material-symbols-outlined text-[16px]">zoom_in</span>
+                    <span class="cc-icon text-[16px]">zoom_in</span>
                 </button>
                 <button type="button" onclick="mapZoom(-1)" title="Perkecil" class="btn btn-secondary text-xs p-1.5 h-7 w-7">
-                    <span class="material-symbols-outlined text-[16px]">zoom_out</span>
+                    <span class="cc-icon text-[16px]">zoom_out</span>
                 </button>
                 <button type="button" onclick="mapFullscreen()" title="Mode penuh layar" class="btn btn-secondary text-xs p-1.5 h-7 w-7">
-                    <span class="material-symbols-outlined text-[16px]">fullscreen</span>
+                    <span class="cc-icon text-[16px]">fullscreen</span>
                 </button>
             </div>
         </div>
@@ -249,7 +249,7 @@ $hudDefault = $mapMarks->first();
 
             @if($hudDefault)
             {{-- Telemetry HUD --}}
-            <div id="hudCard" class="absolute right-3 top-3 z-[1000] w-[230px] rounded-lg bg-white/95 backdrop-blur shadow-lg border border-slate-200 p-3 space-y-2 text-xs">
+            <div id="hudCard" class="absolute right-3 top-3 z-[1000] w-[230px] rounded-lg bg-white shadow-lg border border-slate-200 p-3 space-y-2 text-xs">
                 <div class="flex items-center gap-2">
                     <div class="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs shrink-0">{{ $hudDefault['initial'] }}</div>
                     <div class="min-w-0">
@@ -313,7 +313,7 @@ $hudDefault = $mapMarks->first();
     <div class="card overflow-hidden">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-slate-500">badge</span>
+                <span class="cc-icon text-[18px] text-slate-500">badge</span>
                 <div>
                     <h2 class="text-xs font-bold text-slate-900">Daftar Kehadiran Kurir</h2>
                     <span class="text-[11px] text-slate-500">Presensi tanggal {{ $dateLabel }}</span>
@@ -329,24 +329,24 @@ $hudDefault = $mapMarks->first();
                     <button type="button" data-chip="offline" class="chip-btn px-2.5 py-1 rounded text-xs font-medium text-slate-600 transition-colors">Offline <span class="chip-count">{{ $chipCounts['offline'] }}</span></button>
                 </div>
                 <button type="button" onclick="refreshSignal()" title="Muat ulang data" class="btn btn-secondary text-xs h-8 w-8 p-0">
-                    <span class="material-symbols-outlined text-[16px]">refresh</span>
+                    <span class="cc-icon text-[16px]">refresh</span>
                 </button>
             </div>
         </div>
 
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-white">
             <div class="relative flex-1 max-w-sm">
-                <span class="material-symbols-outlined text-[16px] text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2">search</span>
+                <span class="cc-icon text-[16px] text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2">search</span>
                 <input type="text" id="attSearch" oninput="filterRows()" placeholder="Cari nama, telepon, atau email kurir..."
                     class="form-input h-8 pl-8 text-xs w-full">
             </div>
             <div class="flex items-center gap-1.5">
                 <a href="{{ route('admin.ci-work.attendance.export', ['date' => $date]) }}" title="Ekspor CSV" class="btn btn-secondary text-xs h-8 px-2.5 gap-1">
-                    <span class="material-symbols-outlined text-[15px]">table_view</span>
+                    <span class="cc-icon text-[15px]">table_view</span>
                     <span class="hidden sm:inline">CSV</span>
                 </a>
                 <button type="button" onclick="window.print()" title="Cetak Presensi" class="btn btn-secondary text-xs h-8 w-8 p-0">
-                    <span class="material-symbols-outlined text-[15px]">print</span>
+                    <span class="cc-icon text-[15px]">print</span>
                 </button>
             </div>
         </div>
@@ -379,7 +379,7 @@ $hudDefault = $mapMarks->first();
                                     </div>
                                     <span class="text-[11px] text-slate-400 block truncate">{{ $row['email'] }}</span>
                                     @if($row['vehicle'])
-                                    <span class="text-[10px] text-slate-500 font-mono flex items-center gap-1 mt-0.5"><span class="material-symbols-outlined text-[12px]">two_wheeler</span>{{ $row['vehicle'] }}</span>
+                                    <span class="text-[10px] text-slate-500 font-mono flex items-center gap-1 mt-0.5"><span class="cc-icon text-[12px]">two_wheeler</span>{{ $row['vehicle'] }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -390,7 +390,7 @@ $hudDefault = $mapMarks->first();
                                 <div class="flex items-center gap-2 text-xs">
                                     <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['phone'])) }}" target="_blank"
                                         class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700">
-                                        <span class="material-symbols-outlined text-[13px]">chat</span> WhatsApp
+                                        <span class="cc-icon text-[13px]">chat</span> WhatsApp
                                     </a>
                                 </div>
                             </div>
@@ -432,7 +432,7 @@ $hudDefault = $mapMarks->first();
                                 </span>
                                 @if($row['lastSeen'] !== null)
                                 <span class="text-[10px] {{ $row['lastSeen'] <= 60 ? 'text-emerald-600 font-semibold' : 'text-slate-400' }} flex items-center gap-1" id="ls-{{ $row['id'] }}">
-                                    <span class="material-symbols-outlined text-[12px]">radar</span> {{ $row['lastSeen'] <= 60 ? $row['lastSeen'] . ' dtk lalu' : $row['lastSeen'] . ' dtk' }}
+                                    <span class="cc-icon text-[12px]">radar</span> {{ $row['lastSeen'] <= 60 ? $row['lastSeen'] . ' dtk lalu' : $row['lastSeen'] . ' dtk' }}
                                 </span>
                                 @endif
                             </div>
@@ -440,32 +440,32 @@ $hudDefault = $mapMarks->first();
                         <td class="text-right">
                             <div class="inline-flex items-center justify-end gap-1.5">
                                 <button type="button" onclick="focusCourier({{ $row['id'] }})" class="btn btn-secondary text-xs h-7 px-2 gap-1" title="Lihat di Peta">
-                                    <span class="material-symbols-outlined text-[14px] text-slate-500">map</span>
+                                    <span class="cc-icon text-[14px] text-slate-500">map</span>
                                     <span class="hidden sm:inline">Peta</span>
                                 </button>
                                 <button type="button" onclick="openDetail({{ $row['id'] }})" class="btn btn-primary text-xs h-7 px-2.5 gap-1" title="Detail Kurir">
-                                    <span class="material-symbols-outlined text-[14px]">info</span>
+                                    <span class="cc-icon text-[14px]">info</span>
                                     <span>Detail</span>
                                 </button>
                                 <div class="relative">
                                     <button type="button" onclick="toggleMenu(event, {{ $row['id'] }})" class="btn btn-secondary text-xs h-7 w-7 p-0">
-                                        <span class="material-symbols-outlined text-[16px]">more_vert</span>
+                                        <span class="cc-icon text-[16px]">more_vert</span>
                                     </button>
                                     <div id="qm-{{ $row['id'] }}" class="hidden absolute right-0 top-full mt-1 z-40 w-48 rounded-lg bg-white shadow-xl border border-slate-200 p-1 text-left">
                                         <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['phone'])) }}" target="_blank" class="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors">
-                                            <span class="material-symbols-outlined text-[15px] text-emerald-600">chat</span> WhatsApp
+                                            <span class="cc-icon text-[15px] text-emerald-600">chat</span> WhatsApp
                                         </a>
                                         <a href="tel:{{ $row['phone'] }}" class="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors">
-                                            <span class="material-symbols-outlined text-[15px] text-sky-600">phone</span> Telepon
+                                            <span class="cc-icon text-[15px] text-sky-600">phone</span> Telepon
                                         </a>
                                         <a href="{{ route('admin.ci-work.tasks') }}" class="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors">
-                                            <span class="material-symbols-outlined text-[15px] text-primary-600">assignment_add</span> Assign Tugas
+                                            <span class="cc-icon text-[15px] text-primary-600">assignment_add</span> Assign Tugas
                                         </a>
                                         <div class="my-1 border-t border-slate-100"></div>
                                         <form method="POST" action="{{ route('admin.ci-work.attendance.toggle-active', $row['id']) }}" onsubmit="return confirm('Yakin mengubah status aktif kurir ini?')">
                                             @csrf
                                             <button type="submit" class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs {{ $row['active'] ? 'text-red-600 hover:bg-red-50' : 'text-emerald-700 hover:bg-emerald-50' }} transition-colors">
-                                                <span class="material-symbols-outlined text-[15px]">{{ $row['active'] ? 'block' : 'power' }}</span>
+                                                <span class="cc-icon text-[15px]">{{ $row['active'] ? 'block' : 'power' }}</span>
                                                 {{ $row['active'] ? 'Nonaktifkan Kurir' : 'Aktifkan Kurir' }}
                                             </button>
                                         </form>
@@ -477,7 +477,7 @@ $hudDefault = $mapMarks->first();
                     @empty
                     <tr>
                         <td colspan="6" class="p-8 text-center text-slate-400">
-                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">group_off</span>
+                            <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">group_off</span>
                             <p class="text-xs font-semibold text-slate-600">Belum ada data kehadiran pada tanggal ini</p>
                         </td>
                     </tr>
@@ -494,7 +494,7 @@ $hudDefault = $mapMarks->first();
 </div>
 
 {{-- Detail Modal --}}
-<div id="detailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+<div id="detailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/60">
     <div class="card w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50" id="detailHead">
             <div class="flex items-center gap-3">
@@ -510,7 +510,7 @@ $hudDefault = $mapMarks->first();
             <div class="flex items-center gap-2">
                 <span id="d-status" class="badge"></span>
                 <button onclick="closeDetail()" class="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors">
-                    <span class="material-symbols-outlined text-[18px]">close</span>
+                    <span class="cc-icon text-[18px]">close</span>
                 </button>
             </div>
         </div>
@@ -530,28 +530,28 @@ $hudDefault = $mapMarks->first();
 
         <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
             <a id="d-call" href="#" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                <span class="material-symbols-outlined text-[15px] text-slate-500">phone</span> Telepon
+                <span class="cc-icon text-[15px] text-slate-500">phone</span> Telepon
             </a>
             <a id="d-wa" href="#" target="_blank" class="btn btn-primary text-xs h-8 px-3 gap-1 shadow-sm">
-                <span class="material-symbols-outlined text-[15px]">chat</span> WhatsApp
+                <span class="cc-icon text-[15px]">chat</span> WhatsApp
             </a>
             <button onclick="openDetailOnMap()" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                <span class="material-symbols-outlined text-[15px] text-slate-500">map</span> Lihat Peta
+                <span class="cc-icon text-[15px] text-slate-500">map</span> Lihat Peta
             </button>
         </div>
     </div>
 </div>
 
 {{-- Date Filter Modal --}}
-<div id="dateModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+<div id="dateModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/60">
     <div class="card w-full max-w-sm p-5 space-y-4 shadow-xl">
         <div class="flex items-center justify-between pb-2 border-b border-slate-100">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-primary-600">calendar_today</span>
+                <span class="cc-icon text-[18px] text-primary-600">calendar_today</span>
                 <h3 class="text-sm font-bold text-slate-900">Filter Tanggal Presensi</h3>
             </div>
             <button onclick="closeDateModal()" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <form method="GET" action="{{ route('admin.ci-work.attendance') }}" class="space-y-3.5">
@@ -612,10 +612,10 @@ $hudDefault = $mapMarks->first();
             className: 'att-div',
             html: '<div class="att-marker">' +
                 '<div class="dot" style="background:' + color + '">' +
-                '<span class="material-symbols-outlined" style="font-size:16px;line-height:1">delivery_dining</span>' +
+                '<span class="cc-icon" style="font-size:16px;line-height:1">delivery_dining</span>' +
                 '<span style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:999px;background:' + dot + ';border:2px solid #fff;' + pulse + '"></span>' +
                 '</div>' +
-                '<div style="margin-top:3px;padding:2px 6px;border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);font-size:10px;font-weight:700;color:#0f172a;white-space:nowrap;">' + m.name + ' <span style="color:#64748b;font-weight:500;">(ID: ' + m.id + ')</span></div>' +
+                '<div style="margin-top:3px;padding:2px 6px;border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);font-size:10px;font-weight:700;color:#172033;white-space:nowrap;">' + m.name + ' <span style="color:#64748b;font-weight:500;">(ID: ' + m.id + ')</span></div>' +
                 '</div>',
             iconSize: [78, 58],
             iconAnchor: [39, 36]
@@ -626,11 +626,11 @@ $hudDefault = $mapMarks->first();
         return L.divIcon({
             className: 'att-div',
             html: '<div class="att-marker">' +
-                '<div class="dot" style="background:#ea580c">' +
-                '<span class="material-symbols-outlined" style="font-size:17px;line-height:1">warehouse</span>' +
-                '<span style="position:absolute;inset:0;border-radius:999px;background:#ea580c;opacity:.35;animation:pulsate 1.6s ease-in-out infinite"></span>' +
+                '<div class="dot" style="background:#FF910F">' +
+                '<span class="cc-icon" style="font-size:17px;line-height:1">warehouse</span>' +
+                '<span style="position:absolute;inset:0;border-radius:999px;background:#FF910F;opacity:.35;animation:pulsate 1.6s ease-in-out infinite"></span>' +
                 '</div>' +
-                '<div style="margin-top:3px;padding:2px 6px;border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);font-size:10px;font-weight:700;color:#c2410c;white-space:nowrap;">' + HUB.name + '</div>' +
+                '<div style="margin-top:3px;padding:2px 6px;border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);font-size:10px;font-weight:700;color:#B26300;white-space:nowrap;">' + HUB.name + '</div>' +
                 '</div>',
             iconSize: [96, 58],
             iconAnchor: [48, 36]
@@ -641,20 +641,20 @@ $hudDefault = $mapMarks->first();
         const milli = '<span style="display:inline-block;width:7px;height:7px;border-radius:999px;background:' + (m.status === 'offline' ? '#94a3b8' : '#34d399') + ';margin-right:4px;"></span>';
         return '<div style="font-family:Inter,sans-serif;min-width:190px;">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
-            '<div style="width:28px;height:28px;border-radius:999px;background:#0f172a;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;">' + m.initial + '</div>' +
-            '<div><div style="font-weight:700;font-size:12px;color:#0f172a;">' + m.name + '</div>' +
+            '<div style="width:28px;height:28px;border-radius:999px;background:#172033;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;">' + m.initial + '</div>' +
+            '<div><div style="font-weight:700;font-size:12px;color:#172033;">' + m.name + '</div>' +
             '<div style="font-size:10px;color:#64748b;">' + milli + statusLabel(m.status) + '</div></div>' +
             '</div>' +
-            '<div style="font-size:10px;color:#334155;margin-bottom:7px;">' +
+            '<div style="font-size:10px;color:#36435C;margin-bottom:7px;">' +
             '&#9889; ' + (m.speed !== null ? m.speed : '-') + ' km/j &nbsp;&bull;&nbsp; &#128267; ' + (m.battery !== null ? m.battery : '-') + '% &nbsp;&bull;&nbsp; &#127919; ±' + (m.accuracy !== null ? m.accuracy : '-') + 'm' +
             '</div>' +
-            '<button onclick="openDetail(' + m.id + ')" style="width:100%;padding:5px 0;border:0;border-radius:6px;background:#ea580c;color:#fff;font-weight:700;font-size:11px;cursor:pointer;">Lihat Detail</button>' +
+            '<button onclick="openDetail(' + m.id + ')" style="width:100%;padding:5px 0;border:0;border-radius:6px;background:#FF910F;color:#fff;font-weight:700;font-size:11px;cursor:pointer;">Lihat Detail</button>' +
             '</div>';
     }
 
     function hubPopupHtml() {
         return '<div style="font-family:Inter,sans-serif;min-width:160px;">' +
-            '<div style="font-weight:700;font-size:12px;color:#c2410c;">' + HUB.name + '</div>' +
+            '<div style="font-weight:700;font-size:12px;color:#B26300;">' + HUB.name + '</div>' +
             '<div style="font-size:10px;color:#64748b;margin-top:2px;">Hub distribusi • Radius ±150 m</div>' +
             '</div>';
     }
@@ -762,7 +762,7 @@ $hudDefault = $mapMarks->first();
         ];
         document.getElementById('detailGrid').innerHTML = items.map(it => `
             <div class="rounded-lg bg-slate-50 border border-slate-100 p-2.5">
-                <span class="text-[10px] text-slate-400 font-semibold flex items-center gap-1 uppercase tracking-wider mb-0.5"><span class="material-symbols-outlined text-[13px]">${it.icon}</span>${it.label}</span>
+                <span class="text-[10px] text-slate-400 font-semibold flex items-center gap-1 uppercase tracking-wider mb-0.5"><span class="cc-icon text-[13px]">${it.icon}</span>${it.label}</span>
                 <span class="font-medium text-xs text-slate-800">${it.value}</span>
                 ${it.extra ? `<span class="block text-[10px] font-semibold text-emerald-600 mt-0.5">${it.extra}</span>` : ''}
             </div>`).join('');
@@ -795,7 +795,7 @@ $hudDefault = $mapMarks->first();
 
     window.refreshSignal = function () {
         const btn = event && event.currentTarget ? event.currentTarget : null;
-        const spinner = btn ? btn.querySelector('.material-symbols-outlined') : null;
+        const spinner = btn ? btn.querySelector('.cc-icon') : null;
         if (spinner) { spinner.classList.add('animate-spin'); btn.disabled = true; }
         setTimeout(() => window.location.reload(), 250);
     };

@@ -7,7 +7,7 @@
     <!-- Flash -->
     @if(session('success'))
     <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold flex items-center gap-2">
-        <span class="material-symbols-outlined text-[17px]">check_circle</span>
+        <span class="cc-icon text-[17px]">check_circle</span>
         {{ session('success') }}
     </div>
     @endif
@@ -29,11 +29,11 @@
 
         <div class="flex items-center gap-2 self-start sm:self-auto">
             <a href="{{ url()->current() }}" class="btn btn-secondary text-xs h-9 px-2.5 gap-1">
-                <span class="material-symbols-outlined text-[15px] text-slate-500">refresh</span>
+                <span class="cc-icon text-[15px] text-slate-500">refresh</span>
                 <span>Segarkan</span>
             </a>
             <button onclick="openGuideModal()" type="button" class="btn btn-secondary text-xs h-8 px-2.5 gap-1">
-                <span class="material-symbols-outlined text-[15px] text-slate-500">help</span>
+                <span class="cc-icon text-[15px] text-slate-500">help</span>
                 <span>Panduan</span>
             </button>
         </div>
@@ -71,7 +71,7 @@
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Cari Kurir / Referensi</label>
                 <div class="relative">
-                    <span class="material-symbols-outlined text-[16px] text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2">search</span>
+                    <span class="cc-icon text-[16px] text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2">search</span>
                     <input type="text" id="danaSearch" oninput="updateDanaTable()"
                         placeholder="Nama kurir, no HP, atau nomor referensi..."
                         class="form-input h-8 pl-8 text-xs w-full sm:w-80">
@@ -195,7 +195,7 @@
                                     @csrf
                                     <input type="hidden" name="status" value="approved">
                                     <button type="submit" class="btn btn-primary text-xs h-7 px-2.5 gap-1">
-                                        <span class="material-symbols-outlined text-[14px]">check</span>
+                                        <span class="cc-icon text-[14px]">check</span>
                                         <span>Setujui</span>
                                     </button>
                                 </form>
@@ -204,7 +204,7 @@
                                     @csrf
                                     <input type="hidden" name="status" value="rejected">
                                     <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1 text-rose-600 hover:bg-rose-50">
-                                        <span class="material-symbols-outlined text-[14px]">close</span>
+                                        <span class="cc-icon text-[14px]">close</span>
                                         <span>Tolak</span>
                                     </button>
                                 </form>
@@ -214,7 +214,7 @@
                                     @csrf
                                     <input type="hidden" name="status" value="completed">
                                     <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1" title="Tandai Selesai">
-                                        <span class="material-symbols-outlined text-[14px] text-emerald-600">task_alt</span>
+                                        <span class="cc-icon text-[14px] text-emerald-600">task_alt</span>
                                         <span>Tandai Selesai</span>
                                     </button>
                                 </form>
@@ -223,7 +223,7 @@
                                     @csrf
                                     <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1"
                                         title="Verifikasi status resmi transaksi via API {{ $providerName }}. Hasil API-lah yang memfinalkan status.">
-                                        <span class="material-symbols-outlined text-[14px] {{ $providerName === 'DANA' ? 'text-[#118EEA]' : 'text-[#4c3494]' }}">sync</span>
+                                        <span class="cc-icon text-[14px] {{ $providerName === 'DANA' ? 'text-[#118EEA]' : 'text-[#4c3494]' }}">sync</span>
                                         <span>Cek Status {{ $providerName }}</span>
                                     </button>
                                 </form>
@@ -237,7 +237,7 @@
                     @if($withdrawals->total() === 0)
                     <tr class="wd-row" data-status="pending" data-empty="1">
                         <td colspan="6" class="p-8 text-center text-slate-400">
-                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">pending_actions</span>
+                            <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">pending_actions</span>
                             <p class="text-xs font-semibold text-slate-600">Belum ada permintaan penarikan DANA</p>
                         </td>
                     </tr>
@@ -249,15 +249,15 @@
 </div>
 
 <!-- Modal: Detail Penarikan Kurir -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="withdrawalDetailModal" onclick="if(event.target === this) closeWithdrawalDetail()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="withdrawalDetailModal" onclick="if(event.target === this) closeWithdrawalDetail()">
     <div class="card w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-slate-500">receipt_long</span>
+                <span class="cc-icon text-[18px] text-slate-500">receipt_long</span>
                 <h4 class="text-sm font-bold text-slate-900">Detail Penarikan</h4>
             </div>
             <button onclick="closeWithdrawalDetail()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <div class="p-5" id="withdrawalDetailBody"></div>
@@ -269,15 +269,15 @@
 </div>
 
 <!-- Modal: Panduan Persetujuan -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="guideModal" onclick="if(event.target === this) closeGuideModal()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="guideModal" onclick="if(event.target === this) closeGuideModal()">
     <div class="card w-full max-w-md overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-blue-600">help</span>
+                <span class="cc-icon text-[18px] text-blue-600">help</span>
                 <h4 class="text-sm font-bold text-slate-900">Panduan Persetujuan Penarikan DANA</h4>
             </div>
             <button onclick="closeGuideModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <div class="p-5 space-y-2.5 text-xs text-slate-600">
@@ -289,7 +289,7 @@
 
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
                 <span class="font-bold text-slate-800 block">2. Gunakan Tombol Cek Status API</span>
-                <p class="text-slate-500 leading-relaxed">Klik tombol <strong>Cek Status {{ $providerName }}</strong> di setiap baris transaksi. Sistem akan memanggil API resmi DANA untuk mendapatkan status terverifikasi.</p>
+                <p class="text-slate-500 leading-relaxed">Klik tombol <strong>Cek Status {{ ($providerName ?? 'DANA') }}</strong> di setiap baris transaksi. Sistem akan memanggil API resmi DANA untuk mendapatkan status terverifikasi.</p>
                 <p class="text-slate-500 leading-relaxed">Hasil dari API adalah satu-satunya penentu akhir apakah penarikan <strong>Berhasil</strong> atau <strong>Gagal</strong>.</p>
             </div>
 
@@ -326,7 +326,7 @@ function updateDanaTable() {
     const searchTerm = document.getElementById('danaSearch')?.value ?? '';
 
     // Build URL with filters
-    let url = '{{ route("finance.dana-transactions") }}?status=' + encodeURIComponent(statusFilter);
+    let url = '{{ route("admin.ci-work.finance.dana-transactions") }}?status=' + encodeURIComponent(statusFilter);
 
     if (searchTerm.trim()) {
         url += '&search=' + encodeURIComponent(searchTerm);
@@ -444,7 +444,7 @@ function openWithdrawalDetail(btn) {
             <form action="${w.check_url}" method="POST">
                 <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.content || ''}">
                 <button type="submit" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                    <span class="material-symbols-outlined text-[14px] text-[#118EEA]">sync</span>
+                    <span class="cc-icon text-[14px] text-[#118EEA]">sync</span>
                     <span>Cek Status ${w.provider}</span>
                 </button>
             </form>`;

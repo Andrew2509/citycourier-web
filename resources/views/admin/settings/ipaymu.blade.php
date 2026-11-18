@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.settings.providers') }}" class="back-link" title="Kembali ke Daftar Provider">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Pengaturan iPaymu (Checkout VA/QRIS &amp; Payout Kurir)</h1>
@@ -168,7 +168,7 @@
                     <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                         <a href="{{ route('admin.settings.providers') }}" class="btn btn-secondary">Batal</a>
                         <button type="submit" class="btn btn-primary">
-                            <span class="material-symbols-outlined">save</span>
+                            <span class="cc-icon">save</span>
                             Simpan Kredensial iPaymu
                         </button>
                     </div>
@@ -187,7 +187,7 @@
                         Menguji inquiry memakai nilai form saat ini — bisa dijalankan SEBELUM menekan Simpan.
                     </p>
                     <button type="button" id="btn-test-ipaymu" class="btn btn-secondary w-full">
-                        <span class="material-symbols-outlined">sync_alt</span>
+                        <span class="cc-icon">sync_alt</span>
                         Tes Koneksi API iPaymu
                     </button>
                     <div id="ipaymu-test-result-box" class="hidden rounded-lg p-3 text-xs"></div>

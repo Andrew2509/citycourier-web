@@ -9,66 +9,82 @@
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-sm font-semibold text-slate-900">Pengajuan Refund Pelanggan</h2>
         <form method="GET" class="flex items-center gap-2">
-            <select name="status" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <select name="status" class="form-select w-auto">
                 <option value="all">Semua Status</option>
                 @foreach (['requested', 'approved', 'completed', 'rejected'] as $st)
                     <option value="{{ $st }}" @selected($status === $st)>{{ strtoupper($st) }}</option>
                 @endforeach
             </select>
-            <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">Filter</button>
+            <button type="submit" class="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">Filter</button>
         </form>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-            <thead class="border-b border-slate-200 text-slate-500">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <th class="py-2 pr-3">Reference</th>
-                    <th class="py-2 pr-3">Pelanggan</th>
-                    <th class="py-2 pr-3">Shipment</th>
-                    <th class="py-2 pr-3 text-right">Nominal</th>
-                    <th class="py-2 pr-3">Alasan</th>
-                    <th class="py-2 pr-3">Status</th>
-                    <th class="py-2">Aksi Admin</th>
+                    <th>Reference</th>
+                    <th>Pelanggan</th>
+                    <th>Shipment</th>
+                    <th class="text-right">Nominal</th>
+                    <th>Alasan</th>
+                    <th>Status</th>
+                    <th>Aksi Admin</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
                 @forelse ($refunds as $r)
                     <tr>
-                        <td class="py-2.5 pr-3 font-mono">{{ $r->reference }}</td>
-                        <td class="py-2.5 pr-3">{{ $r->user?->name ?? '#'.$r->user_id }}</td>
-                        <td class="py-2.5 pr-3">{{ $r->shipment?->shipment_number ?? ($r->shipment_id ? '#'.$r->shipment_id : '-') }}</td>
-                        <td class="py-2.5 pr-3 text-right font-semibold">Rp {{ number_format($r->amount, 0, ',', '.') }}</td>
-                        <td class="py-2.5 pr-3 max-w-xs">{{ $r->reason }}</td>
-                        <td class="py-2.5 pr-3 uppercase font-semibold">{{ $r->status }}</td>
-                        <td class="py-2.5">
+                        <td class="cell-mono">{{ $r->reference }}</td>
+                        <td class="cell-primary">{{ $r->user?->name ?? '#'.$r->user_id }}</td>
+                        <td>{{ $r->shipment?->shipment_number ?? ($r->shipment_id ? '#'.$r->shipment_id : '-') }}</td>
+                        <td class="text-right font-semibold tabular-nums">Rp {{ number_format($r->amount, 0, ',', '.') }}</td>
+                        <td class="max-w-xs">{{ $r->reason }}</td>
+                        <td>
+                            @php
+                                $stBadge = match ($r->status) {
+                                    'completed' => 'badge-green',
+                                    'approved' => 'badge-info',
+                                    'rejected' => 'badge-red',
+                                    default => 'badge-amber',
+                                };
+                            @endphp
+                            <span class="badge {{ $stBadge }}"><span class="badge-dot"></span>{{ strtoupper($r->status) }}</span>
+                        </td>
+                        <td>
                             @if (in_array($r->status, ['requested', 'approved'], true))
                                 <div class="flex flex-wrap items-center gap-1.5">
                                     <form method="POST" action="{{ route('admin.finance.refunds.approve', $r) }}">
                                         @csrf
-                                        <button type="submit" class="rounded bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                                        <button type="submit" class="btn btn-sm btn-success">
                                             Approve &amp; Credit Wallet
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ route('admin.finance.refunds.reject', $r) }}" class="flex items-center gap-1">
                                         @csrf
                                         <input type="text" name="review_notes" required placeholder="Alasan tolak..."
-                                               class="w-28 rounded border border-slate-300 px-1.5 py-1 text-[11px]">
-                                        <button type="submit" class="rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white">
+                                               class="form-input !h-8 w-28 !text-[11px]">
+                                        <button type="submit" class="btn btn-sm btn-danger">
                                             Reject
                                         </button>
                                     </form>
                                 </div>
                             @else
-                                <span class="text-slate-400">{{ $r->review_notes ?? '-' }}</span>
+                                <span class="cell-muted">{{ $r->review_notes ?? '-' }}</span>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-6 text-center text-slate-400">Belum ada pengajuan refund.</td></tr>
                 @endforelse
             </tbody>
         </table>
+        @if ($refunds->isEmpty())
+            <div class="empty-state">
+                <span class="cc-icon">assignment_return</span>
+                <div class="empty-title">Belum ada pengajuan refund</div>
+                <div class="empty-text">Pengajuan refund pelanggan akan muncul di sini.</div>
+            </div>
+        @endif
     </div>
     <div class="mt-4">{{ $refunds->links() }}</div>
 </div>

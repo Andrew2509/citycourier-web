@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.settings.providers') }}" class="back-link" title="Kembali ke Daftar Provider">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Layanan Pembayaran &amp; Gateway</h1>
@@ -67,7 +67,7 @@
                     <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                         <a href="{{ route('admin.settings.providers') }}" class="btn btn-secondary">Batal</a>
                         <button type="submit" class="btn btn-primary">
-                            <span class="material-symbols-outlined">save</span>
+                            <span class="cc-icon">save</span>
                             Simpan Pengaturan Pembayaran
                         </button>
                     </div>
@@ -88,7 +88,7 @@
                     <form action="{{ route('admin.settings.payment.test') }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-secondary w-full">
-                            <span class="material-symbols-outlined">verified</span>
+                            <span class="cc-icon">verified</span>
                             Tes Koneksi Gateway
                         </button>
                     </form>

@@ -9,44 +9,60 @@
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-sm font-semibold text-slate-900">Transaksi Pembayaran Order &amp; Wallet</h2>
         <form method="GET" class="flex items-center gap-2">
-            <select name="status" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <select name="status" class="form-select w-auto">
                 <option value="all">Semua Status</option>
                 @foreach (['paid', 'pending', 'failed', 'refunded'] as $st)
                     <option value="{{ $st }}" @selected($status === $st)>{{ strtoupper($st) }}</option>
                 @endforeach
             </select>
-            <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">Filter</button>
+            <button type="submit" class="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">Filter</button>
         </form>
     </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-            <thead class="border-b border-slate-200 text-slate-500">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <th class="py-2 pr-3">Reference</th>
-                    <th class="py-2 pr-3">Pelanggan</th>
-                    <th class="py-2 pr-3">Shipment</th>
-                    <th class="py-2 pr-3">Metode</th>
-                    <th class="py-2 pr-3">Mode</th>
-                    <th class="py-2 pr-3 text-right">Total (IDR)</th>
-                    <th class="py-2">Status</th>
+                    <th>Reference</th>
+                    <th>Pelanggan</th>
+                    <th>Shipment</th>
+                    <th>Metode</th>
+                    <th>Mode</th>
+                    <th class="text-right">Total (IDR)</th>
+                    <th>Status</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
                 @forelse ($payments as $p)
                     <tr>
-                        <td class="py-2.5 pr-3 font-mono">{{ $p->reference }}</td>
-                        <td class="py-2.5 pr-3">{{ $p->user?->name ?? '#'.$p->user_id }}</td>
-                        <td class="py-2.5 pr-3">{{ $p->shipment?->shipment_number ?? ($p->shipment_id ? '#'.$p->shipment_id : '-') }}</td>
-                        <td class="py-2.5 pr-3 uppercase">{{ $p->payment_method }} ({{ $p->channel_code }})</td>
-                        <td class="py-2.5 pr-3 uppercase">{{ $p->mode }}</td>
-                        <td class="py-2.5 pr-3 text-right font-semibold">Rp {{ number_format($p->total_amount, 0, ',', '.') }}</td>
-                        <td class="py-2.5 uppercase font-semibold">{{ $p->status }}</td>
+                        <td class="cell-mono">{{ $p->reference }}</td>
+                        <td class="cell-primary">{{ $p->user?->name ?? '#'.$p->user_id }}</td>
+                        <td>{{ $p->shipment?->shipment_number ?? ($p->shipment_id ? '#'.$p->shipment_id : '-') }}</td>
+                        <td class="uppercase">{{ $p->payment_method }} ({{ $p->channel_code }})</td>
+                        <td class="uppercase">{{ $p->mode }}</td>
+                        <td class="text-right font-semibold tabular-nums">Rp {{ number_format($p->total_amount, 0, ',', '.') }}</td>
+                        <td>
+                            @php
+                                $stBadge = match ($p->status) {
+                                    'paid' => 'badge-green',
+                                    'failed' => 'badge-red',
+                                    'refunded' => 'badge-indigo',
+                                    default => 'badge-amber',
+                                };
+                            @endphp
+                            <span class="badge {{ $stBadge }}"><span class="badge-dot"></span>{{ strtoupper($p->status) }}</span>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-6 text-center text-slate-400">Belum ada pembayaran v1 tercatat.</td></tr>
                 @endforelse
             </tbody>
         </table>
+        @if ($payments->isEmpty())
+            <div class="empty-state">
+                <span class="cc-icon">receipt_long</span>
+                <div class="empty-title">Belum ada pembayaran tercatat</div>
+                <div class="empty-text">Transaksi pembayaran order &amp; wallet akan muncul di sini.</div>
+            </div>
+        @endif
     </div>
     <div class="mt-4">{{ $payments->links() }}</div>
 </div>

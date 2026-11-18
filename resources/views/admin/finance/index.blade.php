@@ -51,24 +51,24 @@
     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-slate-800">Konfigurasi Gateway &amp; Kepatuhan Saat Ini</h2>
-            <a href="{{ route('admin.finance.settings') }}" class="text-xs font-semibold text-orange-600 hover:underline">Kelola Pengaturan</a>
+            <a href="{{ route('admin.finance.settings') }}" class="text-xs font-semibold text-primary-600 hover:underline">Kelola Pengaturan</a>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div class="rounded-lg bg-slate-50 p-3">
+            <div class="rounded-lg bg-cream-50 border border-slate-100 p-3">
                 <div class="text-xs text-slate-500">Payment Provider Aktif</div>
                 <div class="font-semibold uppercase text-slate-900">{{ $metrics['active_payment_provider'] }}</div>
             </div>
-            <div class="rounded-lg bg-slate-50 p-3">
+            <div class="rounded-lg bg-cream-50 border border-slate-100 p-3">
                 <div class="text-xs text-slate-500">Payout Provider Aktif</div>
                 <div class="font-semibold uppercase text-slate-900">{{ $metrics['active_payout_provider'] }}</div>
             </div>
-            <div class="rounded-lg bg-slate-50 p-3">
+            <div class="rounded-lg bg-cream-50 border border-slate-100 p-3">
                 <div class="text-xs text-slate-500">Customer Withdrawal Status</div>
                 <div class="font-semibold {{ $metrics['customer_withdrawal_enabled'] ? 'text-amber-700' : 'text-slate-700' }}">
                     {{ $metrics['customer_withdrawal_enabled'] ? 'Aktif (Mode Non-Produksi / Disetujui)' : 'DINONAKTIFKAN (Menunggu Persetujuan Regulasi)' }}
                 </div>
             </div>
-            <div class="rounded-lg bg-slate-50 p-3">
+            <div class="rounded-lg bg-cream-50 border border-slate-100 p-3">
                 <div class="text-xs text-slate-500">Total Dana Tertahan (Reserved Payout)</div>
                 <div class="font-semibold text-slate-900">Rp {{ number_format($metrics['wallets']['total_reserved_idr'], 0, ',', '.') }}</div>
             </div>
@@ -79,39 +79,38 @@
 <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-slate-800">Jurnal Double-Entry Ledger Terbaru</h2>
-        <a href="{{ route('admin.finance.reconciliation') }}" class="text-xs font-semibold text-orange-600 hover:underline">Lihat Rekonsiliasi Lengkap</a>
+        <a href="{{ route('admin.finance.reconciliation') }}" class="text-xs font-semibold text-primary-600 hover:underline">Lihat Rekonsiliasi Lengkap</a>
     </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-            <thead class="border-b border-slate-200 text-slate-500">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <th class="py-2 pr-3">Reference</th>
-                    <th class="py-2 pr-3">Wallet</th>
-                    <th class="py-2 pr-3">Akun</th>
-                    <th class="py-2 pr-3">Posisi</th>
-                    <th class="py-2 pr-3 text-right">Nominal (IDR)</th>
-                    <th class="py-2 pr-3">Mode</th>
-                    <th class="py-2">Waktu</th>
+                    <th">Reference</th>
+                    <th">Wallet</th>
+                    <th">Akun</th>
+                    <th">Posisi</th>
+                    <th text-right">Nominal (IDR)</th>
+                    <th">Mode</th>
+                    <th>Waktu</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
                 @forelse ($metrics['recent_ledger'] as $entry)
                     <tr>
-                        <td class="py-2 pr-3 font-mono text-slate-800">{{ $entry->journal_reference }}</td>
-                        <td class="py-2 pr-3">{{ $entry->wallet_id ? '#'.$entry->wallet_id : 'SYSTEM' }}</td>
-                        <td class="py-2 pr-3 font-mono">{{ $entry->account_code }}</td>
-                        <td class="py-2 pr-3">
-                            <span class="rounded px-1.5 py-0.5 font-semibold uppercase {{ $entry->entry_type === 'credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}">
+                        <td font-mono text-slate-800">{{ $entry->journal_reference }}</td>
+                        <td">{{ $entry->wallet_id ? '#'.$entry->wallet_id : 'SYSTEM' }}</td>
+                        <td font-mono">{{ $entry->account_code }}</td>
+                        <td">
+                            <span class="badge {{ $entry->entry_type === 'credit' ? 'badge-green' : 'badge-red' }}">
                                 {{ $entry->entry_type }}
                             </span>
                         </td>
-                        <td class="py-2 pr-3 text-right font-semibold">Rp {{ number_format($entry->amount, 0, ',', '.') }}</td>
-                        <td class="py-2 pr-3 uppercase text-slate-500">{{ $entry->mode }}</td>
-                        <td class="py-2 text-slate-500">{{ $entry->created_at?->format('d/m H:i') }}</td>
+                        <td text-right font-semibold">Rp {{ number_format($entry->amount, 0, ',', '.') }}</td>
+                        <td uppercase text-slate-500">{{ $entry->mode }}</td>
+                        <td text-slate-500">{{ $entry->created_at?->format('d/m H:i') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-6 text-center text-slate-400">Belum ada jurnal ledger tercatat.</td></tr>
-                @endforelse
+                    @endforelse
             </tbody>
         </table>
     </div>

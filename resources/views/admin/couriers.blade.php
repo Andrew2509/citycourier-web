@@ -79,15 +79,15 @@
 
         <div class="page-actions">
             <button type="button" onclick="shareRegistrationLink()" class="btn btn-secondary" title="Salin tautan pendaftaran kurir baru">
-                <span class="material-symbols-outlined">share</span>
+                <span class="cc-icon">share</span>
                 <span>Bagikan Link Daftar</span>
             </button>
             <a href="{{ route('admin.couriers.export') }}" class="btn btn-secondary">
-                <span class="material-symbols-outlined">download</span>
+                <span class="cc-icon">download</span>
                 <span>Ekspor CSV</span>
             </a>
             <button type="button" onclick="openAddCourierModal()" class="btn btn-primary">
-                <span class="material-symbols-outlined">person_add</span>
+                <span class="cc-icon">person_add</span>
                 <span>Tambah Kurir</span>
             </button>
         </div>
@@ -121,14 +121,14 @@
     <div id="pendingSection" class="card overflow-hidden {{ count($pending) === 0 ? 'hidden' : '' }}">
         <div class="card-header bg-amber-50/50 border-amber-200/80">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-amber-700">how_to_reg</span>
+                <span class="cc-icon text-amber-700">how_to_reg</span>
                 <div>
                     <div class="card-title text-amber-900">Kurir Menunggu Verifikasi ({{ count($pending) }})</div>
                     <div class="card-subtitle text-amber-700">Periksa dokumen kelengkapan sebelum menyetujui akun kurir</div>
                 </div>
             </div>
             <button type="button" class="btn btn-sm btn-ghost text-amber-800" onclick="location.reload()">
-                <span class="material-symbols-outlined text-[16px]">refresh</span>
+                <span class="cc-icon text-[16px]">refresh</span>
                 Refresh
             </button>
         </div>
@@ -174,7 +174,7 @@
                     <button type="button"
                             onclick="openDriverModal({{ $courier->id }})"
                             class="btn btn-sm btn-secondary">
-                        <span class="material-symbols-outlined text-[16px]">visibility</span>
+                        <span class="cc-icon text-[16px]">visibility</span>
                         <span>Lihat Berkas</span>
                     </button>
 
@@ -182,7 +182,7 @@
                         @csrf
                         @method('PATCH')
                         <button type="submit" class="btn btn-sm btn-success">
-                            <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                            <span class="cc-icon text-[16px]">check_circle</span>
                             <span>Verifikasi Sekarang</span>
                         </button>
                     </form>
@@ -191,7 +191,7 @@
                         @csrf
                         @method('PATCH')
                         <button type="submit" class="btn btn-sm btn-ghost text-red-600 hover:bg-red-50" title="Tolak Pendaftaran">
-                            <span class="material-symbols-outlined text-[16px]">block</span>
+                            <span class="cc-icon text-[16px]">block</span>
                             <span>Tolak</span>
                         </button>
                     </form>
@@ -199,7 +199,7 @@
             </div>
             @empty
             <div class="empty-state py-8">
-                <span class="material-symbols-outlined text-slate-300">verified</span>
+                <span class="cc-icon text-slate-300">verified</span>
                 <div class="empty-title">Semua pendaftaran kurir sudah diverifikasi</div>
             </div>
             @endforelse
@@ -237,7 +237,7 @@
 
                 {{-- Search Box --}}
                 <div class="search-box w-full sm:w-72">
-                    <span class="material-symbols-outlined">search</span>
+                    <span class="cc-icon">search</span>
                     <input type="text"
                            id="searchInput"
                            onkeyup="filterKurirTable()"
@@ -286,7 +286,7 @@
                                     <div class="min-w-0">
                                         <button type="button"
                                                 onclick="openDriverModal({{ $courier->id }})"
-                                                class="text-left font-semibold text-slate-900 hover:text-brand-700 text-[13px] block truncate">
+                                                class="text-left font-semibold text-slate-900 hover:text-primary-700 text-[13px] block truncate">
                                             {{ $courier->user?->name ?? 'Kurir' }}
                                         </button>
                                         <div class="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
@@ -301,7 +301,7 @@
                             {{-- Kendaraan & Plat --}}
                             <td class="whitespace-nowrap">
                                 <div class="flex items-center gap-1.5 text-xs font-medium text-slate-800">
-                                    <span class="material-symbols-outlined text-[16px] text-slate-500">
+                                    <span class="cc-icon text-[16px] text-slate-500">
                                         {{ match(strtolower($courier->vehicle_type ?? 'motor')) { 'mobil' => 'directions_car', default => 'two_wheeler' } }}
                                     </span>
                                     <span>{{ ucfirst($courier->vehicle_type ?? 'Motor') }}</span>
@@ -357,14 +357,14 @@
                                             onclick="openDriverModal({{ $courier->id }})"
                                             class="btn-icon"
                                             title="Lihat Detail Profil & Dokumen">
-                                        <span class="material-symbols-outlined text-[18px]">visibility</span>
+                                        <span class="cc-icon text-[18px]">visibility</span>
                                     </button>
 
                                     <button type="button"
                                             onclick="openEditModal({{ $courier->id }})"
                                             class="btn-icon"
                                             title="Edit Data Kurir">
-                                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                                        <span class="cc-icon text-[18px]">edit</span>
                                     </button>
 
                                     @if(!$isVerified)
@@ -372,7 +372,7 @@
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="btn btn-sm btn-success" title="Verifikasi Kurir">
-                                            <span class="material-symbols-outlined text-[16px]">verified</span>
+                                            <span class="cc-icon text-[16px]">verified</span>
                                             Verifikasi
                                         </button>
                                     </form>
@@ -383,7 +383,7 @@
                         @empty
                         <tr>
                             <td colspan="7" class="text-center py-12 text-slate-400">
-                                <span class="material-symbols-outlined text-[36px] text-slate-300 mb-1">two_wheeler</span>
+                                <span class="cc-icon text-[36px] text-slate-300 mb-1">two_wheeler</span>
                                 <div class="text-sm font-medium text-slate-600">Belum ada kurir terdaftar</div>
                             </td>
                         </tr>
@@ -413,7 +413,7 @@
                 <div class="text-xs text-slate-500">Daftarkan akun pengemudi baru ke armada City Courier</div>
             </div>
             <button type="button" class="btn-icon" onclick="closeAddCourierModal()" aria-label="Tutup">
-                <span class="material-symbols-outlined">close</span>
+                <span class="cc-icon">close</span>
             </button>
         </div>
 
@@ -522,7 +522,7 @@
                 <div class="text-xs text-slate-500 font-mono" id="editIdLabel">ID Kurir: -</div>
             </div>
             <button type="button" class="btn-icon" onclick="closeEditModal()" aria-label="Tutup">
-                <span class="material-symbols-outlined">close</span>
+                <span class="cc-icon">close</span>
             </button>
         </div>
 
@@ -531,7 +531,7 @@
             @method('PUT')
             <div class="modal-body space-y-4">
                 <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
-                    <div class="avatar bg-brand-50 text-brand-700 text-sm font-bold" id="editAvatar">
+                    <div class="avatar bg-primary-50 text-primary-700 text-sm font-bold" id="editAvatar">
                         K
                     </div>
                     <div>
@@ -616,7 +616,7 @@
     <div class="modal-panel max-w-2xl">
         <div class="modal-header">
             <div class="flex items-center gap-3">
-                <div class="avatar bg-brand-50 text-brand-700 font-bold overflow-hidden" id="modalDriverAvatarContainer">
+                <div class="avatar bg-primary-50 text-primary-700 font-bold overflow-hidden" id="modalDriverAvatarContainer">
                     <span id="modalDriverAvatarLetter">K</span>
                     <img id="modalDriverAvatarImg" src="" alt="" class="hidden h-full w-full object-cover">
                 </div>
@@ -629,7 +629,7 @@
                 </div>
             </div>
             <button type="button" class="btn-icon" onclick="closeDriverModal()" aria-label="Tutup">
-                <span class="material-symbols-outlined">close</span>
+                <span class="cc-icon">close</span>
             </button>
         </div>
 
@@ -711,7 +711,7 @@
             <div class="flex items-center justify-between pt-2">
                 <span class="text-xs text-slate-500" id="modalJoined">Bergabung: -</span>
                 <a id="modalWaLink" href="#" target="_blank" class="btn btn-sm btn-success">
-                    <span class="material-symbols-outlined text-[16px]">chat</span>
+                    <span class="cc-icon text-[16px]">chat</span>
                     Chat WhatsApp
                 </a>
             </div>

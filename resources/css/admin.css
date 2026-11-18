@@ -1,11 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════
    City Courier — Admin Design System
    Tailwind CSS 4 (CSS-first). Entry Vite: resources/css/admin.css
-   Palet identitas:
-   - Primary  : #FF5A00 (brand)
-   - Secondary: #111827 (navy)
-   - Tertiary : #0095FC (aksen biru untuk status proses)
-   - Background: #F8FAFC | Card: #FFFFFF | Border: #E5E7EB (slate-200)
+   Palet identitas resmi:
+   - Primary  : #0647FF (brand blue)
+   - Secondary: #73C8D2 (cyan)
+   - Accent   : #FF910F (orange, hanya untuk aksi penting/highlight)
+   - Background: #F5F1DC (cream) | Card: #FFFFFF | Border: #E5E7EB
+   - Text     : #172033 | Muted: #64748B
+   - Status   : #16A34A | #F59E0B | #DC2626
+   Ikon: Lucide (runtime konversi .cc-icon → SVG di resources/js/cc-icons.js)
    ═══════════════════════════════════════════════════════════════════ */
 
 @import "tailwindcss";
@@ -19,64 +22,111 @@
     --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
 
-    /* ── Brand City Courier (oranye) ───────────────────────────── */
-    --color-brand-50: #fff5ed;
-    --color-brand-100: #ffe6d8;
-    --color-brand-200: #fecfb5;
-    --color-brand-300: #fdaa7d;
-    --color-brand-400: #fb8a45;
-    --color-brand-500: #ff5a00;
-    --color-brand-600: #eb5100;
-    --color-brand-700: #c74200;
-    --color-brand-800: #9e3600;
-    --color-brand-900: #7c2a00;
+    /* ── Primary City Courier (biru #0647FF) ───────────────────── */
+    --color-primary-50: #eef2ff;
+    --color-primary-100: #e0e8ff;
+    --color-primary-200: #c3d2ff;
+    --color-primary-300: #9ab2ff;
+    --color-primary-400: #6488ff;
+    --color-primary-500: #2f63ff;
+    --color-primary-600: #0647ff;
+    --color-primary-700: #0539cc;
+    --color-primary-800: #063280;
+    --color-primary-900: #082866;
 
-    /* ── Skala `primary-*` (dipakai luas di view admin) ────────── */
-    --color-primary-50: #fff5ed;
-    --color-primary-100: #ffe6d8;
-    --color-primary-200: #fecfb5;
-    --color-primary-300: #fdaa7d;
-    --color-primary-400: #fb8a45;
-    --color-primary-500: #ff5a00;
-    --color-primary-600: #eb5100;
-    --color-primary-700: #c74200;
-    --color-primary-800: #9e3600;
-    --color-primary-900: #7c2a00;
+    /* ── Accent orange (hanya aksi penting / highlight) ────────── */
+    --color-brand-50: #fff4e5;
+    --color-brand-100: #ffe8c7;
+    --color-brand-200: #ffd294;
+    --color-brand-300: #ffb952;
+    --color-brand-400: #ffa226;
+    --color-brand-500: #ff910f;
+    --color-brand-600: #db7a00;
+    --color-brand-700: #b26300;
+    --color-brand-800: #8a4d00;
+    --color-brand-900: #613600;
 
-    /* ── Navy / sekunder ──────────────────────────────────────── */
-    --color-navy-800: #1e293b;
-    --color-navy-900: #0f172a;
-    --color-navy-950: #0b132b;
+    /* ── Secondary cyan ────────────────────────────────────────── */
+    --color-cyan-50: #f0fafb;
+    --color-cyan-100: #dcf3f5;
+    --color-cyan-200: #b9e6eb;
+    --color-cyan-300: #8cd5de;
+    --color-cyan-400: #73c8d2;
+    --color-cyan-500: #4faeb9;
+    --color-cyan-600: #3a8c96;
+    --color-cyan-700: #2f7078;
+    --color-cyan-800: #27595f;
+    --color-cyan-900: #21454a;
+
+    /* ── Ink (teks gelap #172033) & surface cream ──────────────── */
+    --color-ink-50: #f6f7f9;
+    --color-ink-100: #eceef2;
+    --color-ink-200: #d5dae3;
+    --color-ink-300: #b0bacb;
+    --color-ink-400: #8593ad;
+    --color-ink-500: #64748b;
+    --color-ink-600: #4c5a72;
+    --color-ink-700: #36435c;
+    --color-ink-800: #253047;
+    --color-ink-900: #172033;
+    --color-ink-950: #0e1422;
+    --color-cream-50: #faf7ea;
+    --color-cream-100: #f5f1dc;
+    --color-cream-200: #ebe5c8;
+    --color-cream-300: #ddd5b2;
+
+    /* ── Skala `primary-*` dipakai luas di view (kompatibilitas) ─ */
+    --color-navy-800: #253047;
+    --color-navy-900: #172033;
+    --color-navy-950: #0e1422;
+
+    /* ── Align warna "info" biru ke brand primary ─────────────── */
+    --color-blue-50: #eef2ff;
+    --color-blue-100: #e0e8ff;
+    --color-blue-200: #c3d2ff;
+    --color-blue-300: #9ab2ff;
+    --color-blue-400: #6488ff;
+    --color-blue-500: #2f63ff;
+    --color-blue-600: #0647ff;
+    --color-blue-700: #0539cc;
+
+    /* ── Status fungsional ─────────────────────────────────────── */
+    --color-emerald-600: #16a34a;
+    --color-emerald-700: #15803d;
+    --color-amber-500: #f59e0b;
+    --color-red-600: #dc2626;
+    --color-red-700: #b91c1c;
 
     /* ── Token lama yang masih dirujuk view ───────────────────── */
-    --color-secondary: #64748b;
+    --color-secondary: #3a8c96;
     --color-tertiary: #475569;
 
     /* ── Spasi layout admin ───────────────────────────────────── */
     --spacing-sidebar-width: 15rem;
+    --spacing-sidebar-collapsed: 4.5rem;
     --spacing-header-height: 3.5rem;
 
     /* ── Bayangan halus (enterprise, tidak tebal) ─────────────── */
-    --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04);
-    --shadow: 0 1px 3px 0 rgb(15 23 42 / 0.06);
-    --shadow-md: 0 2px 6px -1px rgb(15 23 42 / 0.07);
-    --shadow-lg: 0 8px 20px -4px rgb(15 23 42 / 0.1);
-    --shadow-xl: 0 12px 28px -6px rgb(15 23 42 / 0.14);
-    --shadow-2xl: 0 16px 36px -8px rgb(15 23 42 / 0.18);
+    --shadow-sm: 0 1px 2px 0 rgb(23 32 51 / 0.04);
+    --shadow: 0 1px 3px 0 rgb(23 32 51 / 0.06);
+    --shadow-md: 0 2px 6px -1px rgb(23 32 51 / 0.07);
+    --shadow-lg: 0 8px 20px -4px rgb(23 32 51 / 0.1);
+    --shadow-xl: 0 12px 28px -6px rgb(23 32 51 / 0.14);
+    --shadow-2xl: 0 16px 36px -8px rgb(23 32 51 / 0.18);
 
-    /* ── Radius konsisten & proporsional ──────────────────────── */
-    --radius-xs: 0.125rem;
-    --radius-sm: 0.25rem;
-    --radius-md: 0.375rem;
-    --radius-lg: 0.375rem;
-    --radius-xl: 0.5rem;
-    --radius-2xl: 0.625rem;
-    --radius-3xl: 0.75rem;
+    /* ── Radius konsisten 8–12px ──────────────────────────────── */
+    --radius-xs: 0.25rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 0.875rem;
+    --radius-3xl: 1rem;
 }
 
-/* `rounded` tanpa akhiran masih dipakai view lama = 0.25rem */
+/* `rounded` tanpa akhiran masih dipakai view lama = 8px */
 @utility rounded {
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
 }
 
 /* ═══ Base ═══════════════════════════════════════════════════════ */
@@ -88,16 +138,29 @@
     }
 
     body {
-        @apply bg-slate-50 text-slate-800 text-[13.5px] antialiased;
+        @apply bg-cream-100 text-slate-700 text-[13.5px] antialiased;
         overscroll-behavior: none;
     }
 
-    .material-symbols-outlined {
-        font-variation-settings:
-            "FILL" 0,
-            "wght" 400,
-            "GRAD" 0,
-            "opsz" 20;
+    /* Ikon Lucide: default 20px, diwariskan dari font-size utilitas */
+    .cc-icon {
+        @apply inline-block shrink-0 leading-none;
+        font-size: 20px;
+    }
+
+    /* Placeholder sebelum runtime Lucide aktif: sembunyikan teks nama ikon */
+    html.cc-icons-pending .cc-icon {
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        overflow: hidden;
+        vertical-align: text-bottom;
+        color: transparent;
+        user-select: none;
+    }
+
+    ::selection {
+        background: rgb(6 71 255 / 0.15);
     }
 }
 
@@ -108,7 +171,7 @@
         @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
     }
     .page-title {
-        @apply text-[19px] leading-7 font-semibold text-slate-900;
+        @apply text-[21px] leading-7 font-semibold tracking-[-0.01em] text-ink-900;
     }
     .page-subtitle {
         @apply text-[13px] text-slate-500 mt-0.5;
@@ -117,18 +180,18 @@
         @apply flex flex-wrap items-center gap-2;
     }
     .back-link {
-        @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors;
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-ink-900 transition-colors;
     }
 
     /* Card */
     .card {
-        @apply bg-white border border-slate-200 rounded-lg;
+        @apply bg-white border border-slate-200 rounded-xl shadow-sm;
     }
     .card-header {
         @apply flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200;
     }
     .card-title {
-        @apply text-sm font-semibold text-slate-900;
+        @apply text-[14px] font-semibold text-ink-900;
     }
     .card-subtitle {
         @apply text-xs text-slate-500 mt-0.5;
@@ -145,7 +208,7 @@
         @apply text-xs font-medium text-slate-500;
     }
     .stat-value {
-        @apply mt-1 text-xl font-semibold text-slate-900 tabular-nums;
+        @apply mt-1 text-[22px] font-semibold tracking-[-0.01em] text-ink-900 tabular-nums;
     }
     .stat-meta {
         @apply mt-1 text-xs text-slate-500;
@@ -155,31 +218,34 @@
     .stat-icon {
         @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-lg;
     }
-    .stat-icon > .material-symbols-outlined {
+    .stat-icon > .cc-icon {
         @apply text-[20px];
     }
 
     /* Tombol */
     .btn {
-        @apply inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-md text-[13px] font-medium whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-md text-[13px] font-medium whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/40 disabled:opacity-50 disabled:cursor-not-allowed;
     }
-    .btn .material-symbols-outlined {
+    .btn .cc-icon {
         @apply text-[18px];
     }
     .btn-sm {
         @apply h-8 px-2.5 text-xs;
     }
-    .btn-sm .material-symbols-outlined {
+    .btn-sm .cc-icon {
         @apply text-[16px];
     }
     .btn-primary {
-        @apply bg-brand-600 text-white hover:bg-brand-700;
+        @apply bg-primary-600 text-white hover:bg-primary-700;
     }
     .btn-secondary {
-        @apply bg-white text-slate-700 border border-slate-300 hover:bg-slate-50;
+        @apply bg-white text-ink-800 border border-slate-300 hover:bg-slate-50;
+    }
+    .btn-outline {
+        @apply bg-transparent text-primary-700 border border-primary-200 hover:bg-primary-50;
     }
     .btn-dark {
-        @apply bg-navy-900 text-white hover:bg-navy-800;
+        @apply bg-ink-900 text-white hover:bg-ink-800;
     }
     .btn-danger {
         @apply bg-red-600 text-white hover:bg-red-700;
@@ -188,12 +254,12 @@
         @apply bg-emerald-600 text-white hover:bg-emerald-700;
     }
     .btn-ghost {
-        @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+        @apply text-slate-600 hover:bg-slate-100 hover:text-ink-900;
     }
     .btn-icon {
-        @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors;
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink-900 transition-colors;
     }
-    .btn-icon .material-symbols-outlined {
+    .btn-icon .cc-icon {
         @apply text-[18px];
     }
     .btn-icon-danger {
@@ -202,12 +268,12 @@
 
     /* Form */
     .form-label {
-        @apply block mb-1.5 text-[13px] font-medium text-slate-700;
+        @apply block mb-1.5 text-[13px] font-medium text-ink-800;
     }
     .form-input,
     .form-select,
     .form-textarea {
-        @apply block w-full rounded-md border border-slate-300 bg-white px-3 text-[13.5px] text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 disabled:text-slate-500;
+        @apply block w-full rounded-md border border-slate-300 bg-white px-3 text-[13.5px] text-ink-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-600/15 disabled:bg-slate-50 disabled:text-slate-500;
     }
     .form-input,
     .form-select {
@@ -229,7 +295,7 @@
         @apply border-red-500 focus:border-red-500 focus:ring-red-500/20;
     }
     .form-check {
-        @apply h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500;
+        @apply h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-600;
     }
     .form-section {
         @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
@@ -239,7 +305,7 @@
     .search-box {
         @apply relative;
     }
-    .search-box > .material-symbols-outlined {
+    .search-box > .cc-icon {
         @apply pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-400;
     }
     .search-box > input {
@@ -249,16 +315,16 @@
         @apply flex items-center gap-1 overflow-x-auto;
     }
     .filter-tab {
-        @apply inline-flex shrink-0 items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors;
+        @apply inline-flex shrink-0 items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-medium text-slate-600 hover:bg-slate-100 hover:text-ink-900 transition-colors;
     }
     .filter-tab.is-active {
-        @apply bg-navy-900 text-white hover:bg-navy-900 hover:text-white;
+        @apply bg-primary-600 text-white hover:bg-primary-600 hover:text-white;
     }
     .filter-count {
         @apply rounded px-1.5 text-[11px] font-semibold tabular-nums bg-slate-200/80 text-slate-600;
     }
     .filter-tab.is-active .filter-count {
-        @apply bg-white/15 text-white;
+        @apply bg-white/20 text-white;
     }
 
     /* Tabel data */
@@ -269,10 +335,13 @@
         @apply w-full text-left border-collapse;
     }
     .data-table thead th {
-        @apply px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500 whitespace-nowrap;
+        @apply px-4 py-2.5 bg-cream-50 border-b border-slate-200 text-[12px] font-semibold text-slate-500 whitespace-nowrap;
     }
     .data-table tbody td {
         @apply px-4 py-3 border-b border-slate-100 text-[13px] text-slate-700 align-middle;
+    }
+    .data-table tbody td.cc-primary {
+        @apply font-medium text-ink-900;
     }
     .data-table tbody tr:last-child td {
         @apply border-b-0;
@@ -281,7 +350,7 @@
         @apply bg-slate-50/70;
     }
     .cell-primary {
-        @apply font-medium text-slate-900;
+        @apply font-medium text-ink-900;
     }
     .cell-muted {
         @apply text-xs text-slate-500;
@@ -290,12 +359,12 @@
         @apply font-mono text-[12.5px];
     }
     .link {
-        @apply text-brand-700 hover:text-brand-800 hover:underline;
+        @apply text-primary-700 hover:text-primary-800 hover:underline;
     }
 
     /* Badge status */
     .badge {
-        @apply inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium whitespace-nowrap;
+        @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap;
     }
     .badge-dot {
         @apply h-1.5 w-1.5 rounded-full bg-current;
@@ -304,7 +373,7 @@
         @apply bg-slate-100 text-slate-700;
     }
     .badge-blue {
-        @apply bg-blue-50 text-blue-700;
+        @apply bg-primary-50 text-primary-700;
     }
     .badge-indigo {
         @apply bg-indigo-50 text-indigo-700;
@@ -322,20 +391,43 @@
         @apply bg-red-50 text-red-700;
     }
 
+    /* Alias semantik status (dipakai modul ci-work & finance) */
+    .badge-success {
+        @apply bg-emerald-50 text-emerald-700;
+    }
+    .badge-warning {
+        @apply bg-amber-50 text-amber-700;
+    }
+    .badge-danger {
+        @apply bg-red-50 text-red-700;
+    }
+    .badge-info {
+        @apply bg-primary-50 text-primary-700;
+    }
+    .badge-primary {
+        @apply bg-primary-50 text-primary-700;
+    }
+    .badge-neutral {
+        @apply bg-slate-100 text-slate-600;
+    }
+
     /* Avatar inisial */
     .avatar {
-        @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600;
+        @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-700;
+    }
+    .avatar-dark {
+        @apply bg-ink-900 text-white;
     }
 
     /* Empty state */
     .empty-state {
         @apply flex flex-col items-center justify-center px-4 py-12 text-center;
     }
-    .empty-state > .material-symbols-outlined {
+    .empty-state > .cc-icon {
         @apply mb-2 text-[32px] text-slate-300;
     }
     .empty-title {
-        @apply text-sm font-medium text-slate-700;
+        @apply text-sm font-medium text-ink-800;
     }
     .empty-text {
         @apply mt-1 max-w-sm text-xs text-slate-500;
@@ -343,9 +435,9 @@
 
     /* Alert */
     .alert {
-        @apply flex items-start gap-2.5 rounded-md border px-3.5 py-2.5 text-[13px];
+        @apply flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-[13px];
     }
-    .alert > .material-symbols-outlined {
+    .alert > .cc-icon {
         @apply mt-px text-[18px];
     }
     .alert-success {
@@ -363,16 +455,16 @@
 
     /* Modal */
     .modal-backdrop {
-        @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4;
+        @apply fixed inset-0 z-50 flex items-center justify-center bg-ink-950/45 p-4;
     }
     .modal-panel {
-        @apply w-full max-w-md max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl;
+        @apply w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl;
     }
     .modal-header {
         @apply flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-200;
     }
     .modal-title {
-        @apply text-sm font-semibold text-slate-900;
+        @apply text-sm font-semibold text-ink-900;
     }
     .modal-body {
         @apply p-5 space-y-4;
@@ -389,47 +481,97 @@
         @apply text-xs text-slate-500;
     }
     .dl-value {
-        @apply mt-0.5 text-[13.5px] font-medium text-slate-900;
+        @apply mt-0.5 text-[13.5px] font-medium text-ink-900;
     }
 
-    /* Navigasi sidebar */
+    /* ═══ Navigasi sidebar (terang) ═══════════════════════════════ */
     .nav-group {
-        @apply px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+        @apply px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400;
     }
     .nav-item {
-        @apply relative flex items-center justify-between gap-2 rounded-md px-3 h-9 text-[13px] text-slate-300 hover:bg-white/5 hover:text-white transition-colors;
+        @apply relative flex items-center justify-between gap-2 rounded-lg px-2.5 h-9 text-[13px] font-medium text-slate-600 hover:bg-slate-100 hover:text-ink-900 transition-colors;
     }
-    .nav-item .material-symbols-outlined {
+    .nav-item > span:first-child {
+        @apply flex min-w-0 items-center gap-2.5;
+    }
+    .nav-label {
+        @apply truncate;
+    }
+    .nav-item .cc-icon {
         @apply text-[19px] text-slate-400;
     }
     .nav-item.is-active {
-        @apply bg-white/10 text-white font-medium;
+        @apply bg-primary-600 text-white hover:bg-primary-600 hover:text-white;
     }
-    .nav-item.is-active::before {
-        content: "";
-        @apply absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-brand-500;
+    .nav-item.is-active .cc-icon {
+        @apply text-white;
     }
-    .nav-item.is-active .material-symbols-outlined {
-        @apply text-brand-400;
+    .nav-item.is-active:hover {
+        @apply bg-primary-700;
     }
     .nav-badge {
-        @apply rounded px-1.5 py-px text-[11px] font-semibold tabular-nums;
+        @apply rounded-md px-1.5 py-px text-[11px] font-semibold tabular-nums;
+    }
+    .nav-item.is-active .nav-badge {
+        @apply bg-white/20 text-white;
+    }
+
+    /* ── Sidebar collapse (desktop) ─────────────────────────────── */
+    #sidebar {
+        @apply fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-slate-200 transition-[width,transform] duration-200 lg:translate-x-0;
+        width: var(--spacing-sidebar-width);
+    }
+    #sidebar.is-collapsed {
+        width: var(--spacing-sidebar-collapsed);
+    }
+    #sidebar.is-collapsed .nav-group {
+        @apply sr-only;
+    }
+    #sidebar.is-collapsed .nav-item {
+        @apply justify-center px-0;
+    }
+    #sidebar.is-collapsed .nav-label {
+        @apply sr-only;
+    }
+    #sidebar.is-collapsed .nav-item .nav-badge {
+        @apply absolute right-1.5 top-1 scale-90;
+    }
+    #sidebar.is-collapsed .nav-item > .cc-icon {
+        @apply hidden;
+    }
+    /* Tooltip saat collapsed */
+    #sidebar.is-collapsed .nav-item:hover::after {
+        content: attr(data-tooltip);
+        @apply absolute left-[calc(100%+0.5rem)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-md bg-ink-900 px-2 py-1 text-[11.5px] font-medium text-white shadow-md;
+    }
+
+    /* Konten mengikuti lebar sidebar */
+    .admin-main {
+        @apply w-full min-h-screen;
+    }
+    @media (min-width: 1024px) {
+        .admin-main {
+            padding-left: var(--spacing-sidebar-width);
+        }
+        body.sidebar-collapsed .admin-main {
+            padding-left: var(--spacing-sidebar-collapsed);
+        }
     }
 
     /* Dropdown topbar (notifikasi & profil) */
     .topbar-menu {
-        @apply absolute right-0 top-[calc(100%+0.5rem)] z-40 w-72 origin-top-right rounded-lg border border-slate-200 bg-white shadow-lg;
+        @apply absolute right-0 top-[calc(100%+0.5rem)] z-40 w-72 origin-top-right rounded-xl border border-slate-200 bg-white shadow-lg;
     }
     .topbar-menu-header {
         @apply px-4 py-3 border-b border-slate-100;
     }
     .topbar-menu-title {
-        @apply text-[13px] font-semibold text-slate-900;
+        @apply text-[13px] font-semibold text-ink-900;
     }
     .topbar-menu-item {
         @apply flex w-full items-start gap-2.5 px-4 py-3 text-left text-[13px] text-slate-700 hover:bg-slate-50 transition-colors;
     }
-    .topbar-menu-item > .material-symbols-outlined {
+    .topbar-menu-item > .cc-icon {
         @apply text-[18px] shrink-0 mt-px;
     }
     .topbar-menu-footer {
@@ -441,7 +583,7 @@
         background-image: linear-gradient(
             to top,
             transparent calc(100% - 1px),
-            rgb(226 232 240 / 0.9) 1px
+            rgb(229 231 235 / 0.9) 1px
         );
         background-size: 100% 25%;
     }

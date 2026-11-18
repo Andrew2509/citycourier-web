@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.orders') }}" class="back-link" title="Kembali ke Daftar Pesanan">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <div class="flex items-center gap-2">
@@ -45,7 +45,7 @@
                     </span>
                 </div>
                 <div class="page-subtitle font-mono">
-                    Resi: <strong class="text-brand-700 font-semibold">{{ $resi }}</strong>
+                    Resi: <strong class="text-primary-700 font-semibold">{{ $resi }}</strong>
                     <span class="mx-1 text-slate-300">&bull;</span>
                     ID: #{{ $order->id }}
                 </div>
@@ -57,7 +57,7 @@
             <a href="{{ route('admin.shipments.show', $shipment) }}"
                class="btn btn-secondary"
                title="Kelola Status & Pembatalan Pengiriman">
-                <span class="material-symbols-outlined">settings</span>
+                <span class="cc-icon">settings</span>
                 Kelola Pengiriman
             </a>
             @endif
@@ -67,7 +67,7 @@
                rel="noopener"
                class="btn btn-primary"
                title="Buka Live Tracking Publik">
-                <span class="material-symbols-outlined">map</span>
+                <span class="cc-icon">map</span>
                 Buka Live Tracking
             </a>
             @endif
@@ -75,7 +75,7 @@
                     onclick="window.print()"
                     class="btn btn-secondary"
                     title="Cetak Salinan Pesanan">
-                <span class="material-symbols-outlined">print</span>
+                <span class="cc-icon">print</span>
                 Cetak Lembar Pesanan
             </button>
         </div>
@@ -100,7 +100,7 @@
             <div class="card border border-red-200 bg-red-50/40">
                 <div class="card-header bg-red-50 border-b border-red-200 flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-red-600">cancel</span>
+                        <span class="cc-icon text-red-600">cancel</span>
                         <div>
                             <div class="card-title text-sm text-red-900">Informasi Pembatalan Pesanan</div>
                             <div class="card-subtitle text-xs text-red-700">Detail pembatalan dan jadwal pickup awal</div>
@@ -162,7 +162,7 @@
             <div class="card border {{ $isPendingApproval ? 'border-amber-300 bg-amber-50/40' : 'border-orange-200 bg-orange-50/30' }}">
                 <div class="card-header {{ $isPendingApproval ? 'bg-amber-50 border-b border-amber-200' : 'bg-orange-50 border-b border-orange-200' }} flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined {{ $isPendingApproval ? 'text-amber-600' : 'text-orange-600' }}">person_Cancel</span>
+                        <span class="cc-icon {{ $isPendingApproval ? 'text-amber-600' : 'text-orange-600' }}">person_Cancel</span>
                         <div>
                             <div class="card-title text-sm text-slate-900">Informasi Pembatalan Penugasan Kurir</div>
                             <div class="card-subtitle text-xs text-slate-600">Riwayat pelepasan atau pengajuan pembatalan tugas oleh kurir</div>
@@ -242,7 +242,7 @@
             <div class="card border border-rose-200 bg-rose-50/30">
                 <div class="card-header bg-rose-50/70 border-b border-rose-200 flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-rose-600">person_cancel</span>
+                        <span class="cc-icon text-rose-600">person_cancel</span>
                         <div>
                             <div class="card-title text-sm text-slate-900">Riwayat Penolakan Tawaran Kurir</div>
                             <div class="card-subtitle text-xs text-slate-600">Daftar kurir yang menolak penawaran pesanan sebelum diterima</div>
@@ -302,7 +302,7 @@
                         {{-- Titik Pickup --}}
                         <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 space-y-2">
                             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-700">
-                                <span class="material-symbols-outlined text-[16px]">upload</span>
+                                <span class="cc-icon text-[16px]">upload</span>
                                 Titik Penjemputan (Pickup)
                             </div>
                             <div>
@@ -316,8 +316,8 @@
                                 <div class="text-xs text-slate-500 font-mono mt-0.5">
                                     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $senderPhone) }}"
                                        target="_blank"
-                                       class="text-brand-700 hover:underline inline-flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[14px]">call</span>
+                                       class="text-primary-700 hover:underline inline-flex items-center gap-1">
+                                        <span class="cc-icon text-[14px]">call</span>
                                         {{ $senderPhone }}
                                     </a>
                                 </div>
@@ -330,8 +330,8 @@
 
                         {{-- Titik Dropoff --}}
                         <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 space-y-2">
-                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-700">
-                                <span class="material-symbols-outlined text-[16px]">download</span>
+                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-700">
+                                <span class="cc-icon text-[16px]">download</span>
                                 Titik Penerima (Dropoff)
                             </div>
                             <div>
@@ -342,8 +342,8 @@
                                 <div class="text-xs text-slate-500 font-mono mt-0.5">
                                     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $order->receiver_phone) }}"
                                        target="_blank"
-                                       class="text-brand-700 hover:underline inline-flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[14px]">call</span>
+                                       class="text-primary-700 hover:underline inline-flex items-center gap-1">
+                                        <span class="cc-icon text-[14px]">call</span>
                                         {{ $order->receiver_phone }}
                                     </a>
                                 </div>
@@ -404,7 +404,7 @@
                         @endif
                         <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-sm font-semibold text-slate-900">
                             <span>Total Tagihan:</span>
-                            <span class="font-mono text-brand-700">Rp {{ number_format($order->price ?? 0, 0, ',', '.') }}</span>
+                            <span class="font-mono text-primary-700">Rp {{ number_format($order->price ?? 0, 0, ',', '.') }}</span>
                         </div>
                     </div>
                 </div>
@@ -419,7 +419,7 @@
                     @if($courier)
                     <div class="flex items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
-                            <div class="avatar bg-brand-50 text-brand-700 text-sm font-bold">
+                            <div class="avatar bg-primary-50 text-primary-700 text-sm font-bold">
                                 {{ strtoupper(substr($courier->user?->name ?? $courier->name ?? 'K', 0, 1)) }}
                             </div>
                             <div>
@@ -440,7 +440,7 @@
                     </div>
                     @else
                     <div class="empty-state py-6">
-                        <span class="material-symbols-outlined text-[32px] text-slate-300">two_wheeler</span>
+                        <span class="cc-icon text-[32px] text-slate-300">two_wheeler</span>
                         <div class="empty-title">Belum ada kurir yang ditugaskan</div>
                         <div class="empty-text">Pesanan masih dalam antrean penugasan atau pencarian kurir terdekat.</div>
                     </div>
@@ -477,7 +477,7 @@
                 <a href="{{ route('tracking.qrcode', $order->tracking_number) }}"
                    download="QR-{{ $order->tracking_number }}.png"
                    class="btn btn-sm btn-secondary w-full mt-3">
-                    <span class="material-symbols-outlined text-[16px]">download</span>
+                    <span class="cc-icon text-[16px]">download</span>
                     Unduh QR Code
                 </a>
                 @endif
@@ -495,7 +495,7 @@
                 @if($order->scheduled_pickup && $order->pickup_scheduled_at)
                 <div class="flex items-center justify-between text-slate-600">
                     <span>Jadwal Pickup:</span>
-                    <span class="font-mono text-brand-700 font-semibold">{{ $order->pickup_scheduled_at->timezone('Asia/Jakarta')->format('d/m/Y h:i A') }}</span>
+                    <span class="font-mono text-primary-700 font-semibold">{{ $order->pickup_scheduled_at->timezone('Asia/Jakarta')->format('d/m/Y h:i A') }}</span>
                 </div>
                 @endif
                 @if($order->cancelled_at)

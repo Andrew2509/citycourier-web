@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.roles.index') }}" class="back-link" title="Kembali ke Daftar Role">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Edit Role &amp; Hak Akses</h1>
@@ -58,7 +58,7 @@
             <div class="card-body space-y-4">
                 {{-- Search Filter --}}
                 <div class="search-box">
-                    <span class="material-symbols-outlined">search</span>
+                    <span class="cc-icon">search</span>
                     <input type="text"
                            id="permSearch"
                            placeholder="Filter permission atau modul..."
@@ -97,7 +97,7 @@
                                             {{-- Menu Header --}}
                                             <div class="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 border-b border-slate-200">
                                                 <div class="flex items-center gap-2">
-                                                    <span class="material-symbols-outlined text-[18px] text-brand-600">{{ $menu['icon'] }}</span>
+                                                    <span class="cc-icon text-[18px] text-primary-600">{{ $menu['icon'] }}</span>
                                                     <span class="text-xs font-semibold text-slate-900">{{ $menu['name'] }}</span>
                                                     <span class="text-[11px] text-slate-400 hidden sm:inline">&bull; {{ $menu['description'] }}</span>
                                                 </div>
@@ -165,7 +165,7 @@
 
                 {{-- Empty Search State --}}
                 <div id="permEmpty" class="empty-state py-8 hidden">
-                    <span class="material-symbols-outlined text-[32px] text-slate-300">search_off</span>
+                    <span class="cc-icon text-[32px] text-slate-300">search_off</span>
                     <div class="empty-title">Tidak ada izin akses yang cocok</div>
                 </div>
             </div>
@@ -175,7 +175,7 @@
                     Batal
                 </a>
                 <button type="submit" class="btn btn-primary">
-                    <span class="material-symbols-outlined">save</span>
+                    <span class="cc-icon">save</span>
                     Simpan Perubahan Role
                 </button>
             </div>

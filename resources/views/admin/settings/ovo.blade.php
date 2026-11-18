@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.settings.providers') }}" class="back-link" title="Kembali ke Daftar Provider">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Pengaturan Provider OVO SNAP</h1>
@@ -109,12 +109,12 @@
 
                     <div class="flex items-center justify-between pt-3 border-t border-slate-100">
                         <button type="button" id="btn-test-ovo" class="btn btn-secondary text-xs">
-                            <span class="material-symbols-outlined text-[16px]">network_check</span>
+                            <span class="cc-icon text-[16px]">network_check</span>
                             <span>Uji Koneksi &amp; Saldo OVO</span>
                         </button>
 
                         <button type="submit" class="btn btn-primary text-xs">
-                            <span class="material-symbols-outlined text-[16px]">save</span>
+                            <span class="cc-icon text-[16px]">save</span>
                             <span>Simpan Konfigurasi OVO</span>
                         </button>
                     </div>
@@ -126,7 +126,7 @@
         <div class="space-y-4">
             <div class="card p-4">
                 <h3 class="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-purple-600 text-[18px]">account_balance_wallet</span>
+                    <span class="cc-icon text-purple-600 text-[18px]">account_balance_wallet</span>
                     <span>Status Integrasi OVO SNAP</span>
                 </h3>
                 <p class="text-xs text-slate-600 mb-3 leading-relaxed">

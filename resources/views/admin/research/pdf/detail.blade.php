@@ -1,6 +1,6 @@
 @php
     $ink = '#111827';
-    $blue = '#0095FC';
+    $blue = '#0647FF';
     $muted = '#6B7280';
 @endphp
 <!DOCTYPE html>

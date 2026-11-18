@@ -24,7 +24,7 @@
         <div class="page-actions">
             @canPerm('permissions.create')
             <a href="{{ route('admin.permissions.create') }}" class="btn btn-primary">
-                <span class="material-symbols-outlined">add</span>
+                <span class="cc-icon">add</span>
                 <span>Tambah Permission</span>
             </a>
             @endcanPerm
@@ -36,15 +36,15 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="filter-tabs">
                 <a href="{{ route('admin.users.index') }}" class="filter-tab">
-                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    <span class="cc-icon text-[16px]">group</span>
                     <span>Daftar Pengguna</span>
                 </a>
                 <a href="{{ route('admin.roles.index') }}" class="filter-tab">
-                    <span class="material-symbols-outlined text-[16px]">security</span>
+                    <span class="cc-icon text-[16px]">security</span>
                     <span>Role &amp; Jabatan</span>
                 </a>
                 <a href="{{ route('admin.permissions.index') }}" class="filter-tab is-active">
-                    <span class="material-symbols-outlined text-[16px]">key</span>
+                    <span class="cc-icon text-[16px]">key</span>
                     <span>Permissions</span>
                     <span class="filter-count">{{ $totalPermissions }}</span>
                 </a>
@@ -52,7 +52,7 @@
 
             <form method="GET" action="{{ route('admin.permissions.index') }}" class="flex items-center gap-2">
                 <div class="search-box w-full sm:w-64">
-                    <span class="material-symbols-outlined">search</span>
+                    <span class="cc-icon">search</span>
                     <input type="text"
                            name="search"
                            value="{{ request('search') }}"
@@ -128,7 +128,7 @@
                                 <a href="{{ route('admin.permissions.edit', $perm) }}"
                                    class="btn-icon"
                                    title="Edit Permission">
-                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    <span class="cc-icon text-[18px]">edit</span>
                                 </a>
                                 @endcanPerm
 
@@ -140,7 +140,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus Permission">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        <span class="cc-icon text-[18px]">delete</span>
                                     </button>
                                 </form>
                                 @endcanPerm
@@ -162,7 +162,7 @@
         </div>
         @else
         <div class="empty-state">
-            <span class="material-symbols-outlined">key</span>
+            <span class="cc-icon">key</span>
             <div class="empty-title">Tidak ada permission ditemukan</div>
             <div class="empty-text">Buat permission baru untuk memperluas sistem wewenang peran.</div>
         </div>

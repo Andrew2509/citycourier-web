@@ -20,11 +20,11 @@
         </div>
         <div class="flex items-center gap-2 self-start sm:self-auto">
             <a href="{{ route('admin.ci-work.index') }}" class="btn btn-secondary text-xs h-9 px-3 gap-1.5">
-                <span class="material-symbols-outlined text-[16px] text-slate-500">dashboard</span>
+                <span class="cc-icon text-[16px] text-slate-500">dashboard</span>
                 <span>Cockpit Kerja</span>
             </a>
             <a href="{{ route('admin.ci-work.attendance') }}" class="btn btn-primary text-xs h-9 px-3.5 gap-1.5 shadow-sm">
-                <span class="material-symbols-outlined text-[16px]">near_me</span>
+                <span class="cc-icon text-[16px]">near_me</span>
                 <span>Peta Presensi</span>
             </a>
         </div>
@@ -44,7 +44,7 @@
                 <span class="text-[11px] text-slate-400">Aktif di jalan</span>
             </div>
             <div class="w-9 h-9 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[20px]">pending_actions</span>
+                <span class="cc-icon text-[20px]">pending_actions</span>
             </div>
         </div>
 
@@ -55,7 +55,7 @@
                 <span class="text-[11px] text-emerald-600 font-semibold">Terkirim ke penerima</span>
             </div>
             <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                <span class="cc-icon text-[20px]">check_circle</span>
             </div>
         </div>
 
@@ -66,7 +66,7 @@
                 <span class="text-[11px] text-amber-600 font-semibold">Proof of Delivery</span>
             </div>
             <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[20px]">add_a_photo</span>
+                <span class="cc-icon text-[20px]">add_a_photo</span>
             </div>
         </div>
 
@@ -77,7 +77,7 @@
                 <span class="text-[11px] text-slate-400">Waktu antar paket</span>
             </div>
             <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[20px]">timer</span>
+                <span class="cc-icon text-[20px]">timer</span>
             </div>
         </div>
     </div>
@@ -152,7 +152,7 @@
                         <td>
                             @if($task->delivery_photo)
                                 <a href="{{ asset('storage/' . $task->delivery_photo) }}" target="_blank" class="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-xs font-semibold">
-                                    <span class="material-symbols-outlined text-[15px]">image</span>
+                                    <span class="cc-icon text-[15px]">image</span>
                                     <span>Lihat Foto</span>
                                 </a>
                             @else
@@ -164,7 +164,7 @@
                         <td class="text-right">
                             <div class="inline-flex items-center justify-end gap-1">
                                 <a href="{{ route('admin.ci-work.index') }}" class="btn btn-secondary text-xs h-7 px-2 gap-1" title="Pantau di Cockpit">
-                                    <span class="material-symbols-outlined text-[14px] text-slate-500">near_me</span>
+                                    <span class="cc-icon text-[14px] text-slate-500">near_me</span>
                                     <span>Lacak</span>
                                 </a>
                             </div>
@@ -173,7 +173,7 @@
                     @empty
                     <tr>
                         <td colspan="7" class="p-8 text-center text-slate-400">
-                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">assignment_late</span>
+                            <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">assignment_late</span>
                             <p class="text-xs font-semibold text-slate-600">Tidak ada tugas ditemukan</p>
                             <p class="text-[11px] text-slate-400 mt-0.5">Tugas yang sedang berjalan akan ditampilkan di tabel ini.</p>
                         </td>

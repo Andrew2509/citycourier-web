@@ -16,70 +16,82 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <form method="GET" class="flex items-center gap-2">
-                <select name="status" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+                <select name="status" class="form-select w-auto">
                     <option value="all">Semua Status</option>
                     @foreach (['pending', 'processing', 'completed', 'failed', 'reversed'] as $st)
                         <option value="{{ $st }}" @selected($status === $st)>{{ strtoupper($st) }}</option>
                     @endforeach
                 </select>
-                <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">Filter</button>
+                <button type="submit" class="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">Filter</button>
             </form>
             <form method="POST" action="{{ route('admin.finance.payouts.run-auto') }}">
                 @csrf
-                <button type="submit" class="rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-700">
+                <button type="submit" class="btn btn-sm btn-primary">
                     Jalankan Auto-Payout Sekarang
                 </button>
             </form>
         </div>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-            <thead class="border-b border-slate-200 text-slate-500">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <th class="py-2 pr-3">Reference</th>
-                    <th class="py-2 pr-3">Kurir</th>
-                    <th class="py-2 pr-3">Tujuan</th>
-                    <th class="py-2 pr-3">Provider / Mode</th>
-                    <th class="py-2 pr-3 text-right">Net Payout</th>
-                    <th class="py-2 pr-3">Status</th>
-                    <th class="py-2">Aksi</th>
+                    <th>Reference</th>
+                    <th>Kurir</th>
+                    <th>Tujuan</th>
+                    <th>Provider / Mode</th>
+                    <th class="text-right">Net Payout</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
                 @forelse ($payouts as $p)
                     <tr>
-                        <td class="py-2.5 pr-3 font-mono">{{ $p->reference }}</td>
-                        <td class="py-2.5 pr-3">{{ $p->courier?->user?->name ?? $p->user?->name ?? '#'.$p->user_id }}</td>
-                        <td class="py-2.5 pr-3">{{ $p->channel_code }} &bull; {{ $p->account_number_masked }}</td>
-                        <td class="py-2.5 pr-3 uppercase">{{ $p->provider }} ({{ $p->mode }})</td>
-                        <td class="py-2.5 pr-3 text-right font-semibold">Rp {{ number_format($p->net_amount, 0, ',', '.') }}</td>
-                        <td class="py-2.5 pr-3">
-                            <span class="uppercase font-semibold {{ $p->status === 'completed' ? 'text-emerald-700' : ($p->status === 'failed' ? 'text-red-600' : 'text-amber-700') }}">
-                                {{ $p->status }}
-                            </span>
+                        <td class="cell-mono">{{ $p->reference }}</td>
+                        <td class="cell-primary">{{ $p->courier?->user?->name ?? $p->user?->name ?? '#'.$p->user_id }}</td>
+                        <td>{{ $p->channel_code }} &bull; {{ $p->account_number_masked }}</td>
+                        <td class="uppercase">{{ $p->provider }} ({{ $p->mode }})</td>
+                        <td class="text-right font-semibold tabular-nums">Rp {{ number_format($p->net_amount, 0, ',', '.') }}</td>
+                        <td>
+                            @php
+                                $stBadge = match ($p->status) {
+                                    'completed' => 'badge-green',
+                                    'failed' => 'badge-red',
+                                    'reversed' => 'badge-indigo',
+                                    default => 'badge-amber',
+                                };
+                            @endphp
+                            <span class="badge {{ $stBadge }}"><span class="badge-dot"></span>{{ strtoupper($p->status) }}</span>
                             @if ($p->failure_reason)
-                                <div class="text-[10px] text-red-500">{{ $p->failure_reason }}</div>
+                                <div class="text-[10px] text-red-500 mt-0.5">{{ $p->failure_reason }}</div>
                             @endif
                         </td>
-                        <td class="py-2.5">
+                        <td>
                             @if (in_array($p->status, ['pending', 'processing'], true))
                                 <form method="POST" action="{{ route('admin.finance.payouts.verify', $p) }}">
                                     @csrf
-                                    <button type="submit" class="rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                                    <button type="submit" class="btn btn-sm btn-secondary">
                                         Verify Status
                                     </button>
                                 </form>
                             @else
-                                <span class="text-slate-400">{{ $p->completed_at?->format('d/m H:i') ?? '-' }}</span>
+                                <span class="cell-muted">{{ $p->completed_at?->format('d/m H:i') ?? '-' }}</span>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-6 text-center text-slate-400">Belum ada transaksi payout kurir.</td></tr>
                 @endforelse
             </tbody>
         </table>
+        @if ($payouts->isEmpty())
+            <div class="empty-state">
+                <span class="cc-icon">send_money</span>
+                <div class="empty-title">Belum ada transaksi payout kurir</div>
+                <div class="empty-text">Payout otomatis kurir akan muncul di sini.</div>
+            </div>
+        @endif
     </div>
     <div class="mt-4">{{ $payouts->links() }}</div>
 </div>

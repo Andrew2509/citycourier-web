@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.users.index') }}" class="back-link" title="Kembali ke Daftar Pengguna">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Edit Pengguna</h1>
@@ -134,7 +134,7 @@
                 <div class="pt-2 border-t border-slate-100">
                     <label for="avatar" class="form-label">Ubah Foto Profil / Avatar</label>
                     <div class="flex items-center gap-3">
-                        <div class="avatar bg-brand-50 text-brand-700 font-bold shrink-0">
+                        <div class="avatar bg-primary-50 text-primary-700 font-bold shrink-0">
                             @if($user->photo_url)
                                 <img src="{{ $user->photo_url }}"
                                      alt="{{ $user->name }}"
@@ -157,7 +157,7 @@
                         Batal
                     </a>
                     <button type="submit" class="btn btn-primary">
-                        <span class="material-symbols-outlined">save</span>
+                        <span class="cc-icon">save</span>
                         Simpan Perubahan
                     </button>
                 </div>

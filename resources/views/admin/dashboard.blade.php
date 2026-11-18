@@ -21,12 +21,12 @@
 
         <div class="page-actions">
             <a href="{{ route('admin.shipments.index') }}" class="btn btn-secondary">
-                <span class="material-symbols-outlined text-slate-500">local_shipping</span>
+                <span class="cc-icon text-slate-500">local_shipping</span>
                 <span>Daftar Pengiriman</span>
             </a>
             @canPerm('couriers.view')
             <a href="{{ route('admin.couriers', ['filter' => 'unverified']) }}" class="btn btn-primary">
-                <span class="material-symbols-outlined">how_to_reg</span>
+                <span class="cc-icon">how_to_reg</span>
                 <span>Verifikasi Kurir</span>
                 @if(($stats['unverified_couriers'] ?? 0) > 0)
                     <span class="rounded bg-white/20 px-1.5 py-0.5 text-[11px] font-bold text-white ml-0.5">
@@ -49,8 +49,8 @@
                         <span data-cc-count="{{ $stats['total_orders'] ?? 0 }}">{{ number_format($stats['total_orders'] ?? 0) }}</span>
                     </div>
                 </div>
-                <div class="stat-icon bg-brand-50 text-brand-600">
-                    <span class="material-symbols-outlined">inventory_2</span>
+                <div class="stat-icon bg-primary-50 text-primary-600">
+                    <span class="cc-icon">inventory_2</span>
                 </div>
             </div>
             <div class="mt-3 border-t border-slate-100 pt-2.5 flex items-center justify-between gap-2 text-xs text-slate-500">
@@ -67,17 +67,17 @@
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="stat-label">Sedang Berlangsung</div>
-                    <div class="stat-value text-blue-700">
+                    <div class="stat-value text-cyan-700">
                         <span data-cc-count="{{ $stats['active_shipments'] ?? 0 }}">{{ number_format($stats['active_shipments'] ?? 0) }}</span>
                     </div>
                 </div>
-                <div class="stat-icon bg-blue-50 text-blue-600">
-                    <span class="material-symbols-outlined">local_shipping</span>
+                <div class="stat-icon bg-cyan-100 text-cyan-700">
+                    <span class="cc-icon">local_shipping</span>
                 </div>
             </div>
             <div class="mt-3 border-t border-slate-100 pt-2.5 flex items-center justify-between gap-2 text-xs text-slate-500">
                 <span class="font-medium text-slate-600">Dalam perjalanan</span>
-                <a href="{{ route('admin.shipments.index', ['status' => 'in_transit']) }}" class="text-brand-700 hover:underline">
+                <a href="{{ route('admin.shipments.index', ['status' => 'in_transit']) }}" class="text-primary-700 hover:underline">
                     Lihat peta &rarr;
                 </a>
             </div>
@@ -93,14 +93,14 @@
                     </div>
                 </div>
                 <div class="stat-icon bg-emerald-50 text-emerald-600">
-                    <span class="material-symbols-outlined">task_alt</span>
+                    <span class="cc-icon">task_alt</span>
                 </div>
             </div>
             <div class="mt-3 border-t border-slate-100 pt-2.5 flex items-center justify-between gap-2 text-xs text-slate-500">
                 <span class="text-slate-600">
                     Hari ini: <strong class="text-emerald-700">{{ number_format($stats['today_completed_orders'] ?? 0) }}</strong>
                 </span>
-                <a href="{{ route('admin.orders', ['status' => 'delivered']) }}" class="text-slate-400 hover:text-brand-700 hover:underline">
+                <a href="{{ route('admin.orders', ['status' => 'delivered']) }}" class="text-slate-400 hover:text-primary-700 hover:underline">
                     Lihat semua &rarr;
                 </a>
             </div>
@@ -116,7 +116,7 @@
                     </div>
                 </div>
                 <div class="stat-icon bg-red-50 text-red-600">
-                    <span class="material-symbols-outlined">error</span>
+                    <span class="cc-icon">error</span>
                 </div>
             </div>
             <div class="mt-3 border-t border-slate-100 pt-2.5 flex items-center justify-between gap-2 text-xs text-slate-500">
@@ -124,7 +124,7 @@
                     Hari ini: <strong class="text-red-700">{{ number_format($stats['today_cancelled_orders'] ?? 0) }}</strong>
                 </span>
                 @if(($stats['cancelled_orders'] ?? 0) > 0)
-                    <a href="{{ route('admin.orders', ['status' => 'cancelled']) }}" class="text-slate-400 hover:text-brand-700 hover:underline">
+                    <a href="{{ route('admin.orders', ['status' => 'cancelled']) }}" class="text-slate-400 hover:text-primary-700 hover:underline">
                         Tinjau &rarr;
                     </a>
                 @endif
@@ -142,7 +142,7 @@
                     <div class="card-subtitle">Pesanan dibuat vs selesai per hari</div>
                 </div>
                 <div class="flex items-center gap-3 text-[11.5px] text-slate-500">
-                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-brand-500"></span> Dibuat</span>
+                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-primary-500"></span> Dibuat</span>
                     <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-emerald-500"></span> Selesai</span>
                 </div>
             </div>
@@ -163,7 +163,7 @@
                             <div class="flex h-full w-full items-end justify-center gap-1"
                                  title="{{ $day['date'] }} &mdash; {{ $day['orders'] }} dibuat, {{ $day['completed'] }} selesai">
                                 @if($hOrders > 0)
-                                    <div data-cc-bar class="relative w-2.5 rounded-t-sm bg-brand-500 sm:w-3.5" style="height: {{ $hOrders }}%">
+                                    <div data-cc-bar class="relative w-2.5 rounded-t-sm bg-primary-500 sm:w-3.5" style="height: {{ $hOrders }}%">
                                         <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-slate-600">{{ $day['orders'] }}</span>
                                     </div>
                                 @endif
@@ -203,7 +203,7 @@
             <div class="card-header">
                 <div class="flex items-center gap-2.5">
                     <div class="stat-icon h-9 w-9 bg-slate-100 text-slate-700">
-                        <span class="material-symbols-outlined">payments</span>
+                        <span class="cc-icon">payments</span>
                     </div>
                     <div>
                         <div class="card-title">Pendapatan</div>
@@ -237,12 +237,12 @@
 
                 @canPerm('finance_reports.view')
                 <div class="mt-auto pt-4">
-                    <a href="{{ route('admin.finance.reports') }}" class="flex w-full items-center justify-between rounded-md border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-700 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700">
+                    <a href="{{ route('admin.finance.reports') }}" class="flex w-full items-center justify-between rounded-md border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700">
                         <span class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[16px]">summarize</span>
+                            <span class="cc-icon text-[16px]">summarize</span>
                             Laporan Keuangan
                         </span>
-                        <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                        <span class="cc-icon text-[16px]">chevron_right</span>
                     </a>
                 </div>
                 @endcanPerm
@@ -263,7 +263,7 @@
                     $dTotal = (int) ($stats['total_orders'] ?? 0);
                     $dSegs = [
                         ['label' => 'Selesai', 'v' => (int) ($stats['completed_orders'] ?? 0), 'color' => '#10b981'],
-                        ['label' => 'Berlangsung', 'v' => (int) ($stats['active_shipments'] ?? 0), 'color' => '#3b82f6'],
+                        ['label' => 'Berlangsung', 'v' => (int) ($stats['active_shipments'] ?? 0), 'color' => '#0647FF'],
                         ['label' => 'Bermasalah', 'v' => (int) ($stats['cancelled_orders'] ?? 0), 'color' => '#ef4444'],
                         ['label' => 'Menunggu', 'v' => max(0, $dTotal - (int) ($stats['completed_orders'] ?? 0) - (int) ($stats['active_shipments'] ?? 0) - (int) ($stats['cancelled_orders'] ?? 0)), 'color' => '#cbd5e1'],
                     ];
@@ -274,14 +274,14 @@
 
                 @if($dTotal <= 0)
                     <div class="flex flex-1 flex-col items-center justify-center gap-1 py-8 text-center">
-                        <span class="material-symbols-outlined text-3xl text-slate-300">donut_large</span>
+                        <span class="cc-icon text-3xl text-slate-300">donut_large</span>
                         <div class="text-[13px] font-medium text-slate-400">Belum ada pesanan</div>
                         <div class="text-[11.5px] text-slate-400">Distribusi status tampil otomatis dari data nyata.</div>
                     </div>
                 @else
                 <div class="relative shrink-0">
                     <svg viewBox="0 0 100 100" class="h-32 w-32 -rotate-90" role="img" aria-label="Distribusi status pengiriman">
-                        <circle cx="50" cy="50" r="{{ $dR }}" fill="none" stroke="#f1f5f9" stroke-width="11" />
+                        <circle cx="50" cy="50" r="{{ $dR }}" fill="none" stroke="#E5E7EB" stroke-width="11" />
                         @foreach($dSegs as $seg)
                             @continue(($seg['v'] ?? 0) <= 0)
                             @php
@@ -380,7 +380,7 @@
                         <tr>
                             <td class="whitespace-nowrap">
                                 <a href="{{ route('admin.orders.detail', $order->id) }}"
-                                   class="font-mono text-xs font-semibold text-brand-700 hover:underline">
+                                   class="font-mono text-xs font-semibold text-primary-700 hover:underline">
                                     {{ $resi }}
                                 </a>
                                 <div class="text-[11px] text-slate-400 font-mono">
@@ -417,7 +417,7 @@
             </div>
             @else
             <div class="empty-state py-10">
-                <span class="material-symbols-outlined">inventory_2</span>
+                <span class="cc-icon">inventory_2</span>
                 <div class="empty-title">Belum ada pesanan terbaru</div>
                 <div class="empty-text">Pesanan yang baru masuk akan langsung tampil di sini.</div>
             </div>
@@ -465,7 +465,7 @@
                 </div>
                 @else
                 <div class="empty-state py-8">
-                    <span class="material-symbols-outlined">two_wheeler</span>
+                    <span class="cc-icon">two_wheeler</span>
                     <div class="empty-title">Tidak ada kurir siaga</div>
                     <div class="empty-text">Kurir yang aktif di aplikasi akan terdaftar di sini.</div>
                 </div>
@@ -479,7 +479,7 @@
         <div class="card-header">
             <div class="flex items-center gap-2.5">
                 <div class="stat-icon h-9 w-9 bg-sky-50 text-sky-700">
-                    <span class="material-symbols-outlined">account_balance_wallet</span>
+                    <span class="cc-icon">account_balance_wallet</span>
                 </div>
                 <div>
                     <div class="card-title">Koneksi DANA (Pencairan Kurir)</div>
@@ -523,7 +523,7 @@
 
             <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <button type="button" id="btn-dashboard-test-dana" class="btn btn-sm btn-secondary">
-                    <span class="material-symbols-outlined text-[16px]">sync_alt</span>
+                    <span class="cc-icon text-[16px]">sync_alt</span>
                     Tes Binding DANA
                 </button>
                 <a href="{{ route('admin.settings.dana') }}" class="text-xs font-medium text-sky-700 hover:underline">

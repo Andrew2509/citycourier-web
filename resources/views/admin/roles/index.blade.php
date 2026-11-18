@@ -19,7 +19,7 @@
         <div class="page-actions">
             @canPerm('roles.create')
             <a href="{{ route('admin.roles.create') }}" class="btn btn-primary">
-                <span class="material-symbols-outlined">add</span>
+                <span class="cc-icon">add</span>
                 <span>Tambah Role Baru</span>
             </a>
             @endcanPerm
@@ -31,16 +31,16 @@
         <div class="flex items-center justify-between gap-3">
             <div class="filter-tabs">
                 <a href="{{ route('admin.users.index') }}" class="filter-tab">
-                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    <span class="cc-icon text-[16px]">group</span>
                     <span>Daftar Pengguna</span>
                 </a>
                 <a href="{{ route('admin.roles.index') }}" class="filter-tab is-active">
-                    <span class="material-symbols-outlined text-[16px]">security</span>
+                    <span class="cc-icon text-[16px]">security</span>
                     <span>Role &amp; Jabatan</span>
                     <span class="filter-count">{{ $roles->count() }}</span>
                 </a>
                 <a href="{{ route('admin.permissions.index') }}" class="filter-tab">
-                    <span class="material-symbols-outlined text-[16px]">key</span>
+                    <span class="cc-icon text-[16px]">key</span>
                     <span>Permissions</span>
                 </a>
             </div>
@@ -78,7 +78,7 @@
                         <td>
                             <div class="flex items-center gap-2.5">
                                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
-                                    <span class="material-symbols-outlined text-[18px]">security</span>
+                                    <span class="cc-icon text-[18px]">security</span>
                                 </div>
                                 <div>
                                     <div class="flex items-center gap-1.5">
@@ -95,7 +95,7 @@
                         {{-- Jumlah Permission --}}
                         <td class="whitespace-nowrap">
                             <span class="badge badge-gray font-mono text-xs">
-                                <span class="material-symbols-outlined text-[14px] text-slate-400">key</span>
+                                <span class="cc-icon text-[14px] text-slate-400">key</span>
                                 {{ $role->permissions_count ?? $role->permissions->count() }} permissions
                             </span>
                         </td>
@@ -117,7 +117,7 @@
                                 <a href="{{ route('admin.roles.edit', $role) }}"
                                    class="btn-icon"
                                    title="Edit Role & Permissions">
-                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    <span class="cc-icon text-[18px]">edit</span>
                                 </a>
                                 @endcanPerm
 
@@ -130,7 +130,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus Role">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        <span class="cc-icon text-[18px]">delete</span>
                                     </button>
                                 </form>
                                 @endif
@@ -141,7 +141,7 @@
                     @empty
                     <tr>
                         <td colspan="5" class="text-center py-12 text-slate-400">
-                            <span class="material-symbols-outlined text-[36px] text-slate-300 mb-1">security</span>
+                            <span class="cc-icon text-[36px] text-slate-300 mb-1">security</span>
                             <div class="text-sm font-medium text-slate-600">Belum ada role terdaftar</div>
                         </td>
                     </tr>

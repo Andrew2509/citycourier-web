@@ -7,9 +7,9 @@
     .research-hero {
         position: relative;
         overflow: hidden;
-        border: 1px solid #E2E8F0;
+        border: 1px solid #E5E7EB;
         border-radius: 14px;
-        background: linear-gradient(180deg, #FFFFFF 0%, #F7FBFF 100%);
+        background: #FFFFFF;
         padding: 20px 22px;
     }
     .research-hero::after {
@@ -20,7 +20,7 @@
         width: 220px;
         height: 220px;
         border-radius: 50%;
-        background: radial-gradient(closest-side, rgba(0, 149, 252, .14), transparent);
+        background: radial-gradient(closest-side, rgba(6, 71, 255, .14), transparent);
         pointer-events: none;
     }
     .research-hero .eyebrow {
@@ -31,13 +31,13 @@
         color: #64748B;
         margin-bottom: 6px;
     }
-    .stat-card { border: 1px solid #E2E8F0; border-radius: 12px; background: #fff; padding: 14px 15px; }
+    .stat-card { border: 1px solid #E5E7EB; border-radius: 12px; background: #fff; padding: 14px 15px; }
     .stat-card .label { font-size: 11.5px; color: #64748B; display: flex; align-items: center; gap: 6px; }
-    .stat-card .value { font-size: 25px; line-height: 1.2; font-weight: 700; color: #0F172A; margin-top: 5px; font-variant-numeric: tabular-nums; }
+    .stat-card .value { font-size: 25px; line-height: 1.2; font-weight: 700; color: #172033; margin-top: 5px; font-variant-numeric: tabular-nums; }
     .stat-card .hint { font-size: 11px; color: #94A3B8; margin-top: 2px; }
     .stat-card .icon { margin-left: auto; font-size: 18px; color: #94A3B8; }
-    .chart-card { border: 1px solid #E2E8F0; border-radius: 12px; background: #fff; padding: 15px 16px 12px; }
-    .chart-card h3 { font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 3px; }
+    .chart-card { border: 1px solid #E5E7EB; border-radius: 12px; background: #fff; padding: 15px 16px 12px; }
+    .chart-card h3 { font-size: 12.5px; font-weight: 600; color: #36435C; margin-bottom: 3px; }
     .chart-card p { font-size: 11px; color: #94A3B8; margin-bottom: 8px; }
     .chart-box { position: relative; height: 220px; }
     .chart-box.tall { height: 270px; }
@@ -71,15 +71,15 @@
             <div class="page-actions">
                 @canPerm('research_study.export')
                 <a href="{{ route('admin.research.export.excel') }}" class="btn btn-primary">
-                    <span class="material-symbols-outlined">table_view</span>
+                    <span class="cc-icon">table_view</span>
                     <span>Export Excel</span>
                 </a>
                 <a href="{{ route('admin.research.export.csv') }}" class="btn btn-secondary">
-                    <span class="material-symbols-outlined">csv</span>
+                    <span class="cc-icon">csv</span>
                     <span>CSV</span>
                 </a>
                 <a href="{{ route('admin.research.export.pdf') }}" class="btn btn-secondary">
-                    <span class="material-symbols-outlined">picture_as_pdf</span>
+                    <span class="cc-icon">picture_as_pdf</span>
                     <span>PDF</span>
                 </a>
                 @endcanPerm
@@ -90,32 +90,32 @@
     {{-- Statistik --}}
     <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <div class="stat-card">
-            <div class="label"><span class="material-symbols-outlined text-[16px]">groups</span>Total responden<span class="material-symbols-outlined icon">science</span></div>
+            <div class="label"><span class="cc-icon text-[16px]">groups</span>Total responden<span class="cc-icon icon">science</span></div>
             <div class="value">{{ $stats['total'] }}</div>
             <div class="hint">Seluruh jawaban masuk</div>
         </div>
         <div class="stat-card">
-            <div class="label"><span class="material-symbols-outlined text-[16px]">person</span>Customer<span class="material-symbols-outlined icon">shopping_bag</span></div>
+            <div class="label"><span class="cc-icon text-[16px]">person</span>Customer<span class="cc-icon icon">shopping_bag</span></div>
             <div class="value">{{ $stats['customer'] }}</div>
             <div class="hint">Hanya peran Customer</div>
         </div>
         <div class="stat-card">
-            <div class="label"><span class="material-symbols-outlined text-[16px]">two_wheeler</span>Courier<span class="material-symbols-outlined icon">local_shipping</span></div>
+            <div class="label"><span class="cc-icon text-[16px]">two_wheeler</span>Courier<span class="cc-icon icon">local_shipping</span></div>
             <div class="value">{{ $stats['courier'] }}</div>
             <div class="hint">Hanya peran Courier</div>
         </div>
         <div class="stat-card">
-            <div class="label"><span class="material-symbols-outlined text-[16px]">swap_horiz</span>Keduanya<span class="material-symbols-outlined icon">join_inner</span></div>
+            <div class="label"><span class="cc-icon text-[16px]">swap_horiz</span>Keduanya<span class="cc-icon icon">join_inner</span></div>
             <div class="value">{{ $stats['both'] }}</div>
             <div class="hint">Customer &amp; Courier</div>
         </div>
         <div class="stat-card">
-            <div class="label"><span class="material-symbols-outlined text-[16px]">record_voice_over</span>Bersedia wawancara<span class="material-symbols-outlined icon">mic</span></div>
+            <div class="label"><span class="cc-icon text-[16px]">record_voice_over</span>Bersedia wawancara<span class="cc-icon icon">mic</span></div>
             <div class="value">{{ $stats['willing'] }}</div>
             <div class="hint">Bersedia dihubungi kembali</div>
         </div>
         <div class="stat-card">
-            <div class="label"><span class="material-symbols-outlined text-[16px]">task_alt</span>Sudah mengisi<span class="material-symbols-outlined icon">check_circle</span></div>
+            <div class="label"><span class="cc-icon text-[16px]">task_alt</span>Sudah mengisi<span class="cc-icon icon">check_circle</span></div>
             <div class="value">{{ $stats['submitted'] }}</div>
             <div class="hint">Formulir terkirim lengkap</div>
         </div>
@@ -127,7 +127,7 @@
             <div class="col-span-2 md:col-span-4">
                 <label for="filter-q" class="mb-1 block text-[11.5px] font-medium text-slate-500">Cari responden</label>
                 <div class="search-box">
-                    <span class="material-symbols-outlined">search</span>
+                    <span class="cc-icon">search</span>
                     <input id="filter-q" type="search" name="q" value="{{ $filters['q'] }}" class="form-input" placeholder="Kode referensi, usia, frekuensi...">
                 </div>
             </div>
@@ -157,12 +157,12 @@
             </div>
             <div class="col-span-2 flex flex-wrap gap-2 md:col-span-4">
                 <button type="submit" class="btn btn-primary">
-                    <span class="material-symbols-outlined">filter_alt</span>
+                    <span class="cc-icon">filter_alt</span>
                     Terapkan filter
                 </button>
                 @if($filters['q'] !== '' || $filters['role'] !== '' || $filters['from'] !== '' || $filters['to'] !== '' || $filters['sort'] !== 'latest')
                 <a href="{{ route('admin.research.index') }}" class="btn btn-secondary">
-                    <span class="material-symbols-outlined">restart_alt</span>
+                    <span class="cc-icon">restart_alt</span>
                     Reset
                 </a>
                 @endif
@@ -213,7 +213,7 @@
                     <tr>
                         <td class="text-slate-400 tabular-nums">{{ $submissions->firstItem() + $index }}</td>
                         <td>
-                            <a href="{{ route('admin.research.show', $submission) }}" class="font-mono text-[12px] font-semibold text-brand-700 hover:underline">
+                            <a href="{{ route('admin.research.show', $submission) }}" class="font-mono text-[12px] font-semibold text-primary-700 hover:underline">
                                 {{ $submission->reference_code }}
                             </a>
                             <div class="font-mono text-[10.5px] text-slate-400">#{{ $submission->id }}</div>
@@ -245,7 +245,7 @@
                         <td class="text-right whitespace-nowrap">
                             <div class="inline-flex items-center gap-1">
                                 <a href="{{ route('admin.research.show', $submission) }}" class="btn-icon" title="Detail jawaban">
-                                    <span class="material-symbols-outlined text-[18px]">visibility</span>
+                                    <span class="cc-icon text-[18px]">visibility</span>
                                 </a>
                                 @canPerm('research_study.delete')
                                 <form action="{{ route('admin.research.destroy', $submission) }}" method="POST" class="inline-block"
@@ -253,7 +253,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus responden">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        <span class="cc-icon text-[18px]">delete</span>
                                     </button>
                                 </form>
                                 @endcanPerm
@@ -274,7 +274,7 @@
         </div>
         @else
         <div class="empty-state">
-            <span class="material-symbols-outlined">science</span>
+            <span class="cc-icon">science</span>
             <div class="empty-title">Belum ada jawaban responden</div>
             <div class="empty-text">
                 @if($filters['q'] !== '' || $filters['role'] !== '' || $filters['from'] !== '' || $filters['to'] !== '')
@@ -299,7 +299,7 @@
 
         @if($stats['total'] === 0)
         <div class="card empty-state">
-            <span class="material-symbols-outlined">query_stats</span>
+            <span class="cc-icon">query_stats</span>
             <div class="empty-title">Grafik belum tersedia</div>
             <div class="empty-text">Grafik akan tampil otomatis setelah ada jawaban responden.</div>
         </div>
@@ -327,9 +327,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof Chart === 'undefined') return;
 
     const charts = @json($charts);
-    const blue = '#0095FC';
-    const orange = '#FF5A00';
-    const inks = ['#0095FC', '#FF5A00', '#0F172A', '#7DD3FC', '#FDBA74'];
+    const blue = '#0647FF';
+    const orange = '#FF910F';
+    const inks = ['#0647FF', '#FF910F', '#172033', '#8CD5DE', '#FFB952'];
     const gridColor = 'rgba(148, 163, 184, .16)';
     const tickColor = '#64748B';
 
@@ -372,8 +372,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     data: values,
                     backgroundColor: horizontal
-                        ? labels.map((_, i) => i === 0 ? orange : 'rgba(0, 149, 252, .82)')
-                        : 'rgba(0, 149, 252, .82)',
+                        ? labels.map((_, i) => i === 0 ? orange : 'rgba(6, 71, 255, .82)')
+                        : 'rgba(6, 71, 255, .82)',
                     hoverBackgroundColor: horizontal ? orange : blue,
                     borderRadius: 4,
                     maxBarThickness: horizontal ? 18 : 42

@@ -16,7 +16,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[18px]">near_me</span>
+                <span class="cc-icon text-[18px]">near_me</span>
             </div>
             <div>
                 <h2 class="text-sm font-bold text-slate-900">Tugas Aktif Terkini</h2>
@@ -29,7 +29,7 @@
             </span>
             <a class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700" href="{{ route('admin.ci-work.tasks') }}">
                 Semua Tugas
-                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                <span class="cc-icon text-[15px]">arrow_forward</span>
             </a>
         </div>
     </div>
@@ -69,7 +69,7 @@
                     </span>
                 </div>
                 <div class="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span class="material-symbols-outlined text-[15px] text-slate-400">schedule</span>
+                    <span class="cc-icon text-[15px] text-slate-400">schedule</span>
                     <span>Estimasi: <strong class="text-slate-900 font-mono">{{ $featured['eta'] ? $featured['eta'] . ' Menit' : '—' }}</strong>
                         @if($featured['distance'] !== null) ({{ $featured['distance'] }} km sisa)@endif
                     </span>
@@ -99,14 +99,14 @@
 
                 <div class="md:col-span-7 bg-slate-50 rounded-lg p-2.5 border border-slate-100 text-xs space-y-1.5">
                     <div class="flex items-start gap-2">
-                        <span class="material-symbols-outlined text-[15px] text-slate-400 mt-0.5 shrink-0">upload_2</span>
+                        <span class="cc-icon text-[15px] text-slate-400 mt-0.5 shrink-0">upload_2</span>
                         <div class="min-w-0 flex-1">
                             <span class="text-[10px] uppercase font-semibold text-slate-400 block">Jemput:</span>
                             <p class="text-slate-800 truncate font-medium">{{ Str::limit($featured['pickup_addr'] ?? '-', 50) }}</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2 pt-1 border-t border-slate-200/60">
-                        <span class="material-symbols-outlined text-[15px] text-primary-600 mt-0.5 shrink-0">location_on</span>
+                        <span class="cc-icon text-[15px] text-primary-600 mt-0.5 shrink-0">location_on</span>
                         <div class="min-w-0 flex-1">
                             <span class="text-[10px] uppercase font-semibold text-primary-700 block">Tujuan:</span>
                             <p class="text-slate-900 truncate font-semibold">{{ Str::limit($featured['dest_addr'] ?? '-', 50) }}</p>
@@ -127,13 +127,13 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button data-act="track" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                        <span class="material-symbols-outlined text-[15px] text-slate-500">near_me</span>
+                        <span class="cc-icon text-[15px] text-slate-500">near_me</span>
                         <span>Lacak Live</span>
                     </button>
                     @if($featured['wa'])
                         <a href="https://wa.me/{{ $featured['wa'] }}" target="_blank" rel="noopener"
                            class="btn btn-primary text-xs h-8 px-3 gap-1 shadow-sm">
-                            <span class="material-symbols-outlined text-[15px]">chat</span>
+                            <span class="cc-icon text-[15px]">chat</span>
                             <span>Chat Kurir</span>
                         </a>
                     @endif
@@ -153,7 +153,7 @@
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                     <span class="font-medium drop-shadow-sm text-[11px]">Satelit GPS Aktif (Akurasi {{ $featured['accuracy'] !== null ? $featured['accuracy'] . ' m' : '—' }})</span>
                 </div>
-                <span class="font-mono text-[10px] bg-black/40 px-2 py-0.5 rounded backdrop-blur">
+                <span class="font-mono text-[10px] bg-black/40 px-2 py-0.5 rounded">
                     Update: {{ $featured['last_seen'] !== null ? $featured['last_seen'] . ' dtk lalu' : 'Live' }}
                 </span>
             </div>
@@ -162,7 +162,7 @@
     </div>
     @else
     <div class="p-8 text-center rounded-xl border border-dashed border-slate-200">
-        <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">near_me_disabled</span>
+        <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">near_me_disabled</span>
         <p class="text-xs font-semibold text-slate-700">Tidak ada pengiriman aktif saat ini</p>
         <p class="text-[11px] text-slate-400 mt-0.5">Saat kurir menerima tugas, pemantauan otomatis akan aktif di sini.</p>
     </div>
@@ -196,7 +196,7 @@
             </span>
         </div>
         <div class="flex items-center gap-1.5 min-w-[200px] flex-1">
-            <span class="material-symbols-outlined text-[15px] text-slate-400">pin_drop</span>
+            <span class="cc-icon text-[15px] text-slate-400">pin_drop</span>
             <span class="text-slate-700 truncate font-medium">{{ Str::limit($t['dest_addr'] ?? '-', 45) }}</span>
         </div>
         <div class="flex items-center gap-2">
@@ -204,11 +204,11 @@
                 @if($t['distance'] !== null){{ $t['distance'] }} km • @endif@if($t['eta']){{ $t['eta'] }} mnt@endif
             </span>
             <button data-act="track" class="btn btn-secondary text-xs h-7 px-2.5 gap-1">
-                <span class="material-symbols-outlined text-[14px] text-slate-500">near_me</span> Lacak
+                <span class="cc-icon text-[14px] text-slate-500">near_me</span> Lacak
             </button>
             @if($t['wa'])
                 <a href="https://wa.me/{{ $t['wa'] }}" target="_blank" rel="noopener" class="btn btn-primary text-xs h-7 px-2.5 gap-1">
-                    <span class="material-symbols-outlined text-[14px]">chat</span> WA
+                    <span class="cc-icon text-[14px]">chat</span> WA
                 </a>
             @endif
         </div>
@@ -220,7 +220,7 @@
 <div class="card p-4 space-y-3.5">
     <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-slate-500">queue</span>
+            <span class="cc-icon text-[18px] text-slate-500">queue</span>
             <div>
                 <h2 class="text-sm font-bold text-slate-900">Antrean Penugasan Otomatis</h2>
                 <span class="text-xs text-slate-500">Pencocokan radius kurir terdekat sistem</span>
@@ -247,20 +247,20 @@
             </div>
             <button data-act="assign" data-id="{{ $q['id'] }}"
                     class="btn btn-primary text-xs h-7 px-3 gap-1 shadow-sm">
-                <span class="material-symbols-outlined text-[14px]">swap_calls</span>
+                <span class="cc-icon text-[14px]">swap_calls</span>
                 <span>Tetapkan Kurir</span>
             </button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
             <div class="flex items-start gap-1.5">
-                <span class="material-symbols-outlined text-[15px] text-slate-400 mt-0.5 shrink-0">upload_2</span>
+                <span class="cc-icon text-[15px] text-slate-400 mt-0.5 shrink-0">upload_2</span>
                 <div class="min-w-0 flex-1">
                     <span class="text-[10px] uppercase font-semibold text-slate-400 block">Jemput:</span>
                     <p class="text-slate-700 truncate">{{ Str::limit($q['pickup_addr'] ?? '-', 42) }}</p>
                 </div>
             </div>
             <div class="flex items-start gap-1.5">
-                <span class="material-symbols-outlined text-[15px] text-primary-600 mt-0.5 shrink-0">location_on</span>
+                <span class="cc-icon text-[15px] text-primary-600 mt-0.5 shrink-0">location_on</span>
                 <div class="min-w-0 flex-1">
                     <span class="text-[10px] uppercase font-semibold text-primary-700 block">Tujuan:</span>
                     <p class="text-slate-900 font-medium truncate">{{ Str::limit($q['dest_addr'] ?? '-', 42) }}</p>
@@ -277,7 +277,7 @@
     <div class="p-6 text-center rounded-lg border border-dashed border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div class="flex items-center gap-3 text-left">
             <div class="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[20px]">check</span>
+                <span class="cc-icon text-[20px]">check</span>
             </div>
             <div>
                 <p class="text-xs font-semibold text-slate-800">Semua order telah dialokasikan</p>

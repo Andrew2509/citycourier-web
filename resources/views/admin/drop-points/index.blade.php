@@ -28,12 +28,12 @@
 
         <div class="page-actions">
             <a href="{{ route('admin.drop-points.export') }}" class="btn btn-secondary">
-                <span class="material-symbols-outlined">download</span>
+                <span class="cc-icon">download</span>
                 <span>Ekspor CSV</span>
             </a>
             @canPerm('drop_points.create')
             <button type="button" onclick="openModal('modal-tambah-droppoint')" class="btn btn-primary">
-                <span class="material-symbols-outlined">add_location</span>
+                <span class="cc-icon">add_location</span>
                 <span>Tambah Drop Point</span>
             </button>
             @endcanPerm
@@ -66,7 +66,7 @@
 
         <div class="card p-3.5">
             <div class="stat-label">Rata-rata Kapasitas</div>
-            <div class="stat-value text-brand-700">{{ $capacity }}%</div>
+            <div class="stat-value text-primary-700">{{ $capacity }}%</div>
             <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
                 <div class="h-1.5 rounded-full {{ $capacity >= 75 ? 'bg-red-500' : ($capacity >= 40 ? 'bg-amber-500' : 'bg-emerald-500') }}" style="width: {{ min($capacity, 100) }}%"></div>
             </div>
@@ -76,8 +76,8 @@
     {{-- Geofence Banner --}}
     <div class="card p-4 bg-orange-50/40 border-orange-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white">
-                <span class="material-symbols-outlined text-[20px]">location_searching</span>
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-600 text-white">
+                <span class="cc-icon text-[20px]">location_searching</span>
             </div>
             <div>
                 <div class="text-xs font-semibold text-slate-900">
@@ -90,7 +90,7 @@
         </div>
         @if(isset($mapPoint) && $mapPoint)
         <button type="button" onclick="openModal('modal-radius')" class="btn btn-sm btn-secondary shrink-0">
-            <span class="material-symbols-outlined text-[16px]">edit_location</span>
+            <span class="cc-icon text-[16px]">edit_location</span>
             Atur Radius Geofence
         </button>
         @endif
@@ -105,14 +105,14 @@
                         id="tabTableBtn"
                         onclick="showDpView('table')"
                         class="inline-flex items-center gap-1.5 rounded px-3 py-1 text-xs font-semibold bg-white text-slate-800 shadow-sm transition-all">
-                    <span class="material-symbols-outlined text-[16px]">table_rows</span>
+                    <span class="cc-icon text-[16px]">table_rows</span>
                     Tabel
                 </button>
                 <button type="button"
                         id="tabMapBtn"
                         onclick="showDpView('map')"
                         class="inline-flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 transition-all">
-                    <span class="material-symbols-outlined text-[16px]">map</span>
+                    <span class="cc-icon text-[16px]">map</span>
                     Peta Interaktif
                 </button>
             </div>
@@ -120,7 +120,7 @@
             {{-- Form Pencarian & Filter Wilayah --}}
             <form method="GET" action="{{ route('admin.drop-points.index') }}" class="flex flex-wrap items-center gap-2">
                 <div class="search-box w-full sm:w-64">
-                    <span class="material-symbols-outlined">search</span>
+                    <span class="cc-icon">search</span>
                     <input type="text"
                            name="search"
                            value="{{ request('search') }}"
@@ -143,7 +143,7 @@
 
                 @if(request('search') || request('wilayah'))
                     <a href="{{ route('admin.drop-points.index') }}" class="btn btn-ghost" title="Reset filter">
-                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span class="cc-icon">restart_alt</span>
                     </a>
                 @endif
             </form>
@@ -182,8 +182,8 @@
                         {{-- Nama & Tipe --}}
                         <td>
                             <div class="flex items-center gap-2.5">
-                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
-                                    <span class="material-symbols-outlined text-[18px]">warehouse</span>
+                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-50 text-primary-700">
+                                    <span class="cc-icon text-[18px]">warehouse</span>
                                 </div>
                                 <div>
                                     <div class="text-[13px] font-semibold text-slate-900">{{ $dp->name }}</div>
@@ -247,7 +247,7 @@
                                         onclick="focusMap({{ $dp->id }})"
                                         class="btn-icon"
                                         title="Fokus di Peta">
-                                    <span class="material-symbols-outlined text-[18px]">near_me</span>
+                                    <span class="cc-icon text-[18px]">near_me</span>
                                 </button>
                                 @endif
 
@@ -273,7 +273,7 @@
                                         data-schedule="{{ $dp->schedule ?? '08:00 - 21:00' }}"
                                         data-open_days="{{ $dp->open_days ?? 'Setiap Hari' }}"
                                         data-rating="{{ $dp->rating ?? '5.0' }}">
-                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    <span class="cc-icon text-[18px]">edit</span>
                                 </button>
 
                                 <form action="{{ route('admin.drop-points.destroy', $dp->id) }}"
@@ -283,7 +283,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
-                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        <span class="cc-icon text-[18px]">delete</span>
                                     </button>
                                 </form>
                             </div>
@@ -304,7 +304,7 @@
         </div>
         @else
         <div class="empty-state">
-            <span class="material-symbols-outlined">warehouse</span>
+            <span class="cc-icon">warehouse</span>
             <div class="empty-title">Tidak ada drop point ditemukan</div>
             <div class="empty-text">Tambahkan drop point baru atau sesuaikan filter pencarian.</div>
         </div>
@@ -321,7 +321,7 @@
             <div class="card-header shrink-0">
                 <div class="card-title">Daftar Titik di Peta</div>
                 <button type="button" onclick="testSignal()" class="btn btn-sm btn-ghost text-xs">
-                    <span class="material-symbols-outlined text-[16px]">radar</span>
+                    <span class="cc-icon text-[16px]">radar</span>
                     <span>Uji Sinyal</span>
                 </button>
             </div>
@@ -335,7 +335,7 @@
                     <div class="min-w-0">
                         <button type="button"
                                 onclick="focusMap({{ $p->id }})"
-                                class="text-xs font-semibold text-slate-900 hover:text-brand-700 truncate block text-left">
+                                class="text-xs font-semibold text-slate-900 hover:text-primary-700 truncate block text-left">
                             {{ $p->name }}
                         </button>
                         <div class="text-[11px] text-slate-400 truncate">
@@ -365,7 +365,7 @@
                 <div class="text-xs text-slate-500">Daftarkan lokasi agen atau hub pengiriman baru</div>
             </div>
             <button type="button" class="btn-icon" onclick="closeModal()" aria-label="Tutup">
-                <span class="material-symbols-outlined">close</span>
+                <span class="cc-icon">close</span>
             </button>
         </div>
 
@@ -460,7 +460,7 @@
                 <div class="text-xs text-slate-500">Perbarui data lokasi atau radius geofence</div>
             </div>
             <button type="button" class="btn-icon" onclick="closeModal()" aria-label="Tutup">
-                <span class="material-symbols-outlined">close</span>
+                <span class="cc-icon">close</span>
             </button>
         </div>
 
@@ -563,7 +563,7 @@
                 <div class="text-xs text-slate-500 font-mono">{{ $mapPoint->name }}</div>
             </div>
             <button type="button" class="btn-icon" onclick="closeModal()" aria-label="Tutup">
-                <span class="material-symbols-outlined">close</span>
+                <span class="cc-icon">close</span>
             </button>
         </div>
 
@@ -611,7 +611,7 @@
         const isSuccess = type === 'success';
         el.className = 'flex items-center gap-2 rounded-md px-3.5 py-2.5 text-xs font-medium shadow-xl transition-all ' +
             (isSuccess ? 'bg-navy-900 text-white' : 'bg-red-700 text-white');
-        el.innerHTML = '<span class="material-symbols-outlined text-[16px] text-brand-400">' +
+        el.innerHTML = '<span class="cc-icon text-[16px] text-primary-400">' +
             (isSuccess ? 'check_circle' : 'error') + '</span><span>' + message + '</span>';
         wrap.appendChild(el);
         setTimeout(() => {
@@ -682,8 +682,8 @@
             dpMarkers[p.id] = marker;
             const circle = L.circle([lat, lng], {
                 radius: parseInt(p.radius_m || 50, 10),
-                color: '#ec5b13',
-                fillColor: '#ec5b13',
+                color: '#0647FF',
+                fillColor: '#0647FF',
                 fillOpacity: 0.12
             }).addTo(dpMap);
             dpCircles.push(circle);

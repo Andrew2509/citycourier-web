@@ -13,54 +13,70 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <form method="GET" class="flex items-center gap-2">
-                <select name="status" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+                <select name="status" class="form-select w-auto">
                     <option value="all">Semua Status</option>
                     @foreach (['pending', 'available', 'reserved', 'paid'] as $st)
                         <option value="{{ $st }}" @selected($status === $st)>{{ strtoupper($st) }}</option>
                     @endforeach
                 </select>
-                <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">Filter</button>
+                <button type="submit" class="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">Filter</button>
             </form>
             <form method="POST" action="{{ route('admin.finance.earnings.release') }}">
                 @csrf
-                <button type="submit" class="rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-700">
+                <button type="submit" class="btn btn-sm btn-primary">
                     Release Mature Pending Earnings
                 </button>
             </form>
         </div>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-            <thead class="border-b border-slate-200 text-slate-500">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <th class="py-2 pr-3">Reference</th>
-                    <th class="py-2 pr-3">Kurir</th>
-                    <th class="py-2 pr-3">Order</th>
-                    <th class="py-2 pr-3 text-right">Gross</th>
-                    <th class="py-2 pr-3 text-right">Komisi</th>
-                    <th class="py-2 pr-3 text-right">Net Kurir</th>
-                    <th class="py-2 pr-3">Status</th>
-                    <th class="py-2">Eligible At</th>
+                    <th>Reference</th>
+                    <th>Kurir</th>
+                    <th>Order</th>
+                    <th class="text-right">Gross</th>
+                    <th class="text-right">Komisi</th>
+                    <th class="text-right">Net Kurir</th>
+                    <th>Status</th>
+                    <th>Eligible At</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
                 @forelse ($earnings as $e)
                     <tr>
-                        <td class="py-2.5 pr-3 font-mono">{{ $e->reference }}</td>
-                        <td class="py-2.5 pr-3">{{ $e->courier?->user?->name ?? 'Courier #'.$e->courier_id }}</td>
-                        <td class="py-2.5 pr-3">#{{ $e->order?->order_number ?? $e->order_id }}</td>
-                        <td class="py-2.5 pr-3 text-right">Rp {{ number_format($e->gross_amount, 0, ',', '.') }}</td>
-                        <td class="py-2.5 pr-3 text-right text-slate-500">Rp {{ number_format($e->commission_amount, 0, ',', '.') }} ({{ $e->commission_rate }}%)</td>
-                        <td class="py-2.5 pr-3 text-right font-semibold text-emerald-700">Rp {{ number_format($e->net_amount, 0, ',', '.') }}</td>
-                        <td class="py-2.5 pr-3 uppercase font-semibold">{{ $e->status }}</td>
-                        <td class="py-2.5 text-slate-500">{{ $e->available_at?->format('d/m H:i') }}</td>
+                        <td class="cell-mono">{{ $e->reference }}</td>
+                        <td class="cell-primary">{{ $e->courier?->user?->name ?? 'Courier #'.$e->courier_id }}</td>
+                        <td>#{{ $e->order?->order_number ?? $e->order_id }}</td>
+                        <td class="text-right tabular-nums">Rp {{ number_format($e->gross_amount, 0, ',', '.') }}</td>
+                        <td class="text-right text-slate-500 tabular-nums">Rp {{ number_format($e->commission_amount, 0, ',', '.') }} ({{ $e->commission_rate }}%)</td>
+                        <td class="text-right font-semibold text-emerald-700 tabular-nums">Rp {{ number_format($e->net_amount, 0, ',', '.') }}</td>
+                        <td>
+                            @php
+                                $stBadge = match ($e->status) {
+                                    'paid' => 'badge-green',
+                                    'available' => 'badge-info',
+                                    'reserved' => 'badge-indigo',
+                                    default => 'badge-amber',
+                                };
+                            @endphp
+                            <span class="badge {{ $stBadge }}"><span class="badge-dot"></span>{{ strtoupper($e->status) }}</span>
+                        </td>
+                        <td class="cell-muted">{{ $e->available_at?->format('d/m H:i') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="py-6 text-center text-slate-400">Belum ada data earning kurir.</td></tr>
                 @endforelse
             </tbody>
         </table>
+        @if ($earnings->isEmpty())
+            <div class="empty-state">
+                <span class="cc-icon">savings</span>
+                <div class="empty-title">Belum ada data earning kurir</div>
+                <div class="empty-text">Komisi kurir akan muncul otomatis dari pesanan selesai.</div>
+            </div>
+        @endif
     </div>
     <div class="mt-4">{{ $earnings->links() }}</div>
 </div>

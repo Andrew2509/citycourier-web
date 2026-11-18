@@ -13,7 +13,7 @@
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Environment Mode</label>
-                <select name="payment_wallet_mode" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <select name="payment_wallet_mode" class="form-select">
                     <option value="demo" @selected($config['mode'] === 'demo')>DEMO (Simulasi Lokal)</option>
                     <option value="sandbox" @selected($config['mode'] === 'sandbox')>SANDBOX (Uji Penyedia)</option>
                     <option value="production" @selected($config['mode'] === 'production')>PRODUCTION (Live)</option>
@@ -21,7 +21,7 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Payment Provider (Money In)</label>
-                <select name="payment_active_provider" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <select name="payment_active_provider" class="form-select">
                     <option value="xendit" @selected($config['active_payment_provider'] === 'xendit')>Xendit (Utama)</option>
                     <option value="doku" @selected($config['active_payment_provider'] === 'doku')>DOKU Jokul (Alternatif)</option>
                     <option value="mock" @selected($config['active_payment_provider'] === 'mock')>MockProvider (Sandbox/Demo Only)</option>
@@ -29,7 +29,7 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Payout Provider (Money Out)</label>
-                <select name="payout_active_provider" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <select name="payout_active_provider" class="form-select">
                     <option value="xendit" @selected($config['active_payout_provider'] === 'xendit')>Xendit Payouts v2</option>
                     <option value="mock" @selected($config['active_payout_provider'] === 'mock')>MockProvider (Sandbox/Demo Only)</option>
                 </select>
@@ -40,17 +40,17 @@
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Komisi Platform Kurir (%)</label>
                 <input type="number" step="0.1" name="courier_commission_rate_percent" value="{{ $config['commission_rate_percent'] }}"
-                       class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                       class="form-select">
             </div>
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Masa Tunggu Settlement (Menit)</label>
                 <input type="number" name="courier_settlement_waiting_minutes" value="{{ $config['settlement_waiting_minutes'] }}"
-                       class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                       class="form-select">
             </div>
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Minimum Auto-Payout Kurir (IDR)</label>
                 <input type="number" name="courier_min_payout_idr" value="{{ $config['min_payout_idr'] }}"
-                       class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                       class="form-select">
             </div>
         </div>
 
@@ -66,7 +66,7 @@
         </div>
 
         <div class="pt-2">
-            <button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+            <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
                 Simpan Konfigurasi Keuangan
             </button>
         </div>
@@ -94,8 +94,8 @@
                 </span>
             </div>
         </div>
-        <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 space-y-2">
-            <div>Secret API keys tersimpan terenkripsi di database (via <a href="{{ route('admin.settings.providers') }}" class="font-semibold text-orange-600 hover:underline">Provider &amp; Integrasi Eksternal</a>) atau dari <code class="font-mono">.env</code> dan tidak pernah dikirim ke Flutter atau HTML.</div>
+        <div class="rounded-lg bg-cream-50 border border-slate-100 p-3 text-xs text-slate-600 space-y-2">
+            <div>Secret API keys tersimpan terenkripsi di database (via <a href="{{ route('admin.settings.providers') }}" class="font-semibold text-primary-600 hover:underline">Provider &amp; Integrasi Eksternal</a>) atau dari <code class="font-mono">.env</code> dan tidak pernah dikirim ke Flutter atau HTML.</div>
         </div>
     </div>
 </div>

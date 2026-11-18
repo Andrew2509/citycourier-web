@@ -33,7 +33,7 @@ $financeData = $recaps->map(function ($c) {
     <!-- Flash -->
     @if(session('success'))
     <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold flex items-center gap-2">
-        <span class="material-symbols-outlined text-[17px]">check_circle</span>
+        <span class="cc-icon text-[17px]">check_circle</span>
         {{ session('success') }}
     </div>
     @endif
@@ -55,11 +55,11 @@ $financeData = $recaps->map(function ($c) {
 
         <div class="flex items-center gap-2 self-start sm:self-auto">
             <button onclick="openCommissionModal()" type="button" class="btn btn-primary text-xs h-9 px-3.5 gap-1.5 shadow-sm">
-                <span class="material-symbols-outlined text-[16px]">tune</span>
+                <span class="cc-icon text-[16px]">tune</span>
                 <span>Atur Bagi Hasil</span>
             </button>
             <a href="{{ route('admin.ci-work.finance.export') }}" class="btn btn-secondary text-xs h-9 px-3 gap-1.5">
-                <span class="material-symbols-outlined text-[16px] text-slate-500">download</span>
+                <span class="cc-icon text-[16px] text-slate-500">download</span>
                 <span>Unduh Laporan</span>
             </a>
         </div>
@@ -74,7 +74,7 @@ $financeData = $recaps->map(function ($c) {
                     <div class="text-xl font-bold font-mono text-slate-900 mt-1">{{ fin($stats['omzet']) }}</div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">payments</span>
+                    <span class="cc-icon text-[20px]">payments</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -90,7 +90,7 @@ $financeData = $recaps->map(function ($c) {
                     <div class="text-xl font-bold font-mono text-emerald-600 mt-1">{{ fin($stats['net']) }}</div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                    <span class="cc-icon text-[20px]">account_balance_wallet</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -106,7 +106,7 @@ $financeData = $recaps->map(function ($c) {
                     <div class="text-xl font-bold font-mono text-slate-900 mt-1">{{ fin($stats['platform']) }}</div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">percent</span>
+                    <span class="cc-icon text-[20px]">percent</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -122,7 +122,7 @@ $financeData = $recaps->map(function ($c) {
                     <div class="text-xl font-bold font-mono text-slate-900 mt-1">{{ fin($stats['pending_wd_amount']) }}</div>
                 </div>
                 <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[20px]">savings</span>
+                    <span class="cc-icon text-[20px]">savings</span>
                 </div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -136,7 +136,7 @@ $financeData = $recaps->map(function ($c) {
     <div class="card p-3.5 bg-amber-50/70 border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
         <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[18px]">verified</span>
+                <span class="cc-icon text-[18px]">verified</span>
             </div>
             <div class="space-y-0.5">
                 <p class="font-bold text-amber-950">Kebijakan Settlement &amp; Setoran Tunai COD</p>
@@ -154,7 +154,7 @@ $financeData = $recaps->map(function ($c) {
     <div class="card overflow-hidden">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-slate-500">groups</span>
+                <span class="cc-icon text-[18px] text-slate-500">groups</span>
                 <div>
                     <h2 class="text-xs font-bold text-slate-900">Rekapitulasi Keuangan Per Kurir</h2>
                     <span class="text-[11px] text-slate-500">Ringkasan omzet, potongan komisi, dan saldo dompet mitra</span>
@@ -163,12 +163,12 @@ $financeData = $recaps->map(function ($c) {
 
             <div class="flex items-center gap-2">
                 <div class="relative">
-                    <span class="material-symbols-outlined text-[16px] text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2">search</span>
+                    <span class="cc-icon text-[16px] text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2">search</span>
                     <input type="text" id="recapSearch" oninput="filterRecaps()" placeholder="Cari kurir..." class="form-input h-8 pl-8 text-xs w-48 sm:w-60">
                 </div>
                 <div class="relative">
                     <button onclick="toggleFilterMenu()" type="button" class="btn btn-secondary text-xs h-8 px-2.5 gap-1">
-                        <span class="material-symbols-outlined text-[15px] text-slate-500">tune</span>
+                        <span class="cc-icon text-[15px] text-slate-500">tune</span>
                         <span>Filter</span>
                     </button>
                     <div id="filterMenu" class="absolute right-0 top-9 z-20 hidden bg-white border border-slate-200 rounded-lg shadow-xl p-2 min-w-44 text-xs space-y-1">
@@ -244,11 +244,11 @@ $financeData = $recaps->map(function ($c) {
                                 <span class="font-mono font-bold text-slate-900 text-xs block">{{ fin($courier->balance) }}</span>
                                 @if($courier->balance > 0)
                                     <span class="text-[10px] font-semibold text-emerald-600 flex items-center gap-0.5">
-                                        <span class="material-symbols-outlined text-[12px]">verified</span> Siap Ditarik
+                                        <span class="cc-icon text-[12px]">verified</span> Siap Ditarik
                                     </span>
                                 @elseif($courier->pending_balance > 0)
                                     <span class="text-[10px] font-semibold text-amber-600 flex items-center gap-0.5">
-                                        <span class="material-symbols-outlined text-[12px]">schedule</span> Pending
+                                        <span class="cc-icon text-[12px]">schedule</span> Pending
                                     </span>
                                 @else
                                     <span class="text-[10px] text-slate-400">Kosong</span>
@@ -258,14 +258,14 @@ $financeData = $recaps->map(function ($c) {
                         <td class="text-right">
                             <div class="inline-flex items-center justify-end gap-1">
                                 <button onclick="openReconcile({{ $courier->id }})" type="button" class="btn btn-secondary text-xs h-7 w-7 p-0" title="Rincian Transaksi">
-                                    <span class="material-symbols-outlined text-[15px] text-slate-500">receipt_long</span>
+                                    <span class="cc-icon text-[15px] text-slate-500">receipt_long</span>
                                 </button>
                                 <button onclick="openTripModal({{ $courier->id }})" type="button" class="btn btn-secondary text-xs h-7 w-7 p-0" title="Rincian Trip">
-                                    <span class="material-symbols-outlined text-[15px] text-slate-500">map</span>
+                                    <span class="cc-icon text-[15px] text-slate-500">map</span>
                                 </button>
                                 <button onclick="openAdjustModal(this)" type="button" data-name="{{ $courier->user->name ?? 'Kurir' }}" data-route="{{ route('admin.ci-work.finance.reconcile', $courier->id) }}"
                                     class="btn btn-secondary text-xs h-7 w-7 p-0" title="Penyesuaian Saldo">
-                                    <span class="material-symbols-outlined text-[15px] text-slate-500">tune</span>
+                                    <span class="cc-icon text-[15px] text-slate-500">tune</span>
                                 </button>
                             </div>
                         </td>
@@ -273,7 +273,7 @@ $financeData = $recaps->map(function ($c) {
                     @empty
                     <tr>
                         <td colspan="7" class="p-8 text-center text-slate-400">
-                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">groups</span>
+                            <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">groups</span>
                             <p class="text-xs font-semibold text-slate-600">Belum ada data keuangan kurir</p>
                         </td>
                     </tr>
@@ -292,7 +292,7 @@ $financeData = $recaps->map(function ($c) {
     <div class="card overflow-hidden">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-slate-500">savings</span>
+                <span class="cc-icon text-[18px] text-slate-500">savings</span>
                 <div>
                     <h2 class="text-xs font-bold text-slate-900">Permintaan Penarikan Saldo Dompet</h2>
                     <span class="text-[11px] text-slate-500">Kelola dan verifikasi transfer saldo kurir mitra</span>
@@ -301,11 +301,11 @@ $financeData = $recaps->map(function ($c) {
 
             <div class="flex items-center gap-2">
                 <a href="{{ url()->current() }}" class="btn btn-secondary text-xs h-8 px-2.5 gap-1">
-                    <span class="material-symbols-outlined text-[15px] text-slate-500">refresh</span>
+                    <span class="cc-icon text-[15px] text-slate-500">refresh</span>
                     <span>Segarkan</span>
                 </a>
                 <button onclick="openGuideModal()" type="button" class="btn btn-secondary text-xs h-8 px-2.5 gap-1">
-                    <span class="material-symbols-outlined text-[15px] text-slate-500">help</span>
+                    <span class="cc-icon text-[15px] text-slate-500">help</span>
                     <span>Panduan</span>
                 </button>
             </div>
@@ -315,19 +315,19 @@ $financeData = $recaps->map(function ($c) {
         <div class="flex items-center gap-1 px-4 border-b border-slate-200 bg-white overflow-x-auto text-xs py-2">
             <button onclick="setWdTab('pending', this)" data-wd-tab="pending" type="button"
                 class="wd-tab px-3 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 border border-primary-600 bg-primary-50 text-primary-700">
-                <span class="material-symbols-outlined text-[15px]">pending_actions</span>
+                <span class="cc-icon text-[15px]">pending_actions</span>
                 <span>Menunggu Persetujuan</span>
                 <span class="px-1.5 rounded-full bg-primary-600 text-white text-[10px] font-mono" data-wd-count="pending">{{ $withdrawalCounts['pending'] }}</span>
             </button>
             <button onclick="setWdTab('completed', this)" data-wd-tab="completed" type="button"
                 class="wd-tab px-3 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 border border-transparent text-slate-600 hover:bg-slate-50">
-                <span class="material-symbols-outlined text-[15px]">check_circle</span>
+                <span class="cc-icon text-[15px]">check_circle</span>
                 <span>Berhasil Ditransfer</span>
                 <span class="px-1.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-mono" data-wd-count="completed">{{ $withdrawalCounts['completed'] }}</span>
             </button>
             <button onclick="setWdTab('rejected', this)" data-wd-tab="rejected" type="button"
                 class="wd-tab px-3 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 border border-transparent text-slate-600 hover:bg-slate-50">
-                <span class="material-symbols-outlined text-[15px]">cancel</span>
+                <span class="cc-icon text-[15px]">cancel</span>
                 <span>Ditolak</span>
                 <span class="px-1.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-mono" data-wd-count="rejected">{{ $withdrawalCounts['rejected'] }}</span>
             </button>
@@ -432,7 +432,7 @@ $financeData = $recaps->map(function ($c) {
                                     'check_url'     => route('admin.ci-work.finance.withdrawal.check', $wd->id),
                                 ]) }}"
                                 onclick="openWithdrawalDetail(this)">
-                                <span class="material-symbols-outlined text-[14px] text-slate-500">receipt_long</span>
+                                <span class="cc-icon text-[14px] text-slate-500">receipt_long</span>
                                 <span>Detail</span>
                             </button>
                             @if(in_array($wd->status, ['pending', 'reserved']))
@@ -442,7 +442,7 @@ $financeData = $recaps->map(function ($c) {
                                         @csrf
                                         <input type="hidden" name="status" value="approved">
                                         <button type="submit" class="btn btn-primary text-xs h-7 px-2.5 gap-1">
-                                            <span class="material-symbols-outlined text-[14px]">check</span>
+                                            <span class="cc-icon text-[14px]">check</span>
                                             <span>Setujui</span>
                                         </button>
                                     </form>
@@ -451,7 +451,7 @@ $financeData = $recaps->map(function ($c) {
                                         @csrf
                                         <input type="hidden" name="status" value="rejected">
                                         <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1 text-rose-600 hover:bg-rose-50">
-                                            <span class="material-symbols-outlined text-[14px]">close</span>
+                                            <span class="cc-icon text-[14px]">close</span>
                                             <span>Tolak</span>
                                         </button>
                                     </form>
@@ -462,7 +462,7 @@ $financeData = $recaps->map(function ($c) {
                                     @csrf
                                     <input type="hidden" name="status" value="completed">
                                     <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1" title="Tandai Selesai">
-                                        <span class="material-symbols-outlined text-[14px] text-emerald-600">task_alt</span>
+                                        <span class="cc-icon text-[14px] text-emerald-600">task_alt</span>
                                         <span>Tandai Selesai</span>
                                     </button>
                                 </form>
@@ -470,7 +470,7 @@ $financeData = $recaps->map(function ($c) {
                                 <form action="{{ route('admin.ci-work.finance.withdrawal.check', $wd->id) }}" method="POST" class="inline-block">
                                     @csrf
                                     <button type="submit" class="btn btn-secondary text-xs h-7 px-2.5 gap-1" title="Verifikasi status resmi transaksi via API {{ $providerName }}. Hasil API-lah yang memfinalkan status.">
-                                        <span class="material-symbols-outlined text-[14px] {{ $providerName === 'DANA' ? 'text-[#118EEA]' : 'text-[#4c3494]' }}">sync</span>
+                                        <span class="cc-icon text-[14px] {{ $providerName === 'DANA' ? 'text-[#118EEA]' : 'text-[#4c3494]' }}">sync</span>
                                         <span>Cek Status {{ $providerName }}</span>
                                     </button>
                                 </form>
@@ -484,7 +484,7 @@ $financeData = $recaps->map(function ($c) {
                     @if($withdrawalCounts['pending'] === 0)
                     <tr class="wd-row" data-status="pending" data-empty="1">
                         <td colspan="5" class="p-8 text-center text-slate-400">
-                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">pending_actions</span>
+                            <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">pending_actions</span>
                             <p class="text-xs font-semibold text-slate-600">Belum ada permintaan penarikan menunggu persetujuan</p>
                         </td>
                     </tr>
@@ -493,7 +493,7 @@ $financeData = $recaps->map(function ($c) {
                     @if($withdrawalCounts['completed'] === 0)
                     <tr class="wd-row" data-status="completed" data-empty="1">
                         <td colspan="5" class="p-8 text-center text-slate-400">
-                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">savings</span>
+                            <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">savings</span>
                             <p class="text-xs font-semibold text-slate-600">Belum ada penarikan yang berhasil ditransfer</p>
                         </td>
                     </tr>
@@ -502,7 +502,7 @@ $financeData = $recaps->map(function ($c) {
                     @if($withdrawalCounts['rejected'] === 0)
                     <tr class="wd-row" data-status="rejected" data-empty="1">
                         <td colspan="5" class="p-8 text-center text-slate-400">
-                            <span class="material-symbols-outlined text-[32px] text-slate-300 mx-auto block mb-1">cancel</span>
+                            <span class="cc-icon text-[32px] text-slate-300 mx-auto block mb-1">cancel</span>
                             <p class="text-xs font-semibold text-slate-600">Belum ada penarikan yang ditolak</p>
                         </td>
                     </tr>
@@ -519,7 +519,7 @@ $financeData = $recaps->map(function ($c) {
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 border-t border-slate-100 bg-slate-50/50 text-xs">
             <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[16px]">online_prediction</span>
+                    <span class="cc-icon text-[16px]">online_prediction</span>
                 </div>
                 <div>
                     <span class="font-semibold text-slate-800 block">Gateway Pencairan</span>
@@ -528,7 +528,7 @@ $financeData = $recaps->map(function ($c) {
             </div>
             <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[16px]">currency_exchange</span>
+                    <span class="cc-icon text-[16px]">currency_exchange</span>
                 </div>
                 <div>
                     <span class="font-semibold text-slate-800 block">Batas Minimum WD</span>
@@ -537,7 +537,7 @@ $financeData = $recaps->map(function ($c) {
             </div>
             <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[16px]">percent</span>
+                    <span class="cc-icon text-[16px]">percent</span>
                 </div>
                 <div>
                     <span class="font-semibold text-slate-800 block">Biaya Admin Transfer</span>
@@ -549,7 +549,7 @@ $financeData = $recaps->map(function ($c) {
 </div>
 
 <!-- Modal: Rincian Transaksi Kurir -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="reconcileModal" onclick="if(event.target === this) closeReconcile()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="reconcileModal" onclick="if(event.target === this) closeReconcile()">
     <div class="card w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2.5">
@@ -560,7 +560,7 @@ $financeData = $recaps->map(function ($c) {
                 </div>
             </div>
             <button onclick="closeReconcile()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <div class="p-5 max-h-[60vh] overflow-y-auto space-y-3 text-xs">
@@ -591,18 +591,18 @@ $financeData = $recaps->map(function ($c) {
 </div>
 
 <!-- Modal: Rincian Trip -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="tripModal" onclick="if(event.target === this) closeTripModal()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="tripModal" onclick="if(event.target === this) closeTripModal()">
     <div class="card w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-primary-600">map</span>
+                <span class="cc-icon text-[18px] text-primary-600">map</span>
                 <div>
                     <h4 class="text-sm font-bold text-slate-900">Rincian Pengiriman</h4>
                     <span class="text-[11px] text-slate-400" id="trip-subtitle">Trip selesai kurir hari ini</span>
                 </div>
             </div>
             <button onclick="closeTripModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <div class="p-5 max-h-[60vh] overflow-y-auto divide-y divide-slate-100 text-xs" id="trip-list"></div>
@@ -615,7 +615,7 @@ $financeData = $recaps->map(function ($c) {
 </div>
 
 <!-- Modal: Penyesuaian Saldo -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="adjustModal" onclick="if(event.target === this) closeAdjustModal()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="adjustModal" onclick="if(event.target === this) closeAdjustModal()">
     <div class="card w-full max-w-sm overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div>
@@ -623,7 +623,7 @@ $financeData = $recaps->map(function ($c) {
                 <span class="text-[11px] text-slate-400" id="adjustCourierName">Kurir</span>
             </div>
             <button onclick="closeAdjustModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <form method="POST" action="" id="adjustForm" class="p-5 space-y-3.5 text-xs">
@@ -658,18 +658,18 @@ $financeData = $recaps->map(function ($c) {
 </div>
 
 <!-- Modal: Atur Bagi Hasil -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="commissionModal" onclick="if(event.target === this) closeCommissionModal()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="commissionModal" onclick="if(event.target === this) closeCommissionModal()">
     <div class="card w-full max-w-sm overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-primary-600">tune</span>
+                <span class="cc-icon text-[18px] text-primary-600">tune</span>
                 <div>
                     <h4 class="text-sm font-bold text-slate-900">Atur Bagi Hasil</h4>
                     <span class="text-[11px] text-slate-400">Persentase komisi operasional</span>
                 </div>
             </div>
             <button onclick="closeCommissionModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <form method="POST" action="{{ route('admin.ci-work.finance.commission') }}" class="p-5 space-y-3.5 text-xs">
@@ -693,15 +693,15 @@ $financeData = $recaps->map(function ($c) {
 </div>
 
 <!-- Modal: Detail SOP Keuangan -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="sopModal" onclick="if(event.target === this) closeSopModal()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="sopModal" onclick="if(event.target === this) closeSopModal()">
     <div class="card w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-amber-600">description</span>
+                <span class="cc-icon text-[18px] text-amber-600">description</span>
                 <h4 class="text-sm font-bold text-slate-900">SOP Keuangan &amp; Settlement</h4>
             </div>
             <button onclick="closeSopModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <div class="p-5 space-y-3 text-xs">
@@ -725,15 +725,15 @@ $financeData = $recaps->map(function ($c) {
 </div>
 
 <!-- Modal: Detail Penarikan Kurir -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="withdrawalDetailModal" onclick="if(event.target === this) closeWithdrawalDetail()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="withdrawalDetailModal" onclick="if(event.target === this) closeWithdrawalDetail()">
     <div class="card w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-slate-500">receipt_long</span>
+                <span class="cc-icon text-[18px] text-slate-500">receipt_long</span>
                 <h4 class="text-sm font-bold text-slate-900">Detail Penarikan</h4>
             </div>
             <button onclick="closeWithdrawalDetail()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <div class="p-5" id="withdrawalDetailBody"></div>
@@ -745,15 +745,15 @@ $financeData = $recaps->map(function ($c) {
 </div>
 
 <!-- Modal: Panduan Persetujuan -->
-<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4" id="guideModal" onclick="if(event.target === this) closeGuideModal()">
+<div class="fixed inset-0 z-50 bg-slate-900/60 hidden items-center justify-center p-4" id="guideModal" onclick="if(event.target === this) closeGuideModal()">
     <div class="card w-full max-w-md overflow-hidden flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-blue-600">help</span>
+                <span class="cc-icon text-[18px] text-blue-600">help</span>
                 <h4 class="text-sm font-bold text-slate-900">Panduan Persetujuan Penarikan</h4>
             </div>
             <button onclick="closeGuideModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="cc-icon text-[18px]">close</span>
             </button>
         </div>
         <div class="p-5 space-y-2.5 text-xs text-slate-600">
@@ -855,7 +855,7 @@ $financeData = $recaps->map(function ($c) {
                 <div class="flex items-center justify-between py-2.5">
                     <div class="flex items-center gap-2">
                         <div class="w-7 h-7 rounded bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
-                            <span class="material-symbols-outlined text-[16px]">local_shipping</span>
+                            <span class="cc-icon text-[16px]">local_shipping</span>
                         </div>
                         <div>
                             <p class="font-bold text-slate-900 text-xs">#${o.tracking}</p>
@@ -892,7 +892,7 @@ $financeData = $recaps->map(function ($c) {
             list.innerHTML = d.orders.map(o => `
                 <div class="py-2.5 flex items-start gap-2">
                     <div class="w-7 h-7 rounded bg-primary-50 text-primary-600 flex items-center justify-center shrink-0 mt-0.5">
-                        <span class="material-symbols-outlined text-[16px]">local_shipping</span>
+                        <span class="cc-icon text-[16px]">local_shipping</span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between">
@@ -1041,7 +1041,7 @@ $financeData = $recaps->map(function ($c) {
                 <form action="${w.check_url}" method="POST">
                     <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.content || ''}">
                     <button type="submit" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                        <span class="material-symbols-outlined text-[14px] text-sky-500">sync</span>
+                        <span class="cc-icon text-[14px] text-sky-500">sync</span>
                         <span>Cek Status ${w.provider}</span>
                     </button>
                 </form>`;

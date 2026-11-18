@@ -8,7 +8,7 @@
     <div class="page-header">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.settings.providers') }}" class="back-link" title="Kembali ke Daftar Provider">
-                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span class="cc-icon text-[18px]">arrow_back</span>
             </a>
             <div>
                 <h1 class="page-title">Konfigurasi Peta &amp; Routing</h1>
@@ -68,7 +68,7 @@
                     <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                         <a href="{{ route('admin.settings.providers') }}" class="btn btn-secondary">Batal</a>
                         <button type="submit" class="btn btn-primary">
-                            <span class="material-symbols-outlined">save</span>
+                            <span class="cc-icon">save</span>
                             Simpan Konfigurasi Peta
                         </button>
                     </div>
@@ -89,7 +89,7 @@
                     <form action="{{ route('admin.settings.map.test') }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-secondary w-full">
-                            <span class="material-symbols-outlined">directions</span>
+                            <span class="cc-icon">directions</span>
                             Uji Coba Kalkulasi Rute
                         </button>
                     </form>
