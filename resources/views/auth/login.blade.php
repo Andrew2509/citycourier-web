@@ -12,37 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                colors: {
-                    brand: {
-                        50: '#fff7ed',
-                        100: '#ffedd5',
-                        200: '#fed7aa',
-                        500: '#f97316',
-                        600: '#ec5b13',
-                        700: '#c2410c',
-                        800: '#9a3412',
-                        900: '#7c2d12',
-                    },
-                    navy: {
-                        800: '#1e293b',
-                        900: '#0f172a',
-                        950: '#0b132b',
-                    }
-                },
-                fontFamily: {
-                    sans: ['Inter', 'sans-serif'],
-                    display: ['Plus Jakarta Sans', 'sans-serif'],
-                    mono: ['JetBrains Mono', 'monospace'],
-                }
-            }
-        }
-    };
-    </script>
+    @vite('resources/css/public.css')
     <style>
         body { font-family: 'Inter', sans-serif; }
         .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }

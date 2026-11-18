@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════════
+   City Courier — Public Pages Design System (Login & Tracking)
+   Tailwind CSS 4 (CSS-first). Entry Vite: resources/css/public.css
+   ═══════════════════════════════════════════════════════════════════ */
+
+@import "tailwindcss";
+
+/* Sumber class untuk content-detection */
+@source '../views/auth/**/*.blade.php';
+@source '../views/tracking/**/*.blade.php';
+
+@theme {
+    /* ── Tipografi ─────────────────────────────────────────────── */
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono:
+        "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+
+    /* ── Brand City Courier (oranye, #FF5A00 sebagai anchor) ───── */
+    --color-brand-50: #fff5ed;
+    --color-brand-100: #ffe6d8;
+    --color-brand-200: #fecfb5;
+    --color-brand-300: #fdaa7d;
+    --color-brand-400: #fb8a45;
+    --color-brand-500: #ff5a00;
+    --color-brand-600: #eb5100;
+    --color-brand-700: #c74200;
+    --color-brand-800: #9e3600;
+    --color-brand-900: #7c2a00;
+
+    /* ── Navy / sekunder ──────────────────────────────────────── */
+    --color-navy-800: #1e293b;
+    --color-navy-900: #0f172a;
+    --color-navy-950: #0b132b;
+
+    /* ── Animasi shake untuk pesan error login ─────────────────── */
+    --animate-shake: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+    10%,
+    90% {
+        transform: translateX(-1px);
+    }
+    20%,
+    80% {
+        transform: translateX(2px);
+    }
+    30%,
+    50%,
+    70% {
+        transform: translateX(-3px);
+    }
+    40%,
+    60% {
+        transform: translateX(3px);
+    }
+}
+
+/* `rounded` tanpa akhiran = 0.25rem (kompatibilitas utilitas lama) */
+@utility rounded {
+    border-radius: 0.25rem;
+}
+
+@layer base {
+    .material-symbols-outlined {
+        font-variation-settings:
+            "FILL" 0,
+            "wght" 400,
+            "GRAD" 0,
+            "opsz" 24;
+    }
+}

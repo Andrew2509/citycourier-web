@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resi Tidak Ditemukan | City Courier</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite('resources/css/public.css')
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
     <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
