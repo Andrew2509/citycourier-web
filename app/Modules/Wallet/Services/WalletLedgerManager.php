@@ -79,8 +79,14 @@ class WalletLedgerManager
             } else {
                 $dirty = false;
                 if ($courier->user_id && ! $wallet->user_id) {
-                    $wallet->user_id = $courier->user_id;
-                    $dirty = true;
+                    $conflict = Wallet::where('user_id', $courier->user_id)
+                        ->where('wallet_type', 'courier')
+                        ->where('id', '!=', $wallet->id)
+                        ->exists();
+                    if (! $conflict) {
+                        $wallet->user_id = $courier->user_id;
+                        $dirty = true;
+                    }
                 }
                 if (! $wallet->wallet_type) {
                     $wallet->wallet_type = 'courier';

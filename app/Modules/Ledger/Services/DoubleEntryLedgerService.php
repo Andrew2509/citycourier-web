@@ -205,16 +205,20 @@ class DoubleEntryLedgerService
             return $balance;
         }
 
-        return WalletBalance::create([
-            'wallet_id' => $wallet->id,
-            'currency' => $wallet->currency ?: 'IDR',
-            'available_balance' => (int) round((float) $wallet->available_balance),
-            'pending_balance' => (int) round((float) $wallet->pending_balance),
-            'reserved_balance' => Schema::hasColumn('wallets', 'reserved_balance') ? (int) $wallet->reserved_balance : 0,
-            'total_credited' => 0,
-            'total_debited' => 0,
-            'version' => 1,
-        ]);
+        try {
+            return WalletBalance::create([
+                'wallet_id' => $wallet->id,
+                'currency' => $wallet->currency ?: 'IDR',
+                'available_balance' => (int) round((float) $wallet->available_balance),
+                'pending_balance' => (int) round((float) $wallet->pending_balance),
+                'reserved_balance' => Schema::hasColumn('wallets', 'reserved_balance') ? (int) $wallet->reserved_balance : 0,
+                'total_credited' => 0,
+                'total_debited' => 0,
+                'version' => 1,
+            ]);
+        } catch (\Illuminate\Database\QueryException) {
+            return WalletBalance::where('wallet_id', $wallet->id)->lockForUpdate()->firstOrFail();
+        }
     }
 
     private function applyBucketDelta(

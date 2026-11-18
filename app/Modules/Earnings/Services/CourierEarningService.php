@@ -11,7 +11,9 @@ use App\Modules\Ledger\Models\WalletLedgerEntry;
 use App\Modules\Payment\Providers\ProviderResolver;
 use App\Modules\Wallet\Services\WalletLedgerManager;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class CourierEarningService
@@ -209,54 +211,68 @@ class CourierEarningService
             return 0;
         }
 
-        $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
-        $openingEntry = WalletLedgerEntry::where('reference', 'OPENING-WALLET-'.$wallet->id)->first();
-        $openingCutoff = $openingEntry?->created_at;
+        $runSync = function () use ($courier): int {
+            $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
+            $openingEntry = Schema::hasColumn('wallet_ledger_entries', 'journal_reference')
+                ? WalletLedgerEntry::where('journal_reference', 'OPENING-WALLET-'.$wallet->id)->first()
+                : null;
+            $openingCutoff = $openingEntry?->created_at;
 
-        $existingOrderIds = CourierEarning::where('courier_id', $courier->id)
-            ->pluck('order_id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        $legacyTxOrderIds = [];
-        if (Schema::hasTable('wallet_transactions') && Schema::hasColumn('wallet_transactions', 'order_id')) {
-            $legacyTxOrderIds = WalletTransaction::where('wallet_id', $wallet->id)
-                ->where('type', 'earning')
-                ->whereNotNull('order_id')
+            $existingOrderIds = CourierEarning::where('courier_id', $courier->id)
                 ->pluck('order_id')
                 ->map(fn ($id) => (int) $id)
                 ->all();
-        }
 
-        $skipOrderIds = array_flip(array_merge($existingOrderIds, $legacyTxOrderIds));
-        $deliveredOrders = Order::where('courier_id', $courier->id)
-            ->where('status', 'delivered')
-            ->orderBy('id')
-            ->get();
-
-        $syncedCount = 0;
-        foreach ($deliveredOrders as $order) {
-            if (isset($skipOrderIds[(int) $order->id])) {
-                continue;
+            $legacyTxOrderIds = [];
+            if (Schema::hasTable('wallet_transactions') && Schema::hasColumn('wallet_transactions', 'order_id')) {
+                $legacyTxOrderIds = WalletTransaction::where('wallet_id', $wallet->id)
+                    ->where('type', 'earning')
+                    ->whereNotNull('order_id')
+                    ->pluck('order_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
             }
 
-            $orderTime = $order->delivered_at ?? $order->updated_at ?? $order->created_at;
-            if ($openingCutoff !== null && $orderTime !== null && Carbon::parse($orderTime)->lte($openingCutoff)) {
-                continue;
-            }
+            $skipOrderIds = array_flip(array_merge($existingOrderIds, $legacyTxOrderIds));
+            $deliveredOrders = Order::where('courier_id', $courier->id)
+                ->where('status', 'delivered')
+                ->orderBy('id')
+                ->get();
 
-            try {
-                if ($this->recordDeliveredOrderEarning((int) $order->id) !== null) {
-                    $syncedCount++;
+            $syncedCount = 0;
+            foreach ($deliveredOrders as $order) {
+                if (isset($skipOrderIds[(int) $order->id])) {
+                    continue;
                 }
-            } catch (\Throwable) {
-                // Concurrent request or unique guard already recorded this order.
+
+                $orderTime = $order->delivered_at ?? $order->updated_at ?? $order->created_at;
+                if ($openingCutoff !== null && $orderTime !== null && Carbon::parse($orderTime)->lte($openingCutoff)) {
+                    continue;
+                }
+
+                try {
+                    if ($this->recordDeliveredOrderEarning((int) $order->id) !== null) {
+                        $syncedCount++;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('[CourierEarningService] Skip syncing delivered order', [
+                        'courier_id' => $courier->id,
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
+
+            $this->releaseMatureEarningsForCourier($courier->id);
+
+            return $syncedCount;
+        };
+
+        try {
+            return (int) Cache::lock('courier-earning-sync-'.$courier->id, 10)->block(3, $runSync);
+        } catch (\Throwable) {
+            return $runSync();
         }
-
-        $this->releaseMatureEarningsForCourier($courier->id);
-
-        return $syncedCount;
     }
 
     private function releaseMatureEarningsQuery(?int $courierId): int
@@ -274,10 +290,18 @@ class CourierEarningService
 
         $releasedCount = 0;
         foreach ($matureIds as $id) {
-            $earning = CourierEarning::find($id);
-            if ($earning && $earning->status === 'pending') {
-                $this->releaseSingleEarning($earning);
-                $releasedCount++;
+            try {
+                $earning = CourierEarning::find($id);
+                if ($earning && $earning->status === 'pending') {
+                    $this->releaseSingleEarning($earning);
+                    $releasedCount++;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[CourierEarningService] Failed releasing pending earning', [
+                    'earning_id' => $id,
+                    'courier_id' => $courierId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

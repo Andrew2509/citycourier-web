@@ -444,11 +444,18 @@ class PaymentWalletSystemV1Test extends TestCase
             ->assertJsonPath('data.pending_balance', 0)
             ->assertJsonPath('data.earnings_summary.available_earnings', 42660);
 
-        // Repeated loads + legacy /api/courier/wallet remain strictly idempotent
+        // Repeated loads + legacy /api/courier/wallet + history remain strictly idempotent
         $this->getJson('/api/courier/wallet')
             ->assertOk()
             ->assertJsonPath('data.available_balance', 42660)
             ->assertJsonPath('data.total_balance', 42660);
+
+        $this->getJson('/api/courier/wallet/history')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1);
+
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasColumn('wallet_ledger_entries', 'journal_reference'));
+        $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('wallet_ledger_entries', 'reference'));
 
         // Marking new order delivered synchronously records pending earning immediately (no queue worker needed)
         $this->postJson('/api/update-status-order', [
