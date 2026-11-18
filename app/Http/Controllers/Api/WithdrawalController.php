@@ -61,6 +61,28 @@ class WithdrawalController extends Controller
         $result = (new \App\Services\iPaymuService())->inquireAccountName($phone);
 
         if (!$result['available']) {
+            $dokuInquiry = app(\App\Modules\Payout\Services\DokuKirimAccountInquiryService::class);
+            if ($dokuInquiry->isAvailable()) {
+                $dokuRes = $dokuInquiry->inquire(
+                    'ewallet',
+                    'ID_DANA',
+                    $phone,
+                    optional($request->user())->phone
+                );
+                if ($dokuRes['found'] ?? false) {
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'available'    => true,
+                            'account_name' => $dokuRes['account_holder_name'],
+                            'status'       => 'ok',
+                            'provider'     => $dokuRes['provider'] ?? 'doku_kirim',
+                            'destination'  => $phone,
+                        ],
+                    ]);
+                }
+            }
+
             // Bukan kegagalan form — layanan inquiry memang belum tersedia.
             return response()->json([
                 'success' => true,

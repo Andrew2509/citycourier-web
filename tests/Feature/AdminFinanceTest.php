@@ -168,7 +168,7 @@ class AdminFinanceTest extends TestCase
         $this->get('/admin/providers')
             ->assertStatus(200)
             ->assertSee('Xendit Gateway (Money-In &amp; Payouts)', false)
-            ->assertSee('DOKU Jokul Gateway (Money-In)');
+            ->assertSee('DOKU Jokul &amp; Kirim DOKU (Inquiry)', false);
 
         // Save Xendit keys via Admin UI
         $xenditSecret = 'xnd_development_manual_secret_987654321';

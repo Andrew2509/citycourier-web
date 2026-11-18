@@ -167,6 +167,7 @@ class CheckMenuPermission
             'admin.settings.xendit.test' => 'settings.edit',
             'admin.settings.doku.update' => 'settings.edit',
             'admin.settings.doku.test' => 'settings.edit',
+            'admin.settings.doku.keygen' => 'settings.edit',
 
             // Research Study (Studi Pendahuluan)
             'admin.research.index' => 'research_study.view',

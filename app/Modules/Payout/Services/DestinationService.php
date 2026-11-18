@@ -90,7 +90,43 @@ class DestinationService
             );
         }
 
-        // 2. Cek integrasi e-wallet khusus bila aktif (OVO SNAP / iPaymu DANA).
+        // 2. Cek nama asli Bank & E-Wallet melalui Kirim DOKU (SNAP) bila aktif & terkonfigurasi.
+        $dokuFallbackMessage = null;
+        $dokuInquiry = app(DokuKirimAccountInquiryService::class);
+        if ($dokuInquiry->isAvailable()) {
+            $dokuResult = $dokuInquiry->inquire($destType, $channelCode, $accountNumber, $user->phone);
+            if (($dokuResult['found'] ?? false) === true) {
+                return $this->inquiryEnvelope(
+                    supported: true,
+                    found: true,
+                    holderName: $dokuResult['account_holder_name'] ?? null,
+                    channelCode: $channelCode,
+                    accountNumber: $accountNumber,
+                    mode: $mode,
+                    isSimulated: false,
+                    provider: (string) ($dokuResult['provider'] ?? DokuKirimAccountInquiryService::PROVIDER_CODE),
+                    message: $dokuResult['message'] ?? null
+                );
+            }
+
+            if (($dokuResult['supported'] ?? false) === true) {
+                return $this->inquiryEnvelope(
+                    supported: true,
+                    found: false,
+                    holderName: null,
+                    channelCode: $channelCode,
+                    accountNumber: $accountNumber,
+                    mode: $mode,
+                    isSimulated: false,
+                    provider: (string) ($dokuResult['provider'] ?? DokuKirimAccountInquiryService::PROVIDER_CODE),
+                    message: $dokuResult['message'] ?? null
+                );
+            }
+
+            $dokuFallbackMessage = $dokuResult['message'] ?? null;
+        }
+
+        // 3. Cek integrasi e-wallet khusus bila aktif (OVO SNAP / iPaymu DANA).
         if ($destType === 'ewallet') {
             $specialized = $this->trySpecializedEwalletInquiry($channelCode, $accountNumber, $mode);
             if ($specialized !== null) {
@@ -98,7 +134,7 @@ class DestinationService
             }
         }
 
-        // 3. Cocokkan nomor HP akun pengguna sendiri yang sedang login agar langsung terisi nama profil aslinya.
+        // 4. Cocokkan nomor HP akun pengguna sendiri yang sedang login agar langsung terisi nama profil aslinya.
         if ($destType === 'ewallet') {
             $userPhone = $this->normalizeInquiryNumber('ewallet', (string) ($user->phone ?? ''));
             if ($userPhone !== '' && $userPhone === $accountNumber && trim((string) $user->name) !== '') {
@@ -116,21 +152,28 @@ class DestinationService
             }
         }
 
-        // 4. Delegasikan ke provider payout aktif (tanpa menghasilkan nama simulasi acak).
+        // 5. Delegasikan ke provider payout aktif (tanpa menghasilkan nama simulasi acak).
         try {
             $provider = $this->providerResolver->resolvePayoutProvider();
             $result = $provider->inquireDestination($destType, $channelCode, $accountNumber);
 
+            $supported = (bool) ($result['supported'] ?? false);
+            $fallbackMsg = ! $supported && $dokuFallbackMessage !== null
+                ? $dokuFallbackMessage
+                : ($result['message'] ?? null);
+
             return $this->inquiryEnvelope(
-                supported: (bool) ($result['supported'] ?? false),
+                supported: $supported,
                 found: (bool) ($result['found'] ?? false),
                 holderName: $result['account_holder_name'] ?? null,
                 channelCode: $channelCode,
                 accountNumber: $accountNumber,
                 mode: $mode,
                 isSimulated: false,
-                provider: (string) ($result['provider'] ?? $provider->providerCode()),
-                message: $result['message'] ?? null
+                provider: ! $supported && $dokuFallbackMessage !== null
+                    ? DokuKirimAccountInquiryService::PROVIDER_CODE
+                    : (string) ($result['provider'] ?? $provider->providerCode()),
+                message: $fallbackMsg
             );
         } catch (RuntimeException $e) {
             $cleanMessage = str_starts_with($e->getMessage(), 'PROVIDER_DISABLED:')

@@ -609,7 +609,7 @@
             </div>
         </div>
 
-        {{-- KARTU 6: DOKU Jokul Gateway --}}
+        {{-- KARTU 6: DOKU Jokul & Kirim DOKU Gateway --}}
         <div class="card flex flex-col justify-between border-rose-200 {{ !($providerStates['doku'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
@@ -618,17 +618,22 @@
                             <span class="material-symbols-outlined text-[20px]">credit_card</span>
                         </div>
                         <div>
-                            <div class="card-title">DOKU Jokul Gateway (Money-In)</div>
-                            <div class="card-subtitle">Kandidat alternatif VA, QRIS &amp; Checkout HMAC-SHA256</div>
+                            <div class="card-title">DOKU Jokul &amp; Kirim DOKU (Inquiry)</div>
+                            <div class="card-subtitle">Checkout Money-In + Cek Nama Asli Bank &amp; E-Wallet (SNAP)</div>
                         </div>
                     </div>
                     <div class="flex flex-col items-end gap-1.5">
                         @include('admin.settings._provider_toggle', ['provider' => 'doku', 'enabled' => $providerStates['doku'] ?? true])
-                        <div class="flex items-center gap-1">
+                        <div class="flex flex-wrap justify-end items-center gap-1">
                             @if(!empty($doku['configured']))
                                 <span class="badge badge-green">Terkonfigurasi</span>
                             @else
                                 <span class="badge badge-amber">Belum Diisi</span>
+                            @endif
+                            @if(!empty($doku['kirim_configured']) && !empty($doku['kirim_inquiry_enabled']))
+                                <span class="badge badge-green">Cek Nama Aktif</span>
+                            @else
+                                <span class="badge badge-amber">Inquiry Butuh Private Key</span>
                             @endif
                             @if(!empty($doku['is_active_payment']))
                                 <span class="badge badge-indigo">AKTIF</span>
@@ -639,7 +644,7 @@
 
                 <div class="card-body space-y-3">
                     <p class="text-xs text-slate-500 leading-relaxed">
-                        Simpan Client-Id dan Secret Key DOKU Jokul langsung melalui Admin tanpa mengubah file <code class="font-mono">.env</code>. Secret Key dienkripsi sebelum disimpan.
+                        Kredensial <code class="font-mono">Client-Id</code> &amp; <code class="font-mono">Secret Key</code> dipakai untuk Jokul, sedangkan <code class="font-mono">Private Key RSA</code> dipakai untuk <strong>Kirim DOKU SNAP</strong> (cek nama asli pemilik rekening Bank &amp; E-Wallet). Secret Key &amp; Private Key terenkripsi di database.
                     </p>
 
                     <div class="rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 font-mono border border-slate-200">
@@ -689,13 +694,73 @@
                                    class="form-input font-mono text-xs">
                         </div>
 
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">SNAP Channel-Id</label>
+                                <input type="text"
+                                       name="doku_kirim_channel_id"
+                                       value="{{ $doku['kirim_channel_id'] ?? 'H2H' }}"
+                                       placeholder="H2H"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">No. HP Pengirim (Customer Number)</label>
+                                <input type="text"
+                                       name="doku_customer_number"
+                                       value="{{ $doku['kirim_customer_number'] ?? '6281234567890' }}"
+                                       placeholder="6281234567890"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <div class="rounded-md border border-slate-200 bg-slate-50/70 p-2.5 space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <label class="form-label text-xs mb-0">
+                                    DOKU Private Key RSA (Kirim DOKU SNAP)
+                                    @if(!empty($doku['has_private_key']))
+                                        <span class="text-[11px] font-normal text-emerald-700">(Tersimpan)</span>
+                                    @endif
+                                </label>
+                                <button type="button"
+                                        onclick="generateDokuKeypair('{{ route('admin.settings.doku.keygen') }}')"
+                                        class="text-[11px] font-semibold text-rose-700 hover:underline">
+                                    Generate RSA Keypair
+                                </button>
+                            </div>
+                            <textarea name="doku_private_key"
+                                      id="dokuPrivateKeyInput"
+                                      rows="2"
+                                      placeholder="{{ !empty($doku['has_private_key']) ? 'Biarkan kosong untuk mempertahankan Private Key tersimpan...' : '-----BEGIN PRIVATE KEY----- ...' }}"
+                                      class="form-input font-mono text-[10px] leading-tight"></textarea>
+                            <div id="dokuPublicKeyWrap" class="{{ empty($doku['public_key_derived']) ? 'hidden' : '' }} space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-medium text-slate-600">Public Key (tempel ke DOKU Dashboard &rarr; Edit Merchant Public Key):</span>
+                                    <button type="button"
+                                            onclick="navigator.clipboard?.writeText(document.getElementById('dokuPublicKeyOutput').value); this.textContent='Tersalin';"
+                                            class="text-[11px] font-semibold text-slate-700 hover:underline">Salin Public Key</button>
+                                </div>
+                                <textarea id="dokuPublicKeyOutput"
+                                          rows="2"
+                                          readonly
+                                          class="form-input font-mono text-[10px] leading-tight bg-white text-slate-600">{{ $doku['public_key_derived'] ?? '' }}</textarea>
+                            </div>
+                        </div>
+
                         <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-                            <label class="text-xs flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" name="activate_doku" value="1"
-                                       {{ ($doku['is_active_payment'] ?? false) ? 'checked' : '' }}
-                                       class="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
-                                <span class="text-slate-600">Jadikan DOKU provider Money-In aktif</span>
-                            </label>
+                            <div class="space-y-1">
+                                <label class="text-xs flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="doku_kirim_inquiry_enabled" value="1"
+                                           {{ ($doku['kirim_inquiry_enabled'] ?? true) ? 'checked' : '' }}
+                                           class="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                    <span class="text-slate-600">Aktifkan Cek Nama Asli Bank &amp; E-Wallet (Kirim DOKU)</span>
+                                </label>
+                                <label class="text-xs flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="activate_doku" value="1"
+                                           {{ ($doku['is_active_payment'] ?? false) ? 'checked' : '' }}
+                                           class="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                    <span class="text-slate-600">Jadikan DOKU provider Money-In aktif</span>
+                                </label>
+                            </div>
                             <label class="text-xs flex items-center gap-1.5 cursor-pointer text-red-600">
                                 <input type="checkbox" name="clear_doku_secrets" value="1" class="h-3.5 w-3.5 rounded border-slate-300">
                                 <span>Hapus Secret Tersimpan</span>
@@ -748,6 +813,41 @@ async function testPaymentGateway(name, endpoint, formId, resultBoxId) {
     } catch (err) {
         box.className = 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
         box.textContent = 'Gagal menguji koneksi: ' + err.message;
+    }
+}
+
+async function generateDokuKeypair(endpoint) {
+    const form = document.getElementById('dokuForm');
+    const privBox = document.getElementById('dokuPrivateKeyInput');
+    const pubBox = document.getElementById('dokuPublicKeyOutput');
+    const pubWrap = document.getElementById('dokuPublicKeyWrap');
+    const resultBox = document.getElementById('dokuTestResult');
+    if (!form || !privBox || !pubBox || !pubWrap) return;
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+            },
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+            throw new Error(json.message || ('HTTP ' + res.status));
+        }
+        privBox.value = json.private_key || '';
+        pubBox.value = json.public_key || '';
+        pubWrap.classList.remove('hidden');
+        if (resultBox) {
+            resultBox.className = 'rounded-md p-2.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200';
+            resultBox.textContent = 'Keypair RSA-2048 dibuat. Salin Public Key ke DOKU Dashboard (Edit Merchant Public Key), lalu klik Simpan DOKU.';
+        }
+    } catch (err) {
+        if (resultBox) {
+            resultBox.className = 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
+            resultBox.textContent = 'Gagal membuat keypair RSA: ' + err.message;
+        }
     }
 }
 </script>

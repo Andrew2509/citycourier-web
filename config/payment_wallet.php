@@ -117,6 +117,12 @@ return [
         'production_url' => env('DOKU_PRODUCTION_URL', 'https://api.doku.com'),
         'client_id' => env('DOKU_CLIENT_ID', ''),
         'secret_key' => env('DOKU_SECRET_KEY', ''),
+        'private_key' => env('DOKU_PRIVATE_KEY', ''),
+        'kirim_inquiry_enabled' => (bool) env('DOKU_KIRIM_INQUIRY_ENABLED', true),
+        'kirim_channel_id' => env('DOKU_KIRIM_CHANNEL_ID', 'H2H'),
+        'kirim_customer_number' => env('DOKU_KIRIM_CUSTOMER_NUMBER', '6281234567890'),
+        'kirim_token_path' => env('DOKU_KIRIM_TOKEN_PATH', '/authorization/v1/access-token/b2b'),
+        'kirim_inquiry_path' => env('DOKU_KIRIM_INQUIRY_PATH', '/snap/v1.1/emoney/bank-account-inquiry'),
         'timeout_seconds' => (int) env('DOKU_TIMEOUT_SECONDS', 30),
     ],
 

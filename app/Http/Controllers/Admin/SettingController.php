@@ -88,6 +88,12 @@ class SettingController extends Controller
             'production_url' => $dokuRaw['production_url'],
             'client_id' => $dokuRaw['client_id'],
             'configured' => $dokuRaw['configured'],
+            'has_private_key' => $dokuRaw['has_private_key'],
+            'public_key_derived' => $dokuRaw['public_key_derived'],
+            'kirim_inquiry_enabled' => $dokuRaw['kirim_inquiry_enabled'],
+            'kirim_channel_id' => $dokuRaw['kirim_channel_id'],
+            'kirim_customer_number' => $dokuRaw['kirim_customer_number'],
+            'kirim_configured' => $dokuRaw['kirim_configured'],
             'secret_masked' => $dokuRaw['secret_masked'],
             'source' => $dokuRaw['source'],
             'webhook_url' => url('/api/v1/webhooks/doku'),
@@ -985,6 +991,10 @@ class SettingController extends Controller
             'doku_production_url' => ['required', 'url', 'max:255'],
             'doku_client_id' => ['nullable', 'string', 'max:150'],
             'doku_secret_key' => ['nullable', 'string', 'min:8', 'max:255'],
+            'doku_private_key' => ['nullable', 'string', 'max:10000'],
+            'doku_kirim_channel_id' => ['nullable', 'string', 'max:30'],
+            'doku_customer_number' => ['nullable', 'string', 'max:25'],
+            'doku_kirim_inquiry_enabled' => ['nullable', 'boolean'],
             'clear_doku_secrets' => ['nullable', 'boolean'],
             'activate_doku' => ['nullable', 'boolean'],
         ]);
@@ -992,16 +1002,37 @@ class SettingController extends Controller
         Setting::set('doku_sandbox_url', rtrim($validated['doku_sandbox_url'], '/'), 'doku');
         Setting::set('doku_production_url', rtrim($validated['doku_production_url'], '/'), 'doku');
         Setting::set('doku_client_id', trim((string) ($validated['doku_client_id'] ?? '')), 'doku');
+        Setting::set('doku_kirim_inquiry_enabled', $request->boolean('doku_kirim_inquiry_enabled') ? '1' : '0', 'doku');
+        Setting::set(
+            'doku_kirim_channel_id',
+            trim((string) ($validated['doku_kirim_channel_id'] ?? '')) ?: 'H2H',
+            'doku'
+        );
+        if (array_key_exists('doku_customer_number', $validated) && trim((string) $validated['doku_customer_number']) !== '') {
+            Setting::set('doku_customer_number', trim((string) $validated['doku_customer_number']), 'doku');
+        }
 
         if ($request->boolean('clear_doku_secrets')) {
             Setting::set('doku_secret_key', '', 'doku');
-        } elseif ($request->filled('doku_secret_key')) {
-            $resolver->saveEncryptedSecret('doku_secret_key', $request->string('doku_secret_key')->toString(), 'doku');
+            Setting::set('doku_private_key', '', 'doku');
+        } else {
+            if ($request->filled('doku_secret_key')) {
+                $resolver->saveEncryptedSecret('doku_secret_key', $request->string('doku_secret_key')->toString(), 'doku');
+            }
+            if ($request->filled('doku_private_key')) {
+                $priv = trim($request->string('doku_private_key')->toString());
+                if (\App\Modules\Payment\Services\GatewayCredentialsResolver::derivePublicKeyPem($priv) === '') {
+                    return redirect()->back()->withErrors(['doku_private_key' => 'Format DOKU Private Key RSA PEM tidak valid.']);
+                }
+                $resolver->saveEncryptedSecret('doku_private_key', $priv, 'doku');
+            }
         }
 
         if ($request->boolean('activate_doku')) {
             Setting::set('payment_active_provider', 'doku', 'finance');
         }
+
+        app(\App\Modules\Payout\Services\DokuKirimAccountInquiryService::class)->forgetTokenCache();
 
         $doku = $resolver->doku();
         $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
@@ -1011,16 +1042,36 @@ class SettingController extends Controller
             $mode,
             Setting::get('payment_active_provider', 'xendit') === 'doku',
             true,
-            false,
+            $doku['kirim_configured'] ?? false,
             [
                 'sandbox_url' => $doku['sandbox_url'],
                 'production_url' => $doku['production_url'],
                 'client_id' => $doku['client_id'],
                 'has_secret_key' => $doku['configured'],
+                'kirim_inquiry_enabled' => $doku['kirim_inquiry_enabled'],
+                'has_private_key' => $doku['has_private_key'],
             ]
         );
 
-        return redirect()->back()->with('success', 'Konfigurasi API DOKU berhasil disimpan terenkripsi ke database.');
+        return redirect()->back()->with('success', 'Konfigurasi API DOKU & Kirim DOKU berhasil disimpan terenkripsi ke database.');
+    }
+
+    public function generateDokuRsaKeyPair()
+    {
+        try {
+            $pair = \App\Modules\Payout\Services\DokuKirimAccountInquiryService::generateRsaKeyPair();
+
+            return response()->json([
+                'success' => true,
+                'private_key' => $pair['private_key'],
+                'public_key' => $pair['public_key'],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function testDoku(Request $request, \App\Modules\Payment\Services\GatewayCredentialsResolver $resolver)
@@ -1028,11 +1079,13 @@ class SettingController extends Controller
         try {
             $saved = $resolver->doku();
             $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
-            $baseUrl = rtrim((string) ($mode === 'production'
-                ? ($request->input('doku_production_url') ?: $saved['production_url'])
-                : ($request->input('doku_sandbox_url') ?: $saved['sandbox_url'])), '/');
+            $sandboxUrl = rtrim((string) ($request->input('doku_sandbox_url') ?: $saved['sandbox_url']), '/');
+            $productionUrl = rtrim((string) ($request->input('doku_production_url') ?: $saved['production_url']), '/');
+            $baseUrl = $mode === 'production' ? $productionUrl : $sandboxUrl;
             $clientId = trim((string) ($request->input('doku_client_id') ?: $saved['client_id']));
             $secretKey = trim((string) ($request->input('doku_secret_key') ?: $saved['secret_key']));
+            $privateKey = trim((string) ($request->input('doku_private_key') ?: $saved['private_key']));
+            $channelId = trim((string) ($request->input('doku_kirim_channel_id') ?: $saved['kirim_channel_id'])) ?: 'H2H';
 
             if ($clientId === '' || $secretKey === '') {
                 return response()->json([
@@ -1058,11 +1111,32 @@ class SettingController extends Controller
 
             // 404 (order not found) proves authentication & signature succeeded! 401/403 means invalid Client-Id/Secret.
             if ($response->successful() || $response->status() === 404) {
-                $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, false, ['client_id' => $clientId], 'healthy');
+                $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, $privateKey !== '', ['client_id' => $clientId], 'healthy');
+                $msg = 'Koneksi & Signature HMAC DOKU Valid (' . strtoupper($mode) . ')!';
+
+                if ($privateKey !== '') {
+                    $kirimProbe = app(\App\Modules\Payout\Services\DokuKirimAccountInquiryService::class)->probeCredentials([
+                        'sandbox_url' => $sandboxUrl,
+                        'production_url' => $productionUrl,
+                        'client_id' => $clientId,
+                        'secret_key' => $secretKey,
+                        'private_key' => $privateKey,
+                        'channel_id' => $channelId,
+                    ]);
+                    if (! ($kirimProbe['success'] ?? false)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $msg . ' Namun Token B2B Kirim DOKU gagal: ' . ($kirimProbe['message'] ?? 'Periksa Private/Public Key & aktivasi Kirim DOKU.'),
+                        ], 400);
+                    }
+                    $msg .= ' ' . $kirimProbe['message'];
+                } else {
+                    $msg .= ' (Isi/Generate RSA Private Key bila ingin mengaktifkan cek nama Kirim DOKU SNAP.)';
+                }
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Koneksi & Signature HMAC DOKU Valid (' . strtoupper($mode) . ')!',
+                    'message' => $msg,
                 ]);
             }
 
