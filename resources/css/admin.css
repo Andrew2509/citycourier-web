@@ -518,7 +518,7 @@
 
     /* ── Sidebar collapse (desktop) ─────────────────────────────── */
     #sidebar {
-        @apply fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-slate-200 transition-[width,transform] duration-200 lg:translate-x-0;
+        @apply fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-slate-200 transition-[width,transform] duration-200;
         width: var(--spacing-sidebar-width);
     }
     #sidebar.is-collapsed {
@@ -598,5 +598,15 @@
     }
     html.cc-anim [data-cc-bar] > span {
         opacity: 0;
+    }
+}
+
+/* ── Sidebar tampil tetap di desktop ─────────────────────────────
+   Harus DI LUAR @layer: utility `-translate-x-full` ada di layer
+   utilities yang urutannya setelah components, sehingga mengalahkan
+   selektor ID sekalipun (cascade layer > specificity). */
+@media (min-width: 64rem) {
+    #sidebar {
+        translate: none;
     }
 }
