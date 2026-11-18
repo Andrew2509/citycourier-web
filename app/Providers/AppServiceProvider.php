@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Models\Courier;
 use App\Models\Order;
-use Illuminate\Support\Facades\View;
+use App\Models\Shipment;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (config('app.env') === 'production' && ! app()->runningInConsole()) {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+            URL::forceScheme('https');
         }
 
         // Share sidebar badge counts with all admin views
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
                 $view->with([
                     'unverified' => Courier::where('is_verified', false)->count(),
                     'pendingOrders' => Order::where('status', 'pending')->count(),
+                    'pendingShipments' => Shipment::where('status', 'pending')->count(),
                 ]);
             }
         });
@@ -41,9 +44,14 @@ class AppServiceProvider extends ServiceProvider
         // Custom Blade directive: @canPerm('pengiriman.view') ... @endcanPerm
         Blade::if('canPerm', function (string $permission) {
             $user = auth()->user();
-            if (!$user) return false;
+            if (! $user) {
+                return false;
+            }
             // Super-admin bypasses all permission checks
-            if ($user->hasRole('super-admin') || $user->role === 'admin') return true;
+            if ($user->hasRole('super-admin') || $user->role === 'admin') {
+                return true;
+            }
+
             return $user->checkPermissionTo($permission);
         });
     }

@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Shipment;
 use App\Models\User;
+use App\Services\TrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -28,10 +29,13 @@ class AdminController extends Controller
      */
     public function dashboard()
     {
+        $activeOrderStatuses = ['assigned', 'picking_up', 'picked_up', 'delivering'];
+        $today = today();
+
         $stats = [
             'total_orders' => Order::count(),
             'pending_orders' => Order::where('status', 'pending')->count(),
-            'delivering_orders' => Order::whereIn('status', ['assigned', 'picking_up', 'delivering'])->count(),
+            'delivering_orders' => Order::whereIn('status', $activeOrderStatuses)->count(),
             'completed_orders' => Order::where('status', 'delivered')->count(),
             'cancelled_orders' => Order::where('status', 'cancelled')->count(),
             'total_couriers' => Courier::count(),
@@ -39,9 +43,20 @@ class AdminController extends Controller
             'verified_couriers' => Courier::where('is_verified', true)->count(),
             'unverified_couriers' => Courier::where('is_verified', false)->count(),
             'total_revenue' => Order::where('status', 'delivered')->sum('price'),
+            'today_orders' => Order::whereDate('created_at', $today)->count(),
+            'active_shipments' => Order::whereIn('status', $activeOrderStatuses)->count(),
+            'today_completed_orders' => Order::where('status', 'delivered')
+                ->whereDate('delivered_at', $today)
+                ->count(),
+            'today_revenue' => Order::where('status', 'delivered')
+                ->whereDate('delivered_at', $today)
+                ->sum('price'),
+            'today_cancelled_orders' => Order::where('status', 'cancelled')
+                ->whereDate('cancelled_at', $today)
+                ->count(),
         ];
 
-        $recentOrders = Order::with('courier.user')
+        $recentOrders = Order::with(['courier.user', 'shipment'])
             ->latest()
             ->take(5)
             ->get();
@@ -50,6 +65,37 @@ class AdminController extends Controller
             ->where('is_active', true)
             ->take(5)
             ->get();
+
+        // Gunakan data pesanan nyata untuk tren tujuh hari terakhir. Pengelompokan
+        // dilakukan di Collection agar hasilnya konsisten di MySQL dan SQLite.
+        $activityStart = now()->subDays(6)->startOfDay();
+        $createdByDate = Order::query()
+            ->where('created_at', '>=', $activityStart)
+            ->get(['created_at'])
+            ->countBy(fn (Order $order) => $order->created_at?->toDateString());
+        $completedByDate = Order::query()
+            ->where('status', 'delivered')
+            ->whereNotNull('delivered_at')
+            ->where('delivered_at', '>=', $activityStart)
+            ->get(['delivered_at'])
+            ->countBy(fn (Order $order) => $order->delivered_at?->toDateString());
+
+        $dailyActivity = collect(range(0, 6))
+            ->map(function (int $offset) use ($createdByDate, $completedByDate) {
+                $date = now()->subDays(6 - $offset);
+                $key = $date->toDateString();
+
+                return [
+                    'label' => $date->isoFormat('ddd'),
+                    'date' => $date->isoFormat('D MMM'),
+                    'orders' => (int) ($createdByDate[$key] ?? 0),
+                    'completed' => (int) ($completedByDate[$key] ?? 0),
+                ];
+            })
+            ->all();
+        $activityMaximum = max(1, ...collect($dailyActivity)
+            ->flatMap(fn (array $day) => [$day['orders'], $day['completed']])
+            ->all());
 
         // Status koneksi DANA (metode pencairan aktif): mode provider, jumlah
         // akun terhubung, sesi binding berjalan, dan akun terhubung terbaru.
@@ -60,19 +106,19 @@ class AdminController extends Controller
             && Setting::get('dana_merchant_id');
 
         $danaStatus = [
-            'mode'                 => $danaMode,
-            'provider'             => ($danaUsesOfficial = $danaCredentialsComplete) ? 'official' : 'mock',
+            'mode' => $danaMode,
+            'provider' => ($danaUsesOfficial = $danaCredentialsComplete) ? 'official' : 'mock',
             'credentials_complete' => (bool) $danaCredentialsComplete,
-            'connected_count'      => DanaConnection::where('provider', 'dana')->where('status', 'connected')->count(),
-            'pending_count'        => DanaConnection::where('provider', 'dana')
+            'connected_count' => DanaConnection::where('provider', 'dana')->where('status', 'connected')->count(),
+            'pending_count' => DanaConnection::where('provider', 'dana')
                 ->where('status', 'pending')
                 ->where(function ($q) {
                     $q->whereNull('session_expires_at')->orWhere('session_expires_at', '>', now());
                 })
                 ->count(),
-            'total_couriers'       => Courier::count(),
-            'callback_url'         => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
-            'latest'               => DanaConnection::with('courier.user')
+            'total_couriers' => Courier::count(),
+            'callback_url' => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
+            'latest' => DanaConnection::with('courier.user')
                 ->where('provider', 'dana')
                 ->where('status', 'connected')
                 ->orderByDesc('linked_at')
@@ -80,7 +126,14 @@ class AdminController extends Controller
                 ->get(),
         ];
 
-        return view('admin.dashboard', compact('stats', 'recentOrders', 'activeCouriers', 'danaStatus'));
+        return view('admin.dashboard', compact(
+            'stats',
+            'recentOrders',
+            'activeCouriers',
+            'danaStatus',
+            'dailyActivity',
+            'activityMaximum'
+        ));
     }
 
     /**
@@ -113,11 +166,11 @@ class AdminController extends Controller
     {
         $couriers = Courier::with('user')->latest()->get();
 
-        $filename = 'data-kurir-' . now()->format('Y-m-d') . '.csv';
+        $filename = 'data-kurir-'.now()->format('Y-m-d').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return new StreamedResponse(function () use ($couriers) {
@@ -205,7 +258,7 @@ class AdminController extends Controller
         ]);
 
         $msg = "Kurir {$user->name} berhasil ditambahkan. "
-            . ($request->filled('password') ? '' : "Password awal: {$password}. ");
+            .($request->filled('password') ? '' : "Password awal: {$password}. ");
 
         return back()->with('success', rtrim($msg));
     }
@@ -216,7 +269,7 @@ class AdminController extends Controller
     public function updateCourier(Request $request, Courier $courier)
     {
         $data = $request->validate([
-            'email' => 'required|email|max:255|unique:users,email,' . $courier->user_id,
+            'email' => 'required|email|max:255|unique:users,email,'.$courier->user_id,
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'nik' => 'nullable|string|max:20',
@@ -291,8 +344,8 @@ class AdminController extends Controller
     public function toggleVerifyCourier(Courier $courier)
     {
         $courier->update([
-            'is_verified' => !$courier->is_verified,
-            'is_active' => !$courier->is_verified, // activate when verified
+            'is_verified' => ! $courier->is_verified,
+            'is_active' => ! $courier->is_verified, // activate when verified
         ]);
 
         return back()->with('success', 'Status kurir berhasil diperbarui.');
@@ -303,7 +356,8 @@ class AdminController extends Controller
      */
     public function toggleActiveCourier(Courier $courier)
     {
-        $courier->update(['is_active' => !$courier->is_active]);
+        $courier->update(['is_active' => ! $courier->is_active]);
+
         return back()->with('success', 'Status aktif kurir berhasil diperbarui.');
     }
 
@@ -324,8 +378,8 @@ class AdminController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhere('customer_name', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%");
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('customer_phone', 'like', "%{$search}%");
             });
         }
 
@@ -350,13 +404,14 @@ class AdminController extends Controller
     public function orderDetail(Order $order)
     {
         $order->load(['courier.user', 'lastCancelledCourier.user', 'rejections.courier.user', 'shipment']);
+
         return view('admin.order-detail', compact('order'));
     }
 
     /**
      * Keputusan Admin atas Permintaan Pembatalan Penugasan Kurir (Setujui / Tolak).
      */
-    public function handleCourierCancelDecision(Request $request, Order $order, \App\Services\TrackingService $trackingService)
+    public function handleCourierCancelDecision(Request $request, Order $order, TrackingService $trackingService)
     {
         $request->validate([
             'decision' => 'required|in:approve,reject',
@@ -365,23 +420,23 @@ class AdminController extends Controller
 
         $decision = $request->input('decision');
         $adminNotes = trim((string) $request->input('admin_notes', ''));
-        $shipment = \App\Models\Shipment::where('shipment_number', $order->order_number)->first();
+        $shipment = Shipment::where('shipment_number', $order->order_number)->first();
         $courier = $order->courier ?? $order->lastCancelledCourier;
         $courierName = $courier?->user?->name ?? $courier?->name ?? 'Kurir';
 
         if ($decision === 'approve') {
             $order->update([
-                'courier_id'              => null,
-                'status'                  => 'pending',
-                'pickup_started_at'       => null,
-                'courier_cancel_status'   => 'approved',
+                'courier_id' => null,
+                'status' => 'pending',
+                'pickup_started_at' => null,
+                'courier_cancel_status' => 'approved',
                 'courier_cancelled_by_id' => $courier?->id ?? $order->courier_cancelled_by_id,
             ]);
 
             if ($shipment) {
                 $shipment->update(['status' => 'confirmed']);
                 $desc = "Permintaan pembatalan penugasan kurir {$courierName} disetujui oleh Admin City Courier. Pesanan dikembalikan ke antrean penugasan."
-                    . ($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
+                    .($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
                 $trackingService->createStatusHistory($shipment, 'confirmed', $courier?->id, null, null, null, $desc);
             }
 
@@ -395,7 +450,7 @@ class AdminController extends Controller
 
         if ($shipment) {
             $desc = "Permintaan pembatalan penugasan kurir {$courierName} ditolak oleh Admin City Courier. Kurir tetap melanjutkan penugasan."
-                . ($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
+                .($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
             $trackingService->createStatusHistory($shipment, $shipment->status, $courier?->id, null, null, null, $desc);
         }
 
