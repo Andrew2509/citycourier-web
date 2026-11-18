@@ -448,11 +448,11 @@ export function convertIcons(root = document) {
         tmp.setAttribute("data-lucide", name);
         tmp.setAttribute("style", `width:${size}px;height:${size}px;`);
         // Pindahkan seluruh class utilitas (warna dsb) ke placeholder baru.
-        const cls = el
-            .getAttribute("class")
-            .replace(/\bcc-icon\b/g, "")
-            .trim();
-        if (cls) tmp.setAttribute("class", cls);
+        // Class `cc-icon` DIPERTAHANKAN pada SVG hasil konversi — banyak CSS
+        // turunan (.search-box > .cc-icon, .btn .cc-icon, dsb.) dan JS
+        // (querySelector('.cc-icon')) yang bergantung padanya.
+        const cls = (el.getAttribute("class") || "").trim();
+        tmp.setAttribute("class", cls);
         batch.push([el, tmp]);
     });
     batch.forEach(([el, tmp]) => el.replaceWith(tmp));
