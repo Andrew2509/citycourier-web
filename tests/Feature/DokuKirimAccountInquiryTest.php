@@ -316,6 +316,14 @@ class DokuKirimAccountInquiryTest extends TestCase
         $this->assertTrue($dokuCreds['kirim_inquiry_enabled']);
         $this->assertSame(trim($pub), $dokuCreds['public_key_derived']);
 
+        $providersHtml = $this->actingAs($admin)
+            ->get('/admin/providers')
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString('/admin/settings/doku/generate-keys', $providersHtml);
+        $this->assertStringContainsString('crypto.subtle', $providersHtml);
+        $this->assertStringContainsString(trim($pub), $providersHtml);
+
         // When DOKU is toggled OFF by Admin, Kirim DOKU Inquiry must halt immediately
         $this->actingAs($admin)
             ->postJson('/admin/providers/doku/toggle', ['enabled' => 0])

@@ -194,10 +194,28 @@ class DokuKirimAccountInquiryService
      */
     public static function generateRsaKeyPair(): array
     {
-        $res = @openssl_pkey_new([
+        $options = [
             'private_key_bits' => 2048,
             'private_key_type' => OPENSSL_KEYTYPE_RSA,
-        ]);
+        ];
+
+        $res = @openssl_pkey_new($options);
+        if ($res === false) {
+            foreach ([
+                getenv('OPENSSL_CONF') ?: null,
+                '/etc/ssl/openssl.cnf',
+                '/etc/pki/tls/openssl.cnf',
+                '/usr/local/ssl/openssl.cnf',
+                dirname(PHP_BINARY).'/extras/ssl/openssl.cnf',
+            ] as $cnf) {
+                if (is_string($cnf) && $cnf !== '' && @is_file($cnf)) {
+                    $res = @openssl_pkey_new($options + ['config' => $cnf]);
+                    if ($res !== false) {
+                        break;
+                    }
+                }
+            }
+        }
 
         if ($res === false) {
             throw new RuntimeException('OpenSSL tidak dapat membuat keypair RSA pada server ini.');

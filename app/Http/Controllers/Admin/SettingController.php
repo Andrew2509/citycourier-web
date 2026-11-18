@@ -211,11 +211,15 @@ class SettingController extends Controller
             // hasil, dan raw = isi body provider (bukan envelope HTTP).
             $httpCode = (int) ($result['http_code'] ?? 0);
             $errorMessage = strtolower((string) ($result['error'] ?? ''));
-            $rawBody = $result['raw'] ?? [];
-            $providerMsg = strtolower((string) ($rawBody['Message'] ?? $rawBody['message']
+            $rawBody = is_array($result['raw'] ?? null) ? $result['raw'] : [];
+            $rawMsg = $rawBody['Message'] ?? $rawBody['message']
                 ?? $rawBody['Msg'] ?? $rawBody['msg']
                 ?? $rawBody['error'] ?? $rawBody['Error']
-                ?? $rawBody['StatusDesc'] ?? ''));
+                ?? $rawBody['StatusDesc'] ?? '';
+            if (is_array($rawMsg)) {
+                $rawMsg = json_encode($rawMsg) ?: '';
+            }
+            $providerMsg = strtolower((string) $rawMsg);
 
             // Respons bisnis "transaksi tidak ditemukan" tetap membuktikan:
             // server dijangkau, tanda tangan diterima, hanya id dummy yang
@@ -274,7 +278,7 @@ class SettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
-            ], 500);
+            ], 400);
         }
     }
 
@@ -810,7 +814,7 @@ class SettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Koneksi Gagal (Exception): ' . $e->getMessage(),
-            ], 500);
+            ], 400);
         }
     }
 
@@ -1070,7 +1074,7 @@ class SettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 500);
+            ], 422);
         }
     }
 
@@ -1150,7 +1154,7 @@ class SettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghubungi DOKU: ' . $e->getMessage(),
-            ], 500);
+            ], 400);
         }
     }
 }

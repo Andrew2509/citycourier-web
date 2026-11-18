@@ -722,7 +722,7 @@
                                     @endif
                                 </label>
                                 <button type="button"
-                                        onclick="generateDokuKeypair('{{ route('admin.settings.doku.keygen') }}')"
+                                        onclick="generateDokuKeypair('{{ url('/admin/settings/doku/generate-keys') }}')"
                                         class="text-[11px] font-semibold text-rose-700 hover:underline">
                                     Generate RSA Keypair
                                 </button>
@@ -805,7 +805,13 @@ async function testPaymentGateway(name, endpoint, formId, resultBoxId) {
             },
             body: new FormData(form),
         });
-        const json = await res.json();
+        const text = await res.text();
+        let json = {};
+        try {
+            json = JSON.parse(text);
+        } catch (_) {
+            json = { success: false, message: 'Server merespons HTTP ' + res.status + ' (non-JSON).' };
+        }
         box.className = json.success
             ? 'rounded-md p-2.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200'
             : 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
@@ -816,7 +822,39 @@ async function testPaymentGateway(name, endpoint, formId, resultBoxId) {
     }
 }
 
-async function generateDokuKeypair(endpoint) {
+function arrayBufferToPem(buffer, label) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    const b64 = btoa(binary);
+    const wrapped = (b64.match(/.{1,64}/g) || []).join('\n');
+    return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----`;
+}
+
+async function generateRsaInBrowser() {
+    const pair = await window.crypto.subtle.generateKey(
+        {
+            name: 'RSASSA-PKCS1-v1_5',
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: 'SHA-256',
+        },
+        true,
+        ['sign', 'verify']
+    );
+    const [privBuf, pubBuf] = await Promise.all([
+        window.crypto.subtle.exportKey('pkcs8', pair.privateKey),
+        window.crypto.subtle.exportKey('spki', pair.publicKey),
+    ]);
+    return {
+        private_key: arrayBufferToPem(privBuf, 'PRIVATE KEY'),
+        public_key: arrayBufferToPem(pubBuf, 'PUBLIC KEY'),
+    };
+}
+
+async function generateDokuKeypair(fallbackEndpoint) {
     const form = document.getElementById('dokuForm');
     const privBox = document.getElementById('dokuPrivateKeyInput');
     const pubBox = document.getElementById('dokuPublicKeyOutput');
@@ -825,19 +863,25 @@ async function generateDokuKeypair(endpoint) {
     if (!form || !privBox || !pubBox || !pubWrap) return;
 
     try {
-        const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
-            },
-        });
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-            throw new Error(json.message || ('HTTP ' + res.status));
+        let keys;
+        if (window.crypto && window.crypto.subtle && window.isSecureContext) {
+            keys = await generateRsaInBrowser();
+        } else {
+            const res = await fetch(fallbackEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+                },
+            });
+            const json = await res.json();
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || ('HTTP ' + res.status));
+            }
+            keys = json;
         }
-        privBox.value = json.private_key || '';
-        pubBox.value = json.public_key || '';
+        privBox.value = keys.private_key || '';
+        pubBox.value = keys.public_key || '';
         pubWrap.classList.remove('hidden');
         if (resultBox) {
             resultBox.className = 'rounded-md p-2.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200';
