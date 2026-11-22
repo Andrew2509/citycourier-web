@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\Api\DanaController;
 use App\Http\Controllers\Api\WithdrawalController;
-use App\Http\Controllers\Api\iPaymuWebhookController;
 
 // Penanda versi deploy — publik & ringan (tanpa database).
 Route::get('/health', [HealthController::class, 'index'])->name('api.health');
@@ -194,37 +193,17 @@ Route::prefix('courier/ovo')->group(function () {
 
 Route::get('/settings', [App\Http\Controllers\Api\SettingController::class, 'index']);
 
-/**
- * Webhook iPaymu (publik).
- * Menerima callback status disbursement dari iPaymu. Signature divalidasi
- * (IPAYMU_WEBHOOK_SECRET) atau diverifikasi ulang lewat inquiry resmi
- * sebelum status penarikan berubah — lihat iPaymuWebhookController.
- */
-Route::post('/ipaymu/webhook', [iPaymuWebhookController::class, 'handle'])->name('ipaymu.webhook');
-Route::post('/ipaymu/callback', [iPaymuWebhookController::class, 'handle'])->name('ipaymu.callback');
-
-/**
- * Halaman kembali iPaymu Redirect Payment (publik, hanya informasi).
- * Status yang mengikat tetap dari webhook ber-signature + inquiry.
- */
-Route::get('/ipaymu/return', [\App\Http\Controllers\Api\IpaymuReturnController::class, 'completed'])
-    ->name('ipaymu.return');
-Route::get('/ipaymu/cancel', [\App\Http\Controllers\Api\IpaymuReturnController::class, 'cancelled'])
-    ->name('ipaymu.cancel');
-
 /*
 |--------------------------------------------------------------------------
 | Payment & Wallet System v1 API
 |--------------------------------------------------------------------------
 */
 Route::prefix('v1')->group(function () {
-    // Public signed gateway webhooks
+    // Public signed Xendit gateway webhooks (DOKU removed)
     Route::post('/webhooks/xendit/payment', [\App\Http\Controllers\Api\V1\WebhookV1Controller::class, 'xenditPayment'])
         ->name('api.v1.webhooks.xendit.payment');
     Route::post('/webhooks/xendit/payout', [\App\Http\Controllers\Api\V1\WebhookV1Controller::class, 'xenditPayout'])
         ->name('api.v1.webhooks.xendit.payout');
-    Route::post('/webhooks/doku', [\App\Http\Controllers\Api\V1\WebhookV1Controller::class, 'doku'])
-        ->name('api.v1.webhooks.doku');
 
     Route::middleware('auth:sanctum')->group(function () {
         // Customer Wallet & Payment APIs

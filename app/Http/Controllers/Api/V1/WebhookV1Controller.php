@@ -3,65 +3,62 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Payment\Services\WebhookProcessorService;
+use App\Modules\Payment\Services\WebhookHandler;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class WebhookV1Controller extends Controller
 {
     public function __construct(
-        private readonly WebhookProcessorService $webhookProcessor
+        private readonly WebhookHandler $webhookHandler
     ) {}
 
     public function xenditPayment(Request $request): JsonResponse
     {
-        return $this->handleWebhook($request, 'xendit', 'payment');
+        $result = $this->webhookHandler->handleXenditPayment(
+            $request->headers->all(),
+            (string) $request->getContent(),
+            $request->all()
+        );
+
+        return $this->toJsonResponse($result, 'payment');
     }
 
     public function xenditPayout(Request $request): JsonResponse
     {
-        return $this->handleWebhook($request, 'xendit', 'payout');
-    }
-
-    public function doku(Request $request): JsonResponse
-    {
-        return $this->handleWebhook($request, 'doku', 'payment');
-    }
-
-    private function handleWebhook(Request $request, string $provider, string $category): JsonResponse
-    {
-        $rawBody = $request->getContent();
-        $payload = $request->all();
-        if (empty($payload) && $rawBody !== '') {
-            $decoded = json_decode($rawBody, true);
-            if (is_array($decoded)) {
-                $payload = $decoded;
-            }
-        }
-
-        $result = $this->webhookProcessor->receiveWebhook(
-            $provider,
-            $category,
+        $result = $this->webhookHandler->handleXenditPayout(
             $request->headers->all(),
-            $rawBody,
-            $payload
+            (string) $request->getContent(),
+            $request->all()
         );
 
+        return $this->toJsonResponse($result, 'payout');
+    }
+
+    /**
+     * @param  array{webhook: mixed, duplicate: bool, signature_valid: bool}  $result
+     */
+    private function toJsonResponse(array $result, string $category): JsonResponse
+    {
         if (! $result['signature_valid']) {
             return response()->json([
                 'success' => false,
                 'error_code' => 'INVALID_WEBHOOK_SIGNATURE',
-                'message' => 'Webhook signature verification failed.',
+                'message' => 'Signature/token webhook Xendit tidak valid.',
             ], 401);
         }
 
         return response()->json([
             'success' => true,
-            'message' => $result['duplicate'] ? 'Duplicate webhook ignored cleanly.' : 'Webhook received and processed.',
+            'message' => $result['duplicate']
+                ? 'Webhook duplicate ignored idempotently.'
+                : 'Webhook processed.',
             'data' => [
                 'webhook_id' => $result['webhook']->id,
+                'provider' => 'xendit',
+                'category' => $category,
                 'duplicate' => $result['duplicate'],
-                'status' => $result['webhook']->fresh()->processing_status,
+                'status' => $result['webhook']->processing_status,
             ],
         ]);
     }

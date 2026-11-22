@@ -276,8 +276,8 @@ class DanaWithdrawalTest extends TestCase
             'data'    => [
                 'amount'      => 50000,
                 'status'      => 'processing',
-                'provider'    => 'DANA',
-                'destination' => '6281****7890', // fallback nomor terdaftar kurir, disamarkan
+                'provider'    => 'XENDIT',
+                'destination' => '0812****7890', // fallback nomor terdaftar kurir, disamarkan
             ],
         ]);
 
@@ -293,11 +293,11 @@ class DanaWithdrawalTest extends TestCase
         $this->assertEquals(50000, (float) $wallet->available_balance);
         $this->assertEquals(0, (float) $wallet->pending_balance);
 
-        // Tercatat di riwayat penarikan dengan provider DANA
+        // Tercatat di riwayat penarikan dengan provider Xendit
         $this->assertDatabaseHas('withdrawals', [
             'courier_id'      => $courier->id,
             'idempotency_key' => 'IDEMP-WD-001',
-            'provider'        => 'dana',
+            'provider'        => 'xendit',
             'status'          => 'success',
         ]);
     }
@@ -659,11 +659,9 @@ class DanaWithdrawalTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.available', false)
-            ->assertJsonPath('data.destination', '6281234567890')
+            ->assertJsonPath('data.verification_status', 'unverified')
+            ->assertJsonPath('data.destination', '081234567890')
             ->assertJsonPath('data.account_name', null);
-
-        // Status jujur: payout default tidak aktif → tidak pernah memanggil API.
-        $this->assertContains($response->json('data.status'), ['payout_inactive', 'not_configured', 'endpoint_not_set']);
     }
 
     /**

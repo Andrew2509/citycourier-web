@@ -133,15 +133,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/ovo', [\App\Http\Controllers\Admin\SettingController::class, 'updateOvo'])->name('settings.ovo.update');
         Route::post('/settings/ovo/test', [\App\Http\Controllers\Admin\SettingController::class, 'testOvo'])->name('settings.ovo.test');
 
-        Route::get('/settings/ipaymu', [\App\Http\Controllers\Admin\SettingController::class, 'ipaymu'])->name('settings.ipaymu');
-        Route::post('/settings/ipaymu', [\App\Http\Controllers\Admin\SettingController::class, 'updateIpaymu'])->name('settings.ipaymu.update');
-        Route::post('/settings/ipaymu/test', [\App\Http\Controllers\Admin\SettingController::class, 'testIpaymu'])->name('settings.ipaymu.test');
-
         Route::post('/settings/xendit', [\App\Http\Controllers\Admin\SettingController::class, 'updateXendit'])->name('settings.xendit.update');
         Route::post('/settings/xendit/test', [\App\Http\Controllers\Admin\SettingController::class, 'testXendit'])->name('settings.xendit.test');
-        Route::post('/settings/doku', [\App\Http\Controllers\Admin\SettingController::class, 'updateDoku'])->name('settings.doku.update');
-        Route::post('/settings/doku/test', [\App\Http\Controllers\Admin\SettingController::class, 'testDoku'])->name('settings.doku.test');
-        Route::post('/settings/doku/generate-keys', [\App\Http\Controllers\Admin\SettingController::class, 'generateDokuRsaKeyPair'])->name('settings.doku.keygen');
 
 
         // Drop Points

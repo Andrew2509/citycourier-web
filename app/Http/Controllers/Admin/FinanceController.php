@@ -271,7 +271,6 @@ class FinanceController extends Controller
             'customer_withdrawal_enabled' => $this->providerResolver->isCustomerWithdrawalEnabled(),
             'regulatory_approved' => (bool) config('payment_wallet.customer_withdrawal_regulatory_approved', false),
             'xendit_configured' => app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->xendit()['configured'],
-            'doku_configured' => app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->doku()['configured'],
         ];
 
         return view('admin.finance.settings', compact('config'));
@@ -281,7 +280,7 @@ class FinanceController extends Controller
     {
         $validated = $request->validate([
             'payment_wallet_mode' => ['required', 'in:demo,sandbox,production'],
-            'payment_active_provider' => ['required', 'in:mock,xendit,doku'],
+            'payment_active_provider' => ['required', 'in:mock,xendit'],
             'payout_active_provider' => ['required', 'in:mock,xendit'],
             'courier_commission_rate_percent' => ['required', 'numeric', 'min:0', 'max:50'],
             'courier_settlement_waiting_minutes' => ['required', 'integer', 'min:0', 'max:43200'],

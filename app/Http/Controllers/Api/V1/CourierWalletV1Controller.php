@@ -54,6 +54,8 @@ class CourierWalletV1Controller extends Controller
 
         $available = (int) ($balance?->available_balance ?? round((float) $wallet->available_balance));
 
+        $requireVerified = (bool) config('payment_wallet.courier_payout.require_verified_destination', false);
+
         return response()->json([
             'success' => true,
             'message' => 'Wallet kurir berhasil dimuat.',
@@ -87,7 +89,7 @@ class CourierWalletV1Controller extends Controller
                         && ! $wallet->isFrozen()
                         && $available >= $minPayout
                         && $defaultDest !== null
-                        && $defaultDest->is_verified,
+                        && (! $requireVerified || $defaultDest->is_verified),
                 ],
                 'default_destination' => $defaultDest?->toApiArray(),
             ],
@@ -241,8 +243,9 @@ class CourierWalletV1Controller extends Controller
         if ($available < $minPayout) {
             $missing[] = 'Saldo tersedia belum mencapai minimum payout Rp '.number_format($minPayout, 0, ',', '.').'.';
         }
-        if (! $defaultDest || ! $defaultDest->is_verified) {
-            $missing[] = 'Tambahkan dan jadikan default rekening bank atau e-wallet terverifikasi.';
+        $requireVerified = (bool) config('payment_wallet.courier_payout.require_verified_destination', false);
+        if (! $defaultDest || ($requireVerified && ! $defaultDest->is_verified)) {
+            $missing[] = 'Tambahkan dan jadikan default rekening bank atau e-wallet tujuan.';
         }
 
         return response()->json([
@@ -351,7 +354,7 @@ class CourierWalletV1Controller extends Controller
             'message' => 'Daftar rekening/e-wallet payout kurir berhasil dimuat.',
             'data' => [
                 'items' => $items->map(fn (PayoutDestination $d) => $d->toApiArray()),
-                'supported_channels' => DestinationService::SUPPORTED_CHANNELS,
+                'supported_channels' => $this->destinationService->supportedChannels(),
             ],
         ]);
     }

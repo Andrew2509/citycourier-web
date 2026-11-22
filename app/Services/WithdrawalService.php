@@ -2,95 +2,105 @@
 
 namespace App\Services;
 
-use App\Models\Wallet;
+use App\Models\Courier;
+use App\Models\DanaConnection;
+use App\Models\WalletTransaction;
 use App\Models\Withdrawal;
+use App\Modules\Payment\Providers\ProviderResolver;
+use App\Modules\Payout\Services\XenditPayoutService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
- * Withdrawal Service Layer.
- * Handles withdrawal lifecycle: validate -> reserve -> disburse -> confirm/release.
- * Payout channel: iPaymu disbursement ke nomor HP DANA (tanpa binding akun).
+ * Legacy-compatible Courier Withdrawal Service Layer (/api/courier/withdrawals).
  *
- * Prinsip keamanan dana:
- * - SISI PENAHANAN (reserve) dilakukan di transaksi DB FIRST dengan row lock
- *   (available_balance -> pending_balance).
- * - PEMANGGILAN HTTP ke iPaymu dilakukan SETELAH transaksi DB commit,
- *   tidak sambil memegang row lock.
- * - Saldo tidak pernah dipotong permanen sampai ada HASIL RESMI iPaymu
- *   (webhook terverifikasi / inquiry) atau jawaban sinkron yang tegas.
- * - Semua transisi status memakai idempotent guard (isTerminal) dan
- *   mencatat riwayat perubahan status pada kolom status_history.
+ * Seluruh pencairan dana aktif disalurkan melalui Xendit Payouts v2 (bank & e-wallet).
+ * DOKU & iPaymu tidak lagi digunakan; histori transaksi lama pada tabel `withdrawals`
+ * tetap dipertahankan dan dapat dibaca secara aman.
  */
 class WithdrawalService
 {
-    private iPaymuService $ipaymuService;
     private WalletService $walletService;
+    private ProviderResolver $providerResolver;
+    private XenditPayoutService $xenditPayoutService;
 
-    private const MIN_WITHDRAWAL        = 10000;
-    private const MAX_WITHDRAWAL        = 5000000;
-    private const DAILY_LIMIT           = 5000000;
-    private const ADMIN_FEE_DEFAULT     = 2500;
-    private const RATE_LIMIT_REQUESTS   = 5;
+    private const MIN_WITHDRAWAL = 10000;
+    private const MAX_WITHDRAWAL = 5000000;
+    private const DAILY_LIMIT = 5000000;
+    private const ADMIN_FEE_DEFAULT = 2500;
+    private const RATE_LIMIT_REQUESTS = 5;
     private const RATE_LIMIT_WINDOW_MIN = 10;
 
     public function __construct(
-        ?iPaymuService $ipaymuService = null,
-        ?WalletService $walletService = null
+        ?WalletService $walletService = null,
+        ?ProviderResolver $providerResolver = null,
+        ?XenditPayoutService $xenditPayoutService = null
     ) {
-        $this->ipaymuService   = $ipaymuService ?? new iPaymuService();
         $this->walletService = $walletService ?? new WalletService();
+        $this->providerResolver = $providerResolver ?? app(ProviderResolver::class);
+        $this->xenditPayoutService = $xenditPayoutService ?? app(XenditPayoutService::class);
     }
 
-    /**
-     * Get withdrawal fee from configuration.
-     */
     public function getFeeConfig(): array
     {
         return [
-            'admin_fee'   => config('withdrawals.admin_fee', self::ADMIN_FEE_DEFAULT),
-            'minimum'     => config('withdrawals.minimum', self::MIN_WITHDRAWAL),
-            'maximum'     => config('withdrawals.maximum', self::MAX_WITHDRAWAL),
+            'admin_fee' => config('withdrawals.admin_fee', self::ADMIN_FEE_DEFAULT),
+            'minimum' => config('withdrawals.minimum', self::MIN_WITHDRAWAL),
+            'maximum' => config('withdrawals.maximum', self::MAX_WITHDRAWAL),
             'daily_limit' => config('withdrawals.daily_limit', self::DAILY_LIMIT),
         ];
     }
 
     /**
-     * Create and process a withdrawal request (iPaymu DANA payout, no binding).
+     * Create and process a withdrawal request via Xendit Payouts (bank atau e-wallet).
      *
-     * fLifecycle:
-     *  A. Transaksi DB: idempotency + validasi + buat baris penarikan + reservasi saldo.
-     *  B. Luar transaksi DB: panggil iPaymu disbursement.
-     *  C. Transaksi DB singkat: finalisasi status berdasarkan hasil iPaymu.
-     *
-     * @return array{success: bool, withdrawal: ?Withdrawal, error: ?string, idempotent?: bool}
+     * @return array{success: bool, withdrawal: ?Withdrawal, error: ?string, error_code?: ?string, idempotent?: bool}
      */
-    public function create(int $courierId, float $amount, string $idempotencyKey, ?string $destinationPhone = null): array
-    {
-        // ── Fase A: reservasi atomik + idempotency (transaksi DB) ──
-        [$result, $needsDisburse] = DB::transaction(function () use ($courierId, $amount, $idempotencyKey, $destinationPhone) {
-            // 1. Idempotency: permintaan ulang dengan key sama mengembalikan transaksi lama.
+    public function create(
+        int $courierId,
+        float $amount,
+        string $idempotencyKey,
+        ?string $destinationAccount = null,
+        ?string $channelCode = null,
+        ?string $accountHolderName = null,
+        ?string $destinationType = null
+    ): array {
+        // Fase A: validasi + idempotency + reservasi saldo atomik
+        [$result, $needsDisburse] = DB::transaction(function () use (
+            $courierId,
+            $amount,
+            $idempotencyKey,
+            $destinationAccount,
+            $channelCode,
+            $accountHolderName,
+            $destinationType
+        ) {
             $existing = Withdrawal::where('courier_id', $courierId)
                 ->where('idempotency_key', $idempotencyKey)
                 ->first();
 
             if ($existing) {
                 return [[
-                    'success'    => true,
+                    'success' => true,
                     'withdrawal' => $existing,
-                    'error'      => null,
+                    'error' => null,
                     'idempotent' => true,
                 ], false];
             }
 
-            // 2. Validasi lengkap (nominal, nomor, wallet, limit, rate limit, provider aktif).
-            $validation = $this->validate($courierId, $amount, $destinationPhone);
-            if (!$validation['valid']) {
+            $validation = $this->validate(
+                $courierId,
+                $amount,
+                $destinationAccount,
+                $channelCode,
+                $destinationType
+            );
+            if (! $validation['valid']) {
                 return [[
-                    'success'    => false,
+                    'success' => false,
                     'withdrawal' => null,
-                    'error'      => $validation['error'],
+                    'error' => $validation['error'],
                     'error_code' => $validation['error_code'] ?? null,
                 ], false];
             }
@@ -99,36 +109,36 @@ class WithdrawalService
             $feeConfig = $validation['fee_config'];
             $fee = (float) $feeConfig['admin_fee'];
             $netAmount = $amount - $fee;
-            $provider = 'dana'; // payout iPaymu selalu dikirim ke DANA
-            $normalizedPhone = $validation['phone'];
+            $resolvedChannel = $validation['channel_code'];
+            $resolvedAccount = $validation['account_number'];
+            $resolvedHolder = trim((string) $accountHolderName) ?: $this->resolveHolderFallback($courierId);
 
-            // 3. Buat baris penarikan (status reserved = dana ditahan).
             $withdrawal = Withdrawal::create([
-                'courier_id'         => $courierId,
-                'wallet_id'          => $wallet->id,
-                'dana_connection_id' => null, // tanpa binding: nomor HP diketik per transaksi
-                'provider'           => $provider,
-                'bank_name'          => strtoupper($provider),
-                'account_number'     => $normalizedPhone,
-                'account_name'       => 'Kurir',
-                'amount'             => $amount,
-                'fee'                => $fee,
-                'net_amount'         => $netAmount,
-                'status'             => 'reserved',
-                'idempotency_key'    => $idempotencyKey,
-                'status_history'     => $this->buildHistoryEntry('reserved', 'Permintaan penarikan dibuat, saldo ditahan.'),
+                'courier_id' => $courierId,
+                'wallet_id' => $wallet->id,
+                'dana_connection_id' => null,
+                'provider' => 'xendit',
+                'bank_name' => $resolvedChannel,
+                'account_number' => $resolvedAccount,
+                'account_name' => $resolvedHolder,
+                'amount' => $amount,
+                'fee' => $fee,
+                'net_amount' => $netAmount,
+                'status' => 'reserved',
+                'idempotency_key' => $idempotencyKey,
+                'status_history' => $this->buildHistoryEntry('reserved', 'Permintaan penarikan dibuat, saldo ditahan untuk payout Xendit.'),
             ]);
 
-            // 4. Reservasi atomik (available -> pending, dengan baris lock).
             try {
-                $holdDesc = 'Penarikan ' . strtoupper($provider) . ' - dana ditahan via iPaymu';
+                $holdDesc = "Penarikan {$resolvedChannel} via Xendit - dana ditahan";
                 $this->walletService->reserve($courierId, $amount, $idempotencyKey, $holdDesc);
             } catch (RuntimeException $e) {
                 $withdrawal->update([
-                    'status'         => 'failed',
+                    'status' => 'failed',
                     'failure_reason' => $e->getMessage(),
                     'status_history' => $this->appendHistory($withdrawal->status_history, 'failed', $e->getMessage()),
                 ]);
+
                 return [
                     ['success' => false, 'withdrawal' => $withdrawal, 'error' => $e->getMessage()],
                     false,
@@ -136,166 +146,142 @@ class WithdrawalService
             }
 
             return [[
-                'success'    => true,
+                'success' => true,
                 'withdrawal' => $withdrawal,
-                'error'      => null,
+                'error' => null,
                 'validation' => $validation,
             ], true];
         });
 
-        if (!$needsDisburse) {
+        if (! $needsDisburse) {
             return $result;
         }
 
-        // ── Fase B: payout ke iPaymu (JANGAN di dalam transaksi DB) ──
-        if (iPaymuService::isPayoutActive()) {
-            Log::info('[WithdrawalService] Sending payout to iPaymu', [
-                'courier_id' => $courierId,
-                'amount'     => $amount,
-                'ref'        => $idempotencyKey,
+        // Fase B: panggil Xendit Payouts (atau Mock saat demo / sandbox tanpa secret key) di luar lock DB
+        /** @var Withdrawal $withdrawalModel */
+        $withdrawalModel = $result['withdrawal'];
+
+        try {
+            $payoutProvider = $this->providerResolver->resolvePayoutProvider('xendit');
+            $payoutRes = $payoutProvider->createPayout([
+                'reference' => $idempotencyKey,
+                'idempotency_key' => $idempotencyKey,
+                'channel_code' => $withdrawalModel->bank_name ?: 'ID_DANA',
+                'destination_type' => $result['validation']['destination_type'],
+                'account_number' => $withdrawalModel->account_number,
+                'account_holder_name' => $withdrawalModel->account_name ?: 'Kurir City Courier',
+                'amount' => (int) round((float) $withdrawalModel->net_amount),
+                'description' => "City Courier Courier Withdrawal {$idempotencyKey}",
             ]);
 
-            $disbursementResult = $this->ipaymuService->disburse(
-                $result['validation']['phone'],
-                $amount,
-                $idempotencyKey,
-            );
-        } else {
-            // Payout belum diaktifkan (kredensial/aktivasi merchant iPaymu belum ada).
-            // TIDAK ADA simulasi sukses: saldo tetap DITAHAN, status 'processing',
-            // finalisasi akan ditentukan lewat verifikasi manual admin / webhook /
-            // inquiry iPaymu setelah layanan aktif.
+            $rawStatus = strtolower((string) ($payoutRes['status'] ?? 'processing'));
+            $isSimulatedMock = $payoutProvider->providerCode() === 'mock' || ! empty($payoutRes['is_simulated']);
+            $mappedStatus = match (true) {
+                in_array($rawStatus, ['failed', 'reversed'], true) => 'failed',
+                $rawStatus === 'completed' && ! $isSimulatedMock => 'success',
+                default => 'processing',
+            };
+
             $disbursementResult = [
-                'success'        => true,
-                'transaction_id' => null,
-                'status'         => 'processing',
-                'verdict'        => 'known',
-                'error'          => null,
-                'raw'            => null,
-                'note'           => 'Payout iPaymu belum diaktifkan untuk merchant ini — '
-                    . 'penarikan menunggu verifikasi final (admin/inquiry), saldo ditahan.',
+                'status' => $mappedStatus,
+                'transaction_id' => $payoutRes['provider_reference'] ?? null,
+                'error' => $payoutRes['failure_reason'] ?? null,
+                'note' => 'Payout dikirim ke '.$payoutProvider->providerCode().'.',
             ];
+        } catch (\Throwable $e) {
+            $isTimeout = str_contains(strtolower($e->getMessage()), 'timed out')
+                || str_contains(strtolower($e->getMessage()), 'timeout')
+                || str_contains(strtolower($e->getMessage()), 'curl error 28');
 
-            Log::warning('[WithdrawalService] Payout iPaymu inactive - withdrawal stays held pending verification', [
-                'courier_id' => $courierId,
-                'ref'        => $idempotencyKey,
-            ]);
+            if ($isTimeout) {
+                $disbursementResult = [
+                    'status' => 'processing',
+                    'transaction_id' => null,
+                    'error' => null,
+                    'note' => 'Timeout menghubungi Xendit — saldo tetap ditahan sampai verifikasi status selesai.',
+                ];
+            } else {
+                $disbursementResult = [
+                    'status' => 'failed',
+                    'transaction_id' => null,
+                    'error' => $e->getMessage(),
+                ];
+            }
         }
 
-        // ── Fase C: finalisasi status berdasarkan hasil resmi iPaymu ──
+        // Fase C: finalisasi atau tahan / kembalikan saldo jika gagal
         $final = $this->applyDisbursementResult($courierId, $idempotencyKey, $disbursementResult);
 
         return [
-            'success'    => true,
-            'withdrawal' => $final ?? $result['withdrawal'],
-            'error'      => null,
+            'success' => true,
+            'withdrawal' => $final ?? $withdrawalModel,
+            'error' => null,
         ];
     }
 
-    /**
-     * Apply the sync disbursement result after Phase A reservation committed.
-     * Called by the controller right after create() returns (Phase C).
-     */
     public function applyDisbursementResult(int $courierId, string $idempotencyKey, array $disbursementResult): ?Withdrawal
     {
         $withdrawal = $this->getWithdrawalByKey($courierId, $idempotencyKey);
-        if (!$withdrawal || $withdrawal->isTerminal()) {
+        if (! $withdrawal || $withdrawal->isTerminal()) {
             return $withdrawal;
         }
 
         $status = $disbursementResult['status'] ?? 'unknown';
-        $verdict = $disbursementResult['verdict'] ?? 'unknown';
         $txId = $disbursementResult['transaction_id'] ?? null;
-        $fee = (float) $withdrawal->fee;
-        $provider = strtolower((string) ($withdrawal->provider ?? 'dana'));
+        $channel = strtoupper((string) ($withdrawal->bank_name ?? 'ID_DANA'));
 
-        return DB::transaction(function () use ($withdrawal, $status, $verdict, $txId, $courierId, $fee, $idempotencyKey, $provider) {
+        return DB::transaction(function () use ($withdrawal, $status, $disbursementResult, $txId, $courierId, $idempotencyKey, $channel) {
             $withdrawal = Withdrawal::where('id', $withdrawal->id)->lockForUpdate()->first();
 
-            if ($withdrawal->isTerminal()) {
-                return $withdrawal->fresh(); // webhook bisa saja sudah lebih dulu
+            if (! $withdrawal || $withdrawal->isTerminal()) {
+                return $withdrawal?->fresh();
             }
 
             $amount = (float) $withdrawal->amount;
 
-            if ($status === 'success' && !empty($txId)) {
-                // Ada HASIL RESMI iPaymu (sync success + transaction id).
+            if ($status === 'success' && ! empty($txId)) {
                 $withdrawal->update([
-                    'status'             => 'success',
+                    'status' => 'success',
                     'provider_reference' => $txId,
-                    'processed_at'       => now(),
-                    'status_history'     => $this->appendHistory($withdrawal->status_history, 'success', 'Dana terkirim via iPaymu (konfirmasi sinkron).'),
+                    'processed_at' => now(),
+                    'status_history' => $this->appendHistory($withdrawal->status_history, 'success', 'Dana terkirim melalui Xendit.'),
                 ]);
 
                 $this->walletService->confirmReservation($courierId, $amount, $idempotencyKey);
-                $this->ledgerWithdrawalCompleted($withdrawal, 'Penarikan ke DANA via iPaymu');
-
-                Log::info('[WithdrawalService] Withdrawal succeeded via iPaymu (sync)', [
-                    'courier_id' => $courierId, 'amount' => $amount, 'ref' => $idempotencyKey, 'tx' => $txId,
-                ]);
-            } elseif ($status === 'success' || $status === 'processing' || $status === 'pending') {
-                // Tanpa transaction id / masih diproses: TAHAN saldo, tunggu
-                // webhook atau inquiry resmi. JANGAN tandai success.
-                $holdNote = $disbursementResult['note'] ?? 'Payout sedang diproses iPaymu, menunggu konfirmasi.';
+                $this->ledgerWithdrawalCompleted($withdrawal, "Penarikan ke {$channel} via Xendit");
+            } elseif (in_array($status, ['success', 'processing', 'pending'], true)) {
+                $holdNote = $disbursementResult['note'] ?? 'Payout sedang diproses Xendit, menunggu konfirmasi webhook.';
                 $withdrawal->update([
-                    'status'             => 'processing',
+                    'status' => 'processing',
                     'provider_reference' => $withdrawal->provider_reference ?? ($txId ?: null),
-                    'status_history'     => $this->appendHistory($withdrawal->status_history, 'processing', $holdNote),
-                ]);
-
-                Log::info('[WithdrawalService] Withdrawal queued/processing via iPaymu', [
-                    'courier_id' => $courierId, 'amount' => $amount, 'ref' => $idempotencyKey,
+                    'status_history' => $this->appendHistory($withdrawal->status_history, 'processing', $holdNote),
                 ]);
             } elseif ($status === 'failed') {
-                $failureReason = $disbursementResult['error'] ?? 'Payout ditolak iPaymu.';
+                $failureReason = $disbursementResult['error'] ?? 'Payout ditolak Xendit.';
                 $withdrawal->update([
-                    'status'         => 'failed',
+                    'status' => 'failed',
                     'failure_reason' => $failureReason,
                     'status_history' => $this->appendHistory($withdrawal->status_history, 'failed', $failureReason),
                 ]);
 
                 $this->walletService->releaseReservation($courierId, $amount, $idempotencyKey);
-
-                Log::warning('[WithdrawalService] Withdrawal disbursement failed via iPaymu', [
-                    'courier_id' => $courierId, 'error' => $failureReason, 'ref' => $idempotencyKey,
-                ]);
-            } else {
-                // status 'unknown' / 'not_configured': hasil tidak pasti.
-                // Saldo TETAP ditahan (reserved), tunggu inquiry/webhook.
-                // Jangan rilis saldo dan jangan kirim payout ulang.
-                if ($status === 'not_configured') {
-                    $reason = $disbursementResult['error'] ?? 'Payout provider tidak tersedia.';
-                    // Fail-safe: kalau iPaymu belum diaktifkan, tidak ada kemungkinan
-                    // uang keluar — aman untuk melepas reservasi.
-                    $withdrawal->update([
-                        'status'         => 'failed',
-                        'failure_reason' => $reason,
-                        'status_history' => $this->appendHistory($withdrawal->status_history, 'failed', $reason),
-                    ]);
-                    $this->walletService->releaseReservation($courierId, $amount, $idempotencyKey);
-                }
-                Log::warning('[WithdrawalService] Disbursement verdict unknown', [
-                    'courier_id' => $courierId, 'ref' => $idempotencyKey, 'status' => $status,
-                    'verdict' => $verdict, 'fee' => $fee, 'provider' => $provider,
-                ]);
             }
 
             return $withdrawal->fresh();
         });
     }
 
-    // ─────────────────────────── VALIDATION ───────────────────────────
-
-    /**
-     * Validate a withdrawal request (nominal, wallet, limits, phone).
-     * On validity, returns wallet so Phase A never writes wallet_id=0.
-     */
-    private function validate(int $courierId, float $amount, ?string $destinationPhone = null): array
-    {
-        if (!iPaymuService::isEnabled()) {
+    private function validate(
+        int $courierId,
+        float $amount,
+        ?string $destinationAccount = null,
+        ?string $channelCode = null,
+        ?string $destinationType = null
+    ): array {
+        if ($this->providerResolver->isPayoutProviderDisabled('xendit')) {
             return [
-                'valid'      => false,
-                'error'      => 'Layanan pencairan iPaymu sedang dinonaktifkan oleh Admin.',
+                'valid' => false,
+                'error' => 'Layanan pencairan Xendit sedang dinonaktifkan oleh Admin.',
                 'error_code' => 'PROVIDER_DISABLED',
             ];
         }
@@ -305,31 +291,47 @@ class WithdrawalService
         if ($amount <= 0) {
             return ['valid' => false, 'error' => 'Jumlah penarikan harus lebih dari 0.'];
         }
-
         if ($amount < $feeConfig['minimum']) {
-            return ['valid' => false, 'error' => 'Minimum penarikan Rp' . number_format($feeConfig['minimum'], 0, ',', '.') . '.'];
+            return ['valid' => false, 'error' => 'Minimum penarikan Rp'.number_format($feeConfig['minimum'], 0, ',', '.').'.'];
         }
-
         if ($amount > $feeConfig['maximum']) {
-            return ['valid' => false, 'error' => 'Maksimum penarikan Rp' . number_format($feeConfig['maximum'], 0, ',', '.') . '.'];
+            return ['valid' => false, 'error' => 'Maksimum penarikan Rp'.number_format($feeConfig['maximum'], 0, ',', '.').'.'];
         }
 
-        if (($destinationPhone === null || trim($destinationPhone) === '')) {
-            $destinationPhone = $this->resolveDefaultPhone($courierId);
+        $normalizedChannel = $this->xenditPayoutService->normalizeChannelCode($channelCode ?: 'ID_DANA');
+        $resolvedType = $destinationType ? strtolower(trim($destinationType)) : (
+            array_key_exists($normalizedChannel, XenditPayoutService::EWALLET_CHANNELS) ? 'ewallet' : 'bank'
+        );
+
+        if (! $this->xenditPayoutService->isChannelSupported($resolvedType, $normalizedChannel)) {
+            return [
+                'valid' => false,
+                'error' => "Kanal tujuan {$normalizedChannel} tidak didukung untuk payout Xendit.",
+                'error_code' => 'UNSUPPORTED_CHANNEL',
+            ];
         }
 
-        $normalized = $this->normalizePhoneNumber($destinationPhone);
-        if ($normalized === null) {
-            return ['valid' => false, 'error' => 'Nomor HP DANA tujuan wajib diisi dengan format 08xxxxxxxxxx / 628xxxxxxxxxx.'];
+        if ($destinationAccount === null || trim($destinationAccount) === '') {
+            $destinationAccount = $this->resolveDefaultPhone($courierId);
         }
 
-        // Wallet: buat jika belum ada; aktivasi otomatis untuk alur tanpa-binding.
-        // Status 'suspended' tetap diblokir — hanya kurir yang disuspend.
+        if ($resolvedType === 'ewallet') {
+            $normalizedAccount = $this->normalizePhoneNumber($destinationAccount);
+            if ($normalizedAccount === null) {
+                return ['valid' => false, 'error' => 'Nomor HP e-wallet wajib valid (format 08xxxxxxxxxx / 628xxxxxxxxxx).'];
+            }
+        } else {
+            $digits = preg_replace('/\D+/', '', (string) $destinationAccount) ?? '';
+            if (strlen($digits) < 6) {
+                return ['valid' => false, 'error' => 'Nomor rekening bank minimal 6 digit angka.'];
+            }
+            $normalizedAccount = $digits;
+        }
+
         $wallet = $this->walletService->getOrCreateWallet($courierId);
         if ($wallet->status === 'not_active') {
             $wallet->update(['status' => 'active']);
             $wallet->refresh();
-            Log::info('[WithdrawalService] Wallet auto-activated for iPaymu no-binding flow', ['courier_id' => $courierId]);
         }
 
         if ($wallet->status !== 'active') {
@@ -340,7 +342,6 @@ class WithdrawalService
             return ['valid' => false, 'error' => 'Saldo tidak mencukupi.'];
         }
 
-        // Cegah double submission: hanya satu penarikan berproses per kurir.
         $processing = Withdrawal::where('courier_id', $courierId)
             ->whereIn('status', ['reserved', 'processing'])
             ->count();
@@ -349,7 +350,6 @@ class WithdrawalService
             return ['valid' => false, 'error' => 'Penarikan sedang diproses. Mohon tunggu.'];
         }
 
-        // Batas harian.
         $todayStart = now()->startOfDay();
         $todayTotal = Withdrawal::where('courier_id', $courierId)
             ->whereIn('status', ['success', 'completed', 'processing', 'reserved'])
@@ -360,7 +360,6 @@ class WithdrawalService
             return ['valid' => false, 'error' => 'Batas penarikan harian tercapai.'];
         }
 
-        // Rate limit per kurir (mencegah percobaan penarikan beruntun).
         $rateWindow = now()->subMinutes((int) config('withdrawals.rate_limit_window_minutes', self::RATE_LIMIT_WINDOW_MIN));
         $rateMax = (int) config('withdrawals.rate_limit_requests', self::RATE_LIMIT_REQUESTS);
         $recentCount = Withdrawal::where('courier_id', $courierId)
@@ -372,48 +371,42 @@ class WithdrawalService
         }
 
         return [
-            'valid'      => true,
-            'wallet'     => $wallet,
-            'phone'      => $normalized,
+            'valid' => true,
+            'wallet' => $wallet,
+            'phone' => $normalizedAccount,
+            'account_number' => $normalizedAccount,
+            'channel_code' => $normalizedChannel,
+            'destination_type' => $resolvedType,
             'fee_config' => $feeConfig,
-            'error'      => null,
+            'error' => null,
         ];
     }
 
-    /**
-     * Fallback nomor HP tujuan ketika request tidak mengirim kameranya sendiri:
-     * 1. phone_encrypted dari akun DANA terhubung (dekripsi).
-     * 2. Nomor HP kurir terdaftar (user/courier).
-     * Nomor ini tetap ditampilkan (disamarkan) sebelum penarikan diproses.
-     */
+    private function resolveHolderFallback(int $courierId): string
+    {
+        $courier = Courier::with('user')->find($courierId);
+
+        return trim((string) ($courier?->user?->name ?? 'Kurir City Courier'));
+    }
+
     private function resolveDefaultPhone(int $courierId): ?string
     {
-        $connection = \App\Models\DanaConnection::where('courier_id', $courierId)
+        $connection = DanaConnection::where('courier_id', $courierId)
             ->where('status', 'connected')
             ->first();
 
-        if ($connection && !empty($connection->phone)) {
+        if ($connection && ! empty($connection->phone)) {
             return $connection->phone;
         }
 
-        $courier = \App\Models\Courier::with('user')->find($courierId);
-
-        if (!$courier) {
+        $courier = Courier::with('user')->find($courierId);
+        if (! $courier) {
             return null;
         }
 
-        if (!empty($courier->phone)) {
-            return $courier->phone;
-        }
-
-        return $courier->user?->phone;
+        return ! empty($courier->phone) ? $courier->phone : $courier->user?->phone;
     }
 
-    /**
-     * Normalize Indonesian phone number for DANA payout.
-     * Accepts: 08xxxxxxxxxx | 628xxxxxxxxxx | 8xxxxxxxxxx.
-     * Returns: normalized 628********** format or null if invalid.
-     */
     public function normalizePhoneNumber(?string $phone): ?string
     {
         if ($phone === null || trim($phone) === '') {
@@ -425,18 +418,15 @@ class WithdrawalService
             return null;
         }
 
-        // Strip leading country code "62" then expect "8" + 9..13 digit subscriber.
         if (str_starts_with($digits, '62')) {
             $digits = substr($digits, 2);
         } elseif (str_starts_with($digits, '0')) {
             $digits = substr($digits, 1);
-        } elseif (str_starts_with($digits, '8')) {
-            // already bare subscriber
-        } else {
+        } elseif (! str_starts_with($digits, '8')) {
             return null;
         }
 
-        if (!str_starts_with($digits, '8')) {
+        if (! str_starts_with($digits, '8')) {
             return null;
         }
 
@@ -445,17 +435,14 @@ class WithdrawalService
             return null;
         }
 
-        return '62' . $digits;
+        return '0'.$digits;
     }
 
-    /** Mask an Indonesian phone. Already-masked inputs pass through unchanged. */
     public static function maskPhone(?string $phone): string
     {
         if ($phone === null || $phone === '') {
             return '-';
         }
-
-        // Nilai yang sudah disamarkan (legacy) tidak di-mask ulang.
         if (str_contains($phone, '****')) {
             return $phone;
         }
@@ -465,9 +452,6 @@ class WithdrawalService
             return '-';
         }
 
-        // Akhiran subscriber dipisah dari prefix tampilan agar output
-        // konsisten: 62812… → 6281****7890, 0812… → 0812****7890 (ala
-        // nilai legacy).
         if (str_starts_with($digits, '62')) {
             $cc = '62';
             $subscriber = substr($digits, 2);
@@ -483,14 +467,10 @@ class WithdrawalService
             return $phone;
         }
 
-        // Total digit yang ditampilkan sebelum '****' = 4 (mengikuti format
-        // legacy "0812****7890"): 62 → 2 digit, 0 → 3 digit, tanpa prefix → 4.
-        $keep = 4 - strlen($cc);
+        $keep = max(2, 4 - strlen($cc));
 
-        return $cc . substr($subscriber, 0, $keep) . '****' . substr($subscriber, -4);
+        return $cc.substr($subscriber, 0, $keep).'****'.substr($subscriber, -4);
     }
-
-    // ─────────────────────────── QUERIES ───────────────────────────
 
     public function getWithdrawals(int $courierId, int $page = 1, int $perPage = 15): array
     {
@@ -500,9 +480,9 @@ class WithdrawalService
 
         return [
             'withdrawals' => $withdrawals->items(),
-            'total'       => $withdrawals->total(),
-            'page'        => $page,
-            'per_page'    => $perPage,
+            'total' => $withdrawals->total(),
+            'page' => $page,
+            'per_page' => $perPage,
         ];
     }
 
@@ -520,79 +500,57 @@ class WithdrawalService
             ->first();
     }
 
-    // ─────────────────────────── STATUS SYNC ───────────────────────────
-
-    /**
-     * Handle status update from webhook callback or status polling.
-     * IDEMPOTENT: terminal withdraw status tidak berubah walau callback datang lagi.
-     */
     public function handleStatusUpdate(string $providerReference, string $newStatus, ?string $failureReason = null): ?Withdrawal
     {
-        if (!in_array($newStatus, ['success', 'failed'], true)) {
-            // Bukan status final: tidak ada yang diubah.
+        if (! in_array($newStatus, ['success', 'failed'], true)) {
             return Withdrawal::where('provider_reference', $providerReference)->first()
                 ?? Withdrawal::where('idempotency_key', $providerReference)->first();
         }
 
         return DB::transaction(function () use ($providerReference, $newStatus, $failureReason) {
-            // Lock baris + guard bersamaan: callback dobel TIDAK diproses dua kali.
             $withdrawal = Withdrawal::where(function ($q) use ($providerReference) {
-                    $q->where('provider_reference', $providerReference)
-                      ->orWhere('idempotency_key', $providerReference);
-                })
+                $q->where('provider_reference', $providerReference)
+                    ->orWhere('idempotency_key', $providerReference);
+            })
                 ->lockForUpdate()
                 ->first();
 
-            if (!$withdrawal) {
-                Log::warning('[WithdrawalService] Status update for unknown transaction', [
-                    'provider_reference' => $providerReference,
-                ]);
+            if (! $withdrawal) {
                 return null;
             }
 
             if ($withdrawal->isTerminal()) {
-                Log::info('[WithdrawalService] Ignoring callback for already terminal withdrawal', [
-                    'withdrawal_id' => $withdrawal->id,
-                    'status'        => $withdrawal->status,
-                ]);
                 return $withdrawal;
             }
 
             $courierId = $withdrawal->courier_id;
-            $amount    = (float) $withdrawal->amount;
+            $amount = (float) $withdrawal->amount;
             $reference = $withdrawal->idempotency_key;
-            $provider  = strtoupper((string) ($withdrawal->provider ?? 'dana'));
+            $channel = strtoupper((string) ($withdrawal->bank_name ?? 'XENDIT'));
 
             if ($newStatus === 'success') {
                 $withdrawal->update([
-                    'status'       => 'success',
+                    'status' => 'success',
                     'processed_at' => $withdrawal->processed_at ?? now(),
-                    'status_history' => $this->appendHistory($withdrawal->status_history, 'success', 'Konfirmasi resmi iPaymu (final).'),
+                    'status_history' => $this->appendHistory($withdrawal->status_history, 'success', 'Konfirmasi resmi Xendit Payouts (final).'),
                 ]);
 
                 $this->walletService->confirmReservation($courierId, $amount, $reference);
-                $this->ledgerWithdrawalCompleted($withdrawal, 'Penarikan ke ' . $provider . ' via iPaymu');
-
-                Log::info('[WithdrawalService] Status updated to success', ['withdrawal_id' => $withdrawal->id]);
+                $this->ledgerWithdrawalCompleted($withdrawal, "Penarikan ke {$channel} via Xendit");
             } else {
                 $withdrawal->update([
-                    'status'         => 'failed',
-                    'failure_reason' => $failureReason ?? 'Transaksi ditolak provider.',
-                    'status_history' => $this->appendHistory($withdrawal->status_history, 'failed', $failureReason ?? 'Transaksi ditolak provider.'),
+                    'status' => 'failed',
+                    'failure_reason' => $failureReason ?? 'Transaksi ditolak Xendit.',
+                    'status_history' => $this->appendHistory($withdrawal->status_history, 'failed', $failureReason ?? 'Transaksi ditolak Xendit.'),
                 ]);
 
                 $this->walletService->releaseReservation($courierId, $amount, $reference);
-
-                Log::info('[WithdrawalService] Status updated to failed', ['withdrawal_id' => $withdrawal->id]);
             }
 
             return $withdrawal->fresh();
         });
     }
 
-    /**
-     * Inquire status resmi dari iPaymu dan sinkronkan status penarikan.
-     */
     public function checkAndSyncStatus(Withdrawal $withdrawal): Withdrawal
     {
         if ($withdrawal->isTerminal()) {
@@ -600,61 +558,69 @@ class WithdrawalService
         }
 
         $ref = $withdrawal->idempotency_key;
-        $txId = $withdrawal->provider_reference;
+        $txId = (string) ($withdrawal->provider_reference ?? '');
 
-        $res = $this->ipaymuService->inquire($txId ?: $ref);
-
-        $status = $res['status'] ?? 'unknown';
-        if ($status === 'success' || $status === 'failed') {
-            $updated = $this->handleStatusUpdate($txId ?: $ref, $status, $res['error'] ?? null);
-            if ($updated) {
-                return $updated;
+        if ($withdrawal->provider === 'xendit' && $this->xenditPayoutService->isConfigured()) {
+            try {
+                $res = $this->xenditPayoutService->getPayoutStatus($txId, $ref);
+                $status = match (strtolower((string) ($res['status'] ?? 'unknown'))) {
+                    'completed' => 'success',
+                    'failed', 'reversed' => 'failed',
+                    default => 'unknown',
+                };
+                if ($status === 'success' || $status === 'failed') {
+                    $updated = $this->handleStatusUpdate($txId ?: $ref, $status, $res['failure_reason'] ?? null);
+                    if ($updated) {
+                        return $updated;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[WithdrawalService] Sync status Xendit gagal', [
+                    'withdrawal_id' => $withdrawal->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
         return $withdrawal->fresh();
     }
 
-    // ─────────────────────────── LEDGER ───────────────────────────
-
     private function ledgerWithdrawalCompleted(Withdrawal $withdrawal, string $description): void
     {
-        \App\Models\WalletTransaction::create([
-            'wallet_id'   => $withdrawal->wallet_id,
-            'courier_id'  => $withdrawal->courier_id,
-            'order_id'    => null,
-            'type'        => 'withdrawal',
-            'amount'      => -(float) $withdrawal->amount,
-            'fee'         => (float) $withdrawal->fee,
-            'net_amount'  => -(float) ($withdrawal->amount - $withdrawal->fee),
-            'status'      => 'completed',
-            'reference'   => $withdrawal->idempotency_key,
+        WalletTransaction::create([
+            'wallet_id' => $withdrawal->wallet_id,
+            'courier_id' => $withdrawal->courier_id,
+            'order_id' => null,
+            'type' => 'withdrawal',
+            'amount' => -(float) $withdrawal->amount,
+            'fee' => (float) $withdrawal->fee,
+            'net_amount' => -(float) ($withdrawal->amount - $withdrawal->fee),
+            'status' => 'completed',
+            'reference' => $withdrawal->idempotency_key,
             'description' => $description,
         ]);
     }
 
-    // ─────────────────────────── STATUS HISTORY ───────────────────────────
-
     private function buildHistoryEntry(string $status, ?string $note = null, ?string $source = 'system'): array
     {
         return [[
-            'status'    => $status,
-            'note'      => $note,
-            'source'    => $source,
-            'at'        => now()->toIso8601String(),
+            'status' => $status,
+            'note' => $note,
+            'source' => $source,
+            'at' => now()->toIso8601String(),
         ]];
     }
 
     private function appendHistory($existing, string $status, ?string $note = null, ?string $source = 'system'): array
     {
         $history = is_array($existing) ? $existing : json_decode((string) $existing, true);
-        if (!is_array($history)) {
+        if (! is_array($history)) {
             $history = [];
         }
+
         return array_values(array_merge($history, $this->buildHistoryEntry($status, $note, $source)));
     }
 
-    /** API helper yang bisa dipakai controller webhook. */
     public function pushHistory(Withdrawal $withdrawal, string $status, ?string $note, ?string $source = 'system'): void
     {
         $withdrawal->status_history = $this->appendHistory(

@@ -13,8 +13,7 @@ class ProviderResolver
     public function __construct(
         private readonly MockPaymentProvider $mock,
         private readonly XenditPaymentProvider $xenditPayment,
-        private readonly XenditPayoutProvider $xenditPayout,
-        private readonly DokuPaymentProvider $dokuPayment
+        private readonly XenditPayoutProvider $xenditPayout
     ) {}
 
     public function currentMode(): string
@@ -63,7 +62,7 @@ class ProviderResolver
             }
         }
 
-        return strtolower($code);
+        return in_array(strtolower($code), ['mock', 'xendit'], true) ? strtolower($code) : 'xendit';
     }
 
     public function activePayoutProviderCode(): string
@@ -81,7 +80,7 @@ class ProviderResolver
             }
         }
 
-        return strtolower($code);
+        return in_array(strtolower($code), ['mock', 'xendit'], true) ? strtolower($code) : 'xendit';
     }
 
     public function resolvePaymentProvider(?string $forcedCode = null): PaymentProviderInterface
@@ -95,30 +94,26 @@ class ProviderResolver
         }
 
         if ($mode === 'production') {
-            $provider = match ($code) {
-                'doku' => $this->dokuPayment,
-                'xendit' => $this->xenditPayment,
-                default => throw new RuntimeException("Provider '{$code}' tidak diizinkan pada mode production."),
-            };
-
-            if (! $provider->isConfigured()) {
-                throw new RuntimeException("Kredensial provider '{$code}' belum dikonfigurasi untuk mode production.");
+            if ($code !== 'xendit') {
+                throw new RuntimeException("Provider '{$code}' tidak diizinkan pada mode production. Hanya Xendit yang didukung.");
             }
 
-            return $provider;
+            if (! $this->xenditPayment->isConfigured()) {
+                throw new RuntimeException('Kredensial provider Xendit belum dikonfigurasi untuk mode production.');
+            }
+
+            return $this->xenditPayment;
         }
 
         if ($mode === 'demo' || $code === 'mock') {
             return $this->mock;
         }
 
-        $provider = match ($code) {
-            'doku' => $this->dokuPayment,
-            'xendit' => $this->xenditPayment,
-            default => $this->mock,
-        };
+        if ($code !== 'xendit') {
+            throw new RuntimeException("Provider '{$code}' sudah tidak digunakan. Gunakan Xendit.");
+        }
 
-        return $provider->isConfigured() ? $provider : $this->mock;
+        return $this->xenditPayment->isConfigured() ? $this->xenditPayment : $this->mock;
     }
 
     public function isPaymentProviderDisabled(?string $forcedCode = null): bool
@@ -129,8 +124,8 @@ class ProviderResolver
             return false;
         }
 
-        return in_array($code, ['xendit', 'doku'], true)
-            && app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->isExplicitlyDisabled($code);
+        return $code === 'xendit'
+            && app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->isExplicitlyDisabled('xendit');
     }
 
     public function isPayoutProviderDisabled(?string $forcedCode = null): bool
@@ -141,18 +136,15 @@ class ProviderResolver
             return false;
         }
 
-        return in_array($code, ['xendit', 'doku', 'ipaymu', 'dana', 'ovo'], true)
-            && app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->isExplicitlyDisabled($code);
+        return $code === 'xendit'
+            && app(\App\Modules\Payment\Services\GatewayCredentialsResolver::class)->isExplicitlyDisabled('xendit');
     }
 
     public function providerDisplayName(string $code): string
     {
         return match (strtolower($code)) {
             'xendit' => 'Xendit',
-            'doku' => 'DOKU',
-            'ipaymu' => 'iPaymu',
-            'dana' => 'DANA',
-            'ovo' => 'OVO',
+            'mock' => 'Sandbox Mock (Xendit Simulation)',
             default => strtoupper($code),
         };
     }
@@ -219,8 +211,8 @@ class ProviderResolver
     {
         return match (strtolower($providerCode)) {
             'xendit' => $this->xenditPayment,
-            'doku' => $this->dokuPayment,
-            default => $this->mock,
+            'mock' => $this->mock,
+            default => throw new RuntimeException("Webhook payment provider '{$providerCode}' tidak didukung. Gunakan Xendit."),
         };
     }
 
@@ -228,7 +220,8 @@ class ProviderResolver
     {
         return match (strtolower($providerCode)) {
             'xendit' => $this->xenditPayout,
-            default => $this->mock,
+            'mock' => $this->mock,
+            default => throw new RuntimeException("Webhook payout provider '{$providerCode}' tidak didukung. Gunakan Xendit."),
         };
     }
 }

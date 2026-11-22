@@ -24,7 +24,7 @@ class CustomerDestinationController extends Controller
             'message' => 'Daftar rekening/e-wallet tujuan berhasil dimuat.',
             'data' => [
                 'items' => $items->map(fn (PayoutDestination $d) => $d->toApiArray()),
-                'supported_channels' => DestinationService::SUPPORTED_CHANNELS,
+                'supported_channels' => $this->destinationService->supportedChannels(),
             ],
         ]);
     }

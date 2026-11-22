@@ -146,7 +146,7 @@ class AdminFinanceTest extends TestCase
         $this->assertTrue(app(LedgerReconciliationService::class)->runReconciliation()['is_clean']);
     }
 
-    public function test_admin_can_configure_xendit_and_doku_credentials_from_providers_page_without_env(): void
+    public function test_admin_can_configure_xendit_credentials_from_providers_page_without_env(): void
     {
         $admin = User::create([
             'name' => 'Super Admin',
@@ -158,17 +158,14 @@ class AdminFinanceTest extends TestCase
         config([
             'payment_wallet.xendit.secret_key' => '',
             'payment_wallet.xendit.callback_token' => '',
-            'payment_wallet.doku.client_id' => '',
-            'payment_wallet.doku.secret_key' => '',
         ]);
 
         $this->actingAs($admin);
 
-        // Render unified Providers page
-        $this->get('/admin/providers')
-            ->assertStatus(200)
-            ->assertSee('Xendit Gateway (Money-In &amp; Payouts)', false)
-            ->assertSee('DOKU Jokul &amp; Kirim DOKU (Inquiry)', false);
+        // Render unified Providers page (Xendit only, no DOKU card)
+        $providersView = $this->get('/admin/providers')->assertStatus(200);
+        $providersView->assertSee('Xendit Gateway (Money-In &amp; Payouts)', false);
+        $providersView->assertDontSee('DOKU Jokul &amp; Kirim DOKU (Inquiry)', false);
 
         // Save Xendit keys via Admin UI
         $xenditSecret = 'xnd_development_manual_secret_987654321';
@@ -201,34 +198,16 @@ class AdminFinanceTest extends TestCase
         $this->assertTrue($xenditProvider->isConfigured());
         $this->assertTrue($xenditProvider->verifyWebhookSignature(['x-callback-token' => $xenditToken], '{}', []));
 
-        // Save DOKU keys via Admin UI
-        $dokuSecret = 'SK-DOKU-MANUAL-SECRET-999';
-        $this->post('/admin/settings/doku', [
-            'doku_sandbox_url' => 'https://api-sandbox.doku.com',
-            'doku_production_url' => 'https://api.doku.com',
-            'doku_client_id' => 'BRN-MANUAL-001',
-            'doku_secret_key' => $dokuSecret,
-            'activate_doku' => 1,
-        ])->assertRedirect();
+        // Removed DOKU endpoints are no longer active
+        $this->postJson('/admin/providers/doku/toggle', ['enabled' => 0])->assertStatus(404);
+        $this->postJson('/admin/settings/doku/test')->assertStatus(404);
 
-        $this->assertStringStartsWith('enc:', (string) Setting::get('doku_secret_key'));
-        $dokuHtml = $this->get('/admin/providers')->assertStatus(200)->getContent();
-        $this->assertStringNotContainsString($dokuSecret, $dokuHtml);
-
-        $dokuProvider = app(\App\Modules\Payment\Providers\DokuPaymentProvider::class);
-        $this->assertTrue($dokuProvider->isConfigured());
-
-        // Test connection endpoints with mocked HTTP responses
+        // Test connection endpoint with mocked Xendit HTTP response
         \Illuminate\Support\Facades\Http::fake([
             'https://api.xendit.co/balance' => \Illuminate\Support\Facades\Http::response(['balance' => 1500000], 200),
-            'https://api-sandbox.doku.com/*' => \Illuminate\Support\Facades\Http::response(['message' => 'Not found'], 404),
         ]);
 
         $this->postJson('/admin/settings/xendit/test')
-            ->assertStatus(200)
-            ->assertJsonPath('success', true);
-
-        $this->postJson('/admin/settings/doku/test')
             ->assertStatus(200)
             ->assertJsonPath('success', true);
     }
@@ -276,7 +255,7 @@ class AdminFinanceTest extends TestCase
         $this->assertTrue($xenditPayment->isConfigured());
 
         // Turn WhatsApp, Map, and RajaOngkir OFF -> runtime services report disabled cleanly
-        foreach (['whatsapp', 'map', 'rajaongkir', 'doku', 'ipaymu', 'dana', 'ovo'] as $provider) {
+        foreach (['whatsapp', 'map', 'rajaongkir'] as $provider) {
             $this->postJson("/admin/providers/{$provider}/toggle", ['enabled' => 0])
                 ->assertStatus(200)
                 ->assertJsonPath('enabled', false);
@@ -293,13 +272,18 @@ class AdminFinanceTest extends TestCase
         Setting::set('rajaongkir_api_key', 'test-key-123');
         $this->assertFalse((new \App\Services\RajaOngkirService())->hasValidKey());
 
-        // Unknown provider returns 404
+        // Unknown / removed legacy providers return 404
         $this->post('/admin/providers/unknown_gw/toggle')->assertStatus(404);
+        $this->post('/admin/providers/doku/toggle')->assertStatus(404);
+        $this->post('/admin/providers/ipaymu/toggle')->assertStatus(404);
 
-        // Providers view renders toggle controls for all 8 providers
+        // Providers view renders toggle controls for active providers (Xendit-only for payment)
         $html = $this->get('/admin/providers')->assertStatus(200)->getContent();
-        foreach (['whatsapp', 'map', 'dana', 'ovo', 'ipaymu', 'rajaongkir', 'xendit', 'doku'] as $provider) {
+        foreach (['whatsapp', 'map', 'rajaongkir', 'xendit'] as $provider) {
             $this->assertStringContainsString("/admin/providers/{$provider}/toggle", $html);
+        }
+        foreach (['doku', 'ipaymu', 'dana', 'ovo'] as $removedProvider) {
+            $this->assertStringNotContainsString("/admin/providers/{$removedProvider}/toggle", $html);
         }
     }
 }

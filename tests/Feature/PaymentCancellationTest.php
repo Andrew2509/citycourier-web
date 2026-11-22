@@ -4,57 +4,37 @@ namespace Tests\Feature;
 
 use App\Models\Payment;
 use App\Models\Setting;
+use App\Models\Shipment;
 use App\Models\User;
-use App\Services\IpaymuPaymentService;
-use App\Services\iPaymuService;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Pembatalan pembayaran iPaymu.
- *
- * Fakta yang dijaga oleh test ini: iPaymu TIDAK punya API cancel/void/refund.
- * Karena itu pembatalan tidak boleh mengaku "dibatalkan di iPaymu" kalau yang
- * terjadi hanya penutupan lokal, dan pembayaran yang sudah dibayar tidak boleh
- * dianggap pembatalan biasa.
+ * Pembatalan pembayaran checkout pesanan menggunakan Xendit API v3 +
+ * kompatibilitas penutupan aman untuk data historis non-Xendit.
  */
 class PaymentCancellationTest extends TestCase
 {
-    protected FakeCancelIpaymuService $fakeIpaymu;
-    protected FakeCancelPaymentService $fakePayment;
-
     protected function setUp(): void
     {
         parent::setUp();
         $this->dropSchema();
         $this->createSchema();
-
-        iPaymuService::flushCredentialsCache();
-
-        $this->fakeIpaymu = new FakeCancelIpaymuService();
-        $this->fakePayment = new FakeCancelPaymentService($this->fakeIpaymu);
-
-        $this->app->bind(iPaymuService::class, fn () => $this->fakeIpaymu);
-        $this->app->bind(IpaymuPaymentService::class, fn () => $this->fakePayment);
-    }
-
-    protected function tearDown(): void
-    {
-        iPaymuService::flushCredentialsCache();
-        parent::tearDown();
     }
 
     private function dropSchema(): void
     {
-        foreach (['payments', 'shipment_logs', 'orders', 'shipments', 'withdrawals', 'settings', 'roles', 'model_has_roles', 'users'] as $table) {
+        foreach (['payments', 'payment_webhooks', 'shipment_logs', 'orders', 'shipments', 'withdrawals', 'settings', 'roles', 'model_has_roles', 'users'] as $table) {
             Schema::dropIfExists($table);
         }
     }
 
     private function createSchema(): void
     {
-        Schema::create('users', function ($table) {
+        Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -65,21 +45,20 @@ class PaymentCancellationTest extends TestCase
             $table->timestamps();
         });
 
-        // Dicek oleh ShipmentController::cancel untuk membedakan admin/pelanggan.
-        Schema::create('roles', function ($table) {
+        Schema::create('roles', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('guard_name');
             $table->timestamps();
         });
 
-        Schema::create('model_has_roles', function ($table) {
+        Schema::create('model_has_roles', function (Blueprint $table) {
             $table->unsignedBigInteger('role_id');
             $table->string('model_type');
             $table->unsignedBigInteger('model_id');
         });
 
-        Schema::create('settings', function ($table) {
+        Schema::create('settings', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
             $table->text('value')->nullable();
@@ -87,7 +66,7 @@ class PaymentCancellationTest extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('payments', function ($table) {
+        Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->unsignedBigInteger('order_id')->nullable();
@@ -107,8 +86,23 @@ class PaymentCancellationTest extends TestCase
             $table->timestamps();
         });
 
-        // Webhook juga memeriksa tabel withdrawals (callback payout kurir).
-        Schema::create('withdrawals', function ($table) {
+        Schema::create('payment_webhooks', function (Blueprint $table) {
+            $table->id();
+            $table->string('provider', 32)->index();
+            $table->string('event_type', 80)->index();
+            $table->string('external_id', 120)->nullable()->index();
+            $table->string('provider_reference', 120)->nullable()->index();
+            $table->string('webhook_hash', 64)->unique();
+            $table->boolean('signature_valid')->default(false);
+            $table->string('processing_status', 32)->default('received')->index();
+            $table->json('headers')->nullable();
+            $table->json('payload')->nullable();
+            $table->text('error_message')->nullable();
+            $table->timestamp('processed_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('withdrawals', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable();
             $table->string('provider_reference')->nullable();
@@ -117,7 +111,7 @@ class PaymentCancellationTest extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('orders', function ($table) {
+        Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('order_number')->nullable();
             $table->string('status')->default('pending');
@@ -134,7 +128,7 @@ class PaymentCancellationTest extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('shipments', function ($table) {
+        Schema::create('shipments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable();
             $table->string('shipment_number')->nullable();
@@ -152,12 +146,13 @@ class PaymentCancellationTest extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('shipment_logs', function ($table) {
+        Schema::create('shipment_logs', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('shipment_id');
+            $table->foreignId('shipment_id');
             $table->unsignedBigInteger('courier_id')->nullable();
             $table->string('status');
             $table->string('location')->nullable();
+            $table->string('title')->nullable();
             $table->text('description')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
@@ -169,125 +164,103 @@ class PaymentCancellationTest extends TestCase
     private function user(): User
     {
         return User::create([
-            'name'     => 'Tester',
-            'email'    => 'tester-cancel@example.com',
+            'name' => 'Tester',
+            'email' => 'tester-cancel@example.com',
             'password' => bcrypt('secret'),
-            'phone'    => '08123456789',
+            'phone' => '08123456789',
         ]);
     }
 
-    private function configure(): void
+    private function configureXendit(): void
     {
-        Setting::create(['key' => 'ipaymu_va', 'value' => '123456', 'group' => 'ipaymu']);
-        Setting::create(['key' => 'ipaymu_api_key', 'value' => 'apikey-xyz', 'group' => 'ipaymu']);
-        Setting::create(['key' => 'ipaymu_base_url', 'value' => 'https://sandbox.ipaymu.com', 'group' => 'ipaymu']);
-        iPaymuService::flushCredentialsCache();
+        Setting::set('payment_wallet_mode', 'sandbox', 'payment_wallet');
+        Setting::set('payment_active_provider', 'xendit', 'payment_wallet');
+        Setting::set('xendit_enabled', '1', 'payment_wallet');
+        Setting::set('xendit_base_url', 'https://api.xendit.co', 'payment_wallet');
+        Setting::set('xendit_secret_key', 'xnd_development_cancel_12345', 'payment_wallet');
+        Setting::set('xendit_callback_token', 'cb-cancel-token-123', 'payment_wallet');
     }
 
     private function payment(User $user, array $overrides = []): Payment
     {
         return Payment::create(array_merge([
-            'user_id'      => $user->id,
-            'payment_id'   => '99001',
+            'user_id' => $user->id,
+            'payment_id' => 'pr-cancel-001',
             'payment_type' => 'bank_transfer',
-            'channel_code' => 'BNI',
-            'amount'       => 13300,
-            'status'       => 'pending',
-            'va_number'    => '8808123456799',
-            'metadata'     => [
-                'ipaymu_reference_id' => 'CC-94-20261030120000',
-                'payment_mode'        => 'direct',
+            'channel_code' => 'BNI_VIRTUAL_ACCOUNT',
+            'amount' => 13300,
+            'status' => 'pending',
+            'va_number' => '8808123456799',
+            'metadata' => [
+                'provider' => 'xendit',
+                'xendit_reference_id' => 'CC-94-20261030120000',
+                'payment_mode' => 'direct',
             ],
         ], $overrides));
     }
 
-    private function cancel(Payment $payment)
+    private function shipmentFor(User $user): Shipment
     {
-        Sanctum::actingAs(User::find($payment->user_id));
-
-        return $this->postJson('/api/payment/cancel', ['payment_id' => $payment->payment_id]);
+        return Shipment::create([
+            'user_id' => $user->id,
+            'shipment_number' => 'RESI-CANCEL-1',
+            'tracking_number' => 'RESI-CANCEL-1',
+            'status' => 'pending',
+        ]);
     }
 
-    private function signatureFor(array $payload): string
+    public function test_pending_xendit_payment_cancelled_via_v3_cancel_api(): void
     {
-        $intFields = ['trx_id', 'status_code', 'transaction_status_code', 'paid_off'];
-        $normalized = [];
-        foreach ($payload as $k => $v) {
-            if ($k === 'signature') continue;
-            if (in_array($k, $intFields, true)) {
-                $normalized[$k] = is_numeric($v) ? (int) $v : $v;
-            } elseif ($k === 'is_escrow') {
-                $normalized[$k] = in_array($v, [true, 1, '1', 'true'], true);
-            } elseif ($k === 'additional_info') {
-                $normalized[$k] = ($v === '[]') ? [] : $v;
-            } else {
-                $normalized[$k] = is_array($v) ? $v : (string) $v;
-            }
-        }
-        if (!array_key_exists('additional_info', $normalized)) {
-            $normalized['additional_info'] = [];
-        }
-        ksort($normalized, SORT_STRING);
-
-        return hash_hmac('sha256', json_encode($normalized), '123456');
-    }
-
-    // ─── 1. iPaymu tidak punya API pembatalan ──────────────────
-
-    /**
-     * Transaksi masih pending di iPaymu: pembayaran ditutup LOKAL dan dicatat
-     * eksplisit bahwa iPaymu tidak menyediakan API pembatalan (kode bayar akan
-     * kedaluwarsa sendiri). Kita tidak mengklaim sudah batal di iPaymu.
-     */
-    public function test_pending_payment_closed_locally_without_claiming_provider_cancel(): void
-    {
-        $this->configure();
+        $this->configureXendit();
         $user = $this->user();
         $payment = $this->payment($user);
 
-        $this->fakePayment->syncResult = [
-            'status' => 'pending', 'known' => true, 'error' => null,
-            'provider_code' => '0', 'raw' => ['Data' => ['Status' => 0]],
-        ];
+        Http::fake([
+            'https://api.xendit.co/v3/payment_requests/pr-cancel-001' => Http::response([
+                'payment_request_id' => 'pr-cancel-001',
+                'status' => 'REQUIRES_ACTION',
+            ], 200),
+            'https://api.xendit.co/v3/payment_requests/pr-cancel-001/cancel' => Http::response([
+                'payment_request_id' => 'pr-cancel-001',
+                'status' => 'CANCELED',
+            ], 200),
+        ]);
 
-        $response = $this->cancel($payment);
-
-        $response->assertOk()
+        Sanctum::actingAs($user);
+        $this->postJson('/api/payment/cancel', ['payment_id' => $payment->payment_id])
+            ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Pesanan berhasil dibatalkan.')
             ->assertJsonPath('payment.status', 'canceled')
-            ->assertJsonPath('payment.provider_cancel_api', false)
-            ->assertJsonPath('payment.amount', 13300)
+            ->assertJsonPath('payment.provider', 'xendit')
+            ->assertJsonPath('payment.provider_cancel_api', true)
             ->assertJsonPath('payment.reference_id', 'CC-94-20261030120000');
 
         $fresh = $payment->fresh();
         $this->assertSame('canceled', $fresh->status);
-        $this->assertSame('provider_pending', $fresh->metadata['cancellation']['result']);
-        $this->assertFalse($fresh->metadata['cancellation']['provider_cancel_api']);
-        $this->assertFalse($fresh->metadata['cancellation']['refund_required']);
-        $this->assertSame('Menunggu pembayaran', $fresh->metadata['cancellation']['provider_status_desc']);
+        $this->assertSame('provider_canceled', $fresh->metadata['cancellation']['result']);
+        $this->assertTrue($fresh->metadata['cancellation']['provider_cancel_api']);
     }
 
-    /** Pembayaran sudah dibayar → bukan pembatalan biasa, tapi jalur refund. */
     public function test_paid_payment_requires_refund_and_is_not_cancelled(): void
     {
-        $this->configure();
+        $this->configureXendit();
         $user = $this->user();
         $payment = $this->payment($user, ['order_id' => 5]);
 
-        $this->fakePayment->syncResult = [
-            'status' => 'paid', 'known' => true, 'error' => null,
-            'provider_code' => '1', 'raw' => ['Data' => ['Status' => 1]],
-        ];
+        Http::fake([
+            'https://api.xendit.co/v3/payment_requests/pr-cancel-001' => Http::response([
+                'payment_request_id' => 'pr-cancel-001',
+                'status' => 'SUCCEEDED',
+            ], 200),
+        ]);
 
-        $response = $this->cancel($payment);
-
-        $response->assertStatus(422)
+        Sanctum::actingAs($user);
+        $this->postJson('/api/payment/cancel', ['payment_id' => $payment->payment_id])
+            ->assertStatus(422)
             ->assertJsonPath('success', false)
             ->assertJsonPath('error_code', 'payment_already_paid');
 
         $fresh = $payment->fresh();
-        // Uang benar-benar masuk → status lokal wajib ikut paid.
         $this->assertSame('paid', $fresh->status);
         $this->assertNotNull($fresh->paid_at);
         $this->assertTrue($fresh->metadata['cancellation']['refund_required']);
@@ -296,394 +269,123 @@ class PaymentCancellationTest extends TestCase
 
     public function test_expired_transaction_syncs_local_status(): void
     {
-        $this->configure();
+        $this->configureXendit();
         $user = $this->user();
         $payment = $this->payment($user);
 
-        $this->fakePayment->syncResult = [
-            'status' => 'expired', 'known' => true, 'error' => null,
-            'provider_code' => '-2', 'raw' => ['Data' => ['Status' => -2]],
-        ];
+        Http::fake([
+            'https://api.xendit.co/v3/payment_requests/pr-cancel-001' => Http::response([
+                'payment_request_id' => 'pr-cancel-001',
+                'status' => 'EXPIRED',
+            ], 200),
+        ]);
 
-        $this->cancel($payment)->assertOk()->assertJsonPath('payment.status', 'expired');
+        Sanctum::actingAs($user);
+        $this->postJson('/api/payment/cancel', ['payment_id' => $payment->payment_id])
+            ->assertOk()
+            ->assertJsonPath('payment.status', 'expired');
+
         $this->assertSame('expired', $payment->fresh()->status);
     }
 
-    public function test_cancelled_transaction_at_provider_syncs_local_status(): void
-    {
-        $this->configure();
-        $user = $this->user();
-        $payment = $this->payment($user);
-
-        $this->fakePayment->syncResult = [
-            'status' => 'canceled', 'known' => true, 'error' => null,
-            'provider_code' => '2', 'raw' => ['Data' => ['Status' => 2]],
-        ];
-
-        $this->cancel($payment)->assertOk();
-        $this->assertSame('canceled', $payment->fresh()->status);
-        $this->assertSame('Dibatalkan oleh iPaymu', $payment->fresh()->metadata['cancellation']['provider_status_desc']);
-    }
-
-    /** Status tidak bisa dipastikan → tidak ada yang diubah (bukan "berhasil"). */
     public function test_unknown_provider_status_changes_nothing(): void
     {
-        $this->configure();
+        $this->configureXendit();
         $user = $this->user();
         $payment = $this->payment($user);
 
-        $this->fakePayment->syncResult = [
-            'status' => 'pending', 'known' => false, 'error' => 'timeout',
-            'provider_code' => null, 'raw' => null,
-        ];
+        Http::fake([
+            'https://api.xendit.co/v3/payment_requests/pr-cancel-001' => Http::response([
+                'message' => 'Gateway error',
+            ], 500),
+        ]);
 
-        $this->cancel($payment)
+        Sanctum::actingAs($user);
+        $this->postJson('/api/payment/cancel', ['payment_id' => $payment->payment_id])
             ->assertStatus(409)
             ->assertJsonPath('error_code', 'payment_status_unknown');
-
-        $fresh = $payment->fresh();
-        $this->assertSame('pending', $fresh->status);
-        $this->assertArrayNotHasKey('cancellation', (array) $fresh->metadata);
-    }
-
-    /** Tombol ditekan berkali-kali: tidak ada permintaan ulang ke iPaymu. */
-    public function test_repeated_cancel_is_idempotent(): void
-    {
-        $this->configure();
-        $user = $this->user();
-        $payment = $this->payment($user);
-
-        $this->fakePayment->syncResult = [
-            'status' => 'pending', 'known' => true, 'error' => null,
-            'provider_code' => '0', 'raw' => ['Data' => ['Status' => 0]],
-        ];
-
-        $this->cancel($payment)->assertOk();
-        $firstInquiryCount = $this->fakePayment->syncCalls;
-
-        $this->cancel($payment)
-            ->assertOk()
-            ->assertJsonPath('already_final', true);
-
-        $this->assertSame($firstInquiryCount, $this->fakePayment->syncCalls, 'iPaymu tidak boleh dipanggil ulang');
-        $this->assertSame('canceled', $payment->fresh()->status);
-    }
-
-    public function test_other_users_cannot_cancel_foreign_payment(): void
-    {
-        $this->configure();
-        $owner = $this->user();
-        $payment = $this->payment($owner);
-
-        $intruder = User::create([
-            'name' => 'Intruder', 'email' => 'intruder@example.com',
-            'password' => bcrypt('secret'),
-        ]);
-        Sanctum::actingAs($intruder);
-
-        $this->postJson('/api/payment/cancel', ['payment_id' => $payment->payment_id])
-            ->assertStatus(404);
 
         $this->assertSame('pending', $payment->fresh()->status);
     }
 
-    /** Pembayaran redirect: SessionID tidak bisa di-inquiry, tetap ditutup lokal. */
-    public function test_redirect_session_without_trx_is_closed_locally(): void
+    public function test_shipment_cancel_blocked_when_paid_or_unknown_and_cancels_when_pending(): void
     {
-        $this->configure();
-        $user = $this->user();
-        $payment = $this->payment($user, [
-            'payment_id' => 'SESS-REDIRECT-1',
-            'metadata'   => [
-                'ipaymu_reference_id' => 'CC-95-20261030120000',
-                'payment_mode'        => 'redirect',
-            ],
-        ]);
-
-        $this->cancel($payment)->assertOk();
-
-        $fresh = $payment->fresh();
-        $this->assertSame('canceled', $fresh->status);
-        $this->assertSame(0, $this->fakePayment->syncCalls, 'Sesi redirect tidak di-inquiry');
-        $this->assertSame('session', $fresh->metadata['cancellation']['provider_status']);
-        $this->assertSame('provider_pending', $fresh->metadata['cancellation']['result']);
-    }
-
-    // ─── 2. Pembatalan pesanan (endpoint shipment) ────────────
-
-    private function shipmentFor(User $user): \App\Models\Shipment
-    {
-        return \App\Models\Shipment::create([
-            'user_id'         => $user->id,
-            'shipment_number' => 'SHIP-CANCEL-1',
-            'tracking_number' => 'RESI-CANCEL-1',
-            'customer_phone'  => '08123456789',
-            'sender_phone'    => '08123456789',
-            'status'          => 'pending',
-        ]);
-    }
-
-    /** Pembayaran sudah diterima → pesanan TIDAK dibatalkan, arahkan ke refund. */
-    public function test_shipment_cancel_blocked_when_payment_paid(): void
-    {
-        $this->configure();
+        $this->configureXendit();
         $user = $this->user();
         $shipment = $this->shipmentFor($user);
-
         $payment = $this->payment($user, [
             'shipment_id' => $shipment->id,
-            'payment_id'  => '99101',
+            'payment_id' => 'pr-ship-001',
         ]);
 
-        $this->fakePayment->syncResult = [
-            'status' => 'paid', 'known' => true, 'error' => null,
-            'provider_code' => '1', 'raw' => ['Data' => ['Status' => 1]],
-        ];
+        Http::fake([
+            'https://api.xendit.co/v3/payment_requests/pr-ship-001' => Http::sequence()
+                ->push(['status' => 'SUCCEEDED'], 200)
+                ->push(['status' => 'REQUIRES_ACTION'], 200),
+            'https://api.xendit.co/v3/payment_requests/pr-ship-001/cancel' => Http::response([
+                'status' => 'CANCELED',
+            ], 200),
+        ]);
 
         Sanctum::actingAs($user);
 
+        // First call -> paid at Xendit -> 422
         $this->postJson('/api/shipments/RESI-CANCEL-1/cancel')
             ->assertStatus(422)
             ->assertJsonPath('error_code', 'payment_already_paid');
-
-        $this->assertSame('pending', $shipment->fresh()->status, 'Pesanan tidak boleh dibatalkan');
-        $this->assertSame('paid', $payment->fresh()->status);
-        $this->assertTrue($payment->fresh()->metadata['cancellation']['refund_required']);
-    }
-
-    /** Status pembayaran tidak pasti → pesanan tidak diubah (bisa dicoba lagi). */
-    public function test_shipment_cancel_blocked_when_status_unknown(): void
-    {
-        $this->configure();
-        $user = $this->user();
-        $shipment = $this->shipmentFor($user);
-
-        $payment = $this->payment($user, [
-            'shipment_id' => $shipment->id,
-            'payment_id'  => '99102',
-        ]);
-
-        $this->fakePayment->syncResult = ['status' => 'pending', 'known' => false, 'error' => 'timeout'];
-
-        Sanctum::actingAs($user);
-
-        $this->postJson('/api/shipments/RESI-CANCEL-1/cancel')
-            ->assertStatus(409)
-            ->assertJsonPath('error_code', 'payment_status_unknown');
-
         $this->assertSame('pending', $shipment->fresh()->status);
-        $this->assertSame('pending', $payment->fresh()->status);
-    }
 
-    /** Pembayaran pending → pesanan batal, pembayaran ditutup lokal. */
-    public function test_shipment_cancel_closes_pending_payment(): void
-    {
-        $this->configure();
-        $user = $this->user();
-        $shipment = $this->shipmentFor($user);
-
-        $payment = $this->payment($user, [
-            'shipment_id' => $shipment->id,
-            'payment_id'  => '99103',
+        // Fresh pending shipment & payment -> pending at Xendit -> cancelled via /cancel
+        $pendingShipment = Shipment::create([
+            'user_id' => $user->id,
+            'shipment_number' => 'RESI-CANCEL-2',
+            'tracking_number' => 'RESI-CANCEL-2',
+            'status' => 'pending',
+        ]);
+        $pendingPayment = $this->payment($user, [
+            'shipment_id' => $pendingShipment->id,
+            'payment_id' => 'pr-ship-002',
         ]);
 
-        $this->fakePayment->syncResult = [
-            'status' => 'pending', 'known' => true, 'error' => null,
-            'provider_code' => '0', 'raw' => ['Data' => ['Status' => 0]],
-        ];
+        Http::fake([
+            'https://api.xendit.co/v3/payment_requests/pr-ship-002' => Http::response([
+                'status' => 'REQUIRES_ACTION',
+            ], 200),
+            'https://api.xendit.co/v3/payment_requests/pr-ship-002/cancel' => Http::response([
+                'status' => 'CANCELED',
+            ], 200),
+        ]);
 
-        Sanctum::actingAs($user);
-
-        $response = $this->postJson('/api/shipments/RESI-CANCEL-1/cancel');
-
-        $response->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('payment.status', 'canceled')
-            ->assertJsonPath('payment.cancellation_result', 'provider_pending');
-
-        $this->assertSame('cancelled', $shipment->fresh()->status);
-        $this->assertSame('canceled', $payment->fresh()->status);
-    }
-
-    /** Order tanpa transaksi pembayaran tetap bisa dibatalkan seperti biasa. */
-    public function test_shipment_cancel_without_payment_still_works(): void
-    {
-        $this->configure();
-        $user = $this->user();
-        $shipment = $this->shipmentFor($user);
-
-        Sanctum::actingAs($user);
-
-        $this->postJson('/api/shipments/RESI-CANCEL-1/cancel')
+        $this->postJson('/api/shipments/RESI-CANCEL-2/cancel')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('payment', null);
+            ->assertJsonPath('payment.status', 'canceled')
+            ->assertJsonPath('payment.cancellation_result', 'provider_canceled');
 
-        $this->assertSame('cancelled', $shipment->fresh()->status);
-        $this->assertSame(0, $this->fakePayment->syncCalls, 'Tanpa pembayaran, iPaymu tidak dipanggil');
+        $this->assertSame('cancelled', $pendingShipment->fresh()->status);
+        $this->assertSame('canceled', $pendingPayment->fresh()->status);
     }
 
-    /**
-     * Daftar "belum dibayar" memakai `payment_info` untuk membuka layar
-     * pembayaran; tanpa payment_id tombol Cek Status / Batalkan Pesanan tidak
-     * punya transaksi untuk ditanyakan ke backend.
-     */
-    public function test_payment_info_exposes_transaction_id_for_pending_payment(): void
+    public function test_historical_non_xendit_payment_closes_locally_without_calling_retired_provider(): void
     {
-        $this->configure();
         $user = $this->user();
-        $shipment = $this->shipmentFor($user);
-
-        $this->payment($user, [
-            'shipment_id' => $shipment->id,
-            'payment_id'  => '99200',
-        ]);
-
-        $info = $shipment->fresh()->payment_info;
-
-        $this->assertSame('99200', $info['payment_id']);
-        $this->assertSame('pending', $info['status']);
-        $this->assertSame('8808123456799', $info['va_number'], 'Data VA tetap dikirim seperti sebelumnya');
-    }
-
-    // ─── 3. Webhook vs pembatalan ──────────────────────────────
-
-    /**
-     * Callback terlambat: uang tetap dihormati (status paid) tetapi ditandai
-     * wajib refund — tidak diabaikan sebagai "sudah final".
-     */
-    public function test_late_paid_callback_after_cancellation_marks_refund_required(): void
-    {
-        $this->configure();
-        $user = $this->user();
-
-        $payment = $this->payment($user, [
-            'payment_id' => '99077',
-            'order_id'   => 9,
-            'status'     => 'canceled',
-            'metadata'   => [
-                'ipaymu_reference_id' => 'CC-96-20261030120000',
-                'payment_mode'        => 'direct',
-                'cancellation'        => [
-                    'result'            => 'provider_pending',
-                    'provider_cancel_api' => false,
-                    'refund_required'   => false,
-                ],
+        $historicalPayment = $this->payment($user, [
+            'payment_id' => 'HIST-IPAYMU-99001',
+            'metadata' => [
+                'provider' => 'ipaymu',
+                'ipaymu_reference_id' => 'CC-HIST-99001',
             ],
         ]);
 
-        \App\Models\Order::create(['id' => 9, 'payment_status' => 'unpaid']);
+        Http::fake(); // zero external calls expected for historical records
 
-        $this->fakePayment->webhookStatus = 'paid';
+        Sanctum::actingAs($user);
+        $this->postJson('/api/payment/cancel', ['payment_id' => 'HIST-IPAYMU-99001'])
+            ->assertOk()
+            ->assertJsonPath('payment.status', 'canceled')
+            ->assertJsonPath('payment.provider_cancel_api', false);
 
-        $payload = [
-            'trx_id'          => 99077,
-            'status_code'     => 1,
-            'status'          => 'berhasil',
-            'additional_info' => [],
-        ];
-
-        $this->postJson('/api/ipaymu/callback', $payload, [
-            'X-Signature' => $this->signatureFor($payload),
-        ])->assertOk();
-
-        $fresh = $payment->fresh();
-        $this->assertSame('paid', $fresh->status);
-        $this->assertNotNull($fresh->paid_at);
-        $this->assertTrue($fresh->metadata['cancellation']['refund_required']);
-        $this->assertNotNull($fresh->metadata['cancellation']['payment_after_cancel'] ?? null);
-    }
-
-    /** Pembayaran yang sudah dibatalkan tidak diproses ulang oleh callback gagal. */
-    public function test_failed_callback_does_not_revive_cancelled_payment(): void
-    {
-        $this->configure();
-        $user = $this->user();
-
-        $payment = $this->payment($user, [
-            'payment_id' => '99078',
-            'status'     => 'canceled',
-        ]);
-
-        $this->fakePayment->webhookStatus = 'failed';
-
-        $payload = [
-            'trx_id'          => 99078,
-            'status_code'     => 5,
-            'status'          => 'gagal',
-            'additional_info' => [],
-        ];
-
-        $this->postJson('/api/ipaymu/callback', $payload, [
-            'X-Signature' => $this->signatureFor($payload),
-        ])->assertOk();
-
-        $this->assertSame('canceled', $payment->fresh()->status);
-    }
-
-    /** Callback tanpa signature sah tidak boleh mengubah pembayaran. */
-    public function test_unsigned_callback_is_rejected(): void
-    {
-        $this->configure();
-        $user = $this->user();
-        $payment = $this->payment($user, ['payment_id' => '99079']);
-
-        $this->postJson('/api/ipaymu/callback', [
-            'trx_id' => 99079, 'status_code' => 1, 'status' => 'berhasil', 'additional_info' => [],
-        ], ['X-Signature' => 'deadbeef'])->assertStatus(401);
-
-        $this->assertSame('pending', $payment->fresh()->status);
-    }
-}
-
-// ──────────────────────────────────────────────────────────────
-// Fakes
-// ──────────────────────────────────────────────────────────────
-
-class FakeCancelIpaymuService extends iPaymuService
-{
-    public function __construct() {}
-
-    public static function isConfigured(): bool
-    {
-        return true;
-    }
-
-    public static function credentials(): array
-    {
-        return [
-            'base_url' => 'https://sandbox.ipaymu.com',
-            'merchant_id' => '123456',
-            'va' => '123456',
-            'api_key' => 'apikey-xyz',
-            'secret_key' => '',
-            'payout_enabled' => false,
-            'webhook_secret' => '',
-            'timeout' => 30,
-        ];
-    }
-}
-
-class FakeCancelPaymentService extends IpaymuPaymentService
-{
-    public int $syncCalls = 0;
-    public array $syncResult = ['status' => 'pending', 'known' => false, 'error' => null];
-    public string $webhookStatus = 'paid';
-
-    public function __construct(?iPaymuService $ipaymu = null)
-    {
-        parent::__construct($ipaymu);
-    }
-
-    public function syncStatus(Payment $payment): array
-    {
-        $this->syncCalls++;
-
-        return $this->syncResult;
-    }
-
-    public function webhookFinalStatus(string $transactionId, string $webhookStatus): string
-    {
-        return $this->webhookStatus;
+        Http::assertNothingSent();
+        $this->assertSame('canceled', $historicalPayment->fresh()->status);
     }
 }

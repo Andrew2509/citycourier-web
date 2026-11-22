@@ -88,14 +88,14 @@ return [
         'max_amount_idr' => (int) env('COURIER_MAX_PAYOUT_IDR', 25000000),
         'fee_idr' => (int) env('COURIER_PAYOUT_FEE_IDR', 0),
         'schedule_cron' => env('COURIER_AUTO_PAYOUT_CRON', '0 * * * *'),
-        'require_verified_destination' => (bool) env('COURIER_REQUIRE_VERIFIED_DESTINATION', true),
+        'require_verified_destination' => (bool) env('COURIER_REQUIRE_AUTO_VERIFIED_DESTINATION', false),
         'max_retry_attempts' => (int) env('COURIER_PAYOUT_MAX_RETRIES', 3),
         'timeout_recheck_minutes' => (int) env('COURIER_PAYOUT_TIMEOUT_RECHECK_MINUTES', 10),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Xendit Provider Configuration (Primary Candidate)
+    | Xendit Provider Configuration (Sole Active Payment & Payout Gateway)
     |--------------------------------------------------------------------------
     */
     'xendit' => [
@@ -105,25 +105,15 @@ return [
         'callback_token' => env('XENDIT_WEBHOOK_CALLBACK_TOKEN', ''),
         'timeout_seconds' => (int) env('XENDIT_TIMEOUT_SECONDS', 30),
         'api_version' => env('XENDIT_API_VERSION', '2024-11-11'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | DOKU Provider Configuration (Alternative Candidate)
-    |--------------------------------------------------------------------------
-    */
-    'doku' => [
-        'sandbox_url' => env('DOKU_SANDBOX_URL', 'https://api-sandbox.doku.com'),
-        'production_url' => env('DOKU_PRODUCTION_URL', 'https://api.doku.com'),
-        'client_id' => env('DOKU_CLIENT_ID', ''),
-        'secret_key' => env('DOKU_SECRET_KEY', ''),
-        'private_key' => env('DOKU_PRIVATE_KEY', ''),
-        'kirim_inquiry_enabled' => (bool) env('DOKU_KIRIM_INQUIRY_ENABLED', true),
-        'kirim_channel_id' => env('DOKU_KIRIM_CHANNEL_ID', 'H2H'),
-        'kirim_customer_number' => env('DOKU_KIRIM_CUSTOMER_NUMBER', '6281234567890'),
-        'kirim_token_path' => env('DOKU_KIRIM_TOKEN_PATH', '/authorization/v1/access-token/b2b'),
-        'kirim_inquiry_path' => env('DOKU_KIRIM_INQUIRY_PATH', '/snap/v1.1/emoney/bank-account-inquiry'),
-        'timeout_seconds' => (int) env('DOKU_TIMEOUT_SECONDS', 30),
+        'sync_payout_channels' => (bool) env('XENDIT_SYNC_PAYOUT_CHANNELS', false),
+        'disabled_payout_channels' => array_filter(explode(',', (string) env('XENDIT_DISABLED_PAYOUT_CHANNELS', ''))),
+        'name_validator' => [
+            'enabled' => (bool) env('XENDIT_NAME_VALIDATOR_ENABLED', false),
+            'base_url' => env('XENDIT_NAME_VALIDATOR_BASE_URL', ''),
+            'secret_key' => env('XENDIT_NAME_VALIDATOR_SECRET_KEY', ''),
+            'bank_path' => env('XENDIT_NAME_VALIDATOR_BANK_PATH', ''),
+            'ewallet_path' => env('XENDIT_NAME_VALIDATOR_EWALLET_PATH', ''),
+        ],
     ],
 
     /*

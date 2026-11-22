@@ -2,6 +2,10 @@
 
 namespace App\Modules\Payment\Services;
 
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\Shipment;
+use App\Models\Withdrawal;
 use App\Modules\Payment\Jobs\PaymentWebhookJob;
 use App\Modules\Payment\Models\PaymentWebhook;
 use App\Modules\Payment\Providers\ProviderResolver;
@@ -9,7 +13,9 @@ use App\Modules\Payout\Models\PayoutTransaction;
 use App\Modules\Payout\Services\PayoutService;
 use App\Modules\TopUp\Models\TopupTransaction;
 use App\Modules\TopUp\Services\TopupService;
+use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 class WebhookProcessorService
@@ -149,23 +155,72 @@ class WebhookProcessorService
         $providerRef = $parsed['provider_reference'];
         $status = $parsed['status'];
 
-        $topup = TopupTransaction::query()
-            ->when($externalId !== '', fn ($q) => $q->where('reference', $externalId))
-            ->when($externalId === '' && $providerRef !== '', fn ($q) => $q->where('provider_reference', $providerRef))
-            ->first();
+        if (Schema::hasTable('topup_transactions')) {
+            $topup = TopupTransaction::query()
+                ->when($externalId !== '', fn ($q) => $q->where('reference', $externalId))
+                ->when($externalId === '' && $providerRef !== '', fn ($q) => $q->where('provider_reference', $providerRef))
+                ->first();
 
-        if (! $topup && $providerRef !== '') {
-            $topup = TopupTransaction::where('provider_reference', $providerRef)->first();
+            if (! $topup && $providerRef !== '') {
+                $topup = TopupTransaction::where('provider_reference', $providerRef)->first();
+            }
+
+            if ($topup) {
+                if ($status === 'paid') {
+                    $this->topupService->markPaidAndSettle($topup, $providerRef ?: null, $payload);
+                } elseif (in_array($status, ['failed', 'expired', 'canceled'], true)) {
+                    $this->topupService->markFailedOrExpired($topup, $status, $parsed['failure_reason'] ?? "Webhook status {$status}");
+                }
+
+                return;
+            }
         }
 
-        if (! $topup) {
+        // Tangani juga pembayaran checkout pesanan (tabel payments) dari Xendit
+        $orderPayment = Payment::query()
+            ->when($providerRef !== '', fn ($q) => $q->where('payment_id', $providerRef))
+            ->when($providerRef === '' && $externalId !== '', fn ($q) => $q->where('payment_id', $externalId))
+            ->first();
+
+        if (! $orderPayment && $externalId !== '') {
+            $orderPayment = Payment::where('payment_id', $externalId)
+                ->orWhere('metadata->xendit_reference_id', $externalId)
+                ->first();
+        }
+
+        if (! $orderPayment) {
+            return;
+        }
+
+        if (in_array($orderPayment->status, ['paid', 'canceled', 'expired', 'failed'], true)) {
             return;
         }
 
         if ($status === 'paid') {
-            $this->topupService->markPaidAndSettle($topup, $providerRef ?: null, $payload);
-        } elseif (in_array($status, ['failed', 'expired'], true)) {
-            $this->topupService->markFailedOrExpired($topup, $status, $parsed['failure_reason'] ?? "Webhook status {$status}");
+            $orderPayment->update([
+                'status' => 'paid',
+                'paid_at' => $orderPayment->paid_at ?? now(),
+                'callback_data' => $payload,
+            ]);
+
+            if ($orderPayment->order_id && Schema::hasTable('orders')) {
+                $orderUpdates = [];
+                if (Schema::hasColumn('orders', 'payment_status')) {
+                    $orderUpdates['payment_status'] = 'paid';
+                }
+                if (! empty($orderUpdates)) {
+                    Order::where('id', $orderPayment->order_id)->update($orderUpdates);
+                }
+            }
+            if ($orderPayment->shipment_id && Schema::hasTable('shipments')) {
+                Shipment::where('id', $orderPayment->shipment_id)->update(['status' => 'confirmed']);
+            }
+        } elseif (in_array($status, ['failed', 'expired', 'canceled'], true)) {
+            $mapped = $status === 'canceled' ? 'canceled' : ($status === 'expired' ? 'expired' : 'failed');
+            $orderPayment->update([
+                'status' => $mapped,
+                'callback_data' => $payload,
+            ]);
         }
     }
 
@@ -185,18 +240,45 @@ class WebhookProcessorService
             $payout = PayoutTransaction::where('provider_reference', $providerRef)->first();
         }
 
-        if (! $payout) {
-            throw new InvalidArgumentException("Matching payout not found for webhook ({$externalId} / {$providerRef}).");
+        if ($payout) {
+            if ($status === 'completed') {
+                $this->payoutService->markPayoutSucceeded($payout, $providerRef ?: $payout->provider_reference);
+            } elseif (in_array($status, ['failed', 'reversed'], true)) {
+                $this->payoutService->markPayoutFailedAndRelease(
+                    $payout,
+                    (string) ($parsed['failure_code'] ?? strtoupper($status)),
+                    (string) ($parsed['failure_reason'] ?? "Payout {$status} reported via webhook")
+                );
+            }
+
+            return;
         }
 
-        if ($status === 'completed') {
-            $this->payoutService->markPayoutSucceeded($payout, $providerRef ?: $payout->provider_reference);
-        } elseif (in_array($status, ['failed', 'reversed'], true)) {
-            $this->payoutService->markPayoutFailedAndRelease(
-                $payout,
-                (string) ($parsed['failure_code'] ?? strtoupper($status)),
-                (string) ($parsed['failure_reason'] ?? "Payout {$status} reported via webhook")
-            );
+        // Tangani juga penarikan kurir di tabel legacy `withdrawals` yang disalurkan melalui Xendit
+        if (Schema::hasTable('withdrawals')) {
+            $legacyRef = $providerRef !== '' ? $providerRef : $externalId;
+            $legacy = $legacyRef !== ''
+                ? Withdrawal::where('provider_reference', $legacyRef)
+                    ->when($externalId !== '', fn ($q) => $q->orWhere('idempotency_key', $externalId))
+                    ->first()
+                : null;
+
+            if ($legacy) {
+                $withdrawalStatus = match ($status) {
+                    'completed' => 'success',
+                    'failed', 'reversed' => 'failed',
+                    default => 'processing',
+                };
+                app(WithdrawalService::class)->handleStatusUpdate(
+                    $legacyRef,
+                    $withdrawalStatus,
+                    $parsed['failure_reason'] ?? null
+                );
+
+                return;
+            }
         }
+
+        throw new InvalidArgumentException("Matching payout not found for webhook ({$externalId} / {$providerRef}).");
     }
 }

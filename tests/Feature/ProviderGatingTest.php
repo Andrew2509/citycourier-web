@@ -12,11 +12,10 @@ use App\Modules\Ledger\Models\WalletLedgerEntry;
 use App\Modules\Payout\Services\DestinationService;
 use App\Modules\Payout\Services\PayoutService;
 use App\Modules\Wallet\Services\WalletLedgerManager;
-use App\Services\IpaymuPaymentService;
-use App\Services\iPaymuService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -58,7 +57,6 @@ class ProviderGatingTest extends TestCase
 
     protected function tearDown(): void
     {
-        iPaymuService::flushCredentialsCache();
         parent::tearDown();
     }
 
@@ -124,18 +122,12 @@ class ProviderGatingTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.providers.whatsapp', true)
             ->assertJsonPath('data.providers.map', true)
-            ->assertJsonPath('data.providers.dana', true)
-            ->assertJsonPath('data.providers.ovo', false)
-            ->assertJsonPath('data.providers.ipaymu', true)
             ->assertJsonPath('data.providers.rajaongkir', true)
             ->assertJsonPath('data.providers.xendit', true)
-            ->assertJsonPath('data.providers.doku', true)
-            ->assertJsonPath('data.topup_provider_enabled', true);
-
-        $this->actingAs($admin)
-            ->postJson('/admin/providers/ipaymu/toggle', ['enabled' => 0])
-            ->assertOk()
-            ->assertJsonPath('enabled', false);
+            ->assertJsonPath('data.active_payment_provider', 'xendit')
+            ->assertJsonPath('data.topup_provider_enabled', true)
+            ->assertJsonMissingPath('data.providers.doku')
+            ->assertJsonMissingPath('data.providers.ipaymu');
 
         $this->actingAs($admin)
             ->postJson('/admin/providers/xendit/toggle', ['enabled' => 0])
@@ -144,46 +136,26 @@ class ProviderGatingTest extends TestCase
 
         $this->getJson('/api/settings')
             ->assertOk()
-            ->assertJsonPath('data.providers.ipaymu', false)
             ->assertJsonPath('data.providers.xendit', false)
             ->assertJsonPath('data.topup_provider_enabled', false);
     }
 
-    public function test_ipaymu_off_removes_checkout_methods_and_blocks_payment_create_and_courier_withdrawal(): void
+    public function test_xendit_off_removes_checkout_methods_and_blocks_payment_create_and_courier_withdrawal(): void
     {
         $admin = $this->createAdmin();
-        $customer = $this->createCustomer('ipaymu');
-        [, $courier] = $this->createCourier('ipaymu');
-
-        Setting::create(['key' => 'ipaymu_va', 'value' => '123456', 'group' => 'ipaymu']);
-        Setting::create(['key' => 'ipaymu_api_key', 'value' => 'apikey-test', 'group' => 'ipaymu']);
-        Setting::create(['key' => 'ipaymu_base_url', 'value' => 'https://sandbox.ipaymu.com', 'group' => 'ipaymu']);
-        iPaymuService::flushCredentialsCache();
-
-        $fakePayment = new class extends IpaymuPaymentService
-        {
-            public function getPaymentMethods(): array
-            {
-                return [
-                    'success' => true,
-                    'methods' => [
-                        ['code' => 'bca', 'name' => 'BCA Virtual Account', 'group' => 'virtual_account', 'fee' => 4000, 'is_available' => true],
-                        ['code' => 'QRIS', 'name' => 'QRIS', 'group' => 'ewallet', 'fee' => 0, 'is_available' => true],
-                    ],
-                ];
-            }
-        };
-        $this->app->instance(IpaymuPaymentService::class, $fakePayment);
+        $customer = $this->createCustomer('xenditgate');
+        [, $courier] = $this->createCourier('xenditgate');
 
         Sanctum::actingAs($customer);
         $this->getJson('/api/payment/methods')
             ->assertOk()
-            ->assertJsonPath('ipaymu_enabled', true)
-            ->assertJsonCount(2, 'data');
+            ->assertJsonPath('xendit_enabled', true)
+            ->assertJsonPath('gateway', 'xendit')
+            ->assertJsonCount(10, 'data');
 
-        // Admin turns iPaymu OFF
+        // Admin turns Xendit OFF
         $this->actingAs($admin)
-            ->postJson('/admin/providers/ipaymu/toggle', ['enabled' => 0])
+            ->postJson('/admin/providers/xendit/toggle', ['enabled' => 0])
             ->assertOk()
             ->assertJsonPath('enabled', false);
 
@@ -191,14 +163,14 @@ class ProviderGatingTest extends TestCase
         $this->getJson('/api/payment/methods')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('ipaymu_enabled', false)
+            ->assertJsonPath('xendit_enabled', false)
             ->assertJsonPath('disabled', true)
             ->assertJsonCount(0, 'data');
 
         $this->postJson('/api/payment/create', [
             'shipment_id' => '99',
             'payment_type' => 'virtual_account',
-            'channel_code' => 'bca',
+            'channel_code' => 'BCA',
             'amount' => 25000,
         ])
             ->assertStatus(403)
@@ -208,11 +180,12 @@ class ProviderGatingTest extends TestCase
         $this->getJson('/api/courier/withdrawals/destination-inquiry?phone=081234567890')
             ->assertOk()
             ->assertJsonPath('data.available', false)
+            ->assertJsonPath('data.verification_status', 'unavailable')
             ->assertJsonPath('data.status', 'provider_disabled');
 
         $this->postJson('/api/courier/withdrawals', [
             'amount' => 50000,
-            'idempotency_key' => 'wd-ipaymu-off-1',
+            'idempotency_key' => 'wd-xendit-off-1',
             'phone_number' => '081234567890',
         ])
             ->assertStatus(403)
@@ -290,37 +263,24 @@ class ProviderGatingTest extends TestCase
         $autoResult = app(PayoutService::class)->runScheduledCourierAutoPayouts();
         $this->assertSame(0, $autoResult['scheduled_payouts']);
 
-        // Switch active payment provider to DOKU and disable DOKU
+        // Legacy DOKU & iPaymu webhook/provider controls are retired (404) & ProviderResolver enforces Xendit
+        $this->postJson('/api/v1/webhooks/doku', ['test' => true])->assertStatus(404);
+        $this->actingAs($admin)->postJson('/admin/providers/doku/toggle', ['enabled' => 0])->assertStatus(404);
+        $this->actingAs($admin)->postJson('/admin/providers/ipaymu/toggle', ['enabled' => 0])->assertStatus(404);
+
         Setting::set('payment_active_provider', 'doku', 'payment_wallet');
-        $this->actingAs($admin)
-            ->postJson('/admin/providers/doku/toggle', ['enabled' => 0])
-            ->assertOk();
-
-        Sanctum::actingAs($customer);
-        $this->getJson('/api/v1/customer/wallet/topups/methods')
-            ->assertOk()
-            ->assertJsonPath('data.active_provider', 'doku')
-            ->assertJsonPath('data.provider_enabled', false)
-            ->assertJsonCount(0, 'data.methods');
-
-        $this->postJson('/api/v1/customer/wallet/topups', [
-            'amount' => 50000,
-            'payment_type' => 'qris',
-            'channel_code' => 'QRIS',
-        ])
-            ->assertStatus(403)
-            ->assertJsonPath('error_code', 'PROVIDER_DISABLED');
+        Setting::set('payout_active_provider', 'doku', 'payment_wallet');
+        $resolver = app(\App\Modules\Payment\Providers\ProviderResolver::class);
+        $this->assertSame('xendit', $resolver->activePaymentProviderCode());
+        $this->assertSame('xendit', $resolver->activePayoutProviderCode());
     }
 
     public function test_dana_and_ovo_off_block_courier_endpoints(): void
     {
-        $admin = $this->createAdmin();
         [$courierUser] = $this->createCourier('ewallet');
 
-        // Turn DANA OFF
-        $this->actingAs($admin)
-            ->postJson('/admin/providers/dana/toggle', ['enabled' => 0])
-            ->assertOk();
+        // Legacy DANA/OVO settings remain gateable for historical compatibility
+        Setting::set('dana_enabled', '0', 'dana');
 
         Sanctum::actingAs($courierUser);
 
@@ -359,10 +319,8 @@ class ProviderGatingTest extends TestCase
             ->assertStatus(403)
             ->assertJsonPath('error_code', 'PROVIDER_DISABLED');
 
-        // Turning OVO ON enables /api/courier/ovo/status
-        $this->actingAs($admin)
-            ->postJson('/admin/providers/ovo/toggle', ['enabled' => 1])
-            ->assertOk();
+        // Turning OVO ON via setting enables /api/courier/ovo/status
+        Setting::set('ovo_enabled', '1', 'ovo');
 
         Sanctum::actingAs($courierUser);
         $this->getJson('/api/courier/ovo/status')
@@ -513,14 +471,13 @@ class ProviderGatingTest extends TestCase
             ->assertJsonPath('error_code', 'PROVIDER_DISABLED');
     }
 
-    public function test_realtime_destination_inquiry_resolves_account_holder_names_in_sandbox_and_stays_honest_in_production(): void
+    public function test_realtime_destination_inquiry_uses_honest_xendit_statuses(): void
     {
         $customer = $this->createCustomer('inq');
-        $expectedUserUpper = strtoupper($customer->name);
 
         Sanctum::actingAs($customer);
 
-        // Unknown third-party bank account never fabricates a fake Sandbox name
+        // 1. Default Xendit Payouts v2 (without Name Validator enabled): returns `unverified`, never fake names
         $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
             'destination_type' => 'bank',
             'channel_code' => 'ID_BCA',
@@ -529,83 +486,8 @@ class ProviderGatingTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.supported', false)
             ->assertJsonPath('data.found', false)
-            ->assertJsonPath('data.account_holder_name', null);
-
-        // E-wallet matching user's own profile phone resolves to user's real profile name
-        $intlPhone = '62'.substr($customer->phone, 1);
-        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
-            'destination_type' => 'ewallet',
-            'channel_code' => 'ID_DANA',
-            'account_number' => '+'.$intlPhone,
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', true)
-            ->assertJsonPath('data.found', true)
-            ->assertJsonPath('data.is_simulated', false)
-            ->assertJsonPath('data.provider', 'account_profile')
-            ->assertJsonPath('data.account_holder_name', $expectedUserUpper);
-
-        // Saving a verified bank account makes subsequent inquiries recognize the real saved name
-        $this->postJson('/api/v1/customer/wallet/destinations', [
-            'destination_type' => 'bank',
-            'channel_code' => 'ID_BCA',
-            'account_number' => '1234567890',
-            'account_holder_name' => 'Rina Pemilik Asli',
-            'is_default' => true,
-        ])->assertStatus(201);
-
-        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
-            'destination_type' => 'bank',
-            'channel_code' => 'ID_BCA',
-            'account_number' => '1234567890',
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', true)
-            ->assertJsonPath('data.found', true)
-            ->assertJsonPath('data.is_simulated', false)
-            ->assertJsonPath('data.provider', 'saved_destination')
-            ->assertJsonPath('data.account_holder_name', 'RINA PEMILIK ASLI');
-
-        // Courier endpoint also uses real profile phone and never fabricates unknown bank names
-        [$courierUser, $courier] = $this->createCourier('inq');
-        $this->assertNotNull($courier);
-
-        Sanctum::actingAs($courierUser);
-        $this->postJson('/api/v1/courier/wallet/destinations/inquiry', [
-            'destination_type' => 'bank',
-            'channel_code' => 'ID_MANDIRI',
-            'account_number' => '1370012345678',
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', false)
-            ->assertJsonPath('data.found', false)
-            ->assertJsonPath('data.account_holder_name', null);
-
-        $this->postJson('/api/v1/courier/wallet/destinations/inquiry', [
-            'destination_type' => 'ewallet',
-            'channel_code' => 'ID_DANA',
-            'account_number' => $courierUser->phone,
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', true)
-            ->assertJsonPath('data.found', true)
-            ->assertJsonPath('data.account_holder_name', strtoupper($courierUser->name));
-
-        // Production Xendit without Bank Name Validator returns supported=false for unknown accounts,
-        // while still recognizing the user's own profile phone on e-wallet
-        Setting::set('payment_wallet_mode', 'production', 'payment_wallet');
-        Setting::set('xendit_secret_key', 'xnd_production_test_key_12345', 'payment_wallet');
-        Setting::set('xendit_enabled', '1', 'payment_wallet');
-
-        Sanctum::actingAs($customer);
-        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
-            'destination_type' => 'bank',
-            'channel_code' => 'ID_BRI',
-            'account_number' => '998877665544',
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.supported', false)
-            ->assertJsonPath('data.found', false)
+            ->assertJsonPath('data.verification_status', 'unverified')
+            ->assertJsonPath('data.can_input_manually', true)
             ->assertJsonPath('data.account_holder_name', null);
 
         $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
@@ -614,8 +496,86 @@ class ProviderGatingTest extends TestCase
             'account_number' => $customer->phone,
         ])
             ->assertOk()
+            ->assertJsonPath('data.supported', false)
+            ->assertJsonPath('data.found', false)
+            ->assertJsonPath('data.verification_status', 'unverified')
+            ->assertJsonPath('data.can_input_manually', true)
+            ->assertJsonPath('data.account_holder_name', null);
+
+        // 2. Unsupported channel returns `unavailable` and rejects manual inquiry
+        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_BANK_TIDAK_ADA',
+            'account_number' => '1234567890',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', false)
+            ->assertJsonPath('data.found', false)
+            ->assertJsonPath('data.verification_status', 'unavailable')
+            ->assertJsonPath('data.can_input_manually', false)
+            ->assertJsonPath('data.account_holder_name', null);
+
+        // 3. When Xendit Data Services Name Validator is officially enabled: returns `auto_verified` or `verification_failed`
+        Setting::set('payment_wallet_mode', 'production', 'payment_wallet');
+        Setting::set('xendit_secret_key', 'xnd_production_test_key_12345', 'payment_wallet');
+        Setting::set('xendit_enabled', '1', 'payment_wallet');
+        Config::set('payment_wallet.xendit.name_validator', [
+            'enabled' => true,
+            'base_url' => 'https://api.xendit.co',
+            'secret_key' => 'xnd_production_test_key_12345',
+            'bank_path' => '/v2/validators/bank_accounts',
+            'ewallet_path' => '/v2/validators/ewallets',
+        ]);
+
+        Http::fake([
+            'https://api.xendit.co/v2/validators/bank_accounts' => Http::sequence()
+                ->push(['status' => 'COMPLETED', 'account_holder_name' => 'Rina Pemilik Asli'], 200)
+                ->push(['status' => 'FAILED'], 404),
+            'https://api.xendit.co/v2/validators/ewallets' => Http::response([
+                'status' => 'COMPLETED',
+                'account_holder_name' => 'Budi Ewallet Asli',
+            ], 200),
+        ]);
+
+        // Valid bank lookup -> auto_verified
+        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_BCA',
+            'account_number' => '1234567890',
+        ])
+            ->assertOk()
             ->assertJsonPath('data.supported', true)
             ->assertJsonPath('data.found', true)
-            ->assertJsonPath('data.account_holder_name', $expectedUserUpper);
+            ->assertJsonPath('data.verification_status', 'auto_verified')
+            ->assertJsonPath('data.can_input_manually', false)
+            ->assertJsonPath('data.account_holder_name', 'RINA PEMILIK ASLI');
+
+        // Failed lookup -> verification_failed
+        $this->postJson('/api/v1/customer/wallet/destinations/inquiry', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_BCA',
+            'account_number' => '0000000000',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', true)
+            ->assertJsonPath('data.found', false)
+            ->assertJsonPath('data.verification_status', 'verification_failed')
+            ->assertJsonPath('data.can_input_manually', true)
+            ->assertJsonPath('data.account_holder_name', null);
+
+        // Courier e-wallet lookup -> auto_verified
+        [, $courier] = $this->createCourier('inq');
+        Sanctum::actingAs($courier->user);
+
+        $this->postJson('/api/v1/courier/wallet/destinations/inquiry', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => '081234567890',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', true)
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.verification_status', 'auto_verified')
+            ->assertJsonPath('data.account_holder_name', 'BUDI EWALLET ASLI');
     }
 }

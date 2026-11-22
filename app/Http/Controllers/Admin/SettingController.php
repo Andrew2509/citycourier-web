@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Modules\Payment\Services\GatewayCredentialsResolver;
-use App\Modules\Payout\Services\DokuKirimAccountInquiryService;
 use App\Modules\Wallet\Services\WalletLedgerManager;
 use App\Services\DanaService;
 use App\Services\FonnteWhatsAppService;
@@ -56,32 +55,6 @@ class SettingController extends Controller
             'api_key' => Setting::get('map_api_key', env('MAP_API_KEY', '')),
         ];
 
-        $dana = [
-            'mode' => Setting::get('dana_mode', 'mock'),
-            'api_base_url' => Setting::get('dana_api_base_url', 'https://api.sandbox.dana.id'),
-            'client_id' => Setting::get('dana_client_id', ''),
-            'client_secret' => Setting::get('dana_client_secret', ''),
-            'merchant_id' => Setting::get('dana_merchant_id', ''),
-            'public_key' => Setting::get('dana_public_key', ''),
-            'private_key' => Setting::get('dana_private_key', ''),
-            'callback_url' => Setting::get('dana_callback_url', url('/api/courier/dana/callback')),
-        ];
-
-        $ovo = [
-            'mode' => Setting::get('ovo_mode', 'mock'),
-            'api_base_url' => Setting::get('ovo_api_base_url', 'https://api.ovo.id'),
-            'client_id' => Setting::get('ovo_client_id', ''),
-            'client_secret' => Setting::get('ovo_client_secret', ''),
-            'partner_id' => Setting::get('ovo_partner_id', ''),
-            'merchant_id' => Setting::get('ovo_merchant_id', ''),
-            'public_key' => Setting::get('ovo_public_key', ''),
-            'private_key' => Setting::get('ovo_private_key', ''),
-        ];
-
-        $ipaymu = iPaymuService::credentials();
-        $ipaymu['webhook_url'] = url('/api/ipaymu/webhook');
-        $ipaymu['configured'] = ! empty($ipaymu['api_key']) && ! empty($ipaymu['merchant_id'] ?: $ipaymu['va']);
-
         $gatewayResolver = app(GatewayCredentialsResolver::class);
         $xenditRaw = $gatewayResolver->xendit();
         $xendit = [
@@ -99,36 +72,14 @@ class SettingController extends Controller
             'is_active_payout' => Setting::get('payout_active_provider', config('payment_wallet.active_payout_provider', 'xendit')) === 'xendit',
         ];
 
-        $dokuRaw = $gatewayResolver->doku();
-        $doku = [
-            'sandbox_url' => $dokuRaw['sandbox_url'],
-            'production_url' => $dokuRaw['production_url'],
-            'client_id' => $dokuRaw['client_id'],
-            'configured' => $dokuRaw['configured'],
-            'has_private_key' => $dokuRaw['has_private_key'],
-            'public_key_derived' => $dokuRaw['public_key_derived'],
-            'kirim_inquiry_enabled' => $dokuRaw['kirim_inquiry_enabled'],
-            'kirim_channel_id' => $dokuRaw['kirim_channel_id'],
-            'kirim_customer_number' => $dokuRaw['kirim_customer_number'],
-            'kirim_configured' => $dokuRaw['kirim_configured'],
-            'secret_masked' => $dokuRaw['secret_masked'],
-            'source' => $dokuRaw['source'],
-            'webhook_url' => url('/api/v1/webhooks/doku'),
-            'is_active_payment' => Setting::get('payment_active_provider', config('payment_wallet.active_payment_provider', 'xendit')) === 'doku',
-        ];
-
         $providerStates = [
             'whatsapp' => $gatewayResolver->isEnabled('whatsapp', true),
             'map' => $gatewayResolver->isEnabled('map', true),
-            'dana' => $gatewayResolver->isEnabled('dana', true),
-            'ovo' => $gatewayResolver->isEnabled('ovo', false),
-            'ipaymu' => $gatewayResolver->isEnabled('ipaymu', true),
             'rajaongkir' => $gatewayResolver->isEnabled('rajaongkir', true),
             'xendit' => $xenditRaw['enabled'],
-            'doku' => $dokuRaw['enabled'],
         ];
 
-        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'dana', 'ovo', 'ipaymu', 'xendit', 'doku', 'providerStates'));
+        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'xendit', 'providerStates'));
     }
 
     // iPaymu (Payout/Disbursement) Settings
@@ -841,7 +792,7 @@ class SettingController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Xendit & DOKU Payment/Payout Gateway Settings (Database UI)
+    // Xendit Payment & Payout Gateway Settings (Database UI)
     // ─────────────────────────────────────────────────────────────
 
     public function toggleProvider(Request $request, string $provider, GatewayCredentialsResolver $resolver)
@@ -849,12 +800,8 @@ class SettingController extends Controller
         $allowed = [
             'whatsapp' => ['label' => 'WhatsApp Gateway', 'group' => 'whatsapp', 'default' => true],
             'map' => ['label' => 'Peta & Geocoding', 'group' => 'map', 'default' => true],
-            'dana' => ['label' => 'DANA Widget Binding', 'group' => 'dana', 'default' => true],
-            'ovo' => ['label' => 'OVO SNAP', 'group' => 'ovo', 'default' => false],
-            'ipaymu' => ['label' => 'iPaymu (Checkout & Payout)', 'group' => 'ipaymu', 'default' => true],
             'rajaongkir' => ['label' => 'Tarif Ekspedisi (RajaOngkir)', 'group' => 'rajaongkir', 'default' => true],
             'xendit' => ['label' => 'Xendit Gateway', 'group' => 'xendit', 'default' => true],
-            'doku' => ['label' => 'DOKU Jokul Gateway', 'group' => 'doku', 'default' => true],
         ];
 
         $provider = strtolower($provider);
@@ -870,20 +817,15 @@ class SettingController extends Controller
 
         Setting::set("{$provider}_enabled", $next ? '1' : '0', $meta['group']);
 
-        if ($provider === 'ipaymu') {
-            Setting::set('ipaymu_payout_enabled', $next ? '1' : '0', 'ipaymu');
-            iPaymuService::flushCredentialsCache();
-        }
-
-        if (in_array($provider, ['xendit', 'doku', 'ipaymu', 'dana', 'ovo'], true)) {
+        if ($provider === 'xendit') {
             $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
             $resolver->syncProviderConfigRecord(
-                $provider,
+                'xendit',
                 $meta['label'],
                 $mode,
                 $next,
-                in_array($provider, ['xendit', 'doku', 'ipaymu'], true),
-                in_array($provider, ['xendit', 'ipaymu', 'dana', 'ovo'], true),
+                true,
+                true,
                 ['enabled' => $next]
             );
 
@@ -1007,206 +949,6 @@ class SettingController extends Controller
                 'success' => false,
                 'message' => 'Gagal menghubungi Xendit: '.$e->getMessage(),
             ], 500);
-        }
-    }
-
-    public function updateDoku(Request $request, GatewayCredentialsResolver $resolver)
-    {
-        $validated = $request->validate([
-            'doku_sandbox_url' => ['required', 'url', 'max:255'],
-            'doku_production_url' => ['required', 'url', 'max:255'],
-            'doku_client_id' => ['nullable', 'string', 'max:150'],
-            'doku_kirim_partner_id' => ['nullable', 'string', 'max:150'],
-            'doku_secret_key' => ['nullable', 'string', 'min:8', 'max:255'],
-            'doku_private_key' => ['nullable', 'string', 'max:10000'],
-            'doku_kirim_channel_id' => ['nullable', 'string', 'max:30'],
-            'doku_customer_number' => ['nullable', 'string', 'max:25'],
-            'doku_kirim_inquiry_enabled' => ['nullable', 'boolean'],
-            'clear_doku_secrets' => ['nullable', 'boolean'],
-            'activate_doku' => ['nullable', 'boolean'],
-        ]);
-
-        Setting::set('doku_sandbox_url', rtrim($validated['doku_sandbox_url'], '/'), 'doku');
-        Setting::set('doku_production_url', rtrim($validated['doku_production_url'], '/'), 'doku');
-        Setting::set('doku_client_id', trim((string) ($validated['doku_client_id'] ?? '')), 'doku');
-        Setting::set('doku_kirim_partner_id', trim((string) ($validated['doku_kirim_partner_id'] ?? '')), 'doku');
-        Setting::set('doku_kirim_inquiry_enabled', $request->boolean('doku_kirim_inquiry_enabled') ? '1' : '0', 'doku');
-        Setting::set(
-            'doku_kirim_channel_id',
-            trim((string) ($validated['doku_kirim_channel_id'] ?? '')) ?: 'H2H',
-            'doku'
-        );
-        if (array_key_exists('doku_customer_number', $validated) && trim((string) $validated['doku_customer_number']) !== '') {
-            Setting::set('doku_customer_number', trim((string) $validated['doku_customer_number']), 'doku');
-        }
-
-        if ($request->boolean('clear_doku_secrets')) {
-            Setting::set('doku_secret_key', '', 'doku');
-            Setting::set('doku_private_key', '', 'doku');
-        } else {
-            if ($request->filled('doku_secret_key')) {
-                $resolver->saveEncryptedSecret('doku_secret_key', $request->string('doku_secret_key')->toString(), 'doku');
-            }
-            if ($request->filled('doku_private_key')) {
-                $priv = trim($request->string('doku_private_key')->toString());
-                if (GatewayCredentialsResolver::derivePublicKeyPem($priv) === '') {
-                    return redirect()->back()->withErrors(['doku_private_key' => 'Format DOKU Private Key RSA PEM tidak valid.']);
-                }
-                $resolver->saveEncryptedSecret('doku_private_key', $priv, 'doku');
-            }
-        }
-
-        if ($request->boolean('activate_doku')) {
-            Setting::set('payment_active_provider', 'doku', 'finance');
-        }
-
-        app(DokuKirimAccountInquiryService::class)->forgetTokenCache();
-
-        $doku = $resolver->doku();
-        $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
-        $resolver->syncProviderConfigRecord(
-            'doku',
-            'DOKU Jokul Gateway',
-            $mode,
-            Setting::get('payment_active_provider', 'xendit') === 'doku',
-            true,
-            $doku['kirim_configured'] ?? false,
-            [
-                'sandbox_url' => $doku['sandbox_url'],
-                'production_url' => $doku['production_url'],
-                'client_id' => $doku['client_id'],
-                'has_secret_key' => $doku['configured'],
-                'kirim_inquiry_enabled' => $doku['kirim_inquiry_enabled'],
-                'has_private_key' => $doku['has_private_key'],
-            ]
-        );
-
-        return redirect()->back()->with('success', 'Konfigurasi API DOKU & Kirim DOKU berhasil disimpan terenkripsi ke database.');
-    }
-
-    public function generateDokuRsaKeyPair()
-    {
-        try {
-            $pair = DokuKirimAccountInquiryService::generateRsaKeyPair();
-
-            return response()->json([
-                'success' => true,
-                'private_key' => $pair['private_key'],
-                'public_key' => $pair['public_key'],
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 422);
-        }
-    }
-
-    public function testDoku(Request $request, GatewayCredentialsResolver $resolver)
-    {
-        try {
-            $saved = $resolver->doku();
-            $mode = (string) (Setting::get('payment_wallet_mode') ?: config('payment_wallet.mode', 'sandbox'));
-            $sandboxUrl = rtrim((string) ($request->input('doku_sandbox_url') ?: $saved['sandbox_url']), '/');
-            $productionUrl = rtrim((string) ($request->input('doku_production_url') ?: $saved['production_url']), '/');
-            $baseUrl = $mode === 'production' ? $productionUrl : $sandboxUrl;
-            $clientId = trim((string) ($request->input('doku_client_id') ?: $saved['client_id']));
-            $kirimPartnerId = trim((string) ($request->input('doku_kirim_partner_id') ?? ($saved['kirim_partner_id'] ?? '')));
-            $secretKey = trim((string) ($request->input('doku_secret_key') ?: $saved['secret_key']));
-            $privateKey = trim((string) ($request->input('doku_private_key') ?: $saved['private_key']));
-            $channelId = trim((string) ($request->input('doku_kirim_channel_id') ?: $saved['kirim_channel_id'])) ?: 'H2H';
-
-            if ($clientId === '' || $secretKey === '') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'DOKU Client-Id dan Secret Key wajib diisi.',
-                ], 422);
-            }
-
-            $requestTarget = '/orders/v1/status/TEST-CONN-'.time();
-            $requestId = (string) Str::uuid();
-            $timestamp = now('UTC')->format('Y-m-d\TH:i:s\Z');
-            $component = "Client-Id:{$clientId}\nRequest-Id:{$requestId}\nRequest-Timestamp:{$timestamp}\nRequest-Target:{$requestTarget}";
-            $signature = 'HMACSHA256='.base64_encode(hash_hmac('sha256', $component, $secretKey, true));
-
-            $response = Http::timeout(15)
-                ->withHeaders([
-                    'Client-Id' => $clientId,
-                    'Request-Id' => $requestId,
-                    'Request-Timestamp' => $timestamp,
-                    'Signature' => $signature,
-                ])
-                ->get($baseUrl.$requestTarget);
-
-            // 404 (order not found) proves authentication & signature succeeded! 401/403 means invalid Client-Id/Secret.
-            if ($response->successful() || $response->status() === 404) {
-                $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, $privateKey !== '', ['client_id' => $clientId], 'healthy');
-                $msg = 'Koneksi & Signature HMAC DOKU Valid ('.strtoupper($mode).')!';
-
-                if ($privateKey !== '') {
-                    $kirimProbe = app(DokuKirimAccountInquiryService::class)->probeCredentials([
-                        'sandbox_url' => $sandboxUrl,
-                        'production_url' => $productionUrl,
-                        'client_id' => $clientId,
-                        'kirim_partner_id' => $kirimPartnerId,
-                        'secret_key' => $secretKey,
-                        'private_key' => $privateKey,
-                        'channel_id' => $channelId,
-                    ]);
-                    if (! ($kirimProbe['success'] ?? false)) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => $msg.' Namun Kirim DOKU gagal: '.($kirimProbe['message'] ?? 'Periksa Private/Public Key & aktivasi Kirim DOKU.'),
-                        ], 400);
-                    }
-                    $msg .= ' '.$kirimProbe['message'];
-                } else {
-                    $msg .= ' (Isi/Generate RSA Private Key bila ingin mengaktifkan cek nama Kirim DOKU SNAP.)';
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => $msg,
-                ]);
-            }
-
-            $resolver->syncProviderConfigRecord('doku', 'DOKU Jokul Gateway', $mode, false, true, false, ['client_id' => $clientId], 'error');
-
-            // Sertakan body error DOKU agar penyebab penolakan terdiagnosis
-            // (invalid_client_id, request_time_out_of_range, invalid_header_request, dst).
-            $body = $response->json();
-            $errCode = is_array($body) ? strtolower((string) (data_get($body, 'error.code') ?? data_get($body, 'responseCode') ?? '')) : '';
-            $errMsg = is_array($body) ? trim((string) (data_get($body, 'error.message') ?? data_get($body, 'responseMessage') ?? '')) : '';
-
-            Log::warning('[SettingController] Tes koneksi DOKU ditolak', [
-                'mode' => $mode,
-                'http_status' => $response->status(),
-                'error_code' => $errCode,
-                'error_message' => $errMsg,
-                'base_url' => $baseUrl,
-            ]);
-
-            $detail = $errMsg !== '' ? " DOKU: {$errMsg}".($errCode !== '' ? " ({$errCode})" : '') : '.';
-
-            if ($errCode === 'invalid_client_id') {
-                $message = "DOKU menolak Client-Id ini (HTTP 400, invalid_client_id). Pastikan Client-Id benar & merchant sudah teraktivasi di DOKU, dan Client-Id sesuai mode yang dipilih ({$mode}).{$detail}";
-            } elseif ($errCode === 'request_time_out_of_range') {
-                $message = "DOKU menolak request karena jam server tidak sinkron (HTTP 400).{$detail}";
-            } elseif ($errCode === 'invalid_header_request') {
-                $message = "DOKU menolak format header request (HTTP 400).{$detail}";
-            } else {
-                $message = 'DOKU menolak request (HTTP '.$response->status().").{$detail} Periksa Client-Id & Secret Key.";
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], 400);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menghubungi DOKU: '.$e->getMessage(),
-            ], 400);
         }
     }
 }

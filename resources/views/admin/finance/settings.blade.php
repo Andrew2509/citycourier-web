@@ -22,8 +22,7 @@
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Payment Provider (Money In)</label>
                 <select name="payment_active_provider" class="form-select">
-                    <option value="xendit" @selected($config['active_payment_provider'] === 'xendit')>Xendit (Utama)</option>
-                    <option value="doku" @selected($config['active_payment_provider'] === 'doku')>DOKU Jokul (Alternatif)</option>
+                    <option value="xendit" @selected($config['active_payment_provider'] === 'xendit')>Xendit (Satu-satunya Gateway Aktif)</option>
                     <option value="mock" @selected($config['active_payment_provider'] === 'mock')>MockProvider (Sandbox/Demo Only)</option>
                 </select>
             </div>
@@ -79,12 +78,6 @@
                 <span>Xendit Credentials</span>
                 <span class="font-semibold {{ $config['xendit_configured'] ? 'text-emerald-700' : 'text-amber-700' }}">
                     {{ $config['xendit_configured'] ? 'Terkonfigurasi' : 'Kosong (Sandbox Fallback ke Mock)' }}
-                </span>
-            </div>
-            <div class="flex justify-between">
-                <span>DOKU Jokul Credentials</span>
-                <span class="font-semibold {{ $config['doku_configured'] ? 'text-emerald-700' : 'text-slate-500' }}">
-                    {{ $config['doku_configured'] ? 'Terkonfigurasi' : 'Belum Diisi' }}
                 </span>
             </div>
             <div class="flex justify-between">

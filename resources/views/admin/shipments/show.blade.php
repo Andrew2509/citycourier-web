@@ -126,7 +126,7 @@
             </div>
             @endif
 
-            {{-- Pembayaran iPaymu: status transaksi, pembatalan, dan refund --}}
+            {{-- Pembayaran gateway (Xendit & histori transaksi lama) --}}
             @php $paymentsForAdmin = $shipment->payments ?? collect(); @endphp
             @if($paymentsForAdmin->isNotEmpty())
             <div class="card">
@@ -134,7 +134,7 @@
                     <div class="flex items-center gap-2">
                         <span class="cc-icon text-primary-600">payments</span>
                         <div>
-                            <div class="card-title text-sm">Pembayaran iPaymu</div>
+                            <div class="card-title text-sm">Pembayaran Xendit</div>
                             <div class="card-subtitle text-xs">Status transaksi, pembatalan, dan refund</div>
                         </div>
                     </div>
@@ -179,21 +179,21 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
                                 <div>
-                                    <div class="uppercase tracking-wider text-slate-500">ID Transaksi iPaymu</div>
+                                    <div class="uppercase tracking-wider text-slate-500">ID Transaksi</div>
                                     <div class="font-mono text-slate-800 break-all">{{ $pay->payment_id ?: '-' }}</div>
                                 </div>
                                 <div>
                                     <div class="uppercase tracking-wider text-slate-500">Reference ID</div>
-                                    <div class="font-mono text-slate-800 break-all">{{ $payMeta['ipaymu_reference_id'] ?? '-' }}</div>
+                                    <div class="font-mono text-slate-800 break-all">{{ $payMeta['xendit_reference_id'] ?? $payMeta['ipaymu_reference_id'] ?? '-' }}</div>
                                 </div>
                                 <div>
                                     <div class="uppercase tracking-wider text-slate-500">Nomor VA</div>
                                     <div class="font-mono text-slate-800">{{ $pay->va_number ?: '-' }}</div>
                                 </div>
                                 <div>
-                                    <div class="uppercase tracking-wider text-slate-500">Jalur</div>
+                                    <div class="uppercase tracking-wider text-slate-500">Provider / Jalur</div>
                                     <div class="text-slate-800">
-                                        {{ ($payMeta['payment_mode'] ?? 'direct') === 'redirect' ? 'Redirect (halaman iPaymu)' : 'Direct (VA/QRIS)' }}
+                                        {{ strtoupper((string) ($payMeta['provider'] ?? 'xendit')) }} ({{ ($payMeta['payment_mode'] ?? 'direct') === 'redirect' ? 'Redirect' : 'Direct VA/QRIS' }})
                                     </div>
                                 </div>
                             </div>
@@ -213,7 +213,7 @@
                                         <div class="text-slate-800">{{ ($cancel['actor'] ?? 'customer') === 'admin' ? 'Admin' : 'Pelanggan' }}</div>
                                     </div>
                                     <div>
-                                        <div class="uppercase tracking-wider text-slate-500">Status di iPaymu</div>
+                                        <div class="uppercase tracking-wider text-slate-500">Status di Provider</div>
                                         <div class="text-slate-800">
                                             {{ $cancel['provider_status_desc'] ?? ($cancel['provider_status'] ?? '-') }}
                                         </div>
@@ -222,8 +222,8 @@
                                         <div class="uppercase tracking-wider text-slate-500">Hasil Pembatalan</div>
                                         <div class="text-slate-800">
                                             {{ match ($cancel['result'] ?? '') {
-                                                'provider_pending' => 'Ditutup lokal — iPaymu tanpa API pembatalan, kode kedaluwarsa sendiri',
-                                                'provider_canceled' => 'Dibatalkan di iPaymu',
+                                                'provider_pending' => 'Ditutup lokal — menunggu kedaluwarsa otomatis',
+                                                'provider_canceled' => 'Dibatalkan di Xendit',
                                                 'expired' => 'Kedaluwarsa',
                                                 'requires_refund' => 'Perlu refund manual',
                                                 'unverified' => 'Belum terverifikasi',
@@ -246,11 +246,10 @@
                             <div class="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-[11px] text-amber-900">
                                 <div class="font-semibold flex items-center gap-1">
                                     <span class="cc-icon text-[14px]">warning</span>
-                                    Refund diperlukan (manual)
+                                    Refund diperlukan
                                 </div>
                                 <p class="mt-1">
-                                    Dana sudah diterima iPaymu untuk transaksi ini. iPaymu tidak menyediakan API refund;
-                                    pengembalian diproses manual oleh admin melalui support@ipaymu.com setelah pesanan dibatalkan.
+                                    Dana sudah diterima oleh gateway untuk transaksi ini; proses pengembalian dana ditangani oleh admin Finance sesuai kebijakan Xendit.
                                     @if(!empty($cancel['refund_requested_at']))
                                         <br>Permintaan refund diajukan: {{ \Illuminate\Support\Carbon::parse($cancel['refund_requested_at'])->timezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB.
                                     @endif
@@ -264,8 +263,7 @@
                     @endforeach
 
                     <p class="text-[11px] text-slate-500 leading-relaxed">
-                        Status pembayaran hanya berubah dari konfirmasi resmi iPaymu (callback ber-signature atau
-                        Check Transaction). Admin tidak dapat menandai transaksi menjadi dibatalkan/berhasil secara manual.
+                        Status pembayaran hanya berubah dari konfirmasi resmi webhook Xendit ber-signature atau inquiry API Xendit. Admin tidak dapat menandai transaksi menjadi dibatalkan/berhasil secara manual.
                     </p>
                 </div>
             </div>

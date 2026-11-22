@@ -40,85 +40,17 @@ class GatewayCredentialsResolver
         ];
     }
 
-    public function doku(): array
-    {
-        $sandboxUrl = $this->readPlain('doku_sandbox_url', (string) config('payment_wallet.doku.sandbox_url', 'https://api-sandbox.doku.com'));
-        $productionUrl = $this->readPlain('doku_production_url', (string) config('payment_wallet.doku.production_url', 'https://api.doku.com'));
-        $clientId = trim($this->readPlain('doku_client_id', (string) config('payment_wallet.doku.client_id', '')));
-        $kirimPartnerId = trim($this->readPlain('doku_kirim_partner_id', (string) config('payment_wallet.doku.kirim_partner_id', '')));
-        $secretKey = trim($this->readSecret('doku_secret_key', (string) config('payment_wallet.doku.secret_key', '')));
-        $privateKey = trim($this->readSecret('doku_private_key', (string) config('payment_wallet.doku.private_key', '')));
-        $kirimChannelId = trim($this->readPlain('doku_kirim_channel_id', (string) config('payment_wallet.doku.kirim_channel_id', 'H2H')));
-        $kirimCustomerNumber = trim($this->readPlain('doku_customer_number', (string) config('payment_wallet.doku.kirim_customer_number', '6281234567890')));
-        $kirimDefault = config('payment_wallet.doku.kirim_inquiry_enabled', true) ? '1' : '0';
-        $kirimEnabledRaw = $this->readPlain('doku_kirim_inquiry_enabled', $kirimDefault);
-        $kirimEnabled = filter_var($kirimEnabledRaw, FILTER_VALIDATE_BOOLEAN);
-
-        $configured = $clientId !== '' && $secretKey !== '';
-        $hasPrivateKey = $privateKey !== '';
-
-        return [
-            'enabled' => $this->isEnabled('doku', true),
-            'sandbox_url' => rtrim($sandboxUrl ?: 'https://api-sandbox.doku.com', '/'),
-            'production_url' => rtrim($productionUrl ?: 'https://api.doku.com', '/'),
-            'client_id' => $clientId,
-            'kirim_partner_id' => $kirimPartnerId,
-            'secret_key' => $secretKey,
-            'private_key' => $privateKey,
-            'has_private_key' => $hasPrivateKey,
-            'public_key_derived' => $hasPrivateKey ? self::derivePublicKeyPem($privateKey) : '',
-            'kirim_inquiry_enabled' => $kirimEnabled,
-            'kirim_channel_id' => $kirimChannelId !== '' ? $kirimChannelId : 'H2H',
-            'kirim_customer_number' => $kirimCustomerNumber !== '' ? $kirimCustomerNumber : '6281234567890',
-            'kirim_configured' => $configured && $hasPrivateKey,
-            'timeout_seconds' => (int) config('payment_wallet.doku.timeout_seconds', 30),
-            'configured' => $configured,
-            'secret_masked' => $this->maskSecret($secretKey),
-            'source' => $this->hasDbSetting('doku_secret_key') ? 'database' : ($configured ? 'env' : 'none'),
-        ];
-    }
-
-    public static function derivePublicKeyPem(string $privateKeyPem): string
-    {
-        $normalized = str_replace('\n', "\n", trim($privateKeyPem));
-        if ($normalized === '') {
-            return '';
-        }
-
-        if (! str_contains($normalized, '-----BEGIN')) {
-            $normalized = "-----BEGIN RSA PRIVATE KEY-----\n"
-                .chunk_split($normalized, 64, "\n")
-                ."-----END RSA PRIVATE KEY-----";
-        }
-
-        $key = @openssl_pkey_get_private($normalized);
-        if ($key === false && str_contains($normalized, 'RSA PRIVATE KEY')) {
-            $pkcs8 = str_replace(['RSA PRIVATE KEY', 'rsa private key'], 'PRIVATE KEY', $normalized);
-            $key = @openssl_pkey_get_private($pkcs8);
-        }
-        if ($key === false) {
-            return '';
-        }
-
-        $details = @openssl_pkey_get_details($key);
-
-        return is_array($details) ? trim((string) ($details['key'] ?? '')) : '';
-    }
-
     /**
-     * Default ON/OFF state for all Admin-managed external providers.
+     * Default ON/OFF state for Admin-managed active external providers.
+     * DOKU has been removed completely; Xendit is the sole active payment & payout provider.
      *
      * @var array<string, bool>
      */
     public const PROVIDER_DEFAULTS = [
         'whatsapp' => true,
         'map' => true,
-        'dana' => true,
-        'ovo' => false,
-        'ipaymu' => true,
         'rajaongkir' => true,
         'xendit' => true,
-        'doku' => true,
     ];
 
     public function isEnabled(string $providerCode, bool $default = true): bool
@@ -141,7 +73,7 @@ class GatewayCredentialsResolver
     public function isProviderEnabled(string $providerCode): bool
     {
         $code = strtolower($providerCode);
-        $default = self::PROVIDER_DEFAULTS[$code] ?? true;
+        $default = self::PROVIDER_DEFAULTS[$code] ?? ($code === 'ovo' ? false : true);
 
         return $this->isEnabled($code, $default);
     }
