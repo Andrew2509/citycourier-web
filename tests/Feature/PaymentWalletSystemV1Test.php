@@ -471,4 +471,99 @@ class PaymentWalletSystemV1Test extends TestCase
         $this->assertSame(2, CourierEarning::where('courier_id', $courier->id)->count());
         $this->assertTrue(app(LedgerReconciliationService::class)->runReconciliation()['is_clean']);
     }
+
+    public function test_ewallet_withdrawal_and_xendit_webhook_execute_realtime_without_queue_worker(): void
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('jobs')) {
+            \Illuminate\Support\Facades\Schema::create('jobs', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->id();
+                $table->string('queue')->index();
+                $table->longText('payload');
+                $table->unsignedTinyInteger('attempts');
+                $table->unsignedInteger('reserved_at')->nullable();
+                $table->unsignedInteger('available_at');
+                $table->unsignedInteger('created_at');
+            });
+        }
+
+        // Simulasikan .env production/shared hosting dengan QUEUE_CONNECTION=database tanpa queue:work berjalan
+        Config::set('queue.default', 'database');
+        Config::set('payment_wallet.mode', 'sandbox');
+        Config::set('payment_wallet.xendit.secret_key', 'xnd_development_realtime_payout_key');
+        Config::set('payment_wallet.xendit.callback_token', 'test-xendit-callback-secret');
+        Setting::set('payment_wallet_mode', 'sandbox', 'finance');
+        Setting::set('payout_active_provider', 'xendit', 'finance');
+
+        $customer = User::create([
+            'name' => 'Raka RealTime',
+            'email' => 'raka.rt@city.test',
+            'role' => 'customer',
+        ]);
+
+        $walletManager = app(WalletLedgerManager::class);
+        $wallet = $walletManager->getOrCreateCustomerWallet($customer);
+        $walletManager->creditAvailable(
+            $wallet,
+            100000,
+            \App\Modules\Ledger\Models\WalletLedgerEntry::ACCOUNT_SYSTEM_GATEWAY_CLEARING,
+            'topup',
+            'TOPUP-RT-001',
+            'idem-rt-topup',
+            'Initial topup'
+        );
+
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.xendit.co/v2/payouts' => \Illuminate\Support\Facades\Http::response([
+                'id' => 'disb-rt-001',
+                'reference_id' => 'WD-RT-001',
+                'status' => 'ACCEPTED',
+            ], 200),
+        ]);
+
+        Sanctum::actingAs($customer);
+
+        $destId = $this->postJson('/api/v1/customer/wallet/destinations', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => '081234567890',
+            'account_holder_name' => 'Raka RealTime',
+        ])->assertStatus(201)->json('data.id');
+
+        // Saat user submit penarikan e-wallet, backend langsung kirim ke Xendit (status langsung `processing`, bukan nyangkut `pending`)
+        $wdRes = $this->withHeaders(['Idempotency-Key' => 'idem-wd-rt-001'])
+            ->postJson('/api/v1/customer/wallet/withdrawals', [
+                'amount' => 40000,
+                'destination_id' => $destId,
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('data.provider', 'xendit')
+            ->assertJsonPath('data.status', 'processing')
+            ->assertJsonPath('data.provider_reference', 'disb-rt-001');
+
+        $ref = $wdRes->json('data.reference');
+        $this->assertSame(0, \Illuminate\Support\Facades\DB::table('jobs')->where('payload', 'like', '%PayoutProcessingJob%')->count());
+
+        // Webhook payout Xendit masuk -> langsung diproses real-time ke `completed` tanpa menunggu queue worker
+        $this->withHeaders(['x-callback-token' => 'test-xendit-callback-secret'])
+            ->postJson('/api/v1/webhooks/xendit/payout', [
+                'event' => 'payout.succeeded',
+                'data' => [
+                    'id' => 'disb-rt-001',
+                    'reference_id' => $ref,
+                    'status' => 'SUCCEEDED',
+                ],
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'processed');
+
+        $this->assertSame('completed', PayoutTransaction::firstOrFail()->status);
+        $this->assertSame(0, \Illuminate\Support\Facades\DB::table('jobs')->where('payload', 'like', '%PaymentWebhookJob%')->count());
+
+        $this->getJson('/api/v1/customer/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.available_balance', 60000)
+            ->assertJsonPath('data.reserved_balance', 0);
+
+        $this->assertTrue(app(LedgerReconciliationService::class)->runReconciliation()['is_clean']);
+    }
 }

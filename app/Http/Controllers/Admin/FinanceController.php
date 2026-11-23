@@ -203,9 +203,13 @@ class FinanceController extends Controller
 
     public function verifyPayout(PayoutTransaction $payout): RedirectResponse
     {
-        $updated = $this->payoutService->verifyPayoutStatusWithProvider($payout->id);
+        try {
+            $updated = $this->payoutService->verifyPayoutStatusWithProvider($payout->id);
 
-        return back()->with('success', "Status payout {$updated->reference} diperiksa: {$updated->status}.");
+            return back()->with('success', "Status payout {$updated->reference} diperiksa: {$updated->status}.");
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function refunds(Request $request): View

@@ -238,7 +238,7 @@ class PayoutService
             return $payout;
         });
 
-        PayoutProcessingJob::dispatch($payout->id)->afterCommit();
+        PayoutProcessingJob::dispatchSync($payout->id);
 
         return $payout->fresh();
     }
@@ -278,7 +278,7 @@ class PayoutService
             $payout = $this->scheduleSingleCourierPayout($walletCandidate->id, $minPayout, $fee, $requireVerified);
             if ($payout) {
                 $scheduledCount++;
-                PayoutProcessingJob::dispatch($payout->id)->afterCommit();
+                PayoutProcessingJob::dispatchSync($payout->id);
             }
         }
 
@@ -505,6 +505,12 @@ class PayoutService
         $payout = PayoutTransaction::findOrFail($payoutId);
         if (in_array($payout->status, ['completed', 'failed', 'reversed'], true)) {
             return $payout;
+        }
+
+        // Jika transaksi masih pending dan belum pernah dikirim ke provider,
+        // jalankan pengiriman awal agar tidak macet tanpa provider_reference.
+        if ($payout->status === 'pending' && $payout->provider_reference === null) {
+            return $this->processPayoutTransaction($payout->id);
         }
 
         $provider = $this->providerResolver->resolveWebhookPayoutProvider($payout->provider);

@@ -286,4 +286,102 @@ class AdminFinanceTest extends TestCase
             $this->assertStringNotContainsString("/admin/providers/{$removedProvider}/toggle", $html);
         }
     }
+
+    public function test_admin_can_verify_stuck_pending_customer_withdrawal_and_dispatch_to_xendit(): void
+    {
+        $admin = User::create([
+            'name' => 'Withdraw Admin',
+            'email' => 'wd-admin@city.test',
+            'role' => 'admin',
+        ]);
+        $admin->assignRole('super-admin');
+
+        $customer = User::create([
+            'name' => 'Rina Pending',
+            'email' => 'rina.pending@city.test',
+            'role' => 'customer',
+        ]);
+
+        $walletManager = app(WalletLedgerManager::class);
+        $wallet = $walletManager->getOrCreateCustomerWallet($customer);
+        $walletManager->creditAvailable(
+            $wallet,
+            75000,
+            WalletLedgerEntry::ACCOUNT_SYSTEM_GATEWAY_CLEARING,
+            'topup',
+            'TOPUP-ADM-PEND',
+            'idem-adm-pend-1',
+            'Initial'
+        );
+
+        $dest = \App\Modules\Wallet\Models\PayoutDestination::create([
+            'user_id' => $customer->id,
+            'owner_type' => 'customer',
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'channel_name' => 'DANA',
+            'account_number' => '081234560001',
+            'account_number_masked' => '0812****0001',
+            'account_holder_name' => 'Rina Pending',
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        // Simulasikan transaksi lama yang sempat tersangkut di status pending sebelum update real-time
+        $stuck = \App\Modules\Payout\Models\PayoutTransaction::create([
+            'reference' => 'WD-CUST-STUCK-001',
+            'idempotency_key' => 'idem-wd-stuck-001',
+            'owner_type' => 'customer',
+            'user_id' => $customer->id,
+            'wallet_id' => $wallet->id,
+            'payout_destination_id' => $dest->id,
+            'payout_type' => 'customer_withdrawal',
+            'provider' => 'xendit',
+            'mode' => 'sandbox',
+            'channel_code' => 'ID_DANA',
+            'account_number_masked' => '0812****0001',
+            'account_holder_name' => 'Rina Pending',
+            'amount' => 30000,
+            'fee' => 0,
+            'net_amount' => 30000,
+            'status' => 'pending',
+        ]);
+        $walletManager->reserveForPayout(
+            $wallet,
+            30000,
+            $stuck->reference,
+            'wd-reserve-stuck-1',
+            'Pending lama',
+            \App\Modules\Payout\Models\PayoutTransaction::class,
+            $stuck->id,
+            'sandbox'
+        );
+
+        \Illuminate\Support\Facades\Config::set('payment_wallet.mode', 'sandbox');
+        \Illuminate\Support\Facades\Config::set('payment_wallet.xendit.secret_key', 'xnd_development_admin_verify_123');
+
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.xendit.co/v2/payouts' => \Illuminate\Support\Facades\Http::response([
+                'id' => 'disb-admin-verify-1',
+                'reference_id' => 'WD-CUST-STUCK-001',
+                'status' => 'SUCCEEDED',
+            ], 200),
+        ]);
+
+        $this->actingAs($admin);
+
+        // Halaman /admin/finance/withdrawals menampilkan tombol Verify Status
+        $html = $this->get('/admin/finance/withdrawals')->assertStatus(200)->getContent();
+        $this->assertStringContainsString("/admin/finance/payouts/{$stuck->id}/verify", $html);
+
+        // Klik Verify Status memicu pengiriman transaksi pending ke Xendit dan menyelesaikannya (`completed`)
+        $this->post("/admin/finance/payouts/{$stuck->id}/verify")->assertRedirect();
+
+        $fresh = $stuck->fresh();
+        $this->assertSame('completed', $fresh->status);
+        $this->assertSame('disb-admin-verify-1', $fresh->provider_reference);
+
+        $afterHtml = $this->get('/admin/finance/withdrawals')->assertStatus(200)->getContent();
+        $this->assertStringContainsString('badge-green', $afterHtml);
+    }
 }

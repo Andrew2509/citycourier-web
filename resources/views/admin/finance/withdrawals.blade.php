@@ -23,6 +23,7 @@
                     <th>Mode</th>
                     <th class="text-right">Nominal (IDR)</th>
                     <th>Status</th>
+                    <th>Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,12 +37,27 @@
                         <td>
                             @php
                                 $stBadge = match ($w->status) {
-                                    'success', 'paid', 'settled' => 'badge-green',
-                                    'failed', 'rejected' => 'badge-red',
+                                    'completed', 'success', 'paid', 'settled' => 'badge-green',
+                                    'failed', 'rejected', 'reversed' => 'badge-red',
                                     default => 'badge-amber',
                                 };
                             @endphp
                             <span class="badge {{ $stBadge }}"><span class="badge-dot"></span>{{ strtoupper($w->status) }}</span>
+                            @if ($w->failure_reason)
+                                <div class="text-[10px] text-red-500 mt-0.5">{{ $w->failure_reason }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            @if (in_array($w->status, ['pending', 'processing'], true))
+                                <form method="POST" action="{{ route('admin.finance.payouts.verify', $w) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-secondary">
+                                        Verify Status
+                                    </button>
+                                </form>
+                            @else
+                                <span class="cell-muted">{{ $w->completed_at?->format('d/m H:i') ?? '-' }}</span>
+                            @endif
                         </td>
                     </tr>
                 @empty

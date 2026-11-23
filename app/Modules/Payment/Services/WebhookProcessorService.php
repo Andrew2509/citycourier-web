@@ -99,7 +99,8 @@ class WebhookProcessorService
         ]);
 
         if ($signatureValid) {
-            PaymentWebhookJob::dispatch($webhook->id, $category)->afterCommit();
+            PaymentWebhookJob::dispatchSync($webhook->id, $category);
+            $webhook = $webhook->fresh() ?? $webhook;
         }
 
         return [
