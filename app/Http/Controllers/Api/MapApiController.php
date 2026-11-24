@@ -334,6 +334,76 @@ class MapApiController extends Controller
     }
 
     /**
+     * Analisa kondisi lalu lintas sepanjang polyline rute kurir menuju penerima.
+     * POST /api/shipping/map/traffic/route-analysis
+     */
+    public function routeTrafficAnalysis(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'coordinates' => 'required|array|min:2|max:1500',
+            'coordinates.*.lat' => 'required|numeric|between:-90,90',
+            'coordinates.*.lng' => 'required|numeric|between:-180,180',
+            'courier_lat' => 'nullable|numeric|between:-90,90',
+            'courier_lng' => 'nullable|numeric|between:-180,180',
+            'travel_mode' => 'nullable|string|in:car,motorcycle',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'VALIDATION_ERROR',
+                'message' => 'Data polyline rute atau koordinat kurir tidak valid.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $result = $this->trafficService->analyzeRouteTraffic(
+            (array) $request->input('coordinates', []),
+            $request->filled('courier_lat') ? (float) $request->input('courier_lat') : null,
+            $request->filled('courier_lng') ? (float) $request->input('courier_lng') : null,
+            (string) $request->input('travel_mode', 'car')
+        );
+
+        return $this->trafficJsonResponse($result);
+    }
+
+    /**
+     * Ambil rute utama + alternatif berbasis lalu lintas real-time dari TomTom Routing v1.
+     * POST /api/shipping/map/traffic/alternatives
+     */
+    public function trafficAlternatives(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'origin_lat' => 'required|numeric|between:-90,90',
+            'origin_lng' => 'required|numeric|between:-180,180',
+            'destination_lat' => 'required|numeric|between:-90,90',
+            'destination_lng' => 'required|numeric|between:-180,180',
+            'travel_mode' => 'nullable|string|in:car,motorcycle',
+            'max_alternatives' => 'nullable|integer|min:1|max:3',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'VALIDATION_ERROR',
+                'message' => 'Koordinat asal/tujuan tidak valid untuk pencarian rute alternatif.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $result = $this->trafficService->getTrafficAwareRoutes(
+            (float) $request->input('origin_lat'),
+            (float) $request->input('origin_lng'),
+            (float) $request->input('destination_lat'),
+            (float) $request->input('destination_lng'),
+            (string) $request->input('travel_mode', 'motorcycle'),
+            (int) $request->input('max_alternatives', 2)
+        );
+
+        return $this->trafficJsonResponse($result);
+    }
+
+    /**
      * @param  array<string, mixed>  $result
      */
     private function trafficJsonResponse(array $result)

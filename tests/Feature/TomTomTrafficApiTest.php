@@ -471,4 +471,324 @@ class TomTomTrafficApiTest extends TestCase
             ->assertStatus(503)
             ->assertJsonPath('error_code', 'TOMTOM_NOT_CONFIGURED');
     }
+
+    public function test_route_traffic_analysis_isolates_congested_segment_filters_off_route_incidents_and_tracks_courier_progress(): void
+    {
+        $courierUser = User::create([
+            'name' => 'Kurir Route',
+            'email' => 'kurir.route@city.test',
+            'role' => 'courier',
+        ]);
+        Sanctum::actingAs($courierUser);
+
+        // Buat polyline 15 titik sepanjang ~4.2 km (selatan ke utara, setiap step ~0.0027 deg lat ≈ 300 m)
+        $coords = [];
+        for ($i = 0; $i < 15; $i++) {
+            $coords[] = [
+                'lat' => round(-7.2900 + ($i * 0.0027), 5),
+                'lng' => 112.7500,
+            ];
+        }
+
+        $tomtomCallCount = 0;
+        Http::fake(function ($request) use (&$tomtomCallCount) {
+            $url = $request->url();
+
+            if (str_contains($url, 'nominatim.openstreetmap.org')) {
+                return Http::response([
+                    'address' => ['road' => 'Jalan Garuda'],
+                ], 200);
+            }
+
+            if (str_contains($url, '/traffic/services/4/flowSegmentData/')) {
+                $tomtomCallCount++;
+                parse_str((string) parse_url($url, PHP_URL_QUERY), $q);
+                [$pLatStr] = explode(',', (string) ($q['point'] ?? '0,0'));
+                $pLat = (float) $pLatStr;
+
+                // Hanya tengah jalur (sekitar index 6..8: lat -7.274 .. -7.266) yang MACET (<30%).
+                if ($pLat >= -7.2750 && $pLat <= -7.2650) {
+                    return Http::response([
+                        'flowSegmentData' => [
+                            'currentSpeed' => 8,
+                            'freeFlowSpeed' => 30,
+                            'currentTravelTime' => 420,
+                            'freeFlowTravelTime' => 110,
+                            'confidence' => 0.96,
+                            'roadClosure' => false,
+                            'coordinates' => [
+                                'coordinate' => [
+                                    ['latitude' => -7.2738, 'longitude' => 112.7500],
+                                    ['latitude' => -7.2684, 'longitude' => 112.7500],
+                                ],
+                            ],
+                        ],
+                    ], 200);
+                }
+
+                // Segmen akhir (dekat tujuan): kecepatan null -> TIDAK boleh dianggap Lancar!
+                if ($pLat >= -7.2560) {
+                    return Http::response([
+                        'flowSegmentData' => [
+                            'currentSpeed' => null,
+                            'freeFlowSpeed' => 40,
+                            'roadClosure' => false,
+                            'coordinates' => ['coordinate' => []],
+                        ],
+                    ], 200);
+                }
+
+                // Awal rute lancar (32 / 40 = 80% >= 70%).
+                return Http::response([
+                    'flowSegmentData' => [
+                        'currentSpeed' => 32,
+                        'freeFlowSpeed' => 40,
+                        'currentTravelTime' => 90,
+                        'freeFlowTravelTime' => 75,
+                        'confidence' => 0.99,
+                        'roadClosure' => false,
+                        'coordinates' => ['coordinate' => []],
+                    ],
+                ], 200);
+            }
+
+            if (str_contains($url, '/traffic/services/5/incidentDetails')) {
+                $tomtomCallCount++;
+
+                return Http::response([
+                    'incidents' => [
+                        [
+                            // Insiden tepat DI JALUR RUTE (~0 m dari polyline, di lat -7.271)
+                            'type' => 'Feature',
+                            'geometry' => [
+                                'type' => 'LineString',
+                                'coordinates' => [
+                                    [112.7500, -7.2715],
+                                    [112.7500, -7.2695],
+                                ],
+                            ],
+                            'properties' => [
+                                'id' => 'inc-on-route',
+                                'iconCategory' => 6,
+                                'magnitudeOfDelay' => 3,
+                                'delay' => 310,
+                                'from' => 'Jalan Garuda',
+                                'events' => [['description' => 'Antrean panjang dekat perempatan']],
+                            ],
+                        ],
+                        [
+                            // Insiden JAUH DARI RUTE (~1.6 km ke timur lng 112.7650) -> WAJIB tersaring
+                            'type' => 'Feature',
+                            'geometry' => [
+                                'type' => 'Point',
+                                'coordinates' => [112.7650, -7.2710],
+                            ],
+                            'properties' => [
+                                'id' => 'inc-off-route',
+                                'iconCategory' => 1,
+                                'magnitudeOfDelay' => 3,
+                                'from' => 'Jalan Luar Rute',
+                                'events' => [['description' => 'Kecelakaan di jalur lain']],
+                            ],
+                        ],
+                    ],
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $startTime = CarbonImmutable::parse('2026-11-24T04:00:00Z');
+        CarbonImmutable::setTestNow($startTime);
+
+        // Request 1: Kurir di titik awal (index 0)
+        $res1 = $this->postJson('/api/shipping/map/traffic/route-analysis', [
+            'coordinates' => $coords,
+            'courier_lat' => $coords[0]['lat'],
+            'courier_lng' => $coords[0]['lng'],
+            'travel_mode' => 'motorcycle',
+        ]);
+
+        $res1->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.source', 'tomtom_live')
+            ->assertJsonPath('data.has_congestion', true)
+            ->assertJsonPath('data.overall_status', 'congested')
+            ->assertJsonPath('data.incidents_count', 1)
+            ->assertJsonPath('data.incidents.0.id', 'inc-on-route')
+            ->assertJsonPath('data.closest_congestion.road_name', 'Jalan Garuda')
+            ->assertJsonPath('data.closest_congestion.status', 'congested')
+            ->assertJsonPath('data.closest_congestion.current_speed_kmh', 8)
+            ->assertJsonPath('data.closest_congestion.free_flow_speed_kmh', 30);
+
+        $firstDist = (float) $res1->json('data.closest_congestion.distance_from_courier_meters');
+        $this->assertGreaterThan(1000.0, $firstDist);
+
+        $segments = $res1->json('data.segments');
+        $congested = array_values(array_filter($segments, fn ($s) => $s['is_congested'] === true));
+        $unknown = array_values(array_filter($segments, fn ($s) => $s['status'] === 'unknown'));
+        $smooth = array_values(array_filter($segments, fn ($s) => $s['status'] === 'smooth'));
+
+        $this->assertNotEmpty($congested);
+        $this->assertNotEmpty($unknown);
+        $this->assertNotEmpty($smooth);
+        // Pastikan tidak seluruh rute dijadikan merah: awal rute (index 0) tidak masuk segmen macet!
+        $this->assertGreaterThan(2, $congested[0]['start_index']);
+        // Pastikan segmen tanpa data kecepatan TIDAK pernah diberi label/status Lancar.
+        $this->assertFalse($unknown[0]['is_available']);
+        $this->assertNotSame('smooth', $unknown[0]['status']);
+
+        $callsAfterFirst = $tomtomCallCount;
+        $this->assertGreaterThan(1, $callsAfterFirst);
+
+        // Request 2 dalam TTL (20s kemudian) saat kurir bergerak mendekat -> cache hit (0 call baru TomTom),
+        // tetapi jarak ke kemacetan terdekat mengecil sesuai posisi kurir terkini!
+        CarbonImmutable::setTestNow($startTime->addSeconds(20));
+        $res2 = $this->postJson('/api/shipping/map/traffic/route-analysis', [
+            'coordinates' => $coords,
+            'courier_lat' => $coords[3]['lat'],
+            'courier_lng' => $coords[3]['lng'],
+        ]);
+
+        $res2->assertOk()
+            ->assertJsonPath('data.source', 'tomtom_cache');
+        $this->assertSame($callsAfterFirst, $tomtomCallCount);
+        $secondDist = (float) $res2->json('data.closest_congestion.distance_from_courier_meters');
+        $this->assertLessThan($firstDist - 500.0, $secondDist);
+
+        // Request 3 setelah TTL habis (65s) -> paksa fetch baru (tidak menyajikan cache kedaluwarsa).
+        CarbonImmutable::setTestNow($startTime->addSeconds(65));
+        $res3 = $this->postJson('/api/shipping/map/traffic/route-analysis', [
+            'coordinates' => $coords,
+            'courier_lat' => $coords[3]['lat'],
+            'courier_lng' => $coords[3]['lng'],
+        ]);
+
+        $res3->assertOk()
+            ->assertJsonPath('data.source', 'tomtom_live');
+        $this->assertGreaterThan($callsAfterFirst, $tomtomCallCount);
+    }
+
+    public function test_traffic_aware_alternatives_parses_tomtom_routing_and_never_auto_switches(): void
+    {
+        $courierUser = User::create([
+            'name' => 'Kurir Alt',
+            'email' => 'kurir.alt@city.test',
+            'role' => 'courier',
+        ]);
+        Sanctum::actingAs($courierUser);
+
+        Http::fake([
+            'api.tomtom.com/routing/1/calculateRoute/*' => Http::response([
+                'routes' => [
+                    [
+                        'summary' => [
+                            'lengthInMeters' => 12500,
+                            'travelTimeInSeconds' => 1380,
+                            'noTrafficTravelTimeInSeconds' => 960,
+                            'trafficDelayInSeconds' => 420,
+                            'arrivalTime' => '2026-11-24T11:23:00+07:00',
+                        ],
+                        'legs' => [
+                            [
+                                'points' => [
+                                    ['latitude' => -7.290, 'longitude' => 112.750],
+                                    ['latitude' => -7.280, 'longitude' => 112.750],
+                                    ['latitude' => -7.270, 'longitude' => 112.750],
+                                    ['latitude' => -7.260, 'longitude' => 112.750],
+                                ],
+                            ],
+                        ],
+                        'sections' => [
+                            [
+                                'startPointIndex' => 1,
+                                'endPointIndex' => 2,
+                                'sectionType' => 'TRAFFIC',
+                                'simpleCategory' => 'JAM',
+                                'magnitudeOfDelay' => 3,
+                                'delayInSeconds' => 360,
+                                'effectiveSpeedInKmh' => 8,
+                            ],
+                        ],
+                        'guidance' => [
+                            'instructions' => [
+                                [
+                                    'routeOffsetInMeters' => 0,
+                                    'travelTimeInSeconds' => 0,
+                                    'point' => ['latitude' => -7.290, 'longitude' => 112.750],
+                                    'street' => 'Jalan Garuda',
+                                    'maneuver' => 'DEPART',
+                                    'message' => 'Berangkat ke utara di Jalan Garuda',
+                                ],
+                                [
+                                    'routeOffsetInMeters' => 12500,
+                                    'travelTimeInSeconds' => 1380,
+                                    'point' => ['latitude' => -7.260, 'longitude' => 112.750],
+                                    'street' => 'Jalan Ahmad Yani',
+                                    'maneuver' => 'ARRIVE',
+                                    'message' => 'Tiba di tujuan',
+                                ],
+                            ],
+                        ],
+                    ],
+                    [
+                        'summary' => [
+                            'lengthInMeters' => 13100,
+                            'travelTimeInSeconds' => 900,
+                            'noTrafficTravelTimeInSeconds' => 840,
+                            'trafficDelayInSeconds' => 60,
+                            'arrivalTime' => '2026-11-24T11:15:00+07:00',
+                        ],
+                        'legs' => [
+                            [
+                                'points' => [
+                                    ['latitude' => -7.290, 'longitude' => 112.750],
+                                    ['latitude' => -7.275, 'longitude' => 112.762],
+                                    ['latitude' => -7.260, 'longitude' => 112.750],
+                                ],
+                            ],
+                        ],
+                        'sections' => [],
+                        'guidance' => [
+                            'instructions' => [
+                                [
+                                    'routeOffsetInMeters' => 0,
+                                    'travelTimeInSeconds' => 0,
+                                    'point' => ['latitude' => -7.290, 'longitude' => 112.750],
+                                    'street' => 'Jalan Tol Waru',
+                                    'maneuver' => 'DEPART',
+                                    'message' => 'Ikuti Jalan Tol Waru',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $res = $this->postJson('/api/shipping/map/traffic/alternatives', [
+            'origin_lat' => -7.290,
+            'origin_lng' => 112.750,
+            'destination_lat' => -7.260,
+            'destination_lng' => 112.750,
+            'travel_mode' => 'motorcycle',
+            'max_alternatives' => 2,
+        ]);
+
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.auto_switch', false)
+            ->assertJsonPath('data.has_faster_alternative', true)
+            ->assertJsonPath('data.recommended_route_index', 1)
+            ->assertJsonPath('data.routes_count', 2)
+            ->assertJsonPath('data.routes.0.segments.0.status', 'congested')
+            ->assertJsonPath('data.routes.0.segments.0.color', 'red')
+            ->assertJsonPath('data.routes.0.segments.0.start_index', 1)
+            ->assertJsonPath('data.routes.0.segments.0.end_index', 2)
+            ->assertJsonPath('data.routes.1.is_recommended', true)
+            ->assertJsonPath('data.routes.1.time_saved_seconds', 480)
+            ->assertJsonPath('data.routes.1.via_road', 'Jalan Tol Waru');
+
+        $this->assertStringNotContainsString('tomtom-secret-test-key-xyz', (string) $res->getContent());
+    }
 }

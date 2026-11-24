@@ -143,6 +143,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/tiles/{z}/{x}/{y}.png', [App\Http\Controllers\Api\MapApiController::class, 'trafficTile'])
                 ->where(['z' => '[0-9]+', 'x' => '[0-9]+', 'y' => '[0-9]+']);
             Route::post('/delivery-summary', [App\Http\Controllers\Api\MapApiController::class, 'deliveryTrafficSummary']);
+            Route::post('/route-analysis', [App\Http\Controllers\Api\MapApiController::class, 'routeTrafficAnalysis']);
+            Route::post('/alternatives', [App\Http\Controllers\Api\MapApiController::class, 'trafficAlternatives']);
         });
     });
 
