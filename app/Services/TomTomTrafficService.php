@@ -130,6 +130,115 @@ class TomTomTrafficService
         return $this->apiKey() !== '';
     }
 
+    public function isRoutingReady(): bool
+    {
+        return $this->isProviderEnabled() && $this->isConfigured();
+    }
+
+    /**
+     * Format respons TomTom Routing v1 agar kompatibel langsung dengan proxy `/api/shipping/map/routing`
+     * maupun parser navigasi turn-by-turn di Flutter.
+     *
+     * @return array<string, mixed>
+     */
+    public function getDirectionsForRoutingProxy(
+        float $originLat,
+        float $originLng,
+        float $destLat,
+        float $destLng,
+        string $travelMode = 'motorcycle'
+    ): array {
+        $result = $this->getTrafficAwareRoutes($originLat, $originLng, $destLat, $destLng, $travelMode, 1);
+        if (! ($result['success'] ?? false)) {
+            return $result;
+        }
+
+        $routes = [];
+        foreach (($result['data']['routes'] ?? []) as $opt) {
+            if (! is_array($opt) || empty($opt['coordinates']) || count($opt['coordinates']) < 2) {
+                continue;
+            }
+
+            $geoCoords = [];
+            foreach ($opt['coordinates'] as $pt) {
+                if (is_array($pt) && is_numeric($pt['lat'] ?? null) && is_numeric($pt['lng'] ?? null)) {
+                    $geoCoords[] = [(float) $pt['lng'], (float) $pt['lat']];
+                }
+            }
+
+            $stepsOut = [];
+            foreach (($opt['steps'] ?? []) as $st) {
+                if (! is_array($st)) {
+                    continue;
+                }
+                $loc = is_array($st['location'] ?? null) ? $st['location'] : null;
+                $locPair = ($loc && is_numeric($loc['lng'] ?? null) && is_numeric($loc['lat'] ?? null))
+                    ? [(float) $loc['lng'], (float) $loc['lat']]
+                    : null;
+                $maneuverType = (string) ($st['maneuver_type'] ?? 'STRAIGHT');
+
+                $stepsOut[] = [
+                    'instruction' => (string) ($st['instruction'] ?? ''),
+                    'distance' => (float) ($st['distance_meters'] ?? 0.0),
+                    'duration' => (float) ($st['duration_seconds'] ?? 0.0),
+                    'name' => (string) ($st['road_name'] ?? ''),
+                    'route_offset_meters' => is_numeric($st['route_offset_meters'] ?? null)
+                        ? (float) $st['route_offset_meters']
+                        : null,
+                    'roundabout_exit_number' => $st['roundabout_exit_number'] ?? null,
+                    'is_tomtom_step' => true,
+                    'location' => $loc,
+                    'maneuver' => [
+                        'type' => $maneuverType,
+                        'instruction' => (string) ($st['instruction'] ?? ''),
+                        ...($locPair !== null ? ['location' => $locPair] : []),
+                    ],
+                ];
+            }
+
+            $routes[] = [
+                'geometry' => [
+                    'type' => 'LineString',
+                    'coordinates' => $geoCoords,
+                ],
+                'distance' => (float) ($opt['distance_meters'] ?? 0.0),
+                'duration' => (float) ($opt['travel_time_seconds'] ?? 0),
+                'traffic_duration' => (float) ($opt['travel_time_seconds'] ?? 0),
+                'traffic_delay_seconds' => $opt['traffic_delay_seconds'] ?? null,
+                'no_traffic_duration' => $opt['no_traffic_travel_time_seconds'] ?? null,
+                'summary' => $opt['via_road'] ?? '',
+                'traffic_segments' => $opt['segments'] ?? [],
+                'legs' => [
+                    [
+                        'distance' => (float) ($opt['distance_meters'] ?? 0.0),
+                        'duration' => (float) ($opt['travel_time_seconds'] ?? 0),
+                        'summary' => $opt['via_road'] ?? '',
+                        'steps' => $stepsOut,
+                    ],
+                ],
+            ];
+        }
+
+        if (empty($routes)) {
+            return $this->errorPayload(
+                'TOMTOM_ROUTING_EMPTY',
+                'TomTom Routing tidak mengembalikan geometri rute yang valid.',
+                502
+            );
+        }
+
+        return [
+            'success' => true,
+            'status_code' => 200,
+            'data' => [
+                'code' => 'Ok',
+                'provider' => 'tomtom_routing_v1',
+                'travel_mode' => $result['data']['travel_mode'] ?? $travelMode,
+                'routes' => $routes,
+            ],
+        ];
+    }
+
     /**
      * Uji konektivitas TomTom Traffic Flow API dengan kredensial tersimpan atau input form sementara.
      *
@@ -2191,13 +2300,17 @@ class TomTomTrafficService
                 : (float) $travelTimeSec;
 
             $pt = is_array($ins['point'] ?? null) ? $ins['point'] : null;
+            $rawInstruction = trim((string) ($ins['combinedMessage'] ?? $ins['message'] ?? ''));
             $steps[] = [
-                'instruction' => trim((string) ($ins['message'] ?? '')),
+                'instruction' => $rawInstruction,
                 'distance_meters' => max(0.0, round($nextOffset - $curOffset, 1)),
                 'duration_seconds' => max(0.0, round($nextTt - $curTt, 1)),
                 'road_name' => trim((string) ($ins['street'] ?? '')),
                 'maneuver_type' => (string) ($ins['maneuver'] ?? 'STRAIGHT'),
                 'route_offset_meters' => $curOffset,
+                'roundabout_exit_number' => is_numeric($ins['roundaboutExitNumber'] ?? null)
+                    ? (int) $ins['roundaboutExitNumber']
+                    : null,
                 'location' => ($pt && is_numeric($pt['latitude'] ?? null) && is_numeric($pt['longitude'] ?? null))
                     ? ['lat' => (float) $pt['latitude'], 'lng' => (float) $pt['longitude']]
                     : $points[0],

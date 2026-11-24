@@ -24,11 +24,21 @@ class MapApiController extends Controller
      */
     public function routing(Request $request)
     {
+        if (! MapService::isEnabled()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PROVIDER_DISABLED',
+                'message' => 'Provider Peta & Geocoding sedang dimatikan oleh Admin.',
+            ], 503);
+        }
+
         $validator = Validator::make($request->all(), [
             'origin' => 'required|string', // Format: "lng,lat"
             'destination' => 'required|string', // Format: "lng,lat"
             'vias' => 'nullable|array',
-            'vias.*' => 'string'
+            'vias.*' => 'string',
+            'travel_mode' => 'nullable|string|in:car,motorcycle',
+            'prefer_tomtom' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -40,6 +50,27 @@ class MapApiController extends Controller
         }
 
         $vias = $request->input('vias', []);
+        $preferTomTom = $request->boolean('prefer_tomtom', true);
+        if (empty($vias) && $preferTomTom && $this->trafficService->isRoutingReady()) {
+            $orig = $this->parseLngLatPair((string) $request->input('origin'));
+            $dest = $this->parseLngLatPair((string) $request->input('destination'));
+            if ($orig !== null && $dest !== null) {
+                $tomtomResult = $this->trafficService->getDirectionsForRoutingProxy(
+                    $orig['lat'],
+                    $orig['lng'],
+                    $dest['lat'],
+                    $dest['lng'],
+                    (string) $request->input('travel_mode', 'motorcycle')
+                );
+                if (! empty($tomtomResult['success'])) {
+                    return response()->json([
+                        'success' => true,
+                        'data' => $tomtomResult['data'],
+                    ]);
+                }
+            }
+        }
+
         $result = $this->mapService->getRoute($request->origin, $request->destination, $vias);
 
         if ($result['success']) {
@@ -55,6 +86,26 @@ class MapApiController extends Controller
             'message' => $result['message'],
             'error' => $result['error'] ?? null
         ], !empty($result['disabled']) ? 503 : 400);
+    }
+
+    /**
+     * Parse format koordinat "lng,lat" menjadi ['lat' => float, 'lng' => float].
+     *
+     * @return array{lat: float, lng: float}|null
+     */
+    private function parseLngLatPair(string $raw): ?array
+    {
+        $parts = array_map('trim', explode(',', $raw));
+        if (count($parts) !== 2 || ! is_numeric($parts[0]) || ! is_numeric($parts[1])) {
+            return null;
+        }
+        $lng = (float) $parts[0];
+        $lat = (float) $parts[1];
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+            return null;
+        }
+
+        return ['lat' => $lat, 'lng' => $lng];
     }
 
     /**

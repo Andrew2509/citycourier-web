@@ -791,4 +791,130 @@ class TomTomTrafficApiTest extends TestCase
 
         $this->assertStringNotContainsString('tomtom-secret-test-key-xyz', (string) $res->getContent());
     }
+
+    public function test_routing_endpoint_uses_tomtom_routing_v1_and_falls_back_to_osrm_when_unconfigured(): void
+    {
+        $courierUser = User::create([
+            'name' => 'Kurir Routing',
+            'email' => 'kurir.routing@city.test',
+            'role' => 'courier',
+        ]);
+        Sanctum::actingAs($courierUser);
+
+        Http::fake([
+            'api.tomtom.com/routing/1/calculateRoute/*' => Http::response([
+                'routes' => [
+                    [
+                        'summary' => [
+                            'lengthInMeters' => 4200,
+                            'travelTimeInSeconds' => 510,
+                            'noTrafficTravelTimeInSeconds' => 390,
+                            'trafficDelayInSeconds' => 120,
+                        ],
+                        'legs' => [
+                            [
+                                'points' => [
+                                    ['latitude' => -7.2900, 'longitude' => 112.7500],
+                                    ['latitude' => -7.2750, 'longitude' => 112.7500],
+                                    ['latitude' => -7.2600, 'longitude' => 112.7500],
+                                ],
+                            ],
+                        ],
+                        'sections' => [
+                            [
+                                'startPointIndex' => 0,
+                                'endPointIndex' => 1,
+                                'sectionType' => 'TRAFFIC',
+                                'simpleCategory' => 'JAM',
+                                'magnitudeOfDelay' => 2,
+                                'delayInSeconds' => 120,
+                                'effectiveSpeedInKmh' => 14,
+                            ],
+                        ],
+                        'guidance' => [
+                            'instructions' => [
+                                [
+                                    'routeOffsetInMeters' => 0,
+                                    'travelTimeInSeconds' => 0,
+                                    'point' => ['latitude' => -7.2900, 'longitude' => 112.7500],
+                                    'street' => 'Jalan Garuda',
+                                    'maneuver' => 'DEPART',
+                                    'combinedMessage' => 'Berangkat ke utara di Jalan Garuda',
+                                ],
+                                [
+                                    'routeOffsetInMeters' => 2100,
+                                    'travelTimeInSeconds' => 260,
+                                    'point' => ['latitude' => -7.2750, 'longitude' => 112.7500],
+                                    'street' => 'Jl. Semolowaru',
+                                    'maneuver' => 'TURN_LEFT',
+                                    'combinedMessage' => 'Belok kiri ke Jl. Semolowaru',
+                                ],
+                                [
+                                    'routeOffsetInMeters' => 4200,
+                                    'travelTimeInSeconds' => 510,
+                                    'point' => ['latitude' => -7.2600, 'longitude' => 112.7500],
+                                    'street' => 'Jl. Semolowaru',
+                                    'maneuver' => 'ARRIVE',
+                                    'combinedMessage' => 'Tiba di lokasi penerima',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $res = $this->postJson('/api/shipping/map/routing', [
+            'origin' => '112.7500,-7.2900',
+            'destination' => '112.7500,-7.2600',
+            'travel_mode' => 'motorcycle',
+        ]);
+
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.provider', 'tomtom_routing_v1')
+            ->assertJsonPath('data.routes.0.distance', 4200)
+            ->assertJsonPath('data.routes.0.traffic_delay_seconds', 120)
+            ->assertJsonPath('data.routes.0.legs.0.steps.1.maneuver.type', 'TURN_LEFT')
+            ->assertJsonPath('data.routes.0.legs.0.steps.1.is_tomtom_step', true)
+            ->assertJsonPath('data.routes.0.legs.0.steps.1.route_offset_meters', 2100)
+            ->assertJsonPath('data.routes.0.traffic_segments.0.status', 'heavy');
+
+        // Saat TomTom tidak terkonfigurasi, fallback ke OSRM tetap berjalan mulus.
+        Config::set('services.tomtom.api_key', '');
+        Http::fake([
+            'router.project-osrm.org/*' => Http::response([
+                'code' => 'Ok',
+                'routes' => [
+                    [
+                        'geometry' => [
+                            'type' => 'LineString',
+                            'coordinates' => [
+                                [112.7500, -7.2900],
+                                [112.7500, -7.2600],
+                            ],
+                        ],
+                        'distance' => 4100,
+                        'duration' => 380,
+                        'legs' => [
+                            [
+                                'distance' => 4100,
+                                'duration' => 380,
+                                'steps' => [],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $fallbackRes = $this->postJson('/api/shipping/map/routing', [
+            'origin' => '112.7500,-7.2900',
+            'destination' => '112.7500,-7.2600',
+        ]);
+
+        $fallbackRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.routes.0.distance', 4100);
+    }
 }
