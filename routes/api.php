@@ -136,6 +136,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/map/autocomplete', [App\Http\Controllers\Api\MapApiController::class, 'autocomplete']);
         Route::post('/map/matrix', [App\Http\Controllers\Api\MapApiController::class, 'matrix']);
         Route::get('/map/styles/{name}.json', [App\Http\Controllers\Api\MapApiController::class, 'getStyle']);
+
+        Route::prefix('map/traffic')->group(function () {
+            Route::get('/flow', [App\Http\Controllers\Api\MapApiController::class, 'trafficFlow']);
+            Route::get('/incidents', [App\Http\Controllers\Api\MapApiController::class, 'trafficIncidents']);
+            Route::get('/tiles/{z}/{x}/{y}.png', [App\Http\Controllers\Api\MapApiController::class, 'trafficTile'])
+                ->where(['z' => '[0-9]+', 'x' => '[0-9]+', 'y' => '[0-9]+']);
+            Route::post('/delivery-summary', [App\Http\Controllers\Api\MapApiController::class, 'deliveryTrafficSummary']);
+        });
     });
 
     Route::get('/shipments/stats', [App\Http\Controllers\Api\ShipmentController::class, 'stats']);

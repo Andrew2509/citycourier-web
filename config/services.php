@@ -102,4 +102,14 @@ return [
         'enabled'  => env('WHATSAPP_ENABLED', true),
     ],
 
+    // TomTom Traffic API Integration (Flow v4 & Incidents v5) — key hanya di backend (.env)
+    'tomtom' => [
+        'api_key' => env('TOMTOM_API_KEY', ''),
+        'base_url' => rtrim((string) env('TOMTOM_BASE_URL', 'https://api.tomtom.com'), '/'),
+        'timeout_seconds' => (int) env('TOMTOM_TIMEOUT_SECONDS', 10),
+        'flow_cache_ttl_seconds' => (int) env('TOMTOM_FLOW_CACHE_TTL', 60),
+        'incidents_cache_ttl_seconds' => (int) env('TOMTOM_INCIDENTS_CACHE_TTL', 60),
+        'tile_cache_ttl_seconds' => (int) env('TOMTOM_TILE_CACHE_TTL', 60),
+    ],
+
 ];
