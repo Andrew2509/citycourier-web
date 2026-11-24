@@ -136,6 +136,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/xendit', [\App\Http\Controllers\Admin\SettingController::class, 'updateXendit'])->name('settings.xendit.update');
         Route::post('/settings/xendit/test', [\App\Http\Controllers\Admin\SettingController::class, 'testXendit'])->name('settings.xendit.test');
 
+        Route::post('/settings/tomtom', [\App\Http\Controllers\Admin\SettingController::class, 'updateTomtom'])->name('settings.tomtom.update');
+        Route::post('/settings/tomtom/test', [\App\Http\Controllers\Admin\SettingController::class, 'testTomtom'])->name('settings.tomtom.test');
+
 
         // Drop Points
         Route::get('drop-points/export', [\App\Http\Controllers\Admin\DropPointController::class, 'exportCsv'])->name('drop-points.export');

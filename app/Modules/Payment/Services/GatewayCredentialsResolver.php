@@ -40,6 +40,28 @@ class GatewayCredentialsResolver
         ];
     }
 
+    public function tomtom(): array
+    {
+        $baseUrl = $this->readPlain('tomtom_base_url', (string) config('services.tomtom.base_url', 'https://api.tomtom.com'));
+        $apiKey = $this->readSecret('tomtom_api_key', (string) config('services.tomtom.api_key', ''));
+        $timeout = (int) $this->readPlain('tomtom_timeout_seconds', (string) config('services.tomtom.timeout_seconds', 10));
+        $cacheTtl = (int) $this->readPlain('tomtom_cache_ttl_seconds', (string) config('services.tomtom.flow_cache_ttl_seconds', 60));
+
+        $configured = trim($apiKey) !== '';
+
+        return [
+            'enabled' => $this->isEnabled('tomtom', true),
+            'base_url' => rtrim($baseUrl ?: 'https://api.tomtom.com', '/'),
+            'api_key' => trim($apiKey),
+            'api_key_masked' => $this->maskSecret($apiKey),
+            'configured' => $configured,
+            'timeout_seconds' => max(3, min(20, $timeout ?: 10)),
+            'cache_ttl_seconds' => max(15, min(300, $cacheTtl ?: 60)),
+            'has_db_cache_ttl' => $this->hasDbSetting('tomtom_cache_ttl_seconds'),
+            'source' => $this->hasDbSetting('tomtom_api_key') ? 'database' : ($configured ? 'env' : 'none'),
+        ];
+    }
+
     /**
      * Default ON/OFF state for Admin-managed active external providers.
      * DOKU has been removed completely; Xendit is the sole active payment & payout provider.
@@ -51,6 +73,7 @@ class GatewayCredentialsResolver
         'map' => true,
         'rajaongkir' => true,
         'xendit' => true,
+        'tomtom' => true,
     ];
 
     public function isEnabled(string $providerCode, bool $default = true): bool

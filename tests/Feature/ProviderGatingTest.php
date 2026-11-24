@@ -124,6 +124,7 @@ class ProviderGatingTest extends TestCase
             ->assertJsonPath('data.providers.map', true)
             ->assertJsonPath('data.providers.rajaongkir', true)
             ->assertJsonPath('data.providers.xendit', true)
+            ->assertJsonPath('data.providers.tomtom', true)
             ->assertJsonPath('data.active_payment_provider', 'xendit')
             ->assertJsonPath('data.topup_provider_enabled', true)
             ->assertJsonMissingPath('data.providers.doku')

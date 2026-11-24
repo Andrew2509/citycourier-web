@@ -8,6 +8,7 @@ use App\Services\TomTomTrafficService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -356,5 +357,118 @@ class TomTomTrafficApiTest extends TestCase
             ->assertStatus(502)
             ->assertJsonPath('success', false)
             ->assertJsonPath('error_code', 'TOMTOM_UPSTREAM_ERROR');
+    }
+
+    public function test_admin_providers_can_save_encrypted_tomtom_key_test_connection_and_toggle_provider(): void
+    {
+        $this->setUpSpatiePermissionsForAdminTests();
+
+        $admin = User::create([
+            'name' => 'Admin TomTom',
+            'email' => 'admin.tomtom@city.test',
+            'role' => 'admin',
+            'password' => Hash::make('secret123'),
+        ]);
+        $admin->assignRole('super-admin');
+
+        $courierUser = User::create([
+            'name' => 'Kurir Admin TomTom',
+            'email' => 'kurir.admintt@city.test',
+            'role' => 'courier',
+        ]);
+
+        // Pastikan DB setting menimpa .env yang kosong
+        Config::set('services.tomtom.api_key', '');
+
+        // 1. Halaman /admin/providers menampilkan kartu TomTom Traffic API
+        $pageRes = $this->actingAs($admin)->get('/admin/providers');
+        $pageRes->assertOk();
+        $pageRes->assertSee('TomTom Traffic API');
+
+        // 2. Simpan API Key lewat Admin Panel -> tersimpan terenkripsi (enc:...) dan key asli tidak muncul di HTML
+        $this->actingAs($admin)
+            ->post('/admin/settings/tomtom', [
+                'tomtom_base_url' => 'https://api.tomtom.com',
+                'tomtom_cache_ttl_seconds' => 45,
+                'tomtom_timeout_seconds' => 12,
+                'tomtom_api_key' => 'tomtom-db-secret-key-987654',
+            ])
+            ->assertRedirect();
+
+        $rawStored = Setting::get('tomtom_api_key');
+        $this->assertIsString($rawStored);
+        $this->assertStringStartsWith('enc:', $rawStored);
+        $this->assertStringNotContainsString('tomtom-db-secret-key-987654', $rawStored);
+
+        $afterSavePage = $this->actingAs($admin)->get('/admin/providers');
+        $afterSavePage->assertOk();
+        $afterSavePage->assertSee('Terkonfigurasi');
+        $afterSavePage->assertDontSee('tomtom-db-secret-key-987654');
+
+        // 3. Proxy flow memakai key DB yang baru disimpan & Admin Test Connection berhasil
+        Http::fake(function ($request) {
+            $url = $request->url();
+            $this->assertStringContainsString('tomtom-db-secret-key-987654', $url);
+
+            return Http::response([
+                'flowSegmentData' => [
+                    'currentSpeed' => 40,
+                    'freeFlowSpeed' => 50,
+                    'roadClosure' => false,
+                    'coordinates' => ['coordinate' => []],
+                ],
+            ], 200);
+        });
+
+        $this->actingAs($admin)
+            ->postJson('/admin/settings/tomtom/test', [
+                'tomtom_base_url' => 'https://api.tomtom.com',
+                'tomtom_timeout_seconds' => 12,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        Sanctum::actingAs($courierUser);
+        $this->getJson('/api/shipping/map/traffic/flow?lat=-7.2575&lng=112.7521&zoom=15')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'smooth');
+
+        // 4. Matikan provider TomTom lewat /admin/providers/tomtom/toggle -> /api/settings & endpoint lalu lintas ikut OFF
+        $this->actingAs($admin)
+            ->postJson('/admin/providers/tomtom/toggle', ['enabled' => 0])
+            ->assertOk()
+            ->assertJsonPath('provider', 'tomtom')
+            ->assertJsonPath('enabled', false);
+
+        $this->getJson('/api/settings')
+            ->assertOk()
+            ->assertJsonPath('data.providers.tomtom', false);
+
+        Sanctum::actingAs($courierUser);
+        $this->getJson('/api/shipping/map/traffic/flow?lat=-7.2575&lng=112.7521&zoom=15')
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'PROVIDER_DISABLED');
+
+        // 5. Hapus secret tersimpan -> kembali TOMTOM_NOT_CONFIGURED jika TomTom ON kembali
+        $this->actingAs($admin)
+            ->postJson('/admin/providers/tomtom/toggle', ['enabled' => 1])
+            ->assertOk()
+            ->assertJsonPath('enabled', true);
+
+        $this->actingAs($admin)
+            ->post('/admin/settings/tomtom', [
+                'tomtom_base_url' => 'https://api.tomtom.com',
+                'tomtom_cache_ttl_seconds' => 60,
+                'tomtom_timeout_seconds' => 10,
+                'clear_tomtom_secret' => '1',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('', Setting::get('tomtom_api_key'));
+
+        Sanctum::actingAs($courierUser);
+        $this->getJson('/api/shipping/map/traffic/flow?lat=-7.2677&lng=112.7577&zoom=15')
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'TOMTOM_NOT_CONFIGURED');
     }
 }

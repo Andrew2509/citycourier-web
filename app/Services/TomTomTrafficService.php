@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -130,6 +131,83 @@ class TomTomTrafficService
     }
 
     /**
+     * Uji konektivitas TomTom Traffic Flow API dengan kredensial tersimpan atau input form sementara.
+     *
+     * @return array<string, mixed>
+     */
+    public function testConnection(
+        ?string $overrideApiKey = null,
+        ?string $overrideBaseUrl = null,
+        ?int $overrideTimeoutSeconds = null
+    ): array {
+        $creds = $this->credentials();
+        $apiKey = trim((string) ($overrideApiKey !== null && trim($overrideApiKey) !== ''
+            ? $overrideApiKey
+            : ($creds['api_key'] ?? '')));
+        $baseUrl = rtrim((string) ($overrideBaseUrl !== null && trim($overrideBaseUrl) !== ''
+            ? $overrideBaseUrl
+            : ($creds['base_url'] ?? 'https://api.tomtom.com')), '/');
+        $timeout = max(3, min(20, (int) ($overrideTimeoutSeconds ?: ($creds['timeout_seconds'] ?? 10))));
+
+        if ($apiKey === '') {
+            return $this->errorPayload(
+                'TOMTOM_NOT_CONFIGURED',
+                'TomTom API Key belum diisi.',
+                422
+            );
+        }
+
+        try {
+            $url = "{$baseUrl}/traffic/services/4/flowSegmentData/relative0/15/json";
+            $response = Http::timeout($timeout)
+                ->acceptJson()
+                ->get($url, [
+                    'key' => $apiKey,
+                    'point' => '-7.2575,112.7521',
+                    'unit' => 'KMPH',
+                    'openLr' => 'false',
+                ]);
+
+            if ($response->successful()) {
+                $flow = $response->json('flowSegmentData');
+                if (is_array($flow)) {
+                    $cur = $flow['currentSpeed'] ?? '-';
+                    $free = $flow['freeFlowSpeed'] ?? '-';
+
+                    return [
+                        'success' => true,
+                        'status_code' => 200,
+                        'message' => "Koneksi TomTom Traffic API Berhasil! Sampel kecepatan Surabaya: {$cur}/{$free} km/jam.",
+                    ];
+                }
+
+                return $this->errorPayload(
+                    'TOMTOM_INVALID_RESPONSE',
+                    'Server TomTom merespons, namun payload flowSegmentData tidak ditemukan.',
+                    502
+                );
+            }
+
+            $detail = trim((string) ($response->json('detailedError.message')
+                ?? $response->json('errorText')
+                ?? ''));
+            $detail = $detail !== '' ? ': '.$this->sanitizeSecretString($detail, $apiKey) : '. Periksa kembali API Key atau kuota TomTom.';
+
+            return $this->errorPayload(
+                'TOMTOM_UPSTREAM_ERROR',
+                'TomTom merespons HTTP '.$response->status().$detail,
+                $response->status() === 401 || $response->status() === 403 ? $response->status() : 400
+            );
+        } catch (\Throwable $e) {
+            return $this->errorPayload(
+                'TOMTOM_CONNECTION_ERROR',
+                'Gagal menghubungi TomTom Traffic API: '.$this->sanitizeSecretString($e->getMessage(), $apiKey),
+                504
+            );
+        }
+    }
+
+    /**
      * Ambil Flow Segment Data v4 untuk koordinat jalan tertentu.
      *
      * @return array<string, mixed>
@@ -141,7 +219,7 @@ class TomTomTrafficService
         string $style = 'relative0',
         bool $includeRoadName = true
     ): array {
-        if (! MapService::isEnabled()) {
+        if (! $this->isProviderEnabled()) {
             return $this->disabledPayload();
         }
 
@@ -152,7 +230,7 @@ class TomTomTrafficService
 
         $zoom = max(0, min(22, $zoom));
         $style = in_array($style, self::FLOW_STYLES, true) ? $style : 'relative0';
-        $ttl = max(15, (int) config('services.tomtom.flow_cache_ttl_seconds', 60));
+        $ttl = $this->ttlSeconds('flow_cache_ttl_seconds');
 
         $latKey = number_format($lat, 4, '.', '');
         $lngKey = number_format($lng, 4, '.', '');
@@ -271,7 +349,7 @@ class TomTomTrafficService
         float $maxLng,
         string $language = 'id-ID'
     ): array {
-        if (! MapService::isEnabled()) {
+        if (! $this->isProviderEnabled()) {
             return $this->disabledPayload();
         }
 
@@ -280,7 +358,7 @@ class TomTomTrafficService
             return $this->unconfiguredPayload();
         }
 
-        $ttl = max(15, (int) config('services.tomtom.incidents_cache_ttl_seconds', 60));
+        $ttl = $this->ttlSeconds('incidents_cache_ttl_seconds');
         $grid = static fn (float $v): string => number_format(round($v / 0.005) * 0.005, 3, '.', '');
         $bboxKey = implode(',', [$grid($minLng), $grid($minLat), $grid($maxLng), $grid($maxLat)]);
         $lang = trim($language) !== '' ? trim($language) : 'id-ID';
@@ -379,7 +457,7 @@ class TomTomTrafficService
         int $tileSize = 256,
         int $thickness = 4
     ): array {
-        if (! MapService::isEnabled()) {
+        if (! $this->isProviderEnabled()) {
             return $this->disabledPayload();
         }
 
@@ -391,7 +469,7 @@ class TomTomTrafficService
         $style = in_array($style, self::FLOW_STYLES, true) ? $style : 'relative0';
         $tileSize = $tileSize === 512 ? 512 : 256;
         $thickness = max(1, min(20, $thickness));
-        $ttl = max(15, (int) config('services.tomtom.tile_cache_ttl_seconds', 60));
+        $ttl = $this->ttlSeconds('tile_cache_ttl_seconds');
 
         $cacheKey = "tomtom:tile:{$style}:{$tileSize}:{$thickness}:{$z}:{$x}:{$y}";
         $cached = Cache::get($cacheKey);
@@ -474,7 +552,7 @@ class TomTomTrafficService
         ?string $pickupRoadHint = null,
         ?string $dropoffRoadHint = null
     ): array {
-        if (! MapService::isEnabled()) {
+        if (! $this->isProviderEnabled()) {
             return $this->disabledPayload();
         }
 
@@ -559,7 +637,7 @@ class TomTomTrafficService
         }
 
         $now = CarbonImmutable::now('UTC');
-        $ttl = max(15, (int) config('services.tomtom.flow_cache_ttl_seconds', 60));
+        $ttl = $this->ttlSeconds('flow_cache_ttl_seconds');
 
         return [
             'success' => true,
@@ -849,29 +927,52 @@ class TomTomTrafficService
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function credentials(): array
+    {
+        return app(GatewayCredentialsResolver::class)->tomtom();
+    }
+
+    private function isProviderEnabled(): bool
+    {
+        return MapService::isEnabled() && (bool) ($this->credentials()['enabled'] ?? true);
+    }
+
     private function apiKey(): string
     {
-        return trim((string) config('services.tomtom.api_key', ''));
+        return trim((string) ($this->credentials()['api_key'] ?? ''));
     }
 
     private function baseUrl(): string
     {
-        return rtrim((string) config('services.tomtom.base_url', 'https://api.tomtom.com'), '/');
+        return rtrim((string) ($this->credentials()['base_url'] ?? 'https://api.tomtom.com'), '/');
     }
 
     private function timeoutSeconds(): int
     {
-        return max(3, min(20, (int) config('services.tomtom.timeout_seconds', 10)));
+        return max(3, min(20, (int) ($this->credentials()['timeout_seconds'] ?? 10)));
+    }
+
+    private function ttlSeconds(string $configKey): int
+    {
+        $creds = $this->credentials();
+        if (! empty($creds['has_db_cache_ttl'])) {
+            return max(15, (int) ($creds['cache_ttl_seconds'] ?? 60));
+        }
+
+        return max(15, (int) config("services.tomtom.{$configKey}", 60));
+    }
+
+    private function sanitizeSecretString(string $message, string $secret): string
+    {
+        return $secret !== '' ? str_replace($secret, '[REDACTED]', $message) : $message;
     }
 
     private function sanitizeErrorMessage(string $message): string
     {
-        $apiKey = $this->apiKey();
-        if ($apiKey !== '') {
-            return str_replace($apiKey, '[REDACTED]', $message);
-        }
-
-        return $message;
+        return $this->sanitizeSecretString($message, $this->apiKey());
     }
 
     /**
@@ -897,7 +998,7 @@ class TomTomTrafficService
             'success' => false,
             'error_code' => 'TOMTOM_NOT_CONFIGURED',
             'status_code' => 503,
-            'message' => 'Layanan lalu lintas TomTom belum dikonfigurasi pada backend (.env TOMTOM_API_KEY).',
+            'message' => 'Layanan lalu lintas TomTom belum dikonfigurasi pada Admin Provider maupun backend (.env TOMTOM_API_KEY).',
         ];
     }
 

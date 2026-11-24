@@ -14,7 +14,7 @@
                     Gateway Operasional
                 </span>
             </div>
-            <p class="page-subtitle">Pusat orkestrasi integrasi gateway Xendit (satu-satunya payment &amp; payout gateway aktif), WhatsApp Fonnte, peta geolokasi, dan tarif ongkir. API key tersimpan terenkripsi di database.</p>
+            <p class="page-subtitle">Pusat orkestrasi integrasi gateway Xendit (satu-satunya payment &amp; payout gateway aktif), WhatsApp Fonnte, peta geolokasi, TomTom Traffic real-time, dan tarif ongkir. API key tersimpan terenkripsi di database.</p>
         </div>
     </div>
 
@@ -332,6 +332,119 @@
                             </button>
                             <button type="submit" class="btn btn-sm btn-primary">
                                 Simpan Xendit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- KARTU 6: TomTom Traffic API (Flow v4 & Incidents v5) --}}
+        <div class="card lg:col-span-2 flex flex-col justify-between border-orange-200 {{ !($providerStates['tomtom'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
+            <div>
+                <div class="card-header">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-orange-50 text-orange-600">
+                            <span class="cc-icon text-[20px]">traffic</span>
+                        </div>
+                        <div>
+                            <div class="card-title">TomTom Traffic API (Live Kemacetan &amp; Insiden)</div>
+                            <div class="card-subtitle">Overlay kemacetan real-time &amp; insiden jalan di atas OpenStreetMap aplikasi kurir</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1.5">
+                        @include('admin.settings._provider_toggle', ['provider' => 'tomtom', 'enabled' => $providerStates['tomtom'] ?? true])
+                        <div class="flex items-center gap-1">
+                            @if(!empty($tomtom['configured']))
+                                <span class="badge badge-green">Terkonfigurasi</span>
+                            @else
+                                <span class="badge badge-amber">Belum Diisi</span>
+                            @endif
+                            <span class="badge badge-indigo uppercase">
+                                {{ $tomtom['source'] ?? 'none' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body space-y-3">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Masukkan TomTom API Key langsung di sini tanpa perlu mengedit file <code class="font-mono">.env</code>. API Key disimpan terenkripsi di database dan tidak pernah dikirim ke aplikasi Flutter.
+                    </p>
+
+                    <div class="rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-1 font-mono border border-slate-200">
+                        <div>Proxy Flow Segment: <span class="text-slate-900 select-all">{{ url('/api/shipping/map/traffic/flow') }}</span></div>
+                        <div>Proxy Incidents: <span class="text-slate-900 select-all">{{ url('/api/shipping/map/traffic/incidents') }}</span></div>
+                        <div>Proxy Raster Tile: <span class="text-slate-900 select-all">{{ url('/api/shipping/map/traffic/tiles/{z}/{x}/{y}.png') }}</span></div>
+                        <div>Proxy Delivery Summary: <span class="text-slate-900 select-all">{{ url('/api/shipping/map/traffic/delivery-summary') }}</span></div>
+                    </div>
+
+                    <form method="POST" action="{{ route('admin.settings.tomtom.update') }}" id="tomtomForm" class="space-y-3 pt-1">
+                        @csrf
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div class="sm:col-span-2">
+                                <label class="form-label text-xs">API Base URL</label>
+                                <input type="url"
+                                       name="tomtom_base_url"
+                                       value="{{ $tomtom['base_url'] ?? 'https://api.tomtom.com' }}"
+                                       placeholder="https://api.tomtom.com"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Cache TTL (detik)</label>
+                                <input type="number"
+                                       name="tomtom_cache_ttl_seconds"
+                                       min="15"
+                                       max="300"
+                                       value="{{ $tomtom['cache_ttl_seconds'] ?? 60 }}"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Timeout API (detik)</label>
+                                <input type="number"
+                                       name="tomtom_timeout_seconds"
+                                       min="3"
+                                       max="20"
+                                       value="{{ $tomtom['timeout_seconds'] ?? 10 }}"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label text-xs">
+                                TomTom API Key
+                                @if(!empty($tomtom['api_key_masked']))
+                                    <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $tomtom['api_key_masked'] }}</code>)</span>
+                                @endif
+                            </label>
+                            <input type="password"
+                                   name="tomtom_api_key"
+                                   value=""
+                                   placeholder="{{ !empty($tomtom['api_key_masked']) ? 'Biarkan kosong untuk mempertahankan API Key tersimpan' : 'Masukkan TomTom Traffic API Key...' }}"
+                                   autocomplete="new-password"
+                                   class="form-input font-mono text-xs">
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <span class="text-[11px] text-slate-500">
+                                Status Peta Induk: <strong class="{{ ($providerStates['map'] ?? true) ? 'text-emerald-700' : 'text-red-600' }}">{{ ($providerStates['map'] ?? true) ? 'AKTIF' : 'NONAKTIF' }}</strong> (memerlukan Peta &amp; Geocoding ON)
+                            </span>
+                            <label class="text-xs flex items-center gap-1.5 cursor-pointer text-red-600">
+                                <input type="checkbox" name="clear_tomtom_secret" value="1" class="h-3.5 w-3.5 rounded border-slate-300">
+                                <span>Hapus API Key Tersimpan</span>
+                            </label>
+                        </div>
+
+                        <div id="tomtomTestResult" class="hidden rounded-md p-2.5 text-xs"></div>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <button type="button"
+                                    onclick="testPaymentGateway('tomtom', '{{ route('admin.settings.tomtom.test') }}', 'tomtomForm', 'tomtomTestResult')"
+                                    class="btn btn-sm btn-secondary">
+                                Test Koneksi TomTom
+                            </button>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                Simpan TomTom
                             </button>
                         </div>
                     </form>

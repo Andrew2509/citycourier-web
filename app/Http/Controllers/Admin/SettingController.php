@@ -14,6 +14,7 @@ use App\Services\KomercePaymentService;
 use App\Services\MapService;
 use App\Services\OvoService;
 use App\Services\RajaOngkirService;
+use App\Services\TomTomTrafficService;
 use App\Services\WhatsAppManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -72,14 +73,26 @@ class SettingController extends Controller
             'is_active_payout' => Setting::get('payout_active_provider', config('payment_wallet.active_payout_provider', 'xendit')) === 'xendit',
         ];
 
+        $tomtomRaw = $gatewayResolver->tomtom();
+        $tomtom = [
+            'enabled' => $tomtomRaw['enabled'],
+            'base_url' => $tomtomRaw['base_url'],
+            'configured' => $tomtomRaw['configured'],
+            'api_key_masked' => $tomtomRaw['api_key_masked'],
+            'timeout_seconds' => $tomtomRaw['timeout_seconds'],
+            'cache_ttl_seconds' => $tomtomRaw['cache_ttl_seconds'],
+            'source' => $tomtomRaw['source'],
+        ];
+
         $providerStates = [
             'whatsapp' => $gatewayResolver->isEnabled('whatsapp', true),
             'map' => $gatewayResolver->isEnabled('map', true),
             'rajaongkir' => $gatewayResolver->isEnabled('rajaongkir', true),
             'xendit' => $xenditRaw['enabled'],
+            'tomtom' => $tomtomRaw['enabled'],
         ];
 
-        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'xendit', 'providerStates'));
+        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'xendit', 'tomtom', 'providerStates'));
     }
 
     // iPaymu (Payout/Disbursement) Settings
@@ -802,6 +815,7 @@ class SettingController extends Controller
             'map' => ['label' => 'Peta & Geocoding', 'group' => 'map', 'default' => true],
             'rajaongkir' => ['label' => 'Tarif Ekspedisi (RajaOngkir)', 'group' => 'rajaongkir', 'default' => true],
             'xendit' => ['label' => 'Xendit Gateway', 'group' => 'xendit', 'default' => true],
+            'tomtom' => ['label' => 'TomTom Traffic API', 'group' => 'tomtom', 'default' => true],
         ];
 
         $provider = strtolower($provider);
@@ -950,5 +964,58 @@ class SettingController extends Controller
                 'message' => 'Gagal menghubungi Xendit: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // TomTom Traffic API Settings (Database UI)
+    // ─────────────────────────────────────────────────────────────
+
+    public function updateTomtom(Request $request, GatewayCredentialsResolver $resolver)
+    {
+        $validated = $request->validate([
+            'tomtom_base_url' => ['required', 'url', 'max:255'],
+            'tomtom_api_key' => ['nullable', 'string', 'min:8', 'max:255'],
+            'tomtom_timeout_seconds' => ['nullable', 'integer', 'min:3', 'max:20'],
+            'tomtom_cache_ttl_seconds' => ['nullable', 'integer', 'min:15', 'max:300'],
+            'clear_tomtom_secret' => ['nullable', 'boolean'],
+        ]);
+
+        Setting::set('tomtom_base_url', rtrim($validated['tomtom_base_url'], '/'), 'tomtom');
+        Setting::set(
+            'tomtom_timeout_seconds',
+            (string) ($validated['tomtom_timeout_seconds'] ?? config('services.tomtom.timeout_seconds', 10)),
+            'tomtom'
+        );
+        Setting::set(
+            'tomtom_cache_ttl_seconds',
+            (string) ($validated['tomtom_cache_ttl_seconds'] ?? config('services.tomtom.flow_cache_ttl_seconds', 60)),
+            'tomtom'
+        );
+
+        if ($request->boolean('clear_tomtom_secret')) {
+            Setting::set('tomtom_api_key', '', 'tomtom');
+        } elseif ($request->filled('tomtom_api_key')) {
+            $resolver->saveEncryptedSecret(
+                'tomtom_api_key',
+                $request->string('tomtom_api_key')->toString(),
+                'tomtom'
+            );
+        }
+
+        return redirect()->back()->with('success', 'Konfigurasi TomTom Traffic API berhasil disimpan terenkripsi ke database.');
+    }
+
+    public function testTomtom(Request $request, TomTomTrafficService $trafficService)
+    {
+        $result = $trafficService->testConnection(
+            $request->input('tomtom_api_key') !== null ? (string) $request->input('tomtom_api_key') : null,
+            $request->input('tomtom_base_url') !== null ? (string) $request->input('tomtom_base_url') : null,
+            $request->filled('tomtom_timeout_seconds') ? (int) $request->input('tomtom_timeout_seconds') : null
+        );
+
+        return response()->json([
+            'success' => (bool) ($result['success'] ?? false),
+            'message' => (string) ($result['message'] ?? 'Gagal menguji koneksi TomTom Traffic API.'),
+        ], (int) ($result['status_code'] ?? 200));
     }
 }
