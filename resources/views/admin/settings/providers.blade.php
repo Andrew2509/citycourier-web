@@ -340,6 +340,15 @@
         </div>
 
         {{-- KARTU 6: TomTom Traffic API (Flow v4 & Incidents v5) --}}
+        @php
+            $tomtomSafe = is_array($tomtom ?? null) ? $tomtom : [];
+            $tomtomUpdateUrl = \Illuminate\Support\Facades\Route::has('admin.settings.tomtom.update')
+                ? route('admin.settings.tomtom.update')
+                : url('/admin/settings/tomtom');
+            $tomtomTestUrl = \Illuminate\Support\Facades\Route::has('admin.settings.tomtom.test')
+                ? route('admin.settings.tomtom.test')
+                : url('/admin/settings/tomtom/test');
+        @endphp
         <div class="card lg:col-span-2 flex flex-col justify-between border-orange-200 {{ !($providerStates['tomtom'] ?? true) ? 'opacity-75 bg-slate-50/60' : '' }}">
             <div>
                 <div class="card-header">
@@ -355,13 +364,13 @@
                     <div class="flex flex-col items-end gap-1.5">
                         @include('admin.settings._provider_toggle', ['provider' => 'tomtom', 'enabled' => $providerStates['tomtom'] ?? true])
                         <div class="flex items-center gap-1">
-                            @if(!empty($tomtom['configured']))
+                            @if(!empty($tomtomSafe['configured']))
                                 <span class="badge badge-green">Terkonfigurasi</span>
                             @else
                                 <span class="badge badge-amber">Belum Diisi</span>
                             @endif
                             <span class="badge badge-indigo uppercase">
-                                {{ $tomtom['source'] ?? 'none' }}
+                                {{ $tomtomSafe['source'] ?? 'none' }}
                             </span>
                         </div>
                     </div>
@@ -379,14 +388,14 @@
                         <div>Proxy Delivery Summary: <span class="text-slate-900 select-all">{{ url('/api/shipping/map/traffic/delivery-summary') }}</span></div>
                     </div>
 
-                    <form method="POST" action="{{ route('admin.settings.tomtom.update') }}" id="tomtomForm" class="space-y-3 pt-1">
+                    <form method="POST" action="{{ $tomtomUpdateUrl }}" id="tomtomForm" class="space-y-3 pt-1">
                         @csrf
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <div class="sm:col-span-2">
                                 <label class="form-label text-xs">API Base URL</label>
                                 <input type="url"
                                        name="tomtom_base_url"
-                                       value="{{ $tomtom['base_url'] ?? 'https://api.tomtom.com' }}"
+                                       value="{{ $tomtomSafe['base_url'] ?? 'https://api.tomtom.com' }}"
                                        placeholder="https://api.tomtom.com"
                                        class="form-input font-mono text-xs" required>
                             </div>
@@ -396,7 +405,7 @@
                                        name="tomtom_cache_ttl_seconds"
                                        min="15"
                                        max="300"
-                                       value="{{ $tomtom['cache_ttl_seconds'] ?? 60 }}"
+                                       value="{{ $tomtomSafe['cache_ttl_seconds'] ?? 60 }}"
                                        class="form-input font-mono text-xs" required>
                             </div>
                             <div>
@@ -405,7 +414,7 @@
                                        name="tomtom_timeout_seconds"
                                        min="3"
                                        max="20"
-                                       value="{{ $tomtom['timeout_seconds'] ?? 10 }}"
+                                       value="{{ $tomtomSafe['timeout_seconds'] ?? 10 }}"
                                        class="form-input font-mono text-xs" required>
                             </div>
                         </div>
@@ -413,14 +422,14 @@
                         <div>
                             <label class="form-label text-xs">
                                 TomTom API Key
-                                @if(!empty($tomtom['api_key_masked']))
-                                    <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $tomtom['api_key_masked'] }}</code>)</span>
+                                @if(!empty($tomtomSafe['api_key_masked']))
+                                    <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $tomtomSafe['api_key_masked'] }}</code>)</span>
                                 @endif
                             </label>
                             <input type="password"
                                    name="tomtom_api_key"
                                    value=""
-                                   placeholder="{{ !empty($tomtom['api_key_masked']) ? 'Biarkan kosong untuk mempertahankan API Key tersimpan' : 'Masukkan TomTom Traffic API Key...' }}"
+                                   placeholder="{{ !empty($tomtomSafe['api_key_masked']) ? 'Biarkan kosong untuk mempertahankan API Key tersimpan' : 'Masukkan TomTom Traffic API Key...' }}"
                                    autocomplete="new-password"
                                    class="form-input font-mono text-xs">
                         </div>
@@ -439,7 +448,7 @@
 
                         <div class="flex items-center justify-between pt-2">
                             <button type="button"
-                                    onclick="testPaymentGateway('tomtom', '{{ route('admin.settings.tomtom.test') }}', 'tomtomForm', 'tomtomTestResult')"
+                                    onclick="testPaymentGateway('tomtom', '{{ $tomtomTestUrl }}', 'tomtomForm', 'tomtomTestResult')"
                                     class="btn btn-sm btn-secondary">
                                 Test Koneksi TomTom
                             </button>

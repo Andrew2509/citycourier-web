@@ -73,7 +73,17 @@ class SettingController extends Controller
             'is_active_payout' => Setting::get('payout_active_provider', config('payment_wallet.active_payout_provider', 'xendit')) === 'xendit',
         ];
 
-        $tomtomRaw = $gatewayResolver->tomtom();
+        $tomtomRaw = method_exists($gatewayResolver, 'tomtom')
+            ? $gatewayResolver->tomtom()
+            : [
+                'enabled' => $gatewayResolver->isEnabled('tomtom', true),
+                'base_url' => (string) config('services.tomtom.base_url', 'https://api.tomtom.com'),
+                'configured' => trim((string) config('services.tomtom.api_key', '')) !== '',
+                'api_key_masked' => '',
+                'timeout_seconds' => (int) config('services.tomtom.timeout_seconds', 10),
+                'cache_ttl_seconds' => (int) config('services.tomtom.flow_cache_ttl_seconds', 60),
+                'source' => trim((string) config('services.tomtom.api_key', '')) !== '' ? 'env' : 'none',
+            ];
         $tomtom = [
             'enabled' => $tomtomRaw['enabled'],
             'base_url' => $tomtomRaw['base_url'],

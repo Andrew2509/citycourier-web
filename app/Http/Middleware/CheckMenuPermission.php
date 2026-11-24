@@ -165,6 +165,8 @@ class CheckMenuPermission
             'admin.settings.ipaymu.test' => 'settings.edit',
             'admin.settings.xendit.update' => 'settings.edit',
             'admin.settings.xendit.test' => 'settings.edit',
+            'admin.settings.tomtom.update' => 'settings.edit',
+            'admin.settings.tomtom.test' => 'settings.edit',
 
             // Research Study (Studi Pendahuluan)
             'admin.research.index' => 'research_study.view',
