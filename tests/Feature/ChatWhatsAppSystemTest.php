@@ -1010,4 +1010,88 @@ class ChatWhatsAppSystemTest extends TestCase
         $this->assertSame('', Setting::get('whatsapp_cloud_app_secret'));
         $this->assertSame('', Setting::get('whatsapp_cloud_verify_token'));
     }
+
+    public function test_admin_can_send_wa_test_message_and_dispatch_after_response_without_queue_worker(): void
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        $admin = User::create([
+            'name' => 'Super Admin WA Test',
+            'email' => 'wa.test.admin@city.test',
+            'role' => 'admin',
+        ]);
+        $admin->assignRole('super-admin');
+
+        config([
+            'whatsapp.enabled' => true,
+            'whatsapp.phone_number_id' => '998811223344',
+            'whatsapp.access_token' => 'test-token-wa-diag',
+            'whatsapp.app_secret' => 'test-secret-wa-diag',
+            'whatsapp.verify_token' => 'test-verify-wa-diag',
+        ]);
+
+        Http::fake([
+            'https://graph.facebook.com/v21.0/998811223344/messages' => Http::sequence()
+                ->push(['messaging_product' => 'whatsapp', 'messages' => [['id' => 'wamid.TEST_HELLO_1']]], 200)
+                ->push(['error' => ['message' => 'Recipient phone number not in allowed list', 'code' => 131030]], 400)
+                ->push(['messaging_product' => 'whatsapp', 'messages' => [['id' => 'wamid.AFTER_RESPONSE_1']]], 200),
+        ]);
+
+        // 1. Admin triggers "Kirim Tes Pesan WA" (hello_world) & verifies clear 131030 error hint
+        $this->actingAs($admin)
+            ->postJson('/admin/settings/whatsapp-cloud/test', [
+                'test_action' => 'send_test',
+                'whatsapp_cloud_test_phone' => '081234567890',
+                'whatsapp_cloud_test_mode' => 'hello_world',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->actingAs($admin)
+            ->postJson('/admin/settings/whatsapp-cloud/test', [
+                'test_action' => 'send_test',
+                'whatsapp_cloud_test_phone' => '081234567891',
+                'whatsapp_cloud_test_mode' => 'hello_world',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('success', false);
+
+        // 2. Check counterparty.wa_opted_in on ConversationResource before and after courier opt-in
+        Sanctum::actingAs($this->customer);
+        $this->postJson('/api/v1/chat/conversations/by-order/' . $this->order->id)
+            ->assertOk()
+            ->assertJsonPath('data.counterparty.wa_opted_in', false);
+
+        Sanctum::actingAs($this->courierUser);
+        $this->postJson('/api/v1/chat/whatsapp/opt-in', ['opt_in' => true])
+            ->assertOk()
+            ->assertJsonPath('data.whatsapp_cloud_enabled', true)
+            ->assertJsonPath('data.phone_verified', true);
+
+        // Open courier window so free-text dispatch runs cleanly after response even on database queue driver
+        $courierContact = WhatsappContact::query()->where('user_id', $this->courierUser->id)->firstOrFail();
+        $courierContact->openWindow(now()->subMinutes(5));
+        $courierContact->save();
+
+        config([
+            'queue.default' => 'database',
+            'chat.use_queue_worker' => false,
+        ]);
+
+        Sanctum::actingAs($this->customer);
+        $convRes = $this->postJson('/api/v1/chat/conversations/by-order/' . $this->order->id)
+            ->assertOk()
+            ->assertJsonPath('data.counterparty.wa_opted_in', true);
+        $convId = $convRes->json('data.id');
+
+        $msgId = $this->postJson("/api/v1/chat/conversations/{$convId}/messages", [
+            'body' => 'Kirim tanpa queue worker.',
+            'client_message_id' => 'no-worker-msg-1',
+        ])->assertStatus(201)->json('data.id');
+
+        $this->assertDatabaseHas('messages', [
+            'id' => $msgId,
+            'wa_message_id' => 'wamid.AFTER_RESPONSE_1',
+            'wa_status' => 'accepted',
+        ]);
+    }
 }

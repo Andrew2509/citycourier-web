@@ -42,7 +42,7 @@ class ConversationController extends Controller
     {
         $userId = (int) $request->user()->getAuthIdentifier();
         $conversation = $this->conversationService->findOrCreateForOrder($userId, $orderIdentifier);
-        $conversation->load(['customer', 'courierUser', 'lastMessage']);
+        $conversation->load(['customer', 'courierUser', 'lastMessage', 'customerWhatsappContact', 'courierWhatsappContact']);
 
         return $this->ok(
             ConversationResource::make($conversation)->resolve($request),
@@ -53,7 +53,7 @@ class ConversationController extends Controller
     public function show(Request $request, Conversation $conversation): JsonResponse
     {
         Gate::forUser($request->user())->authorize('view', $conversation);
-        $conversation->load(['customer', 'courierUser', 'lastMessage']);
+        $conversation->load(['customer', 'courierUser', 'lastMessage', 'customerWhatsappContact', 'courierWhatsappContact']);
 
         return $this->ok(
             ConversationResource::make($conversation)->resolve($request),

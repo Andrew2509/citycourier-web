@@ -652,9 +652,34 @@
 
                         <div id="whatsappCloudTestResult" class="hidden rounded-md p-2.5 text-xs"></div>
 
+                        {{-- Panel Uji Kirim Pesan Langsung ke Nomor Tujuan --}}
+                        <div class="rounded-md border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+                            <div class="text-xs font-semibold text-slate-700">Uji Kirim Pesan Langsung ke WhatsApp Tujuan</div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <input type="text"
+                                       name="whatsapp_cloud_test_phone"
+                                       id="whatsappCloudTestPhone"
+                                       placeholder="Nomor tujuan: 0812xxxx / 62812xxxx"
+                                       class="form-input font-mono text-xs bg-white">
+                                <select name="whatsapp_cloud_test_mode" class="form-select text-xs bg-white">
+                                    <option value="hello_world">Template Bawaan (hello_world)</option>
+                                    <option value="utility_template">Template Chat Order ({{ $waCloudSafe['utility_template_name'] ?? 'city_courier_chat_notification' }})</option>
+                                    <option value="text">Teks Bebas (khusus window 24 jam)</option>
+                                </select>
+                                <button type="button"
+                                        onclick="testWhatsappCloudSend('{{ $waCloudTestUrl }}')"
+                                        class="btn btn-sm btn-secondary w-full">
+                                    Kirim Tes Pesan WA
+                                </button>
+                            </div>
+                            <div class="text-[11px] text-slate-500">
+                                Syarat agar chat aplikasi masuk ke WA masing-masing user: (1) Penerima sudah mengaktifkan <strong>Terima pesan via WhatsApp</strong> di layar chat Flutter, (2) Dalam mode Test Number Meta, nomor HP tujuan wajib ditambahkan dulu di <em>Manage phone number list</em> Meta Developers, (3) Buat &amp; approve Utility Template <code class="font-mono">{{ $waCloudSafe['utility_template_name'] ?? 'city_courier_chat_notification' }}</code>.
+                            </div>
+                        </div>
+
                         <div class="flex items-center justify-between pt-2">
                             <button type="button"
-                                    onclick="testPaymentGateway('Meta WhatsApp Cloud API', '{{ $waCloudTestUrl }}', 'whatsappCloudForm', 'whatsappCloudTestResult')"
+                                    onclick="testWhatsappCloudConnection('{{ $waCloudTestUrl }}')"
                                     class="btn btn-sm btn-secondary">
                                 Test Koneksi Meta API
                             </button>
@@ -663,6 +688,51 @@
                             </button>
                         </div>
                     </form>
+
+                    {{-- Diagnostik & Log Pengiriman/Webhook Terbaru --}}
+                    <div class="mt-3 rounded-md border border-slate-200 bg-white p-3 space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span class="font-semibold text-slate-700">Diagnostik Jembatan WhatsApp</span>
+                            <div class="flex items-center gap-2">
+                                <span class="badge badge-green">User Opt-In WA: {{ (int) ($waCloudSafe['opted_in_count'] ?? 0) }}</span>
+                                <span class="badge badge-indigo">Window 24 Jam Aktif: {{ (int) ($waCloudSafe['window_open_count'] ?? 0) }}</span>
+                            </div>
+                        </div>
+                        @if(!empty($waCloudSafe['recent_logs']))
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-[11px] text-slate-600">
+                                    <thead class="border-b border-slate-200 text-slate-500">
+                                        <tr>
+                                            <th class="py-1 pr-2">Waktu</th>
+                                            <th class="py-1 pr-2">Arah</th>
+                                            <th class="py-1 pr-2">HTTP</th>
+                                            <th class="py-1 pr-2">Status</th>
+                                            <th class="py-1">Detail / Error Meta</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 font-mono">
+                                        @foreach($waCloudSafe['recent_logs'] as $waLog)
+                                            <tr>
+                                                <td class="py-1 pr-2 whitespace-nowrap">{{ $waLog['time'] ?? '-' }}</td>
+                                                <td class="py-1 pr-2 uppercase">{{ $waLog['direction'] }}</td>
+                                                <td class="py-1 pr-2">{{ $waLog['http_status'] ?? '-' }}</td>
+                                                <td class="py-1 pr-2">
+                                                    <span class="{{ ($waLog['processing_status'] ?? '') === 'failed' ? 'text-red-600 font-semibold' : 'text-emerald-700 font-semibold' }}">
+                                                        {{ $waLog['processing_status'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="py-1 font-sans text-slate-700">{{ $waLog['error_message'] ?? 'OK' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="text-[11px] text-slate-500">
+                                Belum ada log pengiriman/webhook WhatsApp Cloud API. Bila user baru mengirim chat namun belum muncul log di sini, pastikan user penerima sudah mengaktifkan switch <strong>Terima pesan via WhatsApp</strong> di aplikasi Flutter.
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -702,6 +772,61 @@ async function testPaymentGateway(name, endpoint, formId, resultBoxId) {
     } catch (err) {
         box.className = 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
         box.textContent = 'Gagal menguji koneksi: ' + err.message;
+    }
+}
+
+async function testWhatsappCloudConnection(endpoint) {
+    const phoneInput = document.getElementById('whatsappCloudTestPhone');
+    const prev = phoneInput ? phoneInput.value : '';
+    if (phoneInput) phoneInput.value = '';
+    try {
+        await testPaymentGateway('Meta WhatsApp Cloud API', endpoint, 'whatsappCloudForm', 'whatsappCloudTestResult');
+    } finally {
+        if (phoneInput) phoneInput.value = prev;
+    }
+}
+
+async function testWhatsappCloudSend(endpoint) {
+    const phoneInput = document.getElementById('whatsappCloudTestPhone');
+    const box = document.getElementById('whatsappCloudTestResult');
+    if (!phoneInput || !phoneInput.value.trim()) {
+        if (box) {
+            box.className = 'rounded-md p-2.5 text-xs bg-amber-50 text-amber-800 border border-amber-200';
+            box.textContent = 'Masukkan nomor WhatsApp tujuan terlebih dahulu pada kolom Uji Kirim Pesan.';
+        }
+        return;
+    }
+    const form = document.getElementById('whatsappCloudForm');
+    if (!form || !box) return;
+
+    box.className = 'rounded-md p-2.5 text-xs bg-slate-100 text-slate-700';
+    box.textContent = 'Mengirim pesan tes WhatsApp ke ' + phoneInput.value.trim() + '...';
+
+    try {
+        const fd = new FormData(form);
+        fd.set('test_action', 'send_test');
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+            },
+            body: fd,
+        });
+        const text = await res.text();
+        let json = {};
+        try {
+            json = JSON.parse(text);
+        } catch (_) {
+            json = { success: false, message: 'Server merespons HTTP ' + res.status + ' (non-JSON).' };
+        }
+        box.className = json.success
+            ? 'rounded-md p-2.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200'
+            : 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
+        box.textContent = json.message || ('HTTP ' + res.status);
+    } catch (err) {
+        box.className = 'rounded-md p-2.5 text-xs bg-red-50 text-red-800 border border-red-200';
+        box.textContent = 'Gagal mengirim pesan tes: ' + err.message;
     }
 }
 </script>

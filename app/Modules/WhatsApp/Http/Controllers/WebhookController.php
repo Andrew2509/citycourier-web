@@ -78,7 +78,11 @@ class WebhookController extends Controller
             'payload' => $payload,
         ]);
 
-        ProcessWhatsAppWebhookJob::dispatch($log->id);
+        if ((bool) config('chat.use_queue_worker', false) || config('queue.default') === 'sync') {
+            ProcessWhatsAppWebhookJob::dispatch($log->id);
+        } else {
+            ProcessWhatsAppWebhookJob::dispatchAfterResponse($log->id);
+        }
 
         return response()->json(['received' => true, 'duplicate' => false], 200);
     }

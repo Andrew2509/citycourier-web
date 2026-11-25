@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Modules\Chat\Models\WhatsappContact;
+use App\Modules\Chat\Models\WhatsappMessageLog;
 use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use App\Modules\Wallet\Services\WalletLedgerManager;
 use App\Modules\WhatsApp\Services\WhatsAppCloudClient;
@@ -96,6 +98,35 @@ class SettingController extends Controller
         ];
 
         $whatsappCloudRaw = $gatewayResolver->whatsappCloud();
+        $optedInCount = 0;
+        $windowOpenCount = 0;
+        $recentWaLogs = [];
+        if (Schema::hasTable('whatsapp_contacts')) {
+            $optedInCount = WhatsappContact::query()
+                ->where('opt_in_status', WhatsappContact::OPT_IN)
+                ->count();
+            $windowOpenCount = WhatsappContact::query()
+                ->where('opt_in_status', WhatsappContact::OPT_IN)
+                ->whereNotNull('window_expires_at')
+                ->where('window_expires_at', '>', now())
+                ->count();
+        }
+        if (Schema::hasTable('whatsapp_message_logs')) {
+            $recentWaLogs = WhatsappMessageLog::query()
+                ->orderByDesc('id')
+                ->limit(5)
+                ->get(['id', 'direction', 'http_status', 'processing_status', 'error_message', 'created_at'])
+                ->map(fn (WhatsappMessageLog $log): array => [
+                    'id' => (int) $log->id,
+                    'direction' => (string) $log->direction,
+                    'http_status' => $log->http_status !== null ? (int) $log->http_status : null,
+                    'processing_status' => (string) $log->processing_status,
+                    'error_message' => $log->error_message,
+                    'time' => $log->created_at?->format('d/m H:i:s'),
+                ])
+                ->all();
+        }
+
         $whatsappCloud = [
             'enabled' => $whatsappCloudRaw['enabled'],
             'base_url' => $whatsappCloudRaw['base_url'],
@@ -113,6 +144,9 @@ class SettingController extends Controller
             'webhook_ready' => $whatsappCloudRaw['webhook_ready'],
             'source' => $whatsappCloudRaw['source'],
             'webhook_url' => url('/api/v1/whatsapp/webhook'),
+            'opted_in_count' => $optedInCount,
+            'window_open_count' => $windowOpenCount,
+            'recent_logs' => $recentWaLogs,
         ];
 
         $providerStates = [
@@ -1133,10 +1167,18 @@ class SettingController extends Controller
             'api_version' => $request->filled('whatsapp_cloud_api_version') ? (string) $request->input('whatsapp_cloud_api_version') : null,
             'phone_number_id' => $request->filled('whatsapp_cloud_phone_number_id') ? (string) $request->input('whatsapp_cloud_phone_number_id') : null,
             'access_token' => $request->filled('whatsapp_cloud_access_token') ? (string) $request->input('whatsapp_cloud_access_token') : null,
+            'utility_template_name' => $request->filled('whatsapp_cloud_utility_template_name') ? (string) $request->input('whatsapp_cloud_utility_template_name') : null,
+            'utility_template_language' => $request->filled('whatsapp_cloud_utility_template_lang') ? (string) $request->input('whatsapp_cloud_utility_template_lang') : null,
             'timeout_seconds' => $request->filled('whatsapp_cloud_timeout_seconds') ? (int) $request->input('whatsapp_cloud_timeout_seconds') : null,
         ], fn ($value) => $value !== null);
 
-        $result = $cloudClient->testConnection($overrides);
+        if ($request->input('test_action') === 'send_test' || $request->filled('whatsapp_cloud_test_phone')) {
+            $testPhone = trim((string) $request->input('whatsapp_cloud_test_phone', ''));
+            $mode = (string) $request->input('whatsapp_cloud_test_mode', 'hello_world');
+            $result = $cloudClient->sendTestMessage($testPhone, $mode, $overrides);
+        } else {
+            $result = $cloudClient->testConnection($overrides);
+        }
 
         return response()->json([
             'success' => (bool) ($result['success'] ?? false),

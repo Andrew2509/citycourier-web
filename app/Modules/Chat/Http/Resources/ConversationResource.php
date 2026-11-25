@@ -25,6 +25,10 @@ class ConversationResource extends JsonResource
             ? ($this->relationLoaded('courierUser') ? $this->courierUser : null)
             : ($this->relationLoaded('customer') ? $this->customer : null);
 
+        $counterpartyContact = $viewerRole === Message::ROLE_CUSTOMER
+            ? ($this->relationLoaded('courierWhatsappContact') ? $this->courierWhatsappContact : null)
+            : ($this->relationLoaded('customerWhatsappContact') ? $this->customerWhatsappContact : null);
+
         return [
             'id' => (int) $this->id,
             'order_id' => (int) $this->order_id,
@@ -47,6 +51,7 @@ class ConversationResource extends JsonResource
                 'role' => $counterpartyRole,
                 'name' => $counterpartyUser?->name,
                 'phone' => $counterpartyUser?->phone,
+                'wa_opted_in' => $counterpartyContact?->isOptedIn() ?? false,
             ],
             'created_at' => $this->created_at?->toIso8601String(),
         ];

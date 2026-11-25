@@ -35,6 +35,7 @@ class MessageResource extends JsonResource
             'wa_message_id' => $this->wa_message_id,
             'wa_status' => $this->wa_status,
             'wa_error_code' => $this->wa_error_code,
+            'wa_error_message' => $this->wa_error_message,
             'sent_at' => $this->sent_at?->toIso8601String(),
             'delivered_at' => $this->delivered_at?->toIso8601String(),
             'read_at' => $this->read_at?->toIso8601String(),

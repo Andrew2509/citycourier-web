@@ -2,6 +2,7 @@
 
 namespace App\Modules\WhatsApp\Services;
 
+use App\Modules\Chat\Support\PhoneNumberNormalizer;
 use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -208,6 +209,129 @@ class WhatsAppCloudClient
                 'success' => false,
                 'status_code' => $response->status() >= 400 ? 400 : 400,
                 'message' => 'Koneksi Meta Gagal' . $errorCode . ': ' . $errorMsg,
+                'data' => $raw,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'status_code' => 500,
+                'message' => 'Gagal menghubungi Meta Graph API: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Sends a diagnostic WhatsApp message directly from Admin Providers UI
+     * so operators can verify sandbox allowlists, template approvals, or 24h windows.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array{success: bool, status_code: int, message: string, data?: array<string, mixed>}
+     */
+    public function sendTestMessage(string $toRaw, string $mode = 'hello_world', array $overrides = []): array
+    {
+        $toE164 = PhoneNumberNormalizer::toE164($toRaw);
+        if ($toE164 === null) {
+            return [
+                'success' => false,
+                'status_code' => 422,
+                'message' => 'Format nomor HP tujuan tidak valid. Gunakan format 08xxxxxxxxxx atau 628xxxxxxxxxx.',
+            ];
+        }
+
+        $creds = $this->credentials();
+        $baseUrl = rtrim((string) ($overrides['base_url'] ?? $creds['base_url'] ?: 'https://graph.facebook.com'), '/');
+        $apiVersion = trim((string) ($overrides['api_version'] ?? $creds['api_version'] ?: 'v21.0'));
+        $phoneNumberId = trim((string) ($overrides['phone_number_id'] ?? $creds['phone_number_id']));
+        $accessToken = trim((string) ($overrides['access_token'] ?? $creds['access_token']));
+        $templateName = trim((string) ($overrides['utility_template_name'] ?? $creds['utility_template_name'] ?: 'city_courier_chat_notification'));
+        $templateLang = trim((string) ($overrides['utility_template_language'] ?? $creds['utility_template_language'] ?: 'id'));
+        $timeout = max(3, min(60, (int) ($overrides['timeout_seconds'] ?? ($creds['timeout_seconds'] ?? 15))));
+
+        if ($phoneNumberId === '' || $accessToken === '') {
+            return [
+                'success' => false,
+                'status_code' => 422,
+                'message' => 'Phone Number ID dan Access Token wajib diisi sebelum mengirim pesan tes WhatsApp.',
+            ];
+        }
+
+        $payload = match ($mode) {
+            'utility_template' => [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $toE164,
+                'type' => 'template',
+                'template' => [
+                    'name' => $templateName,
+                    'language' => ['code' => $templateLang],
+                    'components' => [[
+                        'type' => 'body',
+                        'parameters' => [
+                            ['type' => 'text', 'text' => 'CC-TEST-001'],
+                            ['type' => 'text', 'text' => 'Admin City Courier'],
+                            ['type' => 'text', 'text' => 'Tes pengiriman notifikasi chat order via template resmi.'],
+                        ],
+                    ]],
+                ],
+            ],
+            'text' => [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $toE164,
+                'type' => 'text',
+                'text' => [
+                    'preview_url' => false,
+                    'body' => '[City Courier Test] Tes pengiriman pesan teks langsung dari Admin Panel.',
+                ],
+            ],
+            default => [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $toE164,
+                'type' => 'template',
+                'template' => [
+                    'name' => 'hello_world',
+                    'language' => ['code' => 'en_US'],
+                ],
+            ],
+        };
+
+        try {
+            $url = sprintf('%s/%s/%s/messages', $baseUrl, $apiVersion, $phoneNumberId);
+            $response = Http::withToken($accessToken)
+                ->acceptJson()
+                ->timeout($timeout)
+                ->post($url, $payload);
+
+            $json = $response->json();
+            $raw = is_array($json) ? $json : [];
+
+            if ($response->successful() && ! empty($raw['messages'][0]['id'])) {
+                $wamid = (string) $raw['messages'][0]['id'];
+
+                return [
+                    'success' => true,
+                    'status_code' => 200,
+                    'message' => "Pesan tes ({$mode}) berhasil diterima Meta untuk tujuan {$toE164}! ID: {$wamid}",
+                    'data' => $raw,
+                ];
+            }
+
+            $error = is_array($raw['error'] ?? null) ? $raw['error'] : [];
+            $code = isset($error['code']) ? (string) $error['code'] : (string) $response->status();
+            $rawMessage = (string) ($error['message'] ?? ('Meta Graph API merespons HTTP ' . $response->status()));
+
+            $hint = match ($code) {
+                '131030' => "Nomor {$toE164} belum ditambahkan di daftar nomor uji coba (Manage phone number list) pada Meta Developers -> WhatsApp -> API Setup.",
+                '132001' => "Template '{$templateName}' ({$templateLang}) belum dibuat atau belum disetujui (Approved) di Pengelola WhatsApp Meta.",
+                '131047' => "Jendela balasan 24 jam untuk {$toE164} belum terbuka. Gunakan mode template (hello_world / utility_template), atau balas pesan WA dari HP tersebut dulu.",
+                default => $rawMessage,
+            };
+
+            return [
+                'success' => false,
+                'status_code' => 400,
+                'message' => "Gagal Kirim Tes WA [Code {$code}]: {$hint}",
                 'data' => $raw,
             ];
         } catch (\Throwable $e) {

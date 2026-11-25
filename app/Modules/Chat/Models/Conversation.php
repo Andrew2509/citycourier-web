@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Conversation extends Model
 {
@@ -64,6 +65,16 @@ class Conversation extends Model
     public function courierUser(): BelongsTo
     {
         return $this->belongsTo(config('chat.host_models.user'), 'courier_user_id');
+    }
+
+    public function customerWhatsappContact(): HasOne
+    {
+        return $this->hasOne(WhatsappContact::class, 'user_id', 'customer_user_id');
+    }
+
+    public function courierWhatsappContact(): HasOne
+    {
+        return $this->hasOne(WhatsappContact::class, 'user_id', 'courier_user_id');
     }
 
     public function order(): BelongsTo

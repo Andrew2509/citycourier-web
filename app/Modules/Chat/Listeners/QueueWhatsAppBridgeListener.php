@@ -24,7 +24,16 @@ class QueueWhatsAppBridgeListener
             return;
         }
 
-        SendWhatsAppMessageJob::dispatch(
+        if ((bool) config('chat.use_queue_worker', false) || config('queue.default') === 'sync') {
+            SendWhatsAppMessageJob::dispatch(
+                $event->conversation->id,
+                $event->message->id
+            );
+
+            return;
+        }
+
+        SendWhatsAppMessageJob::dispatchAfterResponse(
             $event->conversation->id,
             $event->message->id
         );

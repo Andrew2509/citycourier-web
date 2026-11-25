@@ -7,6 +7,7 @@ return [
     'messages_per_page' => (int) env('CHAT_MESSAGES_PER_PAGE', 30),
     'max_messages_per_page' => 100,
     'typing_throttle_seconds' => (int) env('CHAT_TYPING_THROTTLE_SECONDS', 3),
+    'use_queue_worker' => filter_var(env('CHAT_USE_QUEUE_WORKER', false), FILTER_VALIDATE_BOOLEAN),
     'host_models' => [
         'user' => env('CHAT_USER_MODEL', 'App\\Models\\User'),
         'order' => env('CHAT_ORDER_MODEL', 'App\\Models\\Order'),

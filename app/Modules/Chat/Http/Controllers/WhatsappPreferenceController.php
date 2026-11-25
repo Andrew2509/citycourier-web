@@ -80,8 +80,12 @@ class WhatsappPreferenceController extends Controller
         }
         $contact->save();
 
+        $cloudCreds = app(GatewayCredentialsResolver::class)->whatsappCloud();
+
         return $this->ok([
+            'whatsapp_cloud_enabled' => (bool) ($cloudCreds['enabled'] ?? false),
             'phone_e164' => $contact->wa_phone_e164,
+            'phone_verified' => true,
             'opt_in_status' => $contact->opt_in_status,
             'window_open' => $contact->isWindowOpen(),
             'window_expires_at' => $contact->window_expires_at?->toIso8601String(),

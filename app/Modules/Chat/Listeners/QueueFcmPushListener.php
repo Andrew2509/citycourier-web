@@ -19,7 +19,16 @@ class QueueFcmPushListener
             return;
         }
 
-        SendChatPushNotificationJob::dispatch(
+        if ((bool) config('chat.use_queue_worker', false) || config('queue.default') === 'sync') {
+            SendChatPushNotificationJob::dispatch(
+                $event->conversation->id,
+                $event->message->id
+            );
+
+            return;
+        }
+
+        SendChatPushNotificationJob::dispatchAfterResponse(
             $event->conversation->id,
             $event->message->id
         );
