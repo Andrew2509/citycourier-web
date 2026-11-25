@@ -76,6 +76,7 @@ class CourierWalletV1Controller extends Controller
                 'active_payout_provider' => $this->providerResolver->safePayoutProviderCode(),
                 'security' => [
                     'has_transaction_pin' => $request->user()->hasTransactionPin(),
+                    'biometric_enabled' => (bool) ($request->user()->getAttribute('biometric_enabled') ?? false),
                 ],
                 'earnings_summary' => $this->earningService->getCourierEarningsSummary($courier),
                 'payout_policy' => [
