@@ -3,6 +3,7 @@
 namespace App\Modules\WhatsApp\Http\Controllers;
 
 use App\Modules\Chat\Models\WhatsappMessageLog;
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use App\Modules\WhatsApp\Jobs\ProcessWhatsAppWebhookJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ class WebhookController extends Controller
         $token = (string) ($request->query('hub_verify_token') ?? $request->query('hub.verify_token') ?? '');
         $challenge = (string) ($request->query('hub_challenge') ?? $request->query('hub.challenge') ?? '');
 
-        $expectedToken = (string) config('whatsapp.verify_token', '');
+        $creds = app(GatewayCredentialsResolver::class)->whatsappCloud();
+        $expectedToken = (string) ($creds['verify_token'] ?? '');
 
         if (
             $mode === 'subscribe'
@@ -39,7 +41,8 @@ class WebhookController extends Controller
     public function handle(Request $request): JsonResponse
     {
         $rawBody = $request->getContent();
-        $appSecret = (string) config('whatsapp.app_secret', '');
+        $creds = app(GatewayCredentialsResolver::class)->whatsappCloud();
+        $appSecret = (string) ($creds['app_secret'] ?? '');
         $signatureHeader = (string) $request->header('X-Hub-Signature-256', '');
 
         if (! $this->isValidSignature($rawBody, $signatureHeader, $appSecret)) {

@@ -139,6 +139,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/tomtom', [\App\Http\Controllers\Admin\SettingController::class, 'updateTomtom'])->name('settings.tomtom.update');
         Route::post('/settings/tomtom/test', [\App\Http\Controllers\Admin\SettingController::class, 'testTomtom'])->name('settings.tomtom.test');
 
+        Route::post('/settings/whatsapp-cloud', [\App\Http\Controllers\Admin\SettingController::class, 'updateWhatsappCloud'])->name('settings.whatsapp-cloud.update');
+        Route::post('/settings/whatsapp-cloud/test', [\App\Http\Controllers\Admin\SettingController::class, 'testWhatsappCloud'])->name('settings.whatsapp-cloud.test');
+
 
         // Drop Points
         Route::get('drop-points/export', [\App\Http\Controllers\Admin\DropPointController::class, 'exportCsv'])->name('drop-points.export');

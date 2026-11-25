@@ -27,10 +27,11 @@ php artisan migrate
    - Untuk mengaktifkan realtime WebSocket produksi: atur `BROADCAST_CONNECTION=reverb`, `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`, `REVERB_HOST=ws.neonflux.my.id`, `REVERB_PORT=443`, `REVERB_SCHEME=https`.
    - `pusher/pusher-php-server` sudah terpasang untuk mengirim event broadcast ke server Reverb/Pusher. Bila daemon WebSocket Reverb dijalankan langsung dari repo ini (bukan container/host terpisah), pasang paket server `composer require laravel/reverb` dan jalankan `php artisan reverb:start`.
 2. **Meta WhatsApp Business Cloud API (Resmi)**:
-   - Biarkan `WHATSAPP_CLOUD_ENABLED=false` hingga kredensial Meta siap (chat internal tetap berfungsi penuh).
-   - Saat siap live: isi `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`.
-   - Buat Utility Template di Meta WhatsApp Manager dengan nama sesuai `WHATSAPP_UTILITY_TEMPLATE_NAME` (`city_courier_chat_notification`, 3 parameter body: nomor order, nama pengirim, pratinjau pesan) untuk dipakai otomatis saat jendela layanan 24 jam customer sudah berakhir.
-   - Arahkan Callback Webhook Meta ke `https://www.neonflux.my.id/api/v1/whatsapp/webhook`.
+   - Anda dapat memasukkan seluruh kredensial langsung melalui **Admin Panel &rarr; Provider &amp; Integrasi Eksternal** (`/admin/providers`, kartu **Meta WhatsApp Business Cloud API**) tanpa mengedit file `.env`. Access Token, App Secret, dan Verify Token otomatis disimpan terenkripsi di tabel `settings` dan memprioritaskan nilai database di atas `.env`.
+   - Sebagai alternatif berbasis environment: atur `WHATSAPP_CLOUD_ENABLED=false` (default aman) hingga kredensial siap, lalu isi `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`.
+   - Buat Utility Template di Meta WhatsApp Manager dengan nama sesuai `Utility Template Name` (`city_courier_chat_notification`, 3 parameter body: nomor order, nama pengirim, pratinjau pesan) untuk dipakai otomatis saat jendela layanan 24 jam customer sudah berakhir.
+   - Arahkan Callback Webhook Meta ke `https://www.neonflux.my.id/api/v1/whatsapp/webhook` (field `messages`).
+   - Tersedia tombol **Test Koneksi Meta API** langsung di halaman `/admin/providers` untuk memverifikasi `Phone Number ID` dan `Access Token` sebelum diaktifkan.
 3. **Firebase Cloud Messaging (HTTP v1)**:
    - Aktifkan `FCM_ENABLED=true`, isi `FCM_PROJECT_ID` dan `FCM_CREDENTIALS_PATH`.
 

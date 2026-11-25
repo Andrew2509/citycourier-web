@@ -2,16 +2,27 @@
 
 namespace App\Modules\WhatsApp\Services;
 
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 class WhatsAppCloudClient
 {
+    /**
+     * @return array<string, mixed>
+     */
+    public function credentials(): array
+    {
+        return app(GatewayCredentialsResolver::class)->whatsappCloud();
+    }
+
     public function isConfigured(): bool
     {
-        return (bool) config('whatsapp.enabled', false)
-            && ! empty(config('whatsapp.phone_number_id'))
-            && ! empty(config('whatsapp.access_token'));
+        $creds = $this->credentials();
+
+        return (bool) ($creds['enabled'] ?? false)
+            && ! empty($creds['phone_number_id'])
+            && ! empty($creds['access_token']);
     }
 
     /**
@@ -82,15 +93,17 @@ class WhatsAppCloudClient
             ];
         }
 
+        $creds = $this->credentials();
+
         $url = sprintf(
             '%s/%s/%s/media',
-            config('whatsapp.base_url'),
-            config('whatsapp.api_version'),
-            config('whatsapp.phone_number_id')
+            $creds['base_url'],
+            $creds['api_version'],
+            $creds['phone_number_id']
         );
 
-        $response = Http::withToken((string) config('whatsapp.access_token'))
-            ->timeout((int) config('whatsapp.timeout_seconds', 15))
+        $response = Http::withToken((string) $creds['access_token'])
+            ->timeout((int) ($creds['timeout_seconds'] ?? 15))
             ->attach('file', $binaryContents, $filename, ['Content-Type' => $mimeType])
             ->post($url, ['messaging_product' => 'whatsapp']);
 
@@ -138,6 +151,75 @@ class WhatsAppCloudClient
     }
 
     /**
+     * Probes Meta Graph API phone number node to verify Access Token & Phone Number ID.
+     * Accepts unsaved overrides from Admin UI so credentials can be tested before saving.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array{success: bool, status_code: int, message: string, data?: array<string, mixed>}
+     */
+    public function testConnection(array $overrides = []): array
+    {
+        $creds = $this->credentials();
+
+        $baseUrl = rtrim((string) ($overrides['base_url'] ?? $creds['base_url'] ?: 'https://graph.facebook.com'), '/');
+        $apiVersion = trim((string) ($overrides['api_version'] ?? $creds['api_version'] ?: 'v21.0'));
+        $phoneNumberId = trim((string) ($overrides['phone_number_id'] ?? $creds['phone_number_id']));
+        $accessToken = trim((string) ($overrides['access_token'] ?? $creds['access_token']));
+        $timeout = max(3, min(60, (int) ($overrides['timeout_seconds'] ?? ($creds['timeout_seconds'] ?? 15))));
+
+        if ($phoneNumberId === '' || $accessToken === '') {
+            return [
+                'success' => false,
+                'status_code' => 422,
+                'message' => 'Phone Number ID dan Permanent Access Token wajib diisi sebelum menguji koneksi Meta Graph API.',
+            ];
+        }
+
+        try {
+            $url = sprintf('%s/%s/%s', $baseUrl, $apiVersion, $phoneNumberId);
+            $response = Http::withToken($accessToken)
+                ->acceptJson()
+                ->timeout($timeout)
+                ->get($url, [
+                    'fields' => 'id,display_phone_number,verified_name,quality_rating',
+                ]);
+
+            $json = $response->json();
+            $raw = is_array($json) ? $json : [];
+
+            if ($response->successful() && ! empty($raw['id'])) {
+                $displayPhone = (string) ($raw['display_phone_number'] ?? '-');
+                $verifiedName = (string) ($raw['verified_name'] ?? 'Terverifikasi');
+                $quality = (string) ($raw['quality_rating'] ?? '-');
+
+                return [
+                    'success' => true,
+                    'status_code' => 200,
+                    'message' => "Koneksi Meta Cloud API Berhasil! Nomor: {$displayPhone} ({$verifiedName}), Kualitas: {$quality}.",
+                    'data' => $raw,
+                ];
+            }
+
+            $error = is_array($raw['error'] ?? null) ? $raw['error'] : [];
+            $errorMsg = (string) ($error['message'] ?? ('Meta Graph API merespons HTTP ' . $response->status()));
+            $errorCode = isset($error['code']) ? ' [Code ' . $error['code'] . ']' : '';
+
+            return [
+                'success' => false,
+                'status_code' => $response->status() >= 400 ? 400 : 400,
+                'message' => 'Koneksi Meta Gagal' . $errorCode . ': ' . $errorMsg,
+                'data' => $raw,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'status_code' => 500,
+                'message' => 'Gagal menghubungi Meta Graph API: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      * @return array{ok: bool, wa_message_id: ?string, http_status: int, error_code: ?string, error_message: ?string, raw: array<string, mixed>, transient: bool}
      */
@@ -155,17 +237,19 @@ class WhatsAppCloudClient
             ];
         }
 
+        $creds = $this->credentials();
+
         $url = sprintf(
             '%s/%s/%s/messages',
-            config('whatsapp.base_url'),
-            config('whatsapp.api_version'),
-            config('whatsapp.phone_number_id')
+            $creds['base_url'],
+            $creds['api_version'],
+            $creds['phone_number_id']
         );
 
         /** @var Response $response */
-        $response = Http::withToken((string) config('whatsapp.access_token'))
+        $response = Http::withToken((string) $creds['access_token'])
             ->acceptJson()
-            ->timeout((int) config('whatsapp.timeout_seconds', 15))
+            ->timeout((int) ($creds['timeout_seconds'] ?? 15))
             ->post($url, $payload);
 
         $json = $response->json();

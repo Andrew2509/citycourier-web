@@ -63,6 +63,62 @@ class GatewayCredentialsResolver
     }
 
     /**
+     * Resolve official Meta WhatsApp Business Cloud API credentials
+     * from encrypted Admin DB settings first, falling back to config/whatsapp.php (.env).
+     *
+     * @return array<string, mixed>
+     */
+    public function whatsappCloud(): array
+    {
+        $enabledDefault = (bool) config('whatsapp.enabled', false);
+        $enabled = $this->isEnabled('whatsapp_cloud', $enabledDefault);
+
+        $baseUrl = $this->readPlain('whatsapp_cloud_base_url', (string) config('whatsapp.base_url', 'https://graph.facebook.com'));
+        $apiVersion = $this->readPlain('whatsapp_cloud_api_version', (string) config('whatsapp.api_version', 'v21.0'));
+        $phoneNumberId = $this->readPlain('whatsapp_cloud_phone_number_id', (string) config('whatsapp.phone_number_id', ''));
+        $wabaId = $this->readPlain('whatsapp_cloud_waba_id', (string) config('whatsapp.waba_id', ''));
+        $accessToken = $this->readSecret('whatsapp_cloud_access_token', (string) config('whatsapp.access_token', ''));
+        $appSecret = $this->readSecret('whatsapp_cloud_app_secret', (string) config('whatsapp.app_secret', ''));
+        $verifyToken = $this->readSecret('whatsapp_cloud_verify_token', (string) config('whatsapp.verify_token', ''));
+        $templateName = $this->readPlain('whatsapp_cloud_utility_template_name', (string) config('whatsapp.utility_template_name', 'city_courier_chat_notification'));
+        $templateLang = $this->readPlain('whatsapp_cloud_utility_template_lang', (string) config('whatsapp.utility_template_language', 'id'));
+        $windowHours = (int) $this->readPlain('whatsapp_cloud_window_hours', (string) config('whatsapp.customer_service_window_hours', 24));
+        $timeout = (int) $this->readPlain('whatsapp_cloud_timeout_seconds', (string) config('whatsapp.timeout_seconds', 15));
+
+        $configured = trim($phoneNumberId) !== '' && trim($accessToken) !== '';
+        $webhookReady = trim($verifyToken) !== '' && trim($appSecret) !== '';
+        $hasDbRecord = $this->hasDbSetting('whatsapp_cloud_access_token')
+            || $this->hasDbSetting('whatsapp_cloud_phone_number_id')
+            || $this->hasDbSetting('whatsapp_cloud_app_secret')
+            || $this->hasDbSetting('whatsapp_cloud_verify_token');
+        $hasEnvRecord = trim((string) config('whatsapp.access_token', '')) !== ''
+            || trim((string) config('whatsapp.phone_number_id', '')) !== ''
+            || trim((string) config('whatsapp.app_secret', '')) !== ''
+            || trim((string) config('whatsapp.verify_token', '')) !== '';
+
+        return [
+            'enabled' => $enabled,
+            'base_url' => rtrim($baseUrl ?: 'https://graph.facebook.com', '/'),
+            'api_version' => trim($apiVersion ?: 'v21.0'),
+            'phone_number_id' => trim($phoneNumberId),
+            'waba_id' => trim($wabaId),
+            'access_token' => trim($accessToken),
+            'app_secret' => trim($appSecret),
+            'verify_token' => trim($verifyToken),
+            'access_token_masked' => $this->maskSecret($accessToken),
+            'app_secret_masked' => $this->maskSecret($appSecret),
+            'verify_token_masked' => $this->maskSecret($verifyToken),
+            'utility_template_name' => trim($templateName ?: 'city_courier_chat_notification'),
+            'utility_template_language' => trim($templateLang ?: 'id'),
+            'window_hours' => max(1, min(72, $windowHours ?: 24)),
+            'timeout_seconds' => max(3, min(60, $timeout ?: 15)),
+            'configured' => $configured,
+            'webhook_ready' => $webhookReady,
+            'source' => $hasDbRecord ? 'database' : ($hasEnvRecord ? 'env' : 'none'),
+        ];
+    }
+
+    /**
      * Default ON/OFF state for Admin-managed active external providers.
      * DOKU has been removed completely; Xendit is the sole active payment & payout provider.
      *
@@ -70,6 +126,7 @@ class GatewayCredentialsResolver
      */
     public const PROVIDER_DEFAULTS = [
         'whatsapp' => true,
+        'whatsapp_cloud' => false,
         'map' => true,
         'rajaongkir' => true,
         'xendit' => true,
@@ -128,6 +185,9 @@ class GatewayCredentialsResolver
     {
         $states = [];
         foreach (self::PROVIDER_DEFAULTS as $code => $default) {
+            if ($code === 'whatsapp_cloud') {
+                $default = (bool) config('whatsapp.enabled', $default);
+            }
             $states[$code] = $this->isEnabled($code, $default);
         }
 

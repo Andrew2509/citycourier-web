@@ -14,7 +14,7 @@
                     Gateway Operasional
                 </span>
             </div>
-            <p class="page-subtitle">Pusat orkestrasi integrasi gateway Xendit (satu-satunya payment &amp; payout gateway aktif), WhatsApp Fonnte, peta geolokasi, TomTom Traffic real-time, dan tarif ongkir. API key tersimpan terenkripsi di database.</p>
+            <p class="page-subtitle">Pusat orkestrasi integrasi gateway Xendit (satu-satunya payment &amp; payout gateway aktif), WhatsApp Fonnte, Meta WhatsApp Business Cloud API (Chat Customer-Kurir), peta geolokasi, TomTom Traffic real-time, dan tarif ongkir. API key tersimpan terenkripsi di database.</p>
         </div>
     </div>
 
@@ -454,6 +454,212 @@
                             </button>
                             <button type="submit" class="btn btn-sm btn-primary">
                                 Simpan TomTom
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- KARTU 7: Meta WhatsApp Business Cloud API (Resmi untuk Chat Customer <-> Kurir) --}}
+        @php
+            $waCloudSafe = is_array($whatsappCloud ?? null) ? $whatsappCloud : [];
+            $waCloudUpdateUrl = \Illuminate\Support\Facades\Route::has('admin.settings.whatsapp-cloud.update')
+                ? route('admin.settings.whatsapp-cloud.update')
+                : url('/admin/settings/whatsapp-cloud');
+            $waCloudTestUrl = \Illuminate\Support\Facades\Route::has('admin.settings.whatsapp-cloud.test')
+                ? route('admin.settings.whatsapp-cloud.test')
+                : url('/admin/settings/whatsapp-cloud/test');
+            $waCloudEnabled = (bool) ($providerStates['whatsapp_cloud'] ?? ($waCloudSafe['enabled'] ?? false));
+        @endphp
+        <div class="card lg:col-span-2 flex flex-col justify-between border-emerald-200 {{ !$waCloudEnabled ? 'opacity-90 bg-slate-50/40' : '' }}">
+            <div>
+                <div class="card-header">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+                            <span class="cc-icon text-[20px]">forum</span>
+                        </div>
+                        <div>
+                            <div class="card-title">Meta WhatsApp Business Cloud API (Resmi Chat &amp; Webhook)</div>
+                            <div class="card-subtitle">Jembatan dua arah chat internal Customer &harr; Kurir ke WhatsApp resmi (Meta Graph API)</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1.5">
+                        @include('admin.settings._provider_toggle', ['provider' => 'whatsapp_cloud', 'enabled' => $waCloudEnabled])
+                        <div class="flex flex-wrap items-center justify-end gap-1">
+                            @if(!empty($waCloudSafe['configured']))
+                                <span class="badge badge-green">API Terkonfigurasi</span>
+                            @else
+                                <span class="badge badge-amber">Token Belum Diisi</span>
+                            @endif
+                            @if(!empty($waCloudSafe['webhook_ready']))
+                                <span class="badge badge-green">Webhook Siap</span>
+                            @else
+                                <span class="badge badge-gray">Webhook Belum Lengkap</span>
+                            @endif
+                            <span class="badge badge-indigo uppercase">
+                                {{ $waCloudSafe['source'] ?? 'none' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body space-y-3">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Masukkan kredensial Meta WhatsApp Business Cloud API langsung dari sini tanpa harus mengedit file <code class="font-mono">.env</code>. Access Token, App Secret, dan Verify Token dienkripsi otomatis di database dan tidak pernah dikirim ke aplikasi Flutter.
+                    </p>
+
+                    <div class="rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 space-y-1 font-mono border border-slate-200">
+                        <div>Callback Webhook URL (Meta Dashboard): <span class="text-slate-900 select-all">{{ $waCloudSafe['webhook_url'] ?? url('/api/v1/whatsapp/webhook') }}</span></div>
+                        <div class="font-sans text-slate-500">Subscribe field <code class="font-mono">messages</code> pada Meta Developers &rarr; WhatsApp &rarr; Configuration. Chat internal tetap berjalan normal meskipun jembatan WA dimatikan.</div>
+                    </div>
+
+                    <form method="POST" action="{{ $waCloudUpdateUrl }}" id="whatsappCloudForm" class="space-y-3 pt-1">
+                        @csrf
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div class="sm:col-span-2">
+                                <label class="form-label text-xs">Graph API Base URL</label>
+                                <input type="url"
+                                       name="whatsapp_cloud_base_url"
+                                       value="{{ $waCloudSafe['base_url'] ?? 'https://graph.facebook.com' }}"
+                                       placeholder="https://graph.facebook.com"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">API Version</label>
+                                <input type="text"
+                                       name="whatsapp_cloud_api_version"
+                                       value="{{ $waCloudSafe['api_version'] ?? 'v21.0' }}"
+                                       placeholder="v21.0"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Window Layanan (jam)</label>
+                                <input type="number"
+                                       name="whatsapp_cloud_window_hours"
+                                       min="1"
+                                       max="72"
+                                       value="{{ $waCloudSafe['window_hours'] ?? 24 }}"
+                                       class="form-input font-mono text-xs" required>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div>
+                                <label class="form-label text-xs">Phone Number ID</label>
+                                <input type="text"
+                                       name="whatsapp_cloud_phone_number_id"
+                                       value="{{ $waCloudSafe['phone_number_id'] ?? '' }}"
+                                       placeholder="Contoh: 109283746501928"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">WABA ID (Business Account ID)</label>
+                                <input type="text"
+                                       name="whatsapp_cloud_waba_id"
+                                       value="{{ $waCloudSafe['waba_id'] ?? '' }}"
+                                       placeholder="Contoh: 192837465091827"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">Utility Template Name</label>
+                                <input type="text"
+                                       name="whatsapp_cloud_utility_template_name"
+                                       value="{{ $waCloudSafe['utility_template_name'] ?? 'city_courier_chat_notification' }}"
+                                       placeholder="city_courier_chat_notification"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="form-label text-xs">Bahasa Template</label>
+                                    <input type="text"
+                                           name="whatsapp_cloud_utility_template_lang"
+                                           value="{{ $waCloudSafe['utility_template_language'] ?? 'id' }}"
+                                           placeholder="id"
+                                           class="form-input font-mono text-xs">
+                                </div>
+                                <div>
+                                    <label class="form-label text-xs">Timeout (dtk)</label>
+                                    <input type="number"
+                                           name="whatsapp_cloud_timeout_seconds"
+                                           min="3"
+                                           max="60"
+                                           value="{{ $waCloudSafe['timeout_seconds'] ?? 15 }}"
+                                           class="form-input font-mono text-xs">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label text-xs">
+                                Permanent Access Token (System User Token Meta)
+                                @if(!empty($waCloudSafe['access_token_masked']))
+                                    <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $waCloudSafe['access_token_masked'] }}</code>)</span>
+                                @endif
+                            </label>
+                            <input type="password"
+                                   name="whatsapp_cloud_access_token"
+                                   value=""
+                                   placeholder="{{ !empty($waCloudSafe['access_token_masked']) ? 'Biarkan kosong untuk mempertahankan Access Token tersimpan' : 'EAAG... (Token permanen dari Meta Business Suite)' }}"
+                                   autocomplete="new-password"
+                                   class="form-input font-mono text-xs">
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label text-xs">
+                                    Meta App Secret (<code class="font-mono">X-Hub-Signature-256</code>)
+                                    @if(!empty($waCloudSafe['app_secret_masked']))
+                                        <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $waCloudSafe['app_secret_masked'] }}</code>)</span>
+                                    @endif
+                                </label>
+                                <input type="password"
+                                       name="whatsapp_cloud_app_secret"
+                                       value=""
+                                       placeholder="{{ !empty($waCloudSafe['app_secret_masked']) ? 'Biarkan kosong untuk mempertahankan App Secret tersimpan' : 'App Secret dari Meta App Dashboard...' }}"
+                                       autocomplete="new-password"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label text-xs">
+                                    Webhook Verify Token (<code class="font-mono">hub.verify_token</code>)
+                                    @if(!empty($waCloudSafe['verify_token_masked']))
+                                        <span class="text-[11px] font-normal text-emerald-700">(Tersimpan: <code class="font-mono">{{ $waCloudSafe['verify_token_masked'] }}</code>)</span>
+                                    @endif
+                                </label>
+                                <input type="password"
+                                       name="whatsapp_cloud_verify_token"
+                                       value=""
+                                       placeholder="{{ !empty($waCloudSafe['verify_token_masked']) ? 'Biarkan kosong untuk mempertahankan Verify Token tersimpan' : 'Token bebas untuk handshake verifikasi webhook...' }}"
+                                       autocomplete="new-password"
+                                       class="form-input font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <label class="text-xs flex items-center gap-2 cursor-pointer">
+                                <input type="hidden" name="whatsapp_cloud_enabled" value="0">
+                                <input type="checkbox" name="whatsapp_cloud_enabled" value="1"
+                                       {{ $waCloudEnabled ? 'checked' : '' }}
+                                       class="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                                <span class="text-slate-600">Aktifkan Jembatan WhatsApp Business Cloud API (Meta)</span>
+                            </label>
+                            <label class="text-xs flex items-center gap-1.5 cursor-pointer text-red-600">
+                                <input type="checkbox" name="clear_whatsapp_cloud_secrets" value="1" class="h-3.5 w-3.5 rounded border-slate-300">
+                                <span>Hapus Token &amp; Secret Tersimpan</span>
+                            </label>
+                        </div>
+
+                        <div id="whatsappCloudTestResult" class="hidden rounded-md p-2.5 text-xs"></div>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <button type="button"
+                                    onclick="testPaymentGateway('Meta WhatsApp Cloud API', '{{ $waCloudTestUrl }}', 'whatsappCloudForm', 'whatsappCloudTestResult')"
+                                    class="btn btn-sm btn-secondary">
+                                Test Koneksi Meta API
+                            </button>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                Simpan WhatsApp Cloud API
                             </button>
                         </div>
                     </form>

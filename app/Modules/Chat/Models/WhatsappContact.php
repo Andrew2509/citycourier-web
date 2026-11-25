@@ -2,6 +2,7 @@
 
 namespace App\Modules\Chat\Models;
 
+use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,7 +65,8 @@ class WhatsappContact extends Model
     public function openWindow(?CarbonInterface $inboundAt = null): void
     {
         $timestamp = $inboundAt ?? now();
-        $hours = (int) config('whatsapp.customer_service_window_hours', 24);
+        $creds = app(GatewayCredentialsResolver::class)->whatsappCloud();
+        $hours = (int) ($creds['window_hours'] ?? config('whatsapp.customer_service_window_hours', 24));
 
         $this->last_inbound_at = $timestamp;
         $this->window_expires_at = $timestamp->copy()->addHours($hours);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Modules\Payment\Services\GatewayCredentialsResolver;
 use App\Modules\Wallet\Services\WalletLedgerManager;
+use App\Modules\WhatsApp\Services\WhatsAppCloudClient;
 use App\Services\DanaService;
 use App\Services\FonnteWhatsAppService;
 use App\Services\IpaymuPaymentService;
@@ -94,15 +95,36 @@ class SettingController extends Controller
             'source' => $tomtomRaw['source'],
         ];
 
+        $whatsappCloudRaw = $gatewayResolver->whatsappCloud();
+        $whatsappCloud = [
+            'enabled' => $whatsappCloudRaw['enabled'],
+            'base_url' => $whatsappCloudRaw['base_url'],
+            'api_version' => $whatsappCloudRaw['api_version'],
+            'phone_number_id' => $whatsappCloudRaw['phone_number_id'],
+            'waba_id' => $whatsappCloudRaw['waba_id'],
+            'access_token_masked' => $whatsappCloudRaw['access_token_masked'],
+            'app_secret_masked' => $whatsappCloudRaw['app_secret_masked'],
+            'verify_token_masked' => $whatsappCloudRaw['verify_token_masked'],
+            'utility_template_name' => $whatsappCloudRaw['utility_template_name'],
+            'utility_template_language' => $whatsappCloudRaw['utility_template_language'],
+            'window_hours' => $whatsappCloudRaw['window_hours'],
+            'timeout_seconds' => $whatsappCloudRaw['timeout_seconds'],
+            'configured' => $whatsappCloudRaw['configured'],
+            'webhook_ready' => $whatsappCloudRaw['webhook_ready'],
+            'source' => $whatsappCloudRaw['source'],
+            'webhook_url' => url('/api/v1/whatsapp/webhook'),
+        ];
+
         $providerStates = [
             'whatsapp' => $gatewayResolver->isEnabled('whatsapp', true),
+            'whatsapp_cloud' => $whatsappCloudRaw['enabled'],
             'map' => $gatewayResolver->isEnabled('map', true),
             'rajaongkir' => $gatewayResolver->isEnabled('rajaongkir', true),
             'xendit' => $xenditRaw['enabled'],
             'tomtom' => $tomtomRaw['enabled'],
         ];
 
-        return view('admin.settings.providers', compact('whatsapp', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'xendit', 'tomtom', 'providerStates'));
+        return view('admin.settings.providers', compact('whatsapp', 'whatsappCloud', 'rajaongkir', 'rajaongkir_sandbox', 'payment', 'map', 'xendit', 'tomtom', 'providerStates'));
     }
 
     // iPaymu (Payout/Disbursement) Settings
@@ -822,6 +844,7 @@ class SettingController extends Controller
     {
         $allowed = [
             'whatsapp' => ['label' => 'WhatsApp Gateway', 'group' => 'whatsapp', 'default' => true],
+            'whatsapp_cloud' => ['label' => 'WhatsApp Business Cloud API (Meta)', 'group' => 'whatsapp_cloud', 'default' => (bool) config('whatsapp.enabled', false)],
             'map' => ['label' => 'Peta & Geocoding', 'group' => 'map', 'default' => true],
             'rajaongkir' => ['label' => 'Tarif Ekspedisi (RajaOngkir)', 'group' => 'rajaongkir', 'default' => true],
             'xendit' => ['label' => 'Xendit Gateway', 'group' => 'xendit', 'default' => true],
@@ -1026,6 +1049,99 @@ class SettingController extends Controller
         return response()->json([
             'success' => (bool) ($result['success'] ?? false),
             'message' => (string) ($result['message'] ?? 'Gagal menguji koneksi TomTom Traffic API.'),
+        ], (int) ($result['status_code'] ?? 200));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Meta WhatsApp Business Cloud API Settings (Database UI)
+    // ─────────────────────────────────────────────────────────────
+
+    public function updateWhatsappCloud(Request $request, GatewayCredentialsResolver $resolver)
+    {
+        $validated = $request->validate([
+            'whatsapp_cloud_base_url' => ['required', 'url', 'max:255'],
+            'whatsapp_cloud_api_version' => ['required', 'string', 'regex:/^v\d+(\.\d+)?$/', 'max:20'],
+            'whatsapp_cloud_phone_number_id' => ['nullable', 'string', 'max:64'],
+            'whatsapp_cloud_waba_id' => ['nullable', 'string', 'max:64'],
+            'whatsapp_cloud_access_token' => ['nullable', 'string', 'max:1024'],
+            'whatsapp_cloud_app_secret' => ['nullable', 'string', 'max:255'],
+            'whatsapp_cloud_verify_token' => ['nullable', 'string', 'max:255'],
+            'whatsapp_cloud_utility_template_name' => ['nullable', 'string', 'max:128'],
+            'whatsapp_cloud_utility_template_lang' => ['nullable', 'string', 'max:16'],
+            'whatsapp_cloud_window_hours' => ['nullable', 'integer', 'min:1', 'max:72'],
+            'whatsapp_cloud_timeout_seconds' => ['nullable', 'integer', 'min:3', 'max:60'],
+            'whatsapp_cloud_enabled' => ['nullable', 'boolean'],
+            'clear_whatsapp_cloud_secrets' => ['nullable', 'boolean'],
+        ]);
+
+        Setting::set('whatsapp_cloud_base_url', rtrim($validated['whatsapp_cloud_base_url'], '/'), 'whatsapp_cloud');
+        Setting::set('whatsapp_cloud_api_version', trim($validated['whatsapp_cloud_api_version']), 'whatsapp_cloud');
+        Setting::set('whatsapp_cloud_phone_number_id', trim((string) ($validated['whatsapp_cloud_phone_number_id'] ?? '')), 'whatsapp_cloud');
+        Setting::set('whatsapp_cloud_waba_id', trim((string) ($validated['whatsapp_cloud_waba_id'] ?? '')), 'whatsapp_cloud');
+        Setting::set(
+            'whatsapp_cloud_utility_template_name',
+            trim((string) ($validated['whatsapp_cloud_utility_template_name'] ?? config('whatsapp.utility_template_name', 'city_courier_chat_notification'))),
+            'whatsapp_cloud'
+        );
+        Setting::set(
+            'whatsapp_cloud_utility_template_lang',
+            trim((string) ($validated['whatsapp_cloud_utility_template_lang'] ?? config('whatsapp.utility_template_language', 'id'))),
+            'whatsapp_cloud'
+        );
+        Setting::set(
+            'whatsapp_cloud_window_hours',
+            (string) ($validated['whatsapp_cloud_window_hours'] ?? config('whatsapp.customer_service_window_hours', 24)),
+            'whatsapp_cloud'
+        );
+        Setting::set(
+            'whatsapp_cloud_timeout_seconds',
+            (string) ($validated['whatsapp_cloud_timeout_seconds'] ?? config('whatsapp.timeout_seconds', 15)),
+            'whatsapp_cloud'
+        );
+
+        if ($request->has('whatsapp_cloud_enabled')) {
+            Setting::set(
+                'whatsapp_cloud_enabled',
+                $request->boolean('whatsapp_cloud_enabled') ? '1' : '0',
+                'whatsapp_cloud'
+            );
+        }
+
+        if ($request->boolean('clear_whatsapp_cloud_secrets')) {
+            Setting::set('whatsapp_cloud_access_token', '', 'whatsapp_cloud');
+            Setting::set('whatsapp_cloud_app_secret', '', 'whatsapp_cloud');
+            Setting::set('whatsapp_cloud_verify_token', '', 'whatsapp_cloud');
+        } else {
+            foreach (['whatsapp_cloud_access_token', 'whatsapp_cloud_app_secret', 'whatsapp_cloud_verify_token'] as $secretKey) {
+                if ($request->filled($secretKey)) {
+                    $resolver->saveEncryptedSecret(
+                        $secretKey,
+                        $request->string($secretKey)->toString(),
+                        'whatsapp_cloud'
+                    );
+                }
+            }
+        }
+
+        return redirect()->back()->with('success', 'Konfigurasi WhatsApp Business Cloud API (Meta) berhasil disimpan terenkripsi ke database.');
+    }
+
+    public function testWhatsappCloud(Request $request, WhatsAppCloudClient $cloudClient)
+    {
+        $overrides = array_filter([
+            'base_url' => $request->filled('whatsapp_cloud_base_url') ? (string) $request->input('whatsapp_cloud_base_url') : null,
+            'api_version' => $request->filled('whatsapp_cloud_api_version') ? (string) $request->input('whatsapp_cloud_api_version') : null,
+            'phone_number_id' => $request->filled('whatsapp_cloud_phone_number_id') ? (string) $request->input('whatsapp_cloud_phone_number_id') : null,
+            'access_token' => $request->filled('whatsapp_cloud_access_token') ? (string) $request->input('whatsapp_cloud_access_token') : null,
+            'timeout_seconds' => $request->filled('whatsapp_cloud_timeout_seconds') ? (int) $request->input('whatsapp_cloud_timeout_seconds') : null,
+        ], fn ($value) => $value !== null);
+
+        $result = $cloudClient->testConnection($overrides);
+
+        return response()->json([
+            'success' => (bool) ($result['success'] ?? false),
+            'message' => (string) ($result['message'] ?? 'Gagal menguji koneksi Meta WhatsApp Cloud API.'),
+            'data' => $result['data'] ?? null,
         ], (int) ($result['status_code'] ?? 200));
     }
 }

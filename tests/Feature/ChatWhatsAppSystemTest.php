@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Courier;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\Shipment;
 use App\Models\User;
 use App\Modules\Chat\Events\ConversationUpdatedBroadcast;
@@ -834,5 +835,179 @@ class ChatWhatsAppSystemTest extends TestCase
             'opt_in_source' => 'stop_keyword',
         ]);
         $this->assertSame($beforeMsgCount, Message::count());
+    }
+
+    public function test_admin_can_configure_test_and_toggle_meta_whatsapp_cloud_api_in_providers_panel(): void
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        $opsRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'ops-admin', 'guard_name' => 'web']);
+        $viewPerm = \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'settings.view', 'guard_name' => 'web']);
+        $editPerm = \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'settings.edit', 'guard_name' => 'web']);
+        $opsRole->givePermissionTo([$viewPerm, $editPerm]);
+
+        $opsAdmin = User::create([
+            'name' => 'Ops Provider Admin',
+            'email' => 'ops.wa@city.test',
+            'role' => 'admin',
+        ]);
+        $opsAdmin->assignRole($opsRole);
+
+        // Start with completely blank .env/config for WhatsApp Cloud API
+        config([
+            'whatsapp.enabled' => false,
+            'whatsapp.phone_number_id' => '',
+            'whatsapp.waba_id' => '',
+            'whatsapp.access_token' => '',
+            'whatsapp.app_secret' => '',
+            'whatsapp.verify_token' => '',
+        ]);
+
+        // Non-admin customer cannot access admin WA Cloud settings or toggle
+        $this->actingAs($this->stranger)
+            ->postJson('/admin/settings/whatsapp-cloud', ['whatsapp_cloud_base_url' => 'https://graph.facebook.com', 'whatsapp_cloud_api_version' => 'v21.0'])
+            ->assertStatus(403);
+        $this->actingAs($this->stranger)
+            ->postJson('/admin/providers/whatsapp_cloud/toggle', ['enabled' => 1])
+            ->assertStatus(403);
+
+        // Ops admin with settings.view + settings.edit loads /admin/providers and sees WA Cloud API card
+        $this->actingAs($opsAdmin);
+        $providersPage = $this->get('/admin/providers')->assertOk();
+        $providersPage->assertSee('Meta WhatsApp Business Cloud API');
+        $providersPage->assertSee('/admin/providers/whatsapp_cloud/toggle');
+
+        $manualToken = 'EAAG_MANUAL_DB_TOKEN_SECRET_991122';
+        $manualAppSecret = 'manual-meta-app-secret-778899';
+        $manualVerifyToken = 'manual-verify-token-445566';
+
+        // Save credentials manually via Admin Providers form
+        $this->post('/admin/settings/whatsapp-cloud', [
+            'whatsapp_cloud_base_url' => 'https://graph.facebook.com',
+            'whatsapp_cloud_api_version' => 'v21.0',
+            'whatsapp_cloud_phone_number_id' => '998811223344',
+            'whatsapp_cloud_waba_id' => '776655443322',
+            'whatsapp_cloud_utility_template_name' => 'custom_citycourier_tpl',
+            'whatsapp_cloud_utility_template_lang' => 'id',
+            'whatsapp_cloud_window_hours' => 24,
+            'whatsapp_cloud_timeout_seconds' => 12,
+            'whatsapp_cloud_enabled' => '1',
+            'whatsapp_cloud_access_token' => $manualToken,
+            'whatsapp_cloud_app_secret' => $manualAppSecret,
+            'whatsapp_cloud_verify_token' => $manualVerifyToken,
+        ])->assertRedirect();
+
+        // All secrets must be stored encrypted (enc:...) and never leak plaintext in HTML
+        foreach ([
+            'whatsapp_cloud_access_token' => $manualToken,
+            'whatsapp_cloud_app_secret' => $manualAppSecret,
+            'whatsapp_cloud_verify_token' => $manualVerifyToken,
+        ] as $key => $plainSecret) {
+            $raw = Setting::get($key);
+            $this->assertIsString($raw);
+            $this->assertStringStartsWith('enc:', $raw);
+            $this->assertStringNotContainsString($plainSecret, $raw);
+        }
+
+        $afterSaveHtml = $this->get('/admin/providers')->assertOk()->getContent();
+        $this->assertStringContainsString('API Terkonfigurasi', $afterSaveHtml);
+        $this->assertStringContainsString('Webhook Siap', $afterSaveHtml);
+        $this->assertStringNotContainsString($manualToken, $afterSaveHtml);
+        $this->assertStringNotContainsString($manualAppSecret, $afterSaveHtml);
+        $this->assertStringNotContainsString($manualVerifyToken, $afterSaveHtml);
+
+        // Saving again with blank secret inputs preserves existing encrypted secrets
+        $this->post('/admin/settings/whatsapp-cloud', [
+            'whatsapp_cloud_base_url' => 'https://graph.facebook.com',
+            'whatsapp_cloud_api_version' => 'v21.0',
+            'whatsapp_cloud_phone_number_id' => '998811223344',
+            'whatsapp_cloud_waba_id' => '776655443322',
+            'whatsapp_cloud_utility_template_name' => 'custom_citycourier_tpl',
+            'whatsapp_cloud_utility_template_lang' => 'id',
+            'whatsapp_cloud_window_hours' => 24,
+            'whatsapp_cloud_timeout_seconds' => 12,
+            'whatsapp_cloud_enabled' => '1',
+        ])->assertRedirect();
+
+        // Admin Test Koneksi Meta API uses DB credentials (even with empty .env) and outbound template uses DB settings
+        Http::fake([
+            'https://graph.facebook.com/v21.0/998811223344/messages' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'messages' => [['id' => 'wamid.DB_CREDS_1']],
+            ], 200),
+            'https://graph.facebook.com/v21.0/998811223344*' => Http::response([
+                'id' => '998811223344',
+                'display_phone_number' => '+62 811-2233-4455',
+                'verified_name' => 'City Courier Official',
+                'quality_rating' => 'GREEN',
+            ], 200),
+        ]);
+
+        $this->postJson('/admin/settings/whatsapp-cloud/test', [
+            'whatsapp_cloud_base_url' => 'https://graph.facebook.com',
+            'whatsapp_cloud_api_version' => 'v21.0',
+            'whatsapp_cloud_phone_number_id' => '998811223344',
+        ])->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Verify public /api/settings + chat whatsapp status reflect DB toggle ON
+        $this->getJson('/api/settings')
+            ->assertOk()
+            ->assertJsonPath('data.providers.whatsapp_cloud', true);
+
+        Sanctum::actingAs($this->customer);
+        $this->getJson('/api/v1/chat/whatsapp/status')
+            ->assertOk()
+            ->assertJsonPath('data.whatsapp_cloud_enabled', true);
+
+        // Verify Meta GET webhook handshake & signed POST webhook work purely from DB secrets
+        $this->get('/api/v1/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=' . $manualVerifyToken . '&hub.challenge=DB_CHAL_OK')
+            ->assertOk()
+            ->assertSeeText('DB_CHAL_OK');
+
+        $this->postJson('/api/v1/chat/whatsapp/opt-in', ['opt_in' => true])->assertOk();
+
+        Sanctum::actingAs($this->courierUser);
+        $convId = $this->postJson('/api/v1/chat/conversations/by-order/' . $this->order->id)->json('data.id');
+        $this->postJson("/api/v1/chat/conversations/{$convId}/messages", [
+            'body' => 'Pesan pakai kredensial Admin UI.',
+            'client_message_id' => 'db-creds-msg-1',
+        ])->assertStatus(201);
+
+        Http::assertSent(fn (HttpClientRequest $req) => str_ends_with($req->url(), '/messages')
+            && $req->hasHeader('Authorization', 'Bearer ' . $manualToken)
+            && ($req->data()['template']['name'] ?? null) === 'custom_citycourier_tpl');
+
+        // Signed webhook using DB App Secret
+        $signedBody = json_encode(['object' => 'whatsapp_business_account', 'entry' => []], JSON_THROW_ON_ERROR);
+        $sig = 'sha256=' . hash_hmac('sha256', $signedBody, $manualAppSecret);
+        $this->call('POST', '/api/v1/whatsapp/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_HUB_SIGNATURE_256' => $sig,
+        ], $signedBody)->assertOk();
+
+        // Admin toggles provider OFF -> runtime disabled without erasing DB secrets
+        $this->actingAs($opsAdmin)
+            ->postJson('/admin/providers/whatsapp_cloud/toggle', ['enabled' => 0])
+            ->assertOk()
+            ->assertJsonPath('provider', 'whatsapp_cloud')
+            ->assertJsonPath('enabled', false);
+
+        Sanctum::actingAs($this->customer);
+        $this->getJson('/api/v1/chat/whatsapp/status')
+            ->assertOk()
+            ->assertJsonPath('data.whatsapp_cloud_enabled', false);
+
+        // Clear secrets checkbox wipes encrypted secrets cleanly
+        $this->actingAs($opsAdmin)
+            ->post('/admin/settings/whatsapp-cloud', [
+                'whatsapp_cloud_base_url' => 'https://graph.facebook.com',
+                'whatsapp_cloud_api_version' => 'v21.0',
+                'clear_whatsapp_cloud_secrets' => '1',
+            ])->assertRedirect();
+
+        $this->assertSame('', Setting::get('whatsapp_cloud_access_token'));
+        $this->assertSame('', Setting::get('whatsapp_cloud_app_secret'));
+        $this->assertSame('', Setting::get('whatsapp_cloud_verify_token'));
     }
 }

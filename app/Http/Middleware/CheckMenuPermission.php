@@ -167,6 +167,8 @@ class CheckMenuPermission
             'admin.settings.xendit.test' => 'settings.edit',
             'admin.settings.tomtom.update' => 'settings.edit',
             'admin.settings.tomtom.test' => 'settings.edit',
+            'admin.settings.whatsapp-cloud.update' => 'settings.edit',
+            'admin.settings.whatsapp-cloud.test' => 'settings.edit',
 
             // Research Study (Studi Pendahuluan)
             'admin.research.index' => 'research_study.view',

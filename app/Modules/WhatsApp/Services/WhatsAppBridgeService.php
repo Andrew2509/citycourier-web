@@ -61,10 +61,11 @@ class WhatsAppBridgeService
         if ($contact->isWindowOpen()) {
             $result = $this->sendInWindowMessage($contact->wa_phone_e164, $orderRef, $senderLabel, $message);
         } else {
+            $creds = $this->client->credentials();
             $result = $this->client->sendUtilityTemplate(
                 toE164: $contact->wa_phone_e164,
-                templateName: (string) config('whatsapp.utility_template_name'),
-                languageCode: (string) config('whatsapp.utility_template_language', 'id'),
+                templateName: (string) ($creds['utility_template_name'] ?? config('whatsapp.utility_template_name')),
+                languageCode: (string) ($creds['utility_template_language'] ?? config('whatsapp.utility_template_language', 'id')),
                 bodyParameters: [
                     $orderRef,
                     $senderLabel,
