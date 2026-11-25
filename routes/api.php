@@ -58,6 +58,16 @@ Route::match(['get', 'post'], '/shipping/match-region', function (\Illuminate\Ht
     return response()->json($result, !empty($result['disabled']) ? 503 : 200);
 });
 
+// Referensi wilayah (provinsi, kota/kabupaten, kecamatan, kelurahan) dan cek tarif
+// bersifat publik agar fitur Cek Ongkir di Guest Mode / sebelum login tetap berfungsi.
+Route::prefix('shipping')->middleware('throttle:60,1')->group(function () {
+    Route::get('/provinces', [ShippingController::class, 'provinces']);
+    Route::get('/cities', [ShippingController::class, 'cities']);
+    Route::get('/districts', [ShippingController::class, 'districts']);
+    Route::get('/subdistricts', [ShippingController::class, 'subdistricts']);
+    Route::post('/cost', [ShippingController::class, 'calculateCost']);
+});
+
 Route::get('/shipments/track/{number}', [App\Http\Controllers\Api\ShipmentController::class, 'track']);
 Route::get('/shipments/{tracking_number}/tracking', [App\Http\Controllers\Api\ShipmentController::class, 'tracking']);
 Route::post('/shipments/{identifier}/cancel', [App\Http\Controllers\Api\ShipmentController::class, 'cancel']);
@@ -126,12 +136,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('shipping')->group(function () {
-        Route::get('/provinces', [ShippingController::class, 'provinces']);
-        Route::get('/cities', [ShippingController::class, 'cities']);
-        Route::get('/districts', [ShippingController::class, 'districts']);
-        Route::get('/subdistricts', [ShippingController::class, 'subdistricts']);
-        Route::post('/cost', [ShippingController::class, 'calculateCost']);
-
         Route::post('/map/routing', [App\Http\Controllers\Api\MapApiController::class, 'routing']);
         Route::get('/map/autocomplete', [App\Http\Controllers\Api\MapApiController::class, 'autocomplete']);
         Route::post('/map/matrix', [App\Http\Controllers\Api\MapApiController::class, 'matrix']);
