@@ -455,9 +455,6 @@ $hudDefault = $mapMarks->first();
                                         <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['phone'])) }}" target="_blank" class="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors">
                                             <span class="cc-icon text-[15px] text-emerald-600">chat</span> WhatsApp
                                         </a>
-                                        <a href="tel:{{ $row['phone'] }}" class="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors">
-                                            <span class="cc-icon text-[15px] text-sky-600">phone</span> Telepon
-                                        </a>
                                         <a href="{{ route('admin.ci-work.tasks') }}" class="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors">
                                             <span class="cc-icon text-[15px] text-primary-600">assignment_add</span> Assign Tugas
                                         </a>
@@ -529,9 +526,6 @@ $hudDefault = $mapMarks->first();
         </div>
 
         <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
-            <a id="d-call" href="#" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                <span class="cc-icon text-[15px] text-slate-500">phone</span> Telepon
-            </a>
             <a id="d-wa" href="#" target="_blank" class="btn btn-primary text-xs h-8 px-3 gap-1 shadow-sm">
                 <span class="cc-icon text-[15px]">chat</span> WhatsApp
             </a>
@@ -777,7 +771,6 @@ $hudDefault = $mapMarks->first();
 
         const waNum = String(r.phone || '').replace(/\D/g, '').replace(/^0/, '62');
         document.getElementById('d-wa').href = waNum ? 'https://wa.me/' + waNum : '#';
-        document.getElementById('d-call').href = phone !== '-' ? 'tel:' + phone : '#';
         document.getElementById('detailModal').classList.remove('hidden');
         setTimeout(function () { initDetailMap(id); }, 80);
     };

@@ -41,14 +41,4 @@ class WhatsappMessageLog extends Model
         'payload' => 'array',
         'processed_at' => 'datetime',
     ];
-
-    public function message(): BelongsTo
-    {
-        return $this->belongsTo(Message::class, 'message_id');
-    }
-
-    public function conversation(): BelongsTo
-    {
-        return $this->belongsTo(Conversation::class, 'conversation_id');
-    }
 }

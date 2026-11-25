@@ -189,6 +189,53 @@ class Shipment extends Model
     }
 
     /**
+     * Memastikan nomor kontak (customer/pengirim/penerima/kurir) hanya dapat diakses
+     * oleh pihak yang berhak melihat pesanan ini (pemilik pesanan, kurir ditugaskan, atau admin).
+     */
+    public function isContactAccessibleBy(?User $user, ?Order $pairedOrder = null): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        $isAdmin = ($user->role ?? null) === 'admin'
+            || (method_exists($user, 'hasRole') && $user->hasRole('admin'));
+        if ($isAdmin) {
+            return true;
+        }
+
+        if ($this->user_id !== null && (int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        $userPhone = \App\Modules\Chat\Support\PhoneNumberNormalizer::toE164($user->phone ?? null);
+        if ($userPhone !== null && ($this->user_id === null || $user->phone_verified_at !== null)) {
+            $customerPhone = \App\Modules\Chat\Support\PhoneNumberNormalizer::toE164($this->customer_phone ?? null);
+            $senderPhone = \App\Modules\Chat\Support\PhoneNumberNormalizer::toE164($this->sender_phone ?? null);
+            if ($userPhone === $customerPhone || $userPhone === $senderPhone) {
+                return true;
+            }
+        }
+
+        $courier = $user->relationLoaded('courier') ? $user->courier : $user->courier()->first();
+        if ($courier !== null) {
+            $order = $pairedOrder ?? Order::where('order_number', $this->shipment_number)->first();
+            if ($order !== null && $order->courier_id !== null && (int) $order->courier_id === (int) $courier->id) {
+                return true;
+            }
+
+            if ($order === null) {
+                $lastLog = $this->logs()->whereNotNull('courier_id')->latest()->first();
+                if ($lastLog !== null && (int) $lastLog->courier_id === (int) $courier->id) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Mengambil waktu jadwal pickup dalam zona waktu Asia/Jakarta secara konsisten.
      */
     public function getPickupScheduledAtJakarta(?Order $relatedOrder = null): ?Carbon

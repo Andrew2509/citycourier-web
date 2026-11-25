@@ -14,7 +14,7 @@
                     Gateway Operasional
                 </span>
             </div>
-            <p class="page-subtitle">Pusat orkestrasi integrasi gateway Xendit (satu-satunya payment &amp; payout gateway aktif), WhatsApp Fonnte, Meta WhatsApp Business Cloud API (Chat Customer-Kurir), peta geolokasi, TomTom Traffic real-time, dan tarif ongkir. API key tersimpan terenkripsi di database.</p>
+            <p class="page-subtitle">Pusat orkestrasi integrasi gateway Xendit (satu-satunya payment &amp; payout gateway aktif), WhatsApp Fonnte, Meta WhatsApp Business Cloud API (Notifikasi &amp; Webhook), peta geolokasi, TomTom Traffic real-time, dan tarif ongkir. API key tersimpan terenkripsi di database.</p>
         </div>
     </div>
 
@@ -461,7 +461,7 @@
             </div>
         </div>
 
-        {{-- KARTU 7: Meta WhatsApp Business Cloud API (Resmi untuk Chat Customer <-> Kurir) --}}
+        {{-- KARTU 7: Meta WhatsApp Business Cloud API (Notifikasi & Webhook Resmi) --}}
         @php
             $waCloudSafe = is_array($whatsappCloud ?? null) ? $whatsappCloud : [];
             $waCloudUpdateUrl = \Illuminate\Support\Facades\Route::has('admin.settings.whatsapp-cloud.update')
@@ -480,8 +480,8 @@
                             <span class="cc-icon text-[20px]">forum</span>
                         </div>
                         <div>
-                            <div class="card-title">Meta WhatsApp Business Cloud API (Resmi Chat &amp; Webhook)</div>
-                            <div class="card-subtitle">Jembatan dua arah chat internal Customer &harr; Kurir ke WhatsApp resmi (Meta Graph API)</div>
+                            <div class="card-title">Meta WhatsApp Business Cloud API (Resmi Notifikasi &amp; Webhook)</div>
+                            <div class="card-subtitle">Integrasi notifikasi otomatis &amp; status webhook resmi melalui Meta Graph API</div>
                         </div>
                     </div>
                     <div class="flex flex-col items-end gap-1.5">
@@ -509,15 +509,9 @@
                         Masukkan kredensial Meta WhatsApp Business Cloud API langsung dari sini tanpa harus mengedit file <code class="font-mono">.env</code>. Access Token, App Secret, dan Verify Token dienkripsi otomatis di database dan tidak pernah dikirim ke aplikasi Flutter.
                     </p>
 
-                    @if(!config('chat.whatsapp_bridge_enabled', false))
-                        <div class="rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-700">
-                            <strong>Mode Chat Internal Murni Aktif:</strong> Jembatan kirim ke WhatsApp Cloud API sedang dimatikan (<code class="font-mono">CHAT_WHATSAPP_BRIDGE_ENABLED=false</code>). Chat Customer &harr; Kurir tetap berjalan normal di dalam aplikasi tanpa mengirim pesan ke WhatsApp.
-                        </div>
-                    @endif
-
                     <div class="rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 space-y-1 font-mono border border-slate-200">
                         <div>Callback Webhook URL (Meta Dashboard): <span class="text-slate-900 select-all">{{ $waCloudSafe['webhook_url'] ?? url('/api/v1/whatsapp/webhook') }}</span></div>
-                        <div class="font-sans text-slate-500">Subscribe field <code class="font-mono">messages</code> pada Meta Developers &rarr; WhatsApp &rarr; Configuration. Chat internal tetap berjalan normal meskipun jembatan WA dimatikan.</div>
+                        <div class="font-sans text-slate-500">Subscribe field <code class="font-mono">messages</code> pada Meta Developers &rarr; WhatsApp &rarr; Configuration untuk memantau status pesan otomatis dan opt-out webhook.</div>
                     </div>
 
                     <form method="POST" action="{{ $waCloudUpdateUrl }}" id="whatsappCloudForm" class="space-y-3 pt-1">

@@ -343,9 +343,6 @@
             </div>
         </div>
         <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
-            <a id="track-call" href="#" class="btn btn-secondary text-xs h-8 px-3 gap-1">
-                <span class="cc-icon text-[15px] text-slate-500">call</span> Telepon
-            </a>
             <a id="track-wa" href="#" target="_blank" rel="noopener" class="btn btn-primary text-xs h-8 px-3.5 gap-1 shadow-sm">
                 <span class="cc-icon text-[15px]">chat</span> Chat WhatsApp
             </a>
@@ -560,8 +557,6 @@
         const wa = d.wa ? 'https://wa.me/' + d.wa : '#';
         $id('track-wa').href = wa;
         $id('track-wa').classList.toggle('opacity-40', !d.wa);
-        $id('track-call').href = d.phone ? 'tel:' + d.phone : '#';
-        $id('track-call').classList.toggle('opacity-40', !d.phone);
 
         $id('trackModal').classList.remove('hidden');
         setTimeout(() => trackMap && trackMap.invalidateSize(), 120);

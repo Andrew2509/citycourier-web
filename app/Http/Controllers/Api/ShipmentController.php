@@ -178,9 +178,49 @@ class ShipmentController extends Controller
      */
     public function show(Request $request, Shipment $shipment)
     {
+        $user = $request->user('sanctum') ?? $request->user();
+        $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
+
+        if (!$shipment->isContactAccessibleBy($user, $order)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki hak akses untuk melihat detail pesanan ini.',
+            ], 403);
+        }
+
+        $data = $shipment->toArray();
+        $courierId = $order?->courier_id;
+        if (!$courierId) {
+            $lastLog = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
+            if ($lastLog) {
+                $courierId = $lastLog->courier_id;
+            }
+        }
+
+        if ($courierId) {
+            $courier = \App\Models\Courier::with('user')->find($courierId);
+            if ($courier) {
+                $cName = $courier->user->name ?? $courier->name ?? 'Kurir';
+                $cPhone = $courier->phone ?? $courier->user?->phone;
+                $cPhoto = $courier->photo
+                    ? (str_starts_with($courier->photo, 'http') ? $courier->photo : url('storage/' . $courier->photo))
+                    : null;
+                $data['courier_name'] = $cName;
+                $data['courier_phone'] = $cPhone;
+                $data['courier_photo'] = $cPhoto;
+                $data['courier'] = [
+                    'id' => $courier->id,
+                    'name' => $cName,
+                    'phone' => $cPhone,
+                    'photo' => $cPhoto,
+                ];
+            }
+        }
+        $data['contacts_authorized'] = true;
+
         return response()->json([
             'success' => true,
-            'data'    => $shipment,
+            'data'    => $data,
         ]);
     }
 
@@ -204,6 +244,10 @@ class ShipmentController extends Controller
             ], 404);
         }
 
+        $user = $request->user('sanctum') ?? $request->user();
+        $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
+        $authorized = $shipment->isContactAccessibleBy($user, $order);
+
         // Sumber lokasi pemesanan (pengiriman → penerima).
         // Bila koordinat/alamat shipment kosong, ambil dari Order terkait
         // agar peta menampilkan lokasi yang benar.
@@ -216,7 +260,6 @@ class ShipmentController extends Controller
 
         if (($originLat === null || $destLat === null) ||
             ($originAddress === null || $destAddress === null)) {
-            $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
             if ($order) {
                 $originAddress = $originAddress ?? $order->pickup_address;
                 $destAddress   = $destAddress   ?? $order->delivery_address;
@@ -242,7 +285,6 @@ class ShipmentController extends Controller
 
         // Perkaya info kurir jika pesanan sudah diambil kurir
         $courierId = null;
-        $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
         if ($order && $order->courier_id) {
             $courierId = $order->courier_id;
         } else {
@@ -264,8 +306,10 @@ class ShipmentController extends Controller
                     ? "{$brandModel} • {$courier->vehicle_plate}"
                     : (!empty($brandModel) ? $brandModel : ($courier->vehicle_plate ?? ''));
 
+                $cPhone = $authorized ? ($courier->phone ?? $courier->user?->phone) : null;
+
                 $data['courier_name'] = $cName;
-                $data['courier_phone'] = $courier->phone ?? $courier->user?->phone;
+                $data['courier_phone'] = $cPhone;
                 $data['courier_photo'] = $cPhoto;
                 $data['courier_avatar'] = $cPhoto;
                 $data['courier_vehicle_brand'] = $courier->vehicle_brand;
@@ -277,7 +321,7 @@ class ShipmentController extends Controller
                 $data['courier'] = [
                     'id'                  => $courier->id,
                     'name'                => $cName,
-                    'phone'               => $courier->phone ?? $courier->user?->phone,
+                    'phone'               => $cPhone,
                     'photo'               => $cPhoto,
                     'photo_url'           => $cPhoto,
                     'avatar'              => $cPhoto,
@@ -294,6 +338,14 @@ class ShipmentController extends Controller
             }
         }
 
+        if (!$authorized) {
+            $data['customer_phone'] = null;
+            $data['sender_phone'] = null;
+            $data['receiver_phone'] = null;
+            $data['courier_phone'] = null;
+        }
+        $data['contacts_authorized'] = $authorized;
+
         return response()->json([
             'success' => true,
             'data'    => $data,
@@ -306,7 +358,8 @@ class ShipmentController extends Controller
      */
     public function tracking(Request $request, $trackingNumber)
     {
-        $trackingData = $this->trackingService->getTrackingData($trackingNumber);
+        $user = $request->user('sanctum') ?? $request->user();
+        $trackingData = $this->trackingService->getTrackingData($trackingNumber, $user);
 
         if (!$trackingData) {
             return response()->json([

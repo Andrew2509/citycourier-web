@@ -90,16 +90,21 @@ class OrderController extends Controller
     {
         $courier = $request->user()?->courier;
 
+        if (!$courier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Hanya kurir yang dapat melihat daftar pesanan tersedia.',
+            ], 403);
+        }
+
         $query = Order::with('shipment')->where('status', 'pending');
 
-        if ($courier) {
-            $query->where(function ($q) use ($courier) {
-                $q->whereNull('courier_id')
-                  ->orWhere('courier_id', $courier->id);
-            })->whereDoesntHave('rejections', function ($q) use ($courier) {
-                $q->where('courier_id', $courier->id);
-            });
-        }
+        $query->where(function ($q) use ($courier) {
+            $q->whereNull('courier_id')
+              ->orWhere('courier_id', $courier->id);
+        })->whereDoesntHave('rejections', function ($q) use ($courier) {
+            $q->where('courier_id', $courier->id);
+        });
 
         $orders = $query->orderByRaw('scheduled_pickup DESC, pickup_scheduled_at ASC, id DESC')
             ->paginate(25);

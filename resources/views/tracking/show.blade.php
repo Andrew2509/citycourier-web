@@ -213,12 +213,14 @@
                     <span class="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide">Lokasi Pickup</p>
                     <p class="text-sm font-bold text-slate-900 mt-0.5">{{ $shipment->sender_name }}</p>
-                    <a href="tel:{{ $shipment->sender_phone }}" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mt-0.5">
-                        <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span>({{ $shipment->sender_phone }})</span>
-                    </a>
+                    @if(!empty($tracking['contacts_authorized']) && !empty($shipment->sender_phone))
+                        @php($senderWa = \App\Modules\Chat\Support\PhoneNumberNormalizer::toE164($shipment->sender_phone))
+                        @if($senderWa)
+                        <a href="https://wa.me/{{ $senderWa }}" target="_blank" rel="noopener" class="text-xs text-emerald-700 hover:text-emerald-800 flex items-center gap-1 mt-0.5 font-medium">
+                            <span>WhatsApp ({{ $shipment->sender_phone }})</span>
+                        </a>
+                        @endif
+                    @endif
                     <p class="text-xs text-slate-600 mt-1 leading-relaxed">{{ $shipment->sender_address }}</p>
                     <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-[11px] font-medium text-slate-700">
                         <span>📦 Jadwal:</span>
@@ -231,12 +233,14 @@
                     <span class="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                     <p class="text-[11px] font-bold text-rose-500 uppercase tracking-wide">Lokasi Tujuan</p>
                     <p class="text-sm font-bold text-slate-900 mt-0.5">{{ $shipment->receiver_name }}</p>
-                    <a href="tel:{{ $shipment->receiver_phone }}" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mt-0.5">
-                        <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span>({{ $shipment->receiver_phone }})</span>
-                    </a>
+                    @if(!empty($tracking['contacts_authorized']) && !empty($shipment->receiver_phone))
+                        @php($receiverWa = \App\Modules\Chat\Support\PhoneNumberNormalizer::toE164($shipment->receiver_phone))
+                        @if($receiverWa)
+                        <a href="https://wa.me/{{ $receiverWa }}" target="_blank" rel="noopener" class="text-xs text-emerald-700 hover:text-emerald-800 flex items-center gap-1 mt-0.5 font-medium">
+                            <span>WhatsApp ({{ $shipment->receiver_phone }})</span>
+                        </a>
+                        @endif
+                    @endif
                     <p class="text-xs text-slate-600 mt-1 leading-relaxed">{{ $shipment->receiver_address }}</p>
                 </div>
             </div>

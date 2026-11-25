@@ -39,7 +39,7 @@ class TrackingWebController extends Controller
             ], 404);
         }
 
-        $trackingData = $this->trackingService->getTrackingData($shipment->tracking_number);
+        $trackingData = $this->trackingService->getTrackingData($shipment->tracking_number, auth()->user());
 
         // Status map yang seragam dengan persyaratan
         $displayStatus = match ($shipment->status) {
@@ -85,7 +85,7 @@ class TrackingWebController extends Controller
             ], 404);
         }
 
-        $trackingData = $this->trackingService->getTrackingData($shipment->tracking_number);
+        $trackingData = $this->trackingService->getTrackingData($shipment->tracking_number, auth()->user());
 
         $displayStatus = match ($shipment->status) {
             'pending', 'confirmed' => 'Menunggu Kurir',

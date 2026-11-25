@@ -157,7 +157,7 @@ class TrackingService
      * Ambil data tracking lengkap untuk customer.
      * Mengembalikan status, lokasi kurir, dan timeline.
      */
-    public function getTrackingData(string $trackingNumber): ?array
+    public function getTrackingData(string $trackingNumber, ?\App\Models\User $viewer = null): ?array
     {
         $shipment = Shipment::where('tracking_number', $trackingNumber)
             ->orWhere('shipment_number', $trackingNumber)
@@ -166,6 +166,9 @@ class TrackingService
         if (!$shipment) {
             return null;
         }
+
+        $pairedOrder = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
+        $contactsAuthorized = $shipment->isContactAccessibleBy($viewer, $pairedOrder);
 
         // Ambil timeline dari shipment_logs
         $logs = $shipment->logs()
@@ -197,12 +200,7 @@ class TrackingService
         $courierVehicleDesc = null;
 
         if ($shipment->status !== 'pending' && $shipment->status !== 'confirmed') {
-            // Cari order yang terkait dengan shipment ini
-            $order = \App\Models\Order::where('order_number', $shipment->shipment_number)
-                ->whereNotNull('courier_id')
-                ->first();
-
-            $courierId = $order ? $order->courier_id : null;
+            $courierId = ($pairedOrder && $pairedOrder->courier_id) ? $pairedOrder->courier_id : null;
             if (!$courierId) {
                 $lastLogWithCourier = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
                 if ($lastLogWithCourier) {
@@ -243,7 +241,7 @@ class TrackingService
                 $courier = Courier::with('user')->find($courierId);
                 if ($courier) {
                     $courierName = $courier->user->name ?? $courier->name ?? 'Kurir';
-                    $courierPhone = $courier->phone ?? $courier->user?->phone;
+                    $courierPhone = $contactsAuthorized ? ($courier->phone ?? $courier->user?->phone) : null;
                     $courierPhoto = $courier->photo
                         ? (str_starts_with($courier->photo, 'http') ? $courier->photo : url('storage/' . $courier->photo))
                         : null;
@@ -286,17 +284,16 @@ class TrackingService
 
         if (($originAddress === null || $destAddress === null) ||
             ($originLat === null || $destLat === null)) {
-            $order = \App\Models\Order::where('order_number', $shipment->shipment_number)->first();
-            if ($order) {
-                $originAddress = $originAddress ?? $order->pickup_address;
-                $destAddress   = $destAddress   ?? $order->delivery_address;
+            if ($pairedOrder) {
+                $originAddress = $originAddress ?? $pairedOrder->pickup_address;
+                $destAddress   = $destAddress   ?? $pairedOrder->delivery_address;
                 if ($originLat === null) {
-                    $originLat = $order->pickup_latitude;
-                    $originLng = $order->pickup_longitude;
+                    $originLat = $pairedOrder->pickup_latitude;
+                    $originLng = $pairedOrder->pickup_longitude;
                 }
                 if ($destLat === null) {
-                    $destLat = $order->delivery_latitude;
-                    $destLng = $order->delivery_longitude;
+                    $destLat = $pairedOrder->delivery_latitude;
+                    $destLng = $pairedOrder->delivery_longitude;
                 }
             }
         }
@@ -309,10 +306,13 @@ class TrackingService
             'shipment_number'           => $shipment->shipment_number,
             'status'                    => $shipment->status,
             'status_label'              => $this->statusLabels[$shipment->status] ?? $shipment->status,
+            'contacts_authorized'       => $contactsAuthorized,
+            'customer_name'             => $shipment->customer_name,
+            'customer_phone'            => $contactsAuthorized ? $shipment->customer_phone : null,
             'sender_name'               => $shipment->sender_name,
-            'sender_phone'              => $shipment->sender_phone,
+            'sender_phone'              => $contactsAuthorized ? $shipment->sender_phone : null,
             'receiver_name'             => $shipment->receiver_name,
-            'receiver_phone'            => $shipment->receiver_phone,
+            'receiver_phone'            => $contactsAuthorized ? $shipment->receiver_phone : null,
             'vehicle'                   => $shipment->vehicle_type ?? $shipment->vehicle ?? 'motor',
             'package_weight'            => (float) ($shipment->package_weight ?? 1.0),
             'payment_method'            => $this->resolvePaymentMethod($shipment),

@@ -38,12 +38,7 @@ class WhatsappContact extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(config('chat.host_models.user'), 'user_id');
-    }
-
-    public function activeConversation(): BelongsTo
-    {
-        return $this->belongsTo(Conversation::class, 'active_conversation_id');
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 
     public function isOptedIn(): bool
