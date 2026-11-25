@@ -1094,4 +1094,73 @@ class ChatWhatsAppSystemTest extends TestCase
             'wa_status' => 'accepted',
         ]);
     }
+
+    public function test_send_test_message_131037_display_name_error_returns_indonesian_guidance(): void
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        $admin = User::create([
+            'name' => 'Super Admin WA 131037',
+            'email' => 'wa.131037.admin@city.test',
+            'role' => 'admin',
+        ]);
+        $admin->assignRole('super-admin');
+
+        config([
+            'whatsapp.enabled' => true,
+            'whatsapp.phone_number_id' => '998811223344',
+            'whatsapp.access_token' => 'test-token-wa-131037',
+            'whatsapp.app_secret' => 'test-secret-wa-131037',
+            'whatsapp.verify_token' => 'test-verify-wa-131037',
+        ]);
+
+        Http::fake([
+            'https://graph.facebook.com/v21.0/998811223344/messages' => Http::response([
+                'error' => [
+                    'message' => 'WhatsApp provided number needs display name approval before message can be sent.',
+                    'code' => 131037,
+                    'error_data' => ['details' => 'Display name approval required.'],
+                ],
+            ], 400),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->postJson('/admin/settings/whatsapp-cloud/test', [
+                'test_action' => 'send_test',
+                'whatsapp_cloud_test_phone' => '081234567890',
+                'whatsapp_cloud_test_mode' => 'hello_world',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('success', false);
+
+        $message = (string) $response->json('message');
+        $this->assertStringContainsString('131037', $message);
+        $this->assertStringContainsString('Display Name', $message);
+        $this->assertStringContainsString('Business Suite', $message);
+    }
+
+    public function test_admin_whatsapp_cloud_validation_errors_are_rendered_on_providers_page(): void
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        $admin = User::create([
+            'name' => 'Super Admin WA Errors',
+            'email' => 'wa.errors.admin@city.test',
+            'role' => 'admin',
+        ]);
+        $admin->assignRole('super-admin');
+
+        // Invalid base URL fails validation and must NOT fail silently:
+        // the redirect back to /admin/providers must render the $errors bag.
+        $this->actingAs($admin)
+            ->from('/admin/providers')
+            ->post('/admin/settings/whatsapp-cloud', [
+                'whatsapp_cloud_base_url' => 'not-a-valid-url',
+                'whatsapp_cloud_api_version' => 'v21.0',
+            ])
+            ->assertRedirect('/admin/providers');
+
+        $this->actingAs($admin)
+            ->get('/admin/providers')
+            ->assertOk()
+            ->assertSee('must be a valid URL');
+    }
 }

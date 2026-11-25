@@ -323,6 +323,7 @@ class WhatsAppCloudClient
 
             $hint = match ($code) {
                 '131030' => "Nomor {$toE164} belum ditambahkan di daftar nomor uji coba (Manage phone number list) pada Meta Developers -> WhatsApp -> API Setup.",
+                '131037' => "Display Name nomor pengirim belum disetujui Meta (error 131037). Buka Meta Business Suite -> WhatsApp -> Settings -> Profile, cek status Display Name: bila PENDING, tunggu persetujuan Meta; bila DECLINED, ajukan ulang nama dengan ejaan yang benar. Pengiriman tetap ditolak sampai Display Name berstatus APPROVED.",
                 '132001' => "Template '{$templateName}' ({$templateLang}) belum dibuat atau belum disetujui (Approved) di Pengelola WhatsApp Meta.",
                 '131047' => "Jendela balasan 24 jam untuk {$toE164} belum terbuka. Gunakan mode template (hello_world / utility_template), atau balas pesan WA dari HP tersebut dulu.",
                 default => $rawMessage,

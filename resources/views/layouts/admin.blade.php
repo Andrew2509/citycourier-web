@@ -377,6 +377,22 @@
                         </button>
                     </div>
                 @endif
+                @if($errors->any())
+                    <div id="flashValidationErrors" class="alert alert-error" role="alert">
+                        <span class="cc-icon">warning</span>
+                        <div class="flex-1">
+                            <div class="font-semibold mb-1">Data belum tersimpan karena {{ $errors->count() }} kesalahan validasi:</div>
+                            <ul class="list-disc pl-5 space-y-0.5 text-xs">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        <button type="button" class="text-red-700 hover:text-red-900" onclick="this.parentElement.remove()" aria-label="Tutup">
+                            <span class="cc-icon text-[18px]">close</span>
+                        </button>
+                    </div>
+                @endif
 
                 @yield('content')
             </div>
