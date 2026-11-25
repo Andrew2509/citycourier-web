@@ -220,6 +220,7 @@ class ChatWhatsAppSystemTest extends TestCase
             ->assertJsonPath('data.opt_in_status', 'opted_in');
 
         config([
+            'chat.whatsapp_bridge_enabled' => true,
             'whatsapp.enabled' => true,
             'whatsapp.phone_number_id' => '1122334455',
             'whatsapp.access_token' => 'meta-test-token',
@@ -545,6 +546,7 @@ class ChatWhatsAppSystemTest extends TestCase
 
         // Enable Meta WA, but opt out courier -> still skipped
         config([
+            'chat.whatsapp_bridge_enabled' => true,
             'whatsapp.enabled' => true,
             'whatsapp.phone_number_id' => '1122334455',
             'whatsapp.access_token' => 'meta-test-token',
@@ -579,6 +581,7 @@ class ChatWhatsAppSystemTest extends TestCase
     public function test_whatsapp_outbound_in_window_sends_text_and_uploads_media(): void
     {
         config([
+            'chat.whatsapp_bridge_enabled' => true,
             'whatsapp.enabled' => true,
             'whatsapp.phone_number_id' => '1122334455',
             'whatsapp.access_token' => 'meta-test-token',
@@ -638,6 +641,7 @@ class ChatWhatsAppSystemTest extends TestCase
     public function test_whatsapp_outbound_permanent_meta_error_preserves_internal_sent_status(): void
     {
         config([
+            'chat.whatsapp_bridge_enabled' => true,
             'whatsapp.enabled' => true,
             'whatsapp.phone_number_id' => '1122334455',
             'whatsapp.access_token' => 'meta-test-token',
@@ -852,8 +856,9 @@ class ChatWhatsAppSystemTest extends TestCase
         ]);
         $opsAdmin->assignRole($opsRole);
 
-        // Start with completely blank .env/config for WhatsApp Cloud API
+        // Start with completely blank .env/config for WhatsApp Cloud API while optional bridge flag is enabled
         config([
+            'chat.whatsapp_bridge_enabled' => true,
             'whatsapp.enabled' => false,
             'whatsapp.phone_number_id' => '',
             'whatsapp.waba_id' => '',
@@ -1022,6 +1027,7 @@ class ChatWhatsAppSystemTest extends TestCase
         $admin->assignRole('super-admin');
 
         config([
+            'chat.whatsapp_bridge_enabled' => true,
             'whatsapp.enabled' => true,
             'whatsapp.phone_number_id' => '998811223344',
             'whatsapp.access_token' => 'test-token-wa-diag',
@@ -1162,5 +1168,50 @@ class ChatWhatsAppSystemTest extends TestCase
             ->get('/admin/providers')
             ->assertOk()
             ->assertSee('must be a valid URL');
+    }
+
+    public function test_internal_chat_never_dispatches_whatsapp_by_default_even_if_cloud_enabled(): void
+    {
+        config([
+            'chat.whatsapp_bridge_enabled' => false,
+            'whatsapp.enabled' => true,
+            'whatsapp.phone_number_id' => '1122334455',
+            'whatsapp.access_token' => 'meta-test-token',
+        ]);
+        Setting::set('whatsapp_cloud_enabled', '1', 'whatsapp_cloud');
+
+        WhatsappContact::create([
+            'user_id' => $this->courierUser->id,
+            'wa_phone_e164' => '6281322223333',
+            'opt_in_status' => WhatsappContact::OPT_IN,
+            'last_inbound_at' => now()->subMinute(),
+            'window_expires_at' => now()->addHours(23),
+        ]);
+
+        Http::fake();
+        Queue::fake([SendWhatsAppMessageJob::class]);
+
+        Sanctum::actingAs($this->customer);
+        $this->getJson('/api/v1/chat/whatsapp/status')
+            ->assertOk()
+            ->assertJsonPath('data.whatsapp_cloud_enabled', false);
+
+        $convRes = $this->postJson('/api/v1/chat/conversations/by-order/' . $this->order->id)
+            ->assertOk()
+            ->assertJsonPath('data.wa_bridged_enabled', false)
+            ->assertJsonPath('data.counterparty.wa_opted_in', false);
+        $convId = $convRes->json('data.id');
+
+        $msgRes = $this->postJson("/api/v1/chat/conversations/{$convId}/messages", [
+            'body' => 'Pesan internal murni tanpa WA.',
+            'client_message_id' => 'pure-internal-1',
+        ]);
+        $msgRes->assertStatus(201)
+            ->assertJsonPath('data.delivery_status', Message::STATUS_SENT)
+            ->assertJsonPath('data.wa_status', null);
+
+        Queue::assertNothingPushed();
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('whatsapp_message_logs', 0);
     }
 }

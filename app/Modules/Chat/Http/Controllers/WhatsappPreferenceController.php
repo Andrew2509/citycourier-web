@@ -22,9 +22,11 @@ class WhatsappPreferenceController extends Controller
         $userId = (int) $user->getAuthIdentifier();
         $contact = WhatsappContact::query()->where('user_id', $userId)->first();
         $cloudCreds = app(GatewayCredentialsResolver::class)->whatsappCloud();
+        $bridgeEnabled = (bool) config('chat.whatsapp_bridge_enabled', false)
+            && (bool) ($cloudCreds['enabled'] ?? false);
 
         return $this->ok([
-            'whatsapp_cloud_enabled' => (bool) ($cloudCreds['enabled'] ?? false),
+            'whatsapp_cloud_enabled' => $bridgeEnabled,
             'phone_e164' => $contact?->wa_phone_e164 ?? PhoneNumberNormalizer::toE164($user->phone ?? null),
             'phone_verified' => $this->isUserPhoneVerified($user),
             'opt_in_status' => $contact?->opt_in_status ?? WhatsappContact::OPT_PENDING,
@@ -81,9 +83,11 @@ class WhatsappPreferenceController extends Controller
         $contact->save();
 
         $cloudCreds = app(GatewayCredentialsResolver::class)->whatsappCloud();
+        $bridgeEnabled = (bool) config('chat.whatsapp_bridge_enabled', false)
+            && (bool) ($cloudCreds['enabled'] ?? false);
 
         return $this->ok([
-            'whatsapp_cloud_enabled' => (bool) ($cloudCreds['enabled'] ?? false),
+            'whatsapp_cloud_enabled' => $bridgeEnabled,
             'phone_e164' => $contact->wa_phone_e164,
             'phone_verified' => true,
             'opt_in_status' => $contact->opt_in_status,

@@ -62,6 +62,7 @@ class ChatConversationService
                     'courier_user_id' => $resolved['courier_user_id'],
                     'courier_id' => $resolved['courier_id'],
                     'status' => $this->deriveInitialStatus($resolved['status'] ?? null),
+                    'wa_bridged_enabled' => (bool) config('chat.whatsapp_bridge_enabled', false),
                 ]);
             }
 

@@ -24,7 +24,8 @@ class WhatsAppBridgeService
     public function dispatchOutbound(Conversation $conversation, Message $message, int $attempt = 1): void
     {
         if (
-            ! $this->client->isConfigured()
+            ! (bool) config('chat.whatsapp_bridge_enabled', false)
+            || ! $this->client->isConfigured()
             || ! $conversation->wa_bridged_enabled
             || $conversation->status !== Conversation::STATUS_ACTIVE
             || $message->channel !== Message::CHANNEL_INTERNAL

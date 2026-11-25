@@ -17,7 +17,8 @@ class QueueWhatsAppBridgeListener
     public function handle(InternalChatMessagePersisted $event): void
     {
         if (
-            ! $this->client->isConfigured()
+            ! (bool) config('chat.whatsapp_bridge_enabled', false)
+            || ! $this->client->isConfigured()
             || ! $event->conversation->wa_bridged_enabled
             || $event->message->channel !== Message::CHANNEL_INTERNAL
         ) {

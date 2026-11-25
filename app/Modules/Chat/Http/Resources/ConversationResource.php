@@ -29,6 +29,8 @@ class ConversationResource extends JsonResource
             ? ($this->relationLoaded('courierWhatsappContact') ? $this->courierWhatsappContact : null)
             : ($this->relationLoaded('customerWhatsappContact') ? $this->customerWhatsappContact : null);
 
+        $bridgeEnabled = (bool) config('chat.whatsapp_bridge_enabled', false);
+
         return [
             'id' => (int) $this->id,
             'order_id' => (int) $this->order_id,
@@ -38,7 +40,7 @@ class ConversationResource extends JsonResource
             'courier_user_id' => $this->courier_user_id !== null ? (int) $this->courier_user_id : null,
             'courier_id' => $this->courier_id !== null ? (int) $this->courier_id : null,
             'status' => $this->status,
-            'wa_bridged_enabled' => (bool) $this->wa_bridged_enabled,
+            'wa_bridged_enabled' => $bridgeEnabled && (bool) $this->wa_bridged_enabled,
             'viewer_role' => $viewerRole,
             'unread_count' => $this->unreadCountForRole($viewerRole),
             'last_message_id' => $this->last_message_id !== null ? (int) $this->last_message_id : null,
@@ -51,7 +53,7 @@ class ConversationResource extends JsonResource
                 'role' => $counterpartyRole,
                 'name' => $counterpartyUser?->name,
                 'phone' => $counterpartyUser?->phone,
-                'wa_opted_in' => $counterpartyContact?->isOptedIn() ?? false,
+                'wa_opted_in' => $bridgeEnabled && ($counterpartyContact?->isOptedIn() ?? false),
             ],
             'created_at' => $this->created_at?->toIso8601String(),
         ];
