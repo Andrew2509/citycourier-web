@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Chat\Http\Controllers\CallController;
 use App\Modules\Chat\Http\Controllers\ConversationController;
 use App\Modules\Chat\Http\Controllers\DeviceTokenController;
 use App\Modules\Chat\Http\Controllers\MessageController;
@@ -58,6 +59,31 @@ Route::prefix('api/v1')
                 ->name('citycourier.chat.whatsapp.status');
             Route::post('/whatsapp/opt-in', [WhatsappPreferenceController::class, 'updateOptIn'])
                 ->name('citycourier.chat.whatsapp.opt_in');
+        });
+
+        Route::prefix('calls')->group(function (): void {
+            Route::get('/incoming', [CallController::class, 'incoming'])
+                ->name('citycourier.calls.incoming');
+            Route::post('/initiate', [CallController::class, 'initiate'])
+                ->name('citycourier.calls.initiate');
+            Route::get('/{callSession}', [CallController::class, 'show'])
+                ->whereNumber('callSession')
+                ->name('citycourier.calls.show');
+            Route::post('/{callSession}/accept', [CallController::class, 'accept'])
+                ->whereNumber('callSession')
+                ->name('citycourier.calls.accept');
+            Route::post('/{callSession}/reject', [CallController::class, 'reject'])
+                ->whereNumber('callSession')
+                ->name('citycourier.calls.reject');
+            Route::post('/{callSession}/end', [CallController::class, 'end'])
+                ->whereNumber('callSession')
+                ->name('citycourier.calls.end');
+            Route::get('/{callSession}/signals', [CallController::class, 'signals'])
+                ->whereNumber('callSession')
+                ->name('citycourier.calls.signals.index');
+            Route::post('/{callSession}/signals', [CallController::class, 'storeSignal'])
+                ->whereNumber('callSession')
+                ->name('citycourier.calls.signals.store');
         });
 
         Route::post('/devices/fcm-token', [DeviceTokenController::class, 'store'])

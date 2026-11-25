@@ -94,7 +94,7 @@ class ChatConversationService
 
         return Conversation::query()
             ->forParticipant($userId)
-            ->with(['customer', 'courierUser', 'lastMessage', 'customerWhatsappContact', 'courierWhatsappContact'])
+            ->with(['customer', 'courierUser.courier', 'lastMessage', 'customerWhatsappContact', 'courierWhatsappContact'])
             ->orderByRaw('COALESCE(last_message_at, created_at) DESC')
             ->paginate($safePerPage);
     }

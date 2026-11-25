@@ -4,6 +4,7 @@ namespace App\Modules\Chat\Http\Resources;
 
 use App\Modules\Chat\Models\Conversation;
 use App\Modules\Chat\Models\Message;
+use App\Modules\Chat\Support\AvatarUrlResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -53,6 +54,7 @@ class ConversationResource extends JsonResource
                 'role' => $counterpartyRole,
                 'name' => $counterpartyUser?->name,
                 'phone' => $counterpartyUser?->phone,
+                'avatar' => AvatarUrlResolver::resolveForUser($counterpartyUser, $counterpartyRole === Message::ROLE_COURIER),
                 'wa_opted_in' => $bridgeEnabled && ($counterpartyContact?->isOptedIn() ?? false),
             ],
             'created_at' => $this->created_at?->toIso8601String(),

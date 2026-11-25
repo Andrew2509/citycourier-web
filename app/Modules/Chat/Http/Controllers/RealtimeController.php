@@ -18,7 +18,10 @@ class RealtimeController extends Controller
      */
     public function authenticate(Request $request): mixed
     {
-        if (! Broadcast::getChannels()->has('conversation.{conversationId}')) {
+        if (
+            ! Broadcast::getChannels()->has('conversation.{conversationId}')
+            || ! Broadcast::getChannels()->has('call.{callId}')
+        ) {
             ChatServiceProvider::registerBroadcastChannels();
         }
 

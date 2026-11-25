@@ -8,7 +8,9 @@ use App\Modules\Chat\Listeners\BroadcastChatMessageListener;
 use App\Modules\Chat\Listeners\BroadcastMessagesReadListener;
 use App\Modules\Chat\Listeners\QueueFcmPushListener;
 use App\Modules\Chat\Listeners\QueueWhatsAppBridgeListener;
+use App\Modules\Chat\Models\CallSession;
 use App\Modules\Chat\Models\Conversation;
+use App\Modules\Chat\Policies\CallSessionPolicy;
 use App\Modules\Chat\Policies\ConversationPolicy;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -21,11 +23,13 @@ class ChatServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../../../config/chat.php', 'chat');
         $this->mergeConfigFrom(__DIR__ . '/../../../config/whatsapp.php', 'whatsapp');
         $this->mergeConfigFrom(__DIR__ . '/../../../config/fcm.php', 'fcm');
+        $this->mergeConfigFrom(__DIR__ . '/../../../config/voip.php', 'voip');
     }
 
     public function boot(): void
     {
         Gate::policy(Conversation::class, ConversationPolicy::class);
+        Gate::policy(CallSession::class, CallSessionPolicy::class);
 
         $this->loadMigrationsFrom(__DIR__ . '/../../../database/migrations');
         $this->loadRoutesFrom(__DIR__ . '/../../../routes/chat_api.php');

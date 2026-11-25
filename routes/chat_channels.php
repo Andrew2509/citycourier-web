@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Chat\Models\CallSession;
 use App\Modules\Chat\Models\Conversation;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -14,4 +15,10 @@ Broadcast::channel('conversation.{conversationId}', function ($user, int|string 
 
 Broadcast::channel('user.{userId}', function ($user, int|string $userId): bool {
     return (int) $user->getAuthIdentifier() === (int) $userId;
+});
+
+Broadcast::channel('call.{callId}', function ($user, int|string $callId): bool {
+    $call = CallSession::query()->find((int) $callId);
+
+    return $call !== null && $call->isParticipant((int) $user->getAuthIdentifier());
 });
