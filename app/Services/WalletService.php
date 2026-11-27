@@ -6,6 +6,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Models\Withdrawal;
 use App\Modules\Payout\Models\PayoutTransaction;
+use App\Modules\Payout\Services\PayoutService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -37,6 +38,7 @@ class WalletService
      */
     public function getBalance(int $courierId): array
     {
+        $this->syncPendingV1Payouts($courierId);
         $wallet = $this->getOrCreateWallet($courierId);
         $available = (float) $wallet->available_balance;
         $pending   = (float) $wallet->pending_balance;
@@ -300,6 +302,7 @@ class WalletService
         ?string $filter = null,
         ?string $status = null
     ): array {
+        $this->syncPendingV1Payouts($courierId);
         $wallet = $this->getOrCreateWallet($courierId);
 
         $items = collect();
@@ -377,6 +380,7 @@ class WalletService
      */
     public function getNotifications(int $courierId, int $limit = 20): array
     {
+        $this->syncPendingV1Payouts($courierId);
         $notifications = collect();
 
         if (Schema::hasTable('dana_connections')) {
@@ -698,5 +702,21 @@ class WalletService
             'page'         => $page,
             'per_page'     => $perPage,
         ];
+    }
+
+    private function syncPendingV1Payouts(int $courierId): void
+    {
+        if (! Schema::hasTable('payout_transactions')) {
+            return;
+        }
+
+        try {
+            app(PayoutService::class)->syncPendingPayoutsForCourier($courierId);
+        } catch (\Throwable $e) {
+            Log::warning('Syncing pending v1 courier payouts skipped.', [
+                'courier_id' => $courierId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

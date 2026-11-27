@@ -39,6 +39,7 @@ class CourierWalletV1Controller extends Controller
             return $this->missingCourierResponse();
         }
 
+        $this->payoutService->syncPendingPayoutsForCourier($courier->id);
         $this->earningService->syncDeliveredOrdersForCourier($courier);
         $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
         $balance = $wallet->balanceRecord;
@@ -104,6 +105,7 @@ class CourierWalletV1Controller extends Controller
             return $this->missingCourierResponse();
         }
 
+        $this->payoutService->syncPendingPayoutsForCourier($courier->id);
         $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
         $perPage = min(50, max(1, (int) $request->integer('per_page', 15)));
         $type = $request->string('type')->toString();
@@ -158,6 +160,7 @@ class CourierWalletV1Controller extends Controller
             return $this->missingCourierResponse();
         }
 
+        $this->payoutService->syncPendingPayoutsForCourier($courier->id, 10, false);
         $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
         $tx = WalletTransaction::where('wallet_id', $wallet->id)->findOrFail($id);
 
@@ -222,6 +225,7 @@ class CourierWalletV1Controller extends Controller
             return $this->missingCourierResponse();
         }
 
+        $this->payoutService->syncPendingPayoutsForCourier($courier->id);
         $this->earningService->syncDeliveredOrdersForCourier($courier);
         $wallet = $this->walletManager->getOrCreateCourierWallet($courier);
         $perPage = min(50, max(1, (int) $request->integer('per_page', 15)));
@@ -286,6 +290,13 @@ class CourierWalletV1Controller extends Controller
         }
 
         $payout = PayoutTransaction::where('courier_id', $courier->id)->findOrFail($id);
+        if (in_array($payout->status, ['pending', 'processing'], true) && $payout->provider !== 'mock') {
+            try {
+                $payout = $this->payoutService->verifyPayoutStatusWithProvider($payout->id);
+            } catch (\Throwable) {
+                // Keep existing record cleanly when provider lookup is temporarily unreachable
+            }
+        }
         $earnings = CourierEarning::where('payout_transaction_id', $payout->id)->get();
 
         return response()->json([
@@ -304,6 +315,8 @@ class CourierWalletV1Controller extends Controller
         if (! $courier) {
             return $this->missingCourierResponse();
         }
+
+        $this->payoutService->syncPendingPayoutsForCourier($courier->id);
 
         $payouts = PayoutTransaction::where('courier_id', $courier->id)
             ->orderByDesc('id')

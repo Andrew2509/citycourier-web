@@ -284,20 +284,45 @@ class XenditPayoutService
         $secretKey = $creds['secret_key'];
         $timeout = $creds['timeout_seconds'];
 
+        if ($providerReference === '' && ($referenceId === null || $referenceId === '')) {
+            return [
+                'status' => 'unknown',
+                'provider_reference' => $providerReference,
+                'failure_code' => null,
+                'failure_reason' => 'Missing payout reference for Xendit inquiry.',
+                'raw_payload' => [],
+            ];
+        }
+
+        $json = [];
+        $response = null;
+
         if ($providerReference !== '') {
             $response = Http::timeout($timeout)
                 ->withBasicAuth($secretKey, '')
                 ->get("{$baseUrl}/v2/payouts/{$providerReference}");
-            $json = $response->successful() ? ($response->json() ?: []) : [];
-        } else {
+            if ($response->successful()) {
+                $rawJson = $response->json() ?: [];
+                $json = is_array($rawJson['data'] ?? null) ? $rawJson['data'] : $rawJson;
+            }
+        }
+
+        if ((empty($json) || ! isset($json['status'])) && is_string($referenceId) && $referenceId !== '') {
             $response = Http::timeout($timeout)
                 ->withBasicAuth($secretKey, '')
                 ->get("{$baseUrl}/v2/payouts", ['reference_id' => $referenceId]);
-            $list = $response->successful() ? ($response->json() ?: []) : [];
-            $json = is_array($list['data'] ?? null) ? ($list['data'][0] ?? []) : ($list[0] ?? []);
+            if ($response->successful()) {
+                $list = $response->json() ?: [];
+                $candidate = is_array($list['data'] ?? null)
+                    ? ($list['data'][0] ?? [])
+                    : ($list[0] ?? (isset($list['status']) ? $list : []));
+                if (is_array($candidate) && ! empty($candidate)) {
+                    $json = $candidate;
+                }
+            }
         }
 
-        if (! $response->successful() || empty($json)) {
+        if (! $response || ! $response->successful() || empty($json)) {
             return [
                 'status' => 'unknown',
                 'provider_reference' => $providerReference,
@@ -343,7 +368,7 @@ class XenditPayoutService
         $data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
         $event = (string) ($payload['event'] ?? 'xendit.payout');
 
-        $rawStatus = (string) ($data['status'] ?? match ($event) {
+        $rawStatus = (string) ($data['status'] ?? $payload['status'] ?? match ($event) {
             'payout.succeeded', 'v3_payout.succeeded' => 'SUCCEEDED',
             'payout.failed', 'v3_payout.failed' => 'FAILED',
             'payout.reversed', 'v3_payout.reversed' => 'REVERSED',
@@ -352,11 +377,11 @@ class XenditPayoutService
 
         return [
             'event_type' => $event,
-            'external_id' => (string) ($data['reference_id'] ?? $payload['reference_id'] ?? ''),
+            'external_id' => (string) ($data['reference_id'] ?? $payload['reference_id'] ?? $data['external_id'] ?? $payload['external_id'] ?? ''),
             'provider_reference' => (string) ($data['id'] ?? $payload['id'] ?? ''),
             'status' => $this->normalizeStatus($rawStatus),
-            'failure_code' => $data['failure_code'] ?? null,
-            'failure_reason' => $data['failure_code'] ?? null,
+            'failure_code' => $data['failure_code'] ?? $payload['failure_code'] ?? null,
+            'failure_reason' => $data['failure_code'] ?? $data['failure_reason'] ?? $payload['failure_code'] ?? null,
         ];
     }
 
@@ -372,9 +397,9 @@ class XenditPayoutService
 
     private function normalizeStatus(string $status): string
     {
-        return match (strtoupper($status)) {
-            'SUCCEEDED', 'COMPLETED' => 'completed',
-            'FAILED', 'CANCELLED', 'CANCELED' => 'failed',
+        return match (strtoupper(trim($status))) {
+            'SUCCEEDED', 'COMPLETED', 'SETTLED', 'SUCCESS' => 'completed',
+            'FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED' => 'failed',
             'REVERSED' => 'reversed',
             default => 'processing',
         };

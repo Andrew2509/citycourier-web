@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\WalletTransaction;
 use App\Modules\Payment\Providers\ProviderResolver;
+use App\Modules\Payout\Services\PayoutService;
 use App\Modules\Wallet\Services\WalletLedgerManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,12 +15,14 @@ class CustomerWalletController extends Controller
 {
     public function __construct(
         private readonly WalletLedgerManager $walletManager,
-        private readonly ProviderResolver $providerResolver
+        private readonly ProviderResolver $providerResolver,
+        private readonly ?PayoutService $payoutService = null
     ) {}
 
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
+        ($this->payoutService ?? app(PayoutService::class))->syncPendingPayoutsForCustomer($user->id);
         $wallet = $this->walletManager->getOrCreateCustomerWallet($user);
         $balance = $wallet->balanceRecord;
         $mode = $this->providerResolver->currentMode();
@@ -75,6 +78,7 @@ class CustomerWalletController extends Controller
     public function transactions(Request $request): JsonResponse
     {
         $user = $request->user();
+        ($this->payoutService ?? app(PayoutService::class))->syncPendingPayoutsForCustomer($user->id);
         $wallet = $this->walletManager->getOrCreateCustomerWallet($user);
 
         $perPage = min(50, max(1, (int) $request->integer('per_page', 15)));
@@ -130,6 +134,7 @@ class CustomerWalletController extends Controller
     public function transactionDetail(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
+        ($this->payoutService ?? app(PayoutService::class))->syncPendingPayoutsForCustomer($user->id, 10, false);
         $wallet = $this->walletManager->getOrCreateCustomerWallet($user);
 
         $tx = WalletTransaction::where('wallet_id', $wallet->id)->findOrFail($id);

@@ -646,4 +646,199 @@ class PaymentWalletSystemV1Test extends TestCase
         $this->assertSame(40000.0, (float) $walletSummary->json('data.available_balance'));
         $this->assertSame(50000.0, (float) $walletSummary->json('data.total_withdrawn'));
     }
+
+    public function test_xendit_processing_payout_auto_syncs_on_detail_and_history_without_webhook_or_queue(): void
+    {
+        Config::set('queue.default', 'database');
+        Config::set('payment_wallet.mode', 'sandbox');
+        Config::set('payment_wallet.xendit.secret_key', 'xnd_development_sync_test_key');
+        Setting::set('payment_wallet_mode', 'sandbox', 'finance');
+        Setting::set('payout_active_provider', 'xendit', 'finance');
+
+        $courierUser = User::create([
+            'name' => 'Kurir Sync Xendit',
+            'email' => 'kurir.sync@city.test',
+            'role' => 'courier',
+        ]);
+        $courier = Courier::create([
+            'user_id' => $courierUser->id,
+            'phone' => '081355500011',
+            'vehicle_type' => 'motor',
+            'is_verified' => true,
+            'is_active' => true,
+        ]);
+
+        $walletManager = app(WalletLedgerManager::class);
+        $wallet = $walletManager->getOrCreateCourierWallet($courier);
+        $walletManager->creditPendingEarning(
+            $wallet,
+            53822,
+            5382,
+            48440,
+            'EARN-SYNC-1',
+            'idem-earn-sync-1',
+            'Pendapatan order kurir'
+        );
+        $walletManager->releasePendingToAvailable(
+            $wallet,
+            48440,
+            'EARN-SYNC-REL-1',
+            'idem-earn-sync-rel-1',
+            'Pendapatan order kurir siap cair'
+        );
+
+        \Illuminate\Support\Facades\Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+            $method = $request->method();
+
+            if ($method === 'POST' && $url === 'https://api.xendit.co/v2/payouts') {
+                return \Illuminate\Support\Facades\Http::response([
+                    'id' => 'disb-sync-001',
+                    'reference_id' => $request->data()['reference_id'] ?? 'WD-CUR',
+                    'status' => 'ACCEPTED',
+                ], 200);
+            }
+
+            if ($method === 'GET' && $url === 'https://api.xendit.co/v2/payouts/disb-sync-001') {
+                return \Illuminate\Support\Facades\Http::response([
+                    'id' => 'disb-sync-001',
+                    'status' => 'SUCCEEDED',
+                ], 200);
+            }
+
+            if ($method === 'GET' && $url === 'https://api.xendit.co/v2/payouts/disb-missing-direct') {
+                return \Illuminate\Support\Facades\Http::response(['error_code' => 'NOT_FOUND'], 404);
+            }
+
+            if ($method === 'GET' && str_starts_with($url, 'https://api.xendit.co/v2/payouts') && ! empty($request->data()['reference_id'])) {
+                return \Illuminate\Support\Facades\Http::response([
+                    'data' => [
+                        [
+                            'id' => 'disb-sync-002',
+                            'reference_id' => $request->data()['reference_id'] ?? '',
+                            'status' => 'SUCCEEDED',
+                        ],
+                    ],
+                ], 200);
+            }
+
+            return \Illuminate\Support\Facades\Http::response([], 404);
+        });
+
+        Sanctum::actingAs($courierUser);
+
+        $destId = $this->postJson('/api/v1/courier/wallet/destinations', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => '081234567890',
+            'account_holder_name' => 'Kurir Sync Xendit',
+            'is_default' => true,
+        ])->assertStatus(201)->json('data.id');
+
+        // 1) Penarikan pertama: ACCEPTED -> awalnya `processing`, lalu detail endpoint menyinkronkan ke `completed`
+        $wd1 = $this->withHeaders(['Idempotency-Key' => 'idem-cur-sync-1'])
+            ->postJson('/api/v1/courier/wallet/withdrawals', [
+                'amount' => 20000,
+                'destination_id' => $destId,
+            ]);
+        $this->assertSame(201, $wd1->status(), $wd1->content());
+        $wd1->assertJsonPath('data.provider', 'xendit')
+            ->assertJsonPath('data.status', 'processing');
+
+        $payout1Id = (int) $wd1->json('data.id');
+        $this->assertSame('processing', PayoutTransaction::findOrFail($payout1Id)->status);
+
+        $this->getJson("/api/v1/courier/wallet/payouts/{$payout1Id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.provider_reference', 'disb-sync-001');
+
+        $this->assertSame('completed', PayoutTransaction::findOrFail($payout1Id)->status);
+
+        // 2) Penarikan kedua: provider_reference lookup 404 -> fallback `?reference_id=` saat GET history!
+        $wd2 = $this->withHeaders(['Idempotency-Key' => 'idem-cur-sync-2'])
+            ->postJson('/api/v1/courier/wallet/withdrawals', [
+                'amount' => 20000,
+                'destination_id' => $destId,
+            ])
+            ->assertStatus(201);
+
+        $payout2Id = (int) $wd2->json('data.id');
+        PayoutTransaction::where('id', $payout2Id)->update(['provider_reference' => 'disb-missing-direct']);
+
+        $historyRes = $this->getJson('/api/courier/wallet/history?filter=withdrawal')
+            ->assertOk();
+
+        $this->assertSame('completed', PayoutTransaction::findOrFail($payout2Id)->status);
+        $this->assertSame('disb-sync-002', PayoutTransaction::findOrFail($payout2Id)->provider_reference);
+        $this->assertSame('success', $historyRes->json('data.transactions.0.status'));
+        $this->assertSame('Berhasil', $historyRes->json('data.transactions.0.status_label'));
+
+        $wallet->refresh();
+        $this->assertSame(0, (int) $wallet->balanceRecord->reserved_balance);
+        $this->assertSame(8440, (int) $wallet->balanceRecord->available_balance);
+    }
+
+    public function test_xendit_payout_webhook_supports_external_id_and_completed_status(): void
+    {
+        Config::set('payment_wallet.xendit.secret_key', 'xnd_development_wh_key');
+        Config::set('payment_wallet.xendit.callback_token', 'test-xendit-callback-secret');
+        Setting::set('payment_wallet_mode', 'sandbox', 'finance');
+        Setting::set('payout_active_provider', 'xendit', 'finance');
+
+        $customer = User::create([
+            'name' => 'Pelanggan Webhook',
+            'email' => 'customer.wh@city.test',
+            'role' => 'customer',
+        ]);
+
+        $walletManager = app(WalletLedgerManager::class);
+        $wallet = $walletManager->getOrCreateCustomerWallet($customer);
+        $walletManager->creditAvailable(
+            $wallet,
+            80000,
+            \App\Modules\Ledger\Models\WalletLedgerEntry::ACCOUNT_SYSTEM_GATEWAY_CLEARING,
+            'topup',
+            'TOPUP-WH-1',
+            'idem-topup-wh-1',
+            'Topup webhook test'
+        );
+
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.xendit.co/v2/payouts' => \Illuminate\Support\Facades\Http::response([
+                'id' => 'disb-wh-ext-1',
+                'status' => 'ACCEPTED',
+            ], 200),
+        ]);
+
+        Sanctum::actingAs($customer);
+        $destId = $this->postJson('/api/v1/customer/wallet/destinations', [
+            'destination_type' => 'ewallet',
+            'channel_code' => 'ID_DANA',
+            'account_number' => '081299998888',
+            'account_holder_name' => 'Pelanggan Webhook',
+        ])->assertStatus(201)->json('data.id');
+
+        $wdRes = $this->withHeaders(['Idempotency-Key' => 'idem-wd-wh-ext-1'])
+            ->postJson('/api/v1/customer/wallet/withdrawals', [
+                'amount' => 30000,
+                'destination_id' => $destId,
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'processing');
+
+        $ref = $wdRes->json('data.reference');
+        $payoutId = (int) $wdRes->json('data.id');
+
+        $this->withHeaders(['x-callback-token' => 'test-xendit-callback-secret'])
+            ->postJson('/api/v1/webhooks/xendit/payout', [
+                'id' => 'disb-wh-ext-1',
+                'external_id' => $ref,
+                'status' => 'COMPLETED',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'processed');
+
+        $this->assertSame('completed', PayoutTransaction::findOrFail($payoutId)->status);
+    }
 }

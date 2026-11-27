@@ -14,7 +14,10 @@ use App\Modules\Payout\Jobs\PayoutStatusCheckJob;
 use App\Modules\Payout\Models\PayoutTransaction;
 use App\Modules\Wallet\Models\PayoutDestination;
 use App\Modules\Wallet\Services\WalletLedgerManager;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -459,8 +462,10 @@ class PayoutService
                     $locked->save();
                 });
 
-                PayoutStatusCheckJob::dispatch($payout->id)
-                    ->delay(now()->addMinutes((int) config('payment_wallet.courier_payout.timeout_recheck_minutes', 10)));
+                $this->dispatchStatusCheckSafely(
+                    $payout->id,
+                    (int) config('payment_wallet.courier_payout.timeout_recheck_minutes', 10)
+                );
 
                 return $payout->fresh();
             }
@@ -495,7 +500,7 @@ class PayoutService
             $payout->failure_reason = (string) ($result['failure_reason'] ?? null);
             $payout->save();
         }
-        PayoutStatusCheckJob::dispatch($payout->id)->delay(now()->addMinutes(5));
+        $this->dispatchStatusCheckSafely($payout->id, 5);
 
         return $payout->fresh();
     }
@@ -643,5 +648,86 @@ class PayoutService
 
             return $locked->fresh();
         });
+    }
+
+    public function syncPendingPayoutsForCourier(int $courierId, int $limit = 10, bool $respectCooldown = true): int
+    {
+        return $this->syncPendingPayoutsQuery(
+            PayoutTransaction::where('courier_id', $courierId),
+            $limit,
+            $respectCooldown
+        );
+    }
+
+    public function syncPendingPayoutsForCustomer(int $userId, int $limit = 10, bool $respectCooldown = true): int
+    {
+        return $this->syncPendingPayoutsQuery(
+            PayoutTransaction::where('user_id', $userId)->where('owner_type', 'customer'),
+            $limit,
+            $respectCooldown
+        );
+    }
+
+    public function syncAllPendingPayouts(int $limit = 50, bool $respectCooldown = false): int
+    {
+        return $this->syncPendingPayoutsQuery(
+            PayoutTransaction::query(),
+            $limit,
+            $respectCooldown
+        );
+    }
+
+    private function syncPendingPayoutsQuery(Builder $query, int $limit, bool $respectCooldown): int
+    {
+        if (! Schema::hasTable('payout_transactions')) {
+            return 0;
+        }
+
+        $pending = $query
+            ->whereIn('status', ['pending', 'processing'])
+            ->where('provider', '!=', 'mock')
+            ->orderByDesc('id')
+            ->limit(max(1, $limit))
+            ->get();
+
+        $synced = 0;
+        foreach ($pending as $payout) {
+            if ($respectCooldown) {
+                try {
+                    if (! Cache::add("payout_sync_cooldown:{$payout->id}", 1, 5)) {
+                        continue;
+                    }
+                } catch (\Throwable) {
+                    // Proceed safely if cache store is unavailable
+                }
+            }
+
+            try {
+                $updated = $this->verifyPayoutStatusWithProvider($payout->id);
+                if ($updated->status !== $payout->status) {
+                    $synced++;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Auto payout status sync skipped due to provider error.', [
+                    'payout_id' => $payout->id,
+                    'reference' => $payout->reference,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $synced;
+    }
+
+    private function dispatchStatusCheckSafely(int $payoutId, int $delayMinutes): void
+    {
+        try {
+            PayoutStatusCheckJob::dispatch($payoutId)->delay(now()->addMinutes(max(1, $delayMinutes)));
+        } catch (\Throwable $e) {
+            Log::warning('Payout status check job dispatch skipped cleanly.', [
+                'payout_id' => $payoutId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

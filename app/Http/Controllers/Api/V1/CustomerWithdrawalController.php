@@ -21,6 +21,8 @@ class CustomerWithdrawalController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $this->payoutService->syncPendingPayoutsForCustomer($request->user()->id);
+
         $perPage = min(50, max(1, (int) $request->integer('per_page', 15)));
 
         $paginator = PayoutTransaction::where('user_id', $request->user()->id)

@@ -16,3 +16,10 @@ Schedule::command('finance:run-auto-payouts')
 Schedule::job(new ReconciliationJob())
     ->dailyAt('02:00')
     ->withoutOverlapping();
+
+Schedule::call(function () {
+    app(\App\Modules\Payout\Services\PayoutService::class)->syncAllPendingPayouts(50, false);
+})
+    ->name('payouts:sync-pending')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
