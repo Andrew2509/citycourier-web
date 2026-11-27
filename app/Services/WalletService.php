@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Models\Withdrawal;
+use App\Modules\Payout\Models\PayoutTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Wallet Service Layer.
@@ -54,10 +56,17 @@ class WalletService
             })
             ->sum('amount');
 
-        // Total saldo yang sudah berhasil dicairkan (semua metode, termasuk legacy DANA)
+        // Total saldo yang sudah berhasil dicairkan (legacy + v1 payout_transactions)
         $totalWithdrawn = (float) Withdrawal::where('courier_id', $courierId)
             ->whereIn('status', ['success', 'completed'])
             ->sum('amount');
+
+        if (Schema::hasTable('payout_transactions')) {
+            $totalWithdrawn += (float) PayoutTransaction::where('courier_id', $courierId)
+                ->whereNull('legacy_withdrawal_id')
+                ->whereIn('status', ['success', 'completed'])
+                ->sum('amount');
+        }
 
         return [
             'total_balance'     => $total,
@@ -297,7 +306,7 @@ class WalletService
 
         // 1. Pendapatan, bonus, koreksi, pengembalian saldo (ledger).
         $ledgerEntries = WalletTransaction::where('wallet_id', $wallet->id)
-            ->whereIn('type', ['earning', 'bonus', 'adjustment', 'withdrawal_release'])
+            ->whereIn('type', ['earning', 'bonus', 'adjustment', 'withdrawal_release', 'payout_reversal'])
             ->orderByDesc('created_at')
             ->limit(300)
             ->get();
@@ -306,7 +315,7 @@ class WalletService
             $items->push($this->normalizeLedgerEntry($entry));
         }
 
-        // 2. Penarikan (termasuk status yang masih berjalan).
+        // 2. Penarikan legacy (`withdrawals`).
         $withdrawals = Withdrawal::where('courier_id', $courierId)
             ->orderByDesc('created_at')
             ->limit(300)
@@ -314,6 +323,22 @@ class WalletService
 
         foreach ($withdrawals as $withdrawal) {
             $items->push($this->normalizeWithdrawalEntry($withdrawal));
+        }
+
+        // 3. Penarikan & auto-payout v1 (`payout_transactions`).
+        if (Schema::hasTable('payout_transactions')) {
+            $payoutQuery = PayoutTransaction::where('courier_id', $courierId)
+                ->whereNull('legacy_withdrawal_id')
+                ->orderByDesc('created_at')
+                ->limit(300);
+
+            if (Schema::hasTable('payout_destinations')) {
+                $payoutQuery->with('destination');
+            }
+
+            foreach ($payoutQuery->get() as $payout) {
+                $items->push($this->normalizePayoutEntry($payout));
+            }
         }
 
         // Filter jenis transaksi.
@@ -354,20 +379,22 @@ class WalletService
     {
         $notifications = collect();
 
-        $connection = \App\Models\DanaConnection::where('courier_id', $courierId)
-            ->where('status', 'connected')
-            ->first();
+        if (Schema::hasTable('dana_connections')) {
+            $connection = \App\Models\DanaConnection::where('courier_id', $courierId)
+                ->where('status', 'connected')
+                ->first();
 
-        if ($connection) {
-            $connectedAt = $connection->bound_at ?? $connection->linked_at ?? $connection->updated_at;
-            $notifications->push([
-                'id'         => 'dana-connect-' . $connection->id,
-                'type'       => 'dana_connected',
-                'title'      => 'Akun DANA terhubung',
-                'message'    => 'Pencairan saldo kini dikirim ke ' . ($connection->masked_phone ?? 'akun DANA Anda') . '.',
-                'level'      => 'success',
-                'created_at' => $connectedAt?->toIso8601String(),
-            ]);
+            if ($connection) {
+                $connectedAt = $connection->bound_at ?? $connection->linked_at ?? $connection->updated_at;
+                $notifications->push([
+                    'id'         => 'dana-connect-' . $connection->id,
+                    'type'       => 'dana_connected',
+                    'title'      => 'Akun DANA terhubung',
+                    'message'    => 'Pencairan saldo kini dikirim ke ' . ($connection->masked_phone ?? 'akun DANA Anda') . '.',
+                    'level'      => 'success',
+                    'created_at' => $connectedAt?->toIso8601String(),
+                ]);
+            }
         }
 
         $withdrawals = Withdrawal::where('courier_id', $courierId)
@@ -389,8 +416,33 @@ class WalletService
             ]);
         }
 
+        if (Schema::hasTable('payout_transactions')) {
+            $payoutQuery = PayoutTransaction::where('courier_id', $courierId)
+                ->whereNull('legacy_withdrawal_id')
+                ->orderByDesc('created_at')
+                ->limit(20);
+
+            if (Schema::hasTable('payout_destinations')) {
+                $payoutQuery->with('destination');
+            }
+
+            foreach ($payoutQuery->get() as $payout) {
+                [$title, $message, $level] = $this->payoutNotification($payout);
+                $createdAt = $payout->completed_at ?? $payout->failed_at ?? $payout->updated_at ?? $payout->created_at;
+
+                $notifications->push([
+                    'id'         => 'payout-' . $payout->id,
+                    'type'       => 'withdrawal_' . $this->normalizeWithdrawalStatus($payout->status),
+                    'title'      => $title,
+                    'message'    => $message,
+                    'level'      => $level,
+                    'created_at' => $createdAt?->toIso8601String(),
+                ]);
+            }
+        }
+
         $reversals = WalletTransaction::where('courier_id', $courierId)
-            ->where('type', 'withdrawal_release')
+            ->whereIn('type', ['withdrawal_release', 'payout_reversal'])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
@@ -422,10 +474,10 @@ class WalletService
         $amount = (float) $entry->amount;
 
         $kind = match ($entry->type) {
-            'bonus'             => 'bonus',
-            'adjustment'        => 'adjustment',
-            'withdrawal_release' => 'reversal',
-            default             => 'earning',
+            'bonus'                              => 'bonus',
+            'adjustment'                         => 'adjustment',
+            'withdrawal_release', 'payout_reversal' => 'reversal',
+            default                              => 'earning',
         };
 
         $title = match ($kind) {
@@ -470,13 +522,7 @@ class WalletService
      */
     private function normalizeWithdrawalEntry(Withdrawal $withdrawal): array
     {
-        $status = match ($withdrawal->status) {
-            'success', 'completed'    => 'success',
-            'processing', 'approved'  => 'processing',
-            'failed', 'rejected'      => 'failed',
-            'cancelled'               => 'cancelled',
-            default                   => 'pending',
-        };
+        $status = $this->normalizeWithdrawalStatus((string) $withdrawal->status);
 
         $provider = strtoupper((string) ($withdrawal->provider ?? 'DANA'));
         $createdAt = $withdrawal->created_at;
@@ -499,12 +545,107 @@ class WalletService
             'provider'       => $provider,
             'order_id'       => null,
             'withdrawal_id'  => $withdrawal->id,
+            'payout_id'      => null,
             'created_at'     => $createdAt?->toIso8601String(),
             'date'           => $createdAt?->format('d M Y'),
             'date_label'     => $createdAt?->format('Y-m-d'),
             'time'           => $createdAt?->format('H:i'),
             'processed_at'   => $withdrawal->processed_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Normalisasi transaksi payout/penarikan v1 (`payout_transactions`).
+     */
+    private function normalizePayoutEntry(PayoutTransaction $payout): array
+    {
+        $status = $this->normalizeWithdrawalStatus((string) $payout->status);
+        $channelLabel = $this->formatPayoutChannelLabel($payout);
+        $createdAt = $payout->created_at ?? $payout->scheduled_at;
+        $processedAt = $payout->completed_at ?? $payout->failed_at;
+
+        return [
+            'id'             => 'po-' . $payout->id,
+            'kind'           => 'withdrawal',
+            'title'          => 'Penarikan ke ' . $channelLabel,
+            'description'    => $payout->failure_reason,
+            'amount'         => -(float) $payout->amount,
+            'fee'            => (float) $payout->fee,
+            'net_amount'     => (float) $payout->net_amount,
+            'status'         => $status,
+            'status_label'   => $this->statusLabel($status),
+            'reference'      => $payout->provider_reference ?: $payout->reference,
+            'destination'    => $payout->account_number_masked,
+            'account_name'   => $payout->account_holder_name,
+            'provider'       => $channelLabel,
+            'order_id'       => null,
+            'withdrawal_id'  => $payout->legacy_withdrawal_id,
+            'payout_id'      => $payout->id,
+            'created_at'     => $createdAt?->toIso8601String(),
+            'date'           => $createdAt?->format('d M Y'),
+            'date_label'     => $createdAt?->format('Y-m-d'),
+            'time'           => $createdAt?->format('H:i'),
+            'processed_at'   => $processedAt?->toIso8601String(),
+        ];
+    }
+
+    private function normalizeWithdrawalStatus(string $rawStatus): string
+    {
+        return match (strtolower(trim($rawStatus))) {
+            'success', 'completed'           => 'success',
+            'processing', 'approved'         => 'processing',
+            'failed', 'rejected', 'reversed' => 'failed',
+            'cancelled'                      => 'cancelled',
+            default                          => 'pending',
+        };
+    }
+
+    private function formatPayoutChannelLabel(PayoutTransaction $payout): string
+    {
+        if ($payout->relationLoaded('destination') && ! empty($payout->destination?->channel_name)) {
+            return (string) $payout->destination->channel_name;
+        }
+
+        $code = strtoupper(trim((string) $payout->channel_code));
+        if ($code === '') {
+            return strtoupper((string) ($payout->provider ?? 'PAYOUT'));
+        }
+
+        return match ($code) {
+            'ID_BCA'       => 'Bank BCA',
+            'ID_BRI'       => 'Bank BRI',
+            'ID_BNI'       => 'Bank BNI',
+            'ID_MANDIRI'   => 'Bank Mandiri',
+            'ID_CIMB'      => 'CIMB Niaga',
+            'ID_PERMATA'   => 'Bank Permata',
+            'ID_BSI'       => 'BSI',
+            'ID_DANA'      => 'DANA',
+            'ID_OVO'       => 'OVO',
+            'ID_GOPAY'     => 'GoPay',
+            'ID_SHOPEEPAY' => 'ShopeePay',
+            'ID_LINKAJA'   => 'LinkAja',
+            default        => str_starts_with($code, 'ID_') ? substr($code, 3) : $code,
+        };
+    }
+
+    /**
+     * Judul & pesan notifikasi untuk satu transaksi payout v1.
+     *
+     * @return array{0:string,1:string,2:string}
+     */
+    private function payoutNotification(PayoutTransaction $payout): array
+    {
+        $amount  = 'Rp' . number_format((float) $payout->amount, 0, ',', '.');
+        $channel = $this->formatPayoutChannelLabel($payout);
+        $dest    = $payout->account_number_masked ?: '-';
+
+        return match ($this->normalizeWithdrawalStatus((string) $payout->status)) {
+            'success'    => ['Penarikan berhasil', 'Penarikan ' . $amount . ' sudah dikirim ke ' . $channel . ' (' . $dest . ').', 'success'],
+            'processing' => ['Penarikan sedang diproses', 'Penarikan ' . $amount . ' ke ' . $channel . ' (' . $dest . ') sedang diproses.', 'info'],
+            'failed'     => ['Penarikan gagal', 'Penarikan ' . $amount . ' gagal: ' . ($payout->failure_reason ?: 'ditolak provider') . '. Saldo dikembalikan.', 'error'],
+            'cancelled'  => ['Penarikan dibatalkan', 'Penarikan ' . $amount . ' dibatalkan. Saldo kembali ke dompet Anda.', 'warning'],
+            default      => ['Penarikan diajukan', 'Permintaan penarikan ' . $amount . ' ke ' . $channel . ' (' . $dest . ') menunggu diproses.', 'info'],
+        };
     }
 
     private function statusLabel(string $status): string

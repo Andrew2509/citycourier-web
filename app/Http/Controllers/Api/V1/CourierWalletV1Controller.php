@@ -111,7 +111,11 @@ class CourierWalletV1Controller extends Controller
 
         $query = WalletTransaction::where('wallet_id', $wallet->id)->orderByDesc('id');
         if ($type !== '' && $type !== 'all') {
-            $query->where('type', $type);
+            if ($type === 'withdrawal') {
+                $query->whereIn('type', ['withdrawal', 'payout', 'payout_reversal', 'withdrawal_hold', 'withdrawal_release']);
+            } else {
+                $query->where('type', $type);
+            }
         }
         if ($status !== '' && $status !== 'all') {
             $query->where('status', $status);

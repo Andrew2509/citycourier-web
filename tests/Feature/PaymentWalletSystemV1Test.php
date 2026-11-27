@@ -566,4 +566,84 @@ class PaymentWalletSystemV1Test extends TestCase
 
         $this->assertTrue(app(LedgerReconciliationService::class)->runReconciliation()['is_clean']);
     }
+
+    public function test_courier_v1_withdrawals_appear_in_legacy_history_penarikan_filter_and_notifications(): void
+    {
+        $courierUser = User::create(['name' => 'Kurir V1 History', 'email' => 'v1hist@city.test', 'role' => 'courier']);
+        $courier = Courier::create([
+            'user_id' => $courierUser->id,
+            'phone' => '081233334444',
+            'vehicle_type' => 'motor',
+            'is_verified' => true,
+            'is_active' => true,
+        ]);
+
+        $walletManager = app(WalletLedgerManager::class);
+        $wallet = $walletManager->getOrCreateCourierWallet($courier);
+        $walletManager->creditPendingEarning(
+            $wallet,
+            100000,
+            10000,
+            90000,
+            'EARN-HIST-1',
+            'idem-earn-hist-1',
+            'Pendapatan order #101'
+        );
+        $walletManager->releasePendingToAvailable(
+            $wallet,
+            90000,
+            'EARN-HIST-REL-1',
+            'idem-earn-hist-rel-1',
+            'Pendapatan siap cair #101'
+        );
+
+        Sanctum::actingAs($courierUser);
+
+        $destId = $this->postJson('/api/v1/courier/wallet/destinations', [
+            'destination_type' => 'bank',
+            'channel_code' => 'ID_BCA',
+            'account_number' => '8880001234',
+            'account_holder_name' => 'Kurir V1 History',
+            'is_default' => true,
+        ])->assertStatus(201)->json('data.id');
+
+        $payoutRes = $this->withHeaders(['Idempotency-Key' => 'idem-cur-wd-hist-1'])
+            ->postJson('/api/v1/courier/wallet/withdrawals', [
+                'amount' => 50000,
+                'destination_id' => $destId,
+            ])
+            ->assertStatus(201);
+
+        $payoutId = (int) $payoutRes->json('data.id');
+
+        // Filter "Semua" menampilkan earning dan penarikan v1
+        $allHistory = $this->getJson('/api/courier/wallet/history')
+            ->assertOk();
+        $this->assertSame(2, $allHistory->json('data.total'));
+
+        // Filter "Penarikan" (filter=withdrawal) wajib menampilkan penarikan v1
+        $wdHistory = $this->getJson('/api/courier/wallet/history?filter=withdrawal')
+            ->assertOk();
+        $this->assertSame(1, $wdHistory->json('data.total'));
+        $wdRow = $wdHistory->json('data.transactions.0');
+        $this->assertSame('withdrawal', $wdRow['kind']);
+        $this->assertSame($payoutId, $wdRow['payout_id']);
+        $this->assertNull($wdRow['withdrawal_id']);
+        $this->assertSame('Bank BCA', $wdRow['provider']);
+        $this->assertSame(-50000.0, (float) $wdRow['amount']);
+
+        // Filter "Pendapatan" tidak ikut menampilkan penarikan
+        $earnHistory = $this->getJson('/api/courier/wallet/history?filter=earning')
+            ->assertOk();
+        $this->assertSame(1, $earnHistory->json('data.total'));
+        $this->assertSame('earning', $earnHistory->json('data.transactions.0.kind'));
+
+        // Notifikasi dan ringkasan saldo dompet juga mencakup penarikan v1
+        $notifRes = $this->getJson('/api/courier/wallet/notifications')->assertOk();
+        $this->assertNotEmpty($notifRes->json('data.notifications'));
+
+        $walletSummary = $this->getJson('/api/courier/wallet')->assertOk();
+        $this->assertSame(40000.0, (float) $walletSummary->json('data.available_balance'));
+        $this->assertSame(50000.0, (float) $walletSummary->json('data.total_withdrawn'));
+    }
 }

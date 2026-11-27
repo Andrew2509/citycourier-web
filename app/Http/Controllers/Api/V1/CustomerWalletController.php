@@ -85,7 +85,11 @@ class CustomerWalletController extends Controller
             ->orderByDesc('id');
 
         if ($type !== '' && $type !== 'all') {
-            $query->where('type', $type);
+            if ($type === 'withdrawal') {
+                $query->whereIn('type', ['withdrawal', 'payout', 'payout_reversal']);
+            } else {
+                $query->where('type', $type);
+            }
         }
         if ($status !== '' && $status !== 'all') {
             $query->where('status', $status);
