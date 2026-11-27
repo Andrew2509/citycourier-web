@@ -693,6 +693,13 @@ class ShipmentController extends Controller
                     'cancellation_reason'   => $reason,
                     'cancelled_from_status' => $previousOrderStatus,
                 ]);
+
+                if ($courierId) {
+                    $lockedCourier = \App\Models\Courier::where('id', $courierId)->lockForUpdate()->first();
+                    if ($lockedCourier) {
+                        app(\App\Services\CourierAvailabilityService::class)->syncPersistedStatus($lockedCourier);
+                    }
+                }
             } else {
                 $lastLog = $shipment->logs()->whereNotNull('courier_id')->latest()->first();
                 if ($lastLog) {

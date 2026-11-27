@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shipment;
+use App\Services\CourierAvailabilityService;
 use App\Services\RajaOngkirMatcherService;
 use App\Services\ShipmentNotificationService;
 use App\Services\TrackingService;
@@ -254,6 +255,10 @@ class ShipmentController extends Controller
                 $orderUpdate['cancelled_from_status'] = $order->status;
             }
             $order->update($orderUpdate);
+
+            if ($order->courier) {
+                app(CourierAvailabilityService::class)->syncPersistedStatus($order->courier);
+            }
 
             if (
                 $newStatus === 'delivered'

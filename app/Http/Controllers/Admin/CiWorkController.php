@@ -14,15 +14,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Attendance;
 use App\Models\CourierLocation;
+use App\Services\CourierAvailabilityService;
 use App\Services\TrackingService;
 
 class CiWorkController extends Controller
 {
     protected TrackingService $tracking;
 
-    public function __construct(TrackingService $tracking)
-    {
+    protected CourierAvailabilityService $availability;
+
+    public function __construct(
+        TrackingService $tracking,
+        ?CourierAvailabilityService $availability = null
+    ) {
         $this->tracking = $tracking;
+        $this->availability = $availability ?? app(CourierAvailabilityService::class);
     }
 
     /**
@@ -51,7 +57,7 @@ class CiWorkController extends Controller
         $deliveredToday = Order::where('status', 'delivered')->whereDate('delivered_at', today())->get();
 
         $activeOrders  = Order::with(['courier.user', 'shipment'])
-            ->whereIn('status', ['assigned', 'picking_up', 'picked_up', 'delivering'])
+            ->whereIn('status', Order::ACTIVE_STATUSES)
             ->latest()
             ->get();
 
@@ -254,7 +260,7 @@ class CiWorkController extends Controller
             ]);
         }
 
-        $available = Courier::with('user')->where('is_active', true)->get();
+        $available = Courier::with('user')->availableForOrders()->get();
 
         if ($available->isEmpty()) {
             return response()->json([
@@ -266,31 +272,50 @@ class CiWorkController extends Controller
 
         $assigned = 0;
 
-        DB::transaction(function () use ($pending, $available, &$assigned) {
+        DB::transaction(function () use ($pending, &$available, &$assigned) {
             foreach ($pending as $order) {
-                $courier = $this->nearestCourier($order, $available);
+                if ($available->isEmpty()) {
+                    break;
+                }
 
-                $order->update(['courier_id' => $courier->id, 'status' => 'assigned']);
+                $lockedOrder = Order::with('shipment')->where('id', $order->id)->lockForUpdate()->first();
+                if (! $lockedOrder || $lockedOrder->status !== 'pending') {
+                    continue;
+                }
 
-                if ($order->shipment) {
-                    $order->shipment->update(['status' => 'assigned']);
+                $courier = $this->nearestCourier($lockedOrder, $available);
+                $lockedCourier = Courier::where('id', $courier->id)->lockForUpdate()->first();
+                if (! $lockedCourier || ! $this->availability->canReceiveNewOrderOffer($lockedCourier)) {
+                    $available = $available->reject(fn (Courier $c) => (int) $c->id === (int) $courier->id)->values();
+                    continue;
+                }
+
+                $lockedOrder->update(['courier_id' => $lockedCourier->id, 'status' => 'assigned']);
+
+                if ($lockedOrder->shipment) {
+                    $lockedOrder->shipment->update(['status' => 'assigned']);
                     $this->tracking->createStatusHistory(
-                        $order->shipment,
+                        $lockedOrder->shipment,
                         'assigned',
-                        $courier->id,
-                        $courier->latitude ? (float) $courier->latitude : null,
-                        $courier->longitude ? (float) $courier->longitude : null
+                        $lockedCourier->id,
+                        $lockedCourier->latitude ? (float) $lockedCourier->latitude : null,
+                        $lockedCourier->longitude ? (float) $lockedCourier->longitude : null
                     );
                 }
 
+                $this->availability->syncPersistedStatus($lockedCourier, $lockedOrder, checkDatabase: false);
+                // Satu kurir hanya boleh menerima satu pesanan aktif dalam satu waktu.
+                $available = $available->reject(fn (Courier $c) => (int) $c->id === (int) $lockedCourier->id)->values();
                 $assigned++;
             }
         });
 
         return response()->json([
-            'ok'       => true,
+            'ok'       => $assigned > 0,
             'assigned' => $assigned,
-            'message'  => "Auto-assign berhasil: {$assigned} order ditetapkan ke kurir terdekat.",
+            'message'  => $assigned > 0
+                ? "Auto-assign berhasil: {$assigned} order ditetapkan ke kurir terdekat."
+                : 'Tidak ada kurir tersedia yang memenuhi syarat untuk auto-assign.',
         ]);
     }
 
@@ -306,7 +331,7 @@ class CiWorkController extends Controller
             ]);
         }
 
-        $available = Courier::with('user')->where('is_active', true)->get();
+        $available = Courier::with('user')->availableForOrders()->get();
 
         if ($available->isEmpty()) {
             return response()->json([
@@ -317,24 +342,45 @@ class CiWorkController extends Controller
 
         $courier = $this->nearestCourier($order, $available);
 
-        DB::transaction(function () use ($order, $courier) {
-            $order->update(['courier_id' => $courier->id, 'status' => 'assigned']);
+        $outcome = DB::transaction(function () use ($order, $courier) {
+            $lockedCourier = Courier::where('id', $courier->id)->lockForUpdate()->first();
+            $lockedOrder = Order::with('shipment')->where('id', $order->id)->lockForUpdate()->first();
 
-            if ($order->shipment) {
-                $order->shipment->update(['status' => 'assigned']);
+            if (! $lockedOrder || $lockedOrder->status !== 'pending') {
+                return ['ok' => false, 'message' => "Order #{$order->tracking_number} sudah bukan berstatus pending."];
+            }
+
+            if (! $lockedCourier || ! $this->availability->canReceiveNewOrderOffer($lockedCourier)) {
+                return ['ok' => false, 'message' => 'Kurir terpilih sedang tidak tersedia untuk menerima pesanan baru.'];
+            }
+
+            $lockedOrder->update(['courier_id' => $lockedCourier->id, 'status' => 'assigned']);
+
+            if ($lockedOrder->shipment) {
+                $lockedOrder->shipment->update(['status' => 'assigned']);
                 $this->tracking->createStatusHistory(
-                    $order->shipment,
+                    $lockedOrder->shipment,
                     'assigned',
-                    $courier->id,
-                    $courier->latitude ? (float) $courier->latitude : null,
-                    $courier->longitude ? (float) $courier->longitude : null
+                    $lockedCourier->id,
+                    $lockedCourier->latitude ? (float) $lockedCourier->latitude : null,
+                    $lockedCourier->longitude ? (float) $lockedCourier->longitude : null
                 );
             }
+
+            $this->availability->syncPersistedStatus($lockedCourier, $lockedOrder, checkDatabase: false);
+
+            return ['ok' => true, 'courier' => $lockedCourier];
         });
+
+        if (! $outcome['ok']) {
+            return response()->json($outcome);
+        }
+
+        $assignedCourier = $outcome['courier'];
 
         return response()->json([
             'ok'      => true,
-            'message' => "Order #{$order->tracking_number} ditetapkan ke " . ($courier->user?->name ?? 'kurir') . '.',
+            'message' => "Order #{$order->tracking_number} ditetapkan ke " . ($assignedCourier->user?->name ?? 'kurir') . '.',
         ]);
     }
 
@@ -386,7 +432,7 @@ class CiWorkController extends Controller
             'attendance'  => fn ($q) => $q->whereDate('check_in_at', $date)->latest(),
             'locations'   => fn ($q) => $q->latest('recorded_at')->take(1),
         ])
-            ->with(['orders' => fn ($q) => $q->whereIn('status', ['assigned', 'picking_up', 'delivering'])])
+            ->with(['orders' => fn ($q) => $q->whereIn('status', Order::ACTIVE_STATUSES)])
             ->paginate(10);
 
         $cutoffCarbon = $cutoff ? \Carbon\Carbon::createFromFormat('H:i', $cutoff) : null;
@@ -501,7 +547,7 @@ class CiWorkController extends Controller
             'user',
             'attendance' => fn ($q) => $q->whereDate('check_in_at', $today)->latest(),
             'locations'  => fn ($q) => $q->latest('recorded_at')->take(1),
-            'orders'     => fn ($q) => $q->whereIn('status', ['assigned', 'picking_up', 'delivering']),
+            'orders'     => fn ($q) => $q->whereIn('status', Order::ACTIVE_STATUSES),
         ])->get();
 
         $data = [];
@@ -605,7 +651,7 @@ class CiWorkController extends Controller
     public function tasks()
     {
         $tasks = Order::with(['courier.user', 'shipment'])
-            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+            ->whereIn('status', Order::ACTIVE_STATUSES)
             ->latest()
             ->paginate(10);
 

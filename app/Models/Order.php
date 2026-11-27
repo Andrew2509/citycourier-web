@@ -10,6 +10,24 @@ class Order extends Model
 {
     use HasFactory;
 
+    public const ACTIVE_STATUSES = [
+        'assigned',
+        'picking_up',
+        'picked_up',
+        'delivering',
+        'in_transit',
+    ];
+
+    public static function activeStatuses(): array
+    {
+        return self::ACTIVE_STATUSES;
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', self::ACTIVE_STATUSES);
+    }
+
     protected $fillable = [
         'order_number',
         'courier_id',

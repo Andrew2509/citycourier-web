@@ -8,8 +8,10 @@ use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Shipment;
 use App\Models\User;
+use App\Services\CourierAvailabilityService;
 use App\Services\TrackingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
@@ -29,7 +31,7 @@ class AdminController extends Controller
      */
     public function dashboard()
     {
-        $activeOrderStatuses = ['assigned', 'picking_up', 'picked_up', 'delivering'];
+        $activeOrderStatuses = Order::ACTIVE_STATUSES;
         $today = today();
 
         $stats = [
@@ -420,41 +422,54 @@ class AdminController extends Controller
 
         $decision = $request->input('decision');
         $adminNotes = trim((string) $request->input('admin_notes', ''));
-        $shipment = Shipment::where('shipment_number', $order->order_number)->first();
-        $courier = $order->courier ?? $order->lastCancelledCourier;
-        $courierName = $courier?->user?->name ?? $courier?->name ?? 'Kurir';
 
-        if ($decision === 'approve') {
-            $order->update([
-                'courier_id' => null,
-                'status' => 'pending',
-                'pickup_started_at' => null,
-                'courier_cancel_status' => 'approved',
-                'courier_cancelled_by_id' => $courier?->id ?? $order->courier_cancelled_by_id,
+        return DB::transaction(function () use ($order, $decision, $adminNotes, $trackingService) {
+            $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first() ?? $order;
+            $shipment = Shipment::where('shipment_number', $lockedOrder->order_number)->lockForUpdate()->first();
+            $courier = $lockedOrder->courier ?? $lockedOrder->lastCancelledCourier;
+            $lockedCourier = $courier ? Courier::where('id', $courier->id)->lockForUpdate()->first() : null;
+            $courierName = $lockedCourier?->user?->name ?? $lockedCourier?->name ?? 'Kurir';
+
+            if ($decision === 'approve') {
+                $lockedOrder->update([
+                    'courier_id' => null,
+                    'status' => 'pending',
+                    'pickup_started_at' => null,
+                    'courier_cancel_status' => 'approved',
+                    'courier_cancelled_by_id' => $lockedCourier?->id ?? $lockedOrder->courier_cancelled_by_id,
+                ]);
+
+                if ($shipment) {
+                    $shipment->update(['status' => 'confirmed']);
+                    $desc = "Permintaan pembatalan penugasan kurir {$courierName} disetujui oleh Admin City Courier. Pesanan dikembalikan ke antrean penugasan."
+                        .($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
+                    $trackingService->createStatusHistory($shipment, 'confirmed', $lockedCourier?->id, null, null, null, $desc);
+                }
+
+                if ($lockedCourier) {
+                    app(CourierAvailabilityService::class)->syncPersistedStatus($lockedCourier);
+                }
+
+                return back()->with('success', "Permintaan pembatalan penugasan kurir {$courierName} telah disetujui. Pesanan dikembalikan ke antrean.");
+            }
+
+            // Jika ditolak: kurir tetap bertugas
+            $lockedOrder->update([
+                'courier_cancel_status' => 'rejected',
             ]);
 
             if ($shipment) {
-                $shipment->update(['status' => 'confirmed']);
-                $desc = "Permintaan pembatalan penugasan kurir {$courierName} disetujui oleh Admin City Courier. Pesanan dikembalikan ke antrean penugasan."
+                $desc = "Permintaan pembatalan penugasan kurir {$courierName} ditolak oleh Admin City Courier. Kurir tetap melanjutkan penugasan."
                     .($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
-                $trackingService->createStatusHistory($shipment, 'confirmed', $courier?->id, null, null, null, $desc);
+                $trackingService->createStatusHistory($shipment, $shipment->status, $lockedCourier?->id, null, null, null, $desc);
             }
 
-            return back()->with('success', "Permintaan pembatalan penugasan kurir {$courierName} telah disetujui. Pesanan dikembalikan ke antrean.");
-        }
+            if ($lockedCourier) {
+                app(CourierAvailabilityService::class)->syncPersistedStatus($lockedCourier);
+            }
 
-        // Jika ditolak: kurir tetap bertugas
-        $order->update([
-            'courier_cancel_status' => 'rejected',
-        ]);
-
-        if ($shipment) {
-            $desc = "Permintaan pembatalan penugasan kurir {$courierName} ditolak oleh Admin City Courier. Kurir tetap melanjutkan penugasan."
-                .($adminNotes !== '' ? " Catatan Admin: {$adminNotes}" : '');
-            $trackingService->createStatusHistory($shipment, $shipment->status, $courier?->id, null, null, null, $desc);
-        }
-
-        return back()->with('success', "Permintaan pembatalan penugasan kurir {$courierName} telah ditolak. Penugasan tetap aktif.");
+            return back()->with('success', "Permintaan pembatalan penugasan kurir {$courierName} telah ditolak. Penugasan tetap aktif.");
+        });
     }
 
     /**

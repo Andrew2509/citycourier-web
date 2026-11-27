@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Courier;
 use App\Models\Order;
 use App\Models\OrderRejection;
 use App\Models\Shipment;
+use App\Services\CourierAvailabilityService;
 use App\Services\TrackingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,9 +18,14 @@ class OrderController extends Controller
 {
     protected TrackingService $trackingService;
 
-    public function __construct(TrackingService $trackingService)
-    {
+    protected CourierAvailabilityService $availabilityService;
+
+    public function __construct(
+        TrackingService $trackingService,
+        ?CourierAvailabilityService $availabilityService = null
+    ) {
         $this->trackingService = $trackingService;
+        $this->availabilityService = $availabilityService ?? app(CourierAvailabilityService::class);
     }
 
     /**
@@ -27,7 +34,7 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -88,13 +95,27 @@ class OrderController extends Controller
      */
     public function available(Request $request)
     {
-        $courier = $request->user()?->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses ditolak. Hanya kurir yang dapat melihat daftar pesanan tersedia.',
             ], 403);
+        }
+
+        $eval = $this->availabilityService->evaluateAvailability($courier);
+        if (! $eval['allowed']) {
+            return response()->json([
+                'success' => true,
+                'data'    => [],
+                'meta'    => [
+                    'eligible_for_orders' => false,
+                    'work_status'         => $eval['work_status'],
+                    'reason_code'         => $eval['reason_code'],
+                    'message'             => $eval['message'],
+                ],
+            ]);
         }
 
         $query = Order::with('shipment')->where('status', 'pending');
@@ -111,7 +132,13 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $orders,
+            'data'    => $orders,
+            'meta'    => [
+                'eligible_for_orders' => true,
+                'work_status'         => Courier::STATUS_ONLINE,
+                'reason_code'         => null,
+                'message'             => null,
+            ],
         ]);
     }
 
@@ -121,7 +148,7 @@ class OrderController extends Controller
      */
     public function active(Request $request)
     {
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -130,9 +157,8 @@ class OrderController extends Controller
             ], 404);
         }
 
-        // Active statuses: assigned, picking_up, picked_up, delivering (cancelled is excluded)
         $order = Order::with('shipment')->where('courier_id', $courier->id)
-            ->whereIn('status', ['assigned', 'picking_up', 'picked_up', 'delivering'])
+            ->whereIn('status', Order::ACTIVE_STATUSES)
             ->latest('updated_at')
             ->first();
 
@@ -167,7 +193,7 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -181,6 +207,44 @@ class OrderController extends Controller
         // 1. Klaim / Terima pesanan (status: assigned) dengan Locking Concurrency
         if ($newStatus === 'assigned') {
             return DB::transaction(function () use ($request, $courier) {
+                // Kunci baris kurir terlebih dahulu agar request bersamaan diserialisasi
+                // dan satu kurir tidak pernah dapat menerima lebih dari satu pesanan aktif.
+                $lockedCourier = Courier::where('id', $courier->id)->lockForUpdate()->first();
+                if (! $lockedCourier) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Profil kurir tidak ditemukan.',
+                    ], 404);
+                }
+
+                $existingActiveOrder = $this->availabilityService->findActiveOrderForCourier($lockedCourier, lock: true);
+                if ($existingActiveOrder !== null) {
+                    $this->availabilityService->syncPersistedStatus($lockedCourier, $existingActiveOrder, checkDatabase: false);
+                    $isSameOrder = (int) $existingActiveOrder->id === (int) $request->order_id;
+                    $snapshot = $this->availabilityService->getAvailabilitySnapshot($lockedCourier->fresh(), $existingActiveOrder);
+
+                    return response()->json([
+                        'success'        => false,
+                        'error_code'     => $isSameOrder ? 'order_unavailable' : 'courier_busy',
+                        'message'        => $isSameOrder
+                            ? 'Pesanan ini sudah Anda terima atau sedang dikerjakan.'
+                            : ($snapshot['unavailable_message'] ?? 'Anda masih memiliki pesanan aktif. Selesaikan pengantaran sebelum menerima pesanan baru.'),
+                        'courier_status' => $snapshot,
+                    ], 409);
+                }
+
+                $availability = $this->availabilityService->evaluateAvailability($lockedCourier, null);
+                if (! $availability['allowed']) {
+                    $statusCode = $availability['reason_code'] === 'courier_not_verified' ? 403 : 409;
+
+                    return response()->json([
+                        'success'        => false,
+                        'error_code'     => $availability['reason_code'],
+                        'message'        => $availability['message'],
+                        'courier_status' => $this->availabilityService->getAvailabilitySnapshot($lockedCourier),
+                    ], $statusCode);
+                }
+
                 $order = Order::where('id', $request->order_id)->lockForUpdate()->first();
 
                 if (!$order) {
@@ -200,15 +264,19 @@ class OrderController extends Controller
                     ], 409);
                 }
 
-                if ($order->status !== 'pending') {
+                if (
+                    $order->status !== 'pending'
+                    || ($order->courier_id !== null && (int) $order->courier_id !== (int) $lockedCourier->id)
+                ) {
                     return response()->json([
-                        'success' => false,
-                        'message' => 'Pesanan ini sudah diterima oleh kurir lain atau tidak lagi tersedia.',
+                        'success'    => false,
+                        'error_code' => 'order_unavailable',
+                        'message'    => 'Pesanan ini sudah diterima oleh kurir lain atau tidak lagi tersedia.',
                     ], 409);
                 }
 
                 $order->update([
-                    'courier_id'            => $courier->id,
+                    'courier_id'            => $lockedCourier->id,
                     'status'                => 'assigned',
                     'courier_cancel_status' => null,
                 ]);
@@ -216,7 +284,7 @@ class OrderController extends Controller
                 if ($shipment) {
                     $shipment->update(['status' => 'assigned']);
 
-                    $courierName = $courier->user?->name ?? $courier->name ?? 'Kurir';
+                    $courierName = $lockedCourier->user?->name ?? $lockedCourier->name ?? 'Kurir';
                     $vehicleName = $order->vehicle_display_name;
                     $desc = "Pesanan telah diterima oleh {$courierName} ({$vehicleName}).";
                     if ($order->scheduled_pickup && $order->pickup_time) {
@@ -226,7 +294,7 @@ class OrderController extends Controller
                     $this->trackingService->createStatusHistory(
                         $shipment,
                         'assigned',
-                        $courier->id,
+                        $lockedCourier->id,
                         $request->latitude,
                         $request->longitude,
                         null,
@@ -234,10 +302,14 @@ class OrderController extends Controller
                     );
                 }
 
+                $freshOrder = $order->fresh(['shipment']);
+                $this->availabilityService->syncPersistedStatus($lockedCourier, $freshOrder, checkDatabase: false);
+
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Pesanan berhasil diambil.',
-                    'data'    => $order->fresh(['shipment']),
+                    'success'        => true,
+                    'message'        => 'Pesanan berhasil diambil.',
+                    'data'           => $freshOrder,
+                    'courier_status' => $this->availabilityService->getAvailabilitySnapshot($lockedCourier->fresh(), $freshOrder),
                 ]);
             });
         }
@@ -255,6 +327,7 @@ class OrderController extends Controller
         $creditedOrderId = null;
 
         $response = DB::transaction(function () use ($request, $courier, $newStatus, &$creditedOrderId) {
+            $lockedCourier = Courier::where('id', $courier->id)->lockForUpdate()->first();
             $order = Order::where('id', $request->order_id)->lockForUpdate()->first();
 
             if (!$order) {
@@ -403,10 +476,17 @@ class OrderController extends Controller
                 $creditedOrderId = $order->id;
             }
 
+            if ($lockedCourier) {
+                $this->availabilityService->syncPersistedStatus($lockedCourier);
+            }
+
             return response()->json([
-                'success' => true,
-                'message' => 'Status order berhasil diperbarui.',
-                'data'    => $order->fresh(['shipment']),
+                'success'        => true,
+                'message'        => 'Status order berhasil diperbarui.',
+                'data'           => $order->fresh(['shipment']),
+                'courier_status' => $lockedCourier
+                    ? $this->availabilityService->getAvailabilitySnapshot($lockedCourier->fresh())
+                    : null,
             ]);
         });
 
@@ -439,7 +519,7 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
         if (!$courier) {
             return response()->json(['success' => false, 'message' => 'Profil kurir tidak ditemukan.'], 404);
         }
@@ -543,7 +623,7 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $courier = $request->user()?->courier;
+        $courier = $request->user()?->courier()->first();
         if (!$courier) {
             return response()->json([
                 'success'    => false,
@@ -554,6 +634,7 @@ class OrderController extends Controller
         }
 
         return DB::transaction(function () use ($request, $courier, $orderId, $resolvedReason, $rawNotes) {
+            $lockedCourier = Courier::where('id', $courier->id)->lockForUpdate()->first();
             $order = Order::where('id', $orderId)->lockForUpdate()->first();
 
             if (!$order) {
@@ -750,6 +831,10 @@ class OrderController extends Controller
                 );
             }
 
+            if ($lockedCourier) {
+                $this->availabilityService->syncPersistedStatus($lockedCourier);
+            }
+
             return response()->json([
                 'success'              => true,
                 'already_processed'    => false,
@@ -760,6 +845,9 @@ class OrderController extends Controller
                 'title'                => 'Penugasan Berhasil Dibatalkan',
                 'message'              => 'Penugasan pesanan ini sudah dilepas dari akun kamu.',
                 'data'                 => $order->fresh(['shipment']),
+                'courier_status'       => $lockedCourier
+                    ? $this->availabilityService->getAvailabilitySnapshot($lockedCourier->fresh())
+                    : null,
             ], 200);
         });
     }
@@ -816,7 +904,7 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $courier = $request->user()?->courier;
+        $courier = $request->user()?->courier()->first();
         if (!$courier) {
             return response()->json([
                 'success'    => false,
@@ -827,6 +915,7 @@ class OrderController extends Controller
         }
 
         return DB::transaction(function () use ($request, $courier, $orderId, $resolvedReason, $rawNotes) {
+            $lockedCourier = Courier::where('id', $courier->id)->lockForUpdate()->first();
             $order = Order::where('id', $orderId)->lockForUpdate()->first();
             if (!$order && is_string($orderId)) {
                 $order = Order::where('order_number', $orderId)->lockForUpdate()->first();

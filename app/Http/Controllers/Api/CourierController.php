@@ -4,17 +4,26 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Courier;
+use App\Models\Order;
+use App\Services\CourierAvailabilityService;
 use App\Services\TrackingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class CourierController extends Controller
 {
     protected TrackingService $trackingService;
 
-    public function __construct(TrackingService $trackingService)
-    {
+    protected CourierAvailabilityService $availabilityService;
+
+    public function __construct(
+        TrackingService $trackingService,
+        ?CourierAvailabilityService $availabilityService = null
+    ) {
         $this->trackingService = $trackingService;
+        $this->availabilityService = $availabilityService ?? app(CourierAvailabilityService::class);
     }
 
     /**
@@ -42,26 +51,30 @@ class CourierController extends Controller
 
                 $courierName = $courier->user->name ?? $courier->name ?? 'Kurir';
 
+                $snapshot = $this->availabilityService->getAvailabilitySnapshot($courier);
+
                 return [
-                    'id'                  => $courier->id,
-                    'name'                => $courierName,
-                    'courier_name'        => $courierName,
-                    'phone'               => $courier->phone ?? $courier->user?->phone,
-                    'photo'               => $photo,
-                    'photo_url'           => $photo,
-                    'avatar'              => $photo,
-                    'vehicle_type'        => $courier->vehicle_type ?? 'motor',
-                    'vehicle_brand'       => $courier->vehicle_brand,
-                    'vehicle_model'       => $courier->vehicle_model,
-                    'vehicle_plate'       => $courier->vehicle_plate,
-                    'plate_number'        => $courier->vehicle_plate,
-                    'vehicle_description' => $vehicleDesc,
-                    'city'                => $courier->city,
-                    'rating_avg'          => $courier->rating_avg,
-                    'rating_count'        => $courier->rating_count,
-                    'is_active'           => $courier->is_active,
-                    'latitude'            => $courier->latitude,
-                    'longitude'           => $courier->longitude,
+                    'id'                      => $courier->id,
+                    'name'                    => $courierName,
+                    'courier_name'            => $courierName,
+                    'phone'                   => $courier->phone ?? $courier->user?->phone,
+                    'photo'                   => $photo,
+                    'photo_url'               => $photo,
+                    'avatar'                  => $photo,
+                    'vehicle_type'            => $courier->vehicle_type ?? 'motor',
+                    'vehicle_brand'           => $courier->vehicle_brand,
+                    'vehicle_model'           => $courier->vehicle_model,
+                    'vehicle_plate'           => $courier->vehicle_plate,
+                    'plate_number'            => $courier->vehicle_plate,
+                    'vehicle_description'     => $vehicleDesc,
+                    'city'                    => $courier->city,
+                    'rating_avg'              => $courier->rating_avg,
+                    'rating_count'            => $courier->rating_count,
+                    'is_active'               => $courier->is_active,
+                    'work_status'             => $snapshot['work_status'],
+                    'is_available_for_orders' => $snapshot['can_accept_orders'],
+                    'latitude'                => $courier->latitude,
+                    'longitude'               => $courier->longitude,
                 ];
             });
 
@@ -77,7 +90,7 @@ class CourierController extends Controller
      */
     public function details(Request $request)
     {
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -86,15 +99,12 @@ class CourierController extends Controller
             ], 404);
         }
 
+        $this->availabilityService->syncPersistedStatus($courier);
+        $snapshot = $this->availabilityService->getAvailabilitySnapshot($courier->fresh());
+
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $courier->id,
-                'work_status' => $courier->is_active ? 'online' : 'offline',
-                'latitude' => $courier->latitude,
-                'longitude' => $courier->longitude,
-                'is_verified' => $courier->is_verified,
-            ],
+            'data' => $snapshot,
         ]);
     }
 
@@ -109,7 +119,7 @@ class CourierController extends Controller
      */
     public function registrationStatus(Request $request)
     {
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -158,7 +168,7 @@ class CourierController extends Controller
             ], 422);
         }
 
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -167,26 +177,66 @@ class CourierController extends Controller
             ], 404);
         }
 
-        $isOnline = $request->status === 'online';
-        
-        $updateData = ['is_active' => $isOnline];
-        
-        if ($request->has('latitude') && $request->has('longitude')) {
-            $updateData['latitude'] = $request->latitude;
-            $updateData['longitude'] = $request->longitude;
-        }
+        $requestedStatus = $request->status;
 
-        $courier->update($updateData);
+        return DB::transaction(function () use ($request, $courier, $requestedStatus) {
+            $lockedCourier = Courier::where('id', $courier->id)->lockForUpdate()->first();
+            if (! $lockedCourier) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Profil kurir tidak ditemukan.',
+                ], 404);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status berhasil diperbarui.',
-            'data' => [
-                'work_status' => $courier->is_active ? 'online' : 'offline',
-                'latitude' => $courier->latitude,
-                'longitude' => $courier->longitude,
-            ],
-        ]);
+            $activeOrder = $this->availabilityService->findActiveOrderForCourier($lockedCourier, lock: true);
+
+            // Saat kurir masih mengerjakan pesanan aktif, status Sibuk / On Delivery tetap berlaku
+            // sampai pesanan selesai (delivered) atau dibatalkan secara sah.
+            if ($activeOrder !== null && in_array($requestedStatus, [Courier::STATUS_ONLINE, Courier::STATUS_OFFLINE], true)) {
+                $this->availabilityService->syncPersistedStatus($lockedCourier, $activeOrder, checkDatabase: false);
+
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'courier_has_active_order',
+                    'message'    => 'Anda sedang menangani pesanan aktif. Status Sedang Mengantar berlaku sampai pesanan selesai atau dibatalkan.',
+                    'data'       => $this->availabilityService->getAvailabilitySnapshot($lockedCourier->fresh(), $activeOrder),
+                ], 409);
+            }
+
+            if ($requestedStatus === Courier::STATUS_ONLINE && ! $lockedCourier->is_verified) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'courier_not_verified',
+                    'message'    => 'Akun kurir Anda belum terverifikasi atau belum memenuhi syarat operasional.',
+                    'data'       => $this->availabilityService->getAvailabilitySnapshot($lockedCourier),
+                ], 403);
+            }
+
+            $isOnline = $requestedStatus === Courier::STATUS_ONLINE;
+            $updateData = ['is_active' => $isOnline];
+
+            if (Schema::hasColumn('couriers', 'work_status')) {
+                $updateData['work_status'] = $requestedStatus;
+            }
+            if (Schema::hasColumn('couriers', 'status_changed_at')) {
+                $updateData['status_changed_at'] = now();
+            }
+
+            if ($request->filled('latitude') && $request->filled('longitude')) {
+                $updateData['latitude'] = $request->latitude;
+                $updateData['longitude'] = $request->longitude;
+            }
+
+            $lockedCourier->update($updateData);
+            $freshCourier = $lockedCourier->fresh();
+            $this->availabilityService->syncPersistedStatus($freshCourier, $activeOrder, checkDatabase: false);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status berhasil diperbarui.',
+                'data'    => $this->availabilityService->getAvailabilitySnapshot($freshCourier->fresh(), $activeOrder),
+            ]);
+        });
     }
 
     /**
@@ -222,7 +272,7 @@ class CourierController extends Controller
             ], 422);
         }
 
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -244,9 +294,9 @@ class CourierController extends Controller
             }
 
             // Cek apakah ada order aktif untuk kurir ini dengan shipment ini
-            $order = \App\Models\Order::where('courier_id', $courier->id)
+            $order = Order::where('courier_id', $courier->id)
                 ->where('order_number', $shipment->shipment_number)
-                ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+                ->whereIn('status', Order::ACTIVE_STATUSES)
                 ->first();
 
             if (!$order) {
@@ -295,7 +345,7 @@ class CourierController extends Controller
      */
     public function stats(Request $request)
     {
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
@@ -334,8 +384,8 @@ class CourierController extends Controller
             ->count();
 
         // Active orders (in progress for this courier)
-        $activeOrders = \App\Models\Order::where('courier_id', $courier->id)
-            ->whereIn('status', ['assigned', 'picking_up', 'delivering'])
+        $activeOrders = Order::where('courier_id', $courier->id)
+            ->whereIn('status', Order::ACTIVE_STATUSES)
             ->count();
 
         // Total delivered shipments for this courier
@@ -363,7 +413,7 @@ class CourierController extends Controller
      */
     public function earnings(Request $request)
     {
-        $courier = $request->user()->courier;
+        $courier = $request->user()?->courier()->first();
 
         if (!$courier) {
             return response()->json([
